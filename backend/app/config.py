@@ -21,6 +21,14 @@ class Settings(BaseSettings):
 
     password_min_length: int = 12
 
+    # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
+    # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key
+    data_key: str = ""
+
+    # Katalog na pliki (zdjęcia). W Dockerze: wolumen /app/data.
+    data_dir: str = "./data"
+    photo_max_upload_mb: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

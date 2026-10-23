@@ -4,8 +4,13 @@ import os
 os.environ.setdefault("APT_DATABASE_URL", "postgresql+psycopg://apt:apt@localhost:5432/apt_test")
 os.environ["APT_COOKIE_SECURE"] = "false"
 os.environ.setdefault("APT_SECRET_KEY", "test-secret")
+os.environ.setdefault("APT_DATA_KEY", "re3IC_kTb6y861Lgk6PnpjvG1Bn7WvZf0iOgw4oHYHE")
+import tempfile  # noqa: E402
+
+os.environ["APT_DATA_DIR"] = tempfile.mkdtemp(prefix="apt-test-")
 
 from collections.abc import Callable, Iterator  # noqa: E402
+from datetime import date  # noqa: E402
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
@@ -36,10 +41,12 @@ def _clean_db() -> Iterator[None]:
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE audit_log, user_sessions, user_scopes, users, agencies, departments "
-                "RESTART IDENTITY CASCADE"
+                "TRUNCATE audit_log, user_sessions, user_scopes, users, photos, employees, positions, "
+                "agencies, departments RESTART IDENTITY CASCADE"
             )
         )
+        conn.execute(text("DELETE FROM countries WHERE name LIKE 'Test%'"))
+        conn.execute(text("UPDATE countries SET is_active = true"))
 
 
 @pytest.fixture
@@ -88,3 +95,15 @@ def admin_client(client: TestClient, make_user: Callable[..., User]) -> TestClie
     make_user("admin", Role.admin)
     login(client, "admin")
     return client
+
+
+def make_pesel(born: "date", sex: str, serial: int = 123) -> str:
+    """Buduje poprawny PESEL dla podanej daty urodzenia i płci (K/M)."""
+    from app.pesel import WEIGHTS
+
+    offset = {1800: 80, 1900: 0, 2000: 20, 2100: 40, 2200: 60}[born.year // 100 * 100]
+    base = f"{born.year % 100:02d}{born.month + offset:02d}{born.day:02d}{serial:03d}"
+    sex_digit = 0 if sex == "K" else 1
+    digits = [int(c) for c in base] + [sex_digit]
+    check = (10 - sum(d * w for d, w in zip(digits, WEIGHTS, strict=True)) % 10) % 10
+    return base + str(sex_digit) + str(check)

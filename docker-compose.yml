@@ -26,11 +26,15 @@ services:
     environment:
       APT_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       APT_SECRET_KEY: ${APT_SECRET_KEY}
+      APT_DATA_KEY: ${APT_DATA_KEY:?Ustaw APT_DATA_KEY w pliku .env}
+      APT_DATA_DIR: /app/data
       APT_COOKIE_SECURE: ${APT_COOKIE_SECURE:-true}
       APT_SESSION_IDLE_MINUTES: ${APT_SESSION_IDLE_MINUTES:-30}
       APT_SESSION_MAX_HOURS: ${APT_SESSION_MAX_HOURS:-12}
       APT_LOGIN_MAX_FAILURES: ${APT_LOGIN_MAX_FAILURES:-5}
       APT_LOGIN_LOCK_MINUTES: ${APT_LOGIN_LOCK_MINUTES:-15}
+    volumes:
+      - appdata:/app/data
     networks: [internal]
 
   web:
@@ -51,6 +55,7 @@ services:
 
 volumes:
   pgdata:
+  appdata:
   caddy_data:
   caddy_config:
 

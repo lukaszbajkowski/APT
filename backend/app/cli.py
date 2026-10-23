@@ -2,6 +2,9 @@
 
 Pierwszy administrator:
     docker compose exec api python -m app.cli create-admin --username admin --full-name "Jan Kowalski"
+
+Klucz do szyfrowania PESEL (APT_DATA_KEY w pliku .env):
+    python -m app.cli generate-key
 """
 
 import argparse
@@ -53,10 +56,16 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("create-admin", help="Utwórz konto administratora")
     p.add_argument("--username", required=True)
     p.add_argument("--full-name", required=True)
+    sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
 
     if args.command == "create-admin":
         return create_admin(args.username, args.full_name)
+    if args.command == "generate-key":
+        from app.crypto import generate_key
+
+        print(generate_key())
+        return 0
     return 2
 
 

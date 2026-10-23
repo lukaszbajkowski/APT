@@ -10,7 +10,7 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 | Etap | Zakres | Stan |
 |---|---|---|
 | 1. Fundament | repozytorium, Docker Compose, baza i migracje, logowanie, role, użytkownicy, dziennik zdarzeń | ✅ |
-| 2. Kartoteka | słowniki, lista i filtry, profil, formularz, zaszyfrowany PESEL, zdjęcia | ⏳ |
+| 2. Kartoteka | słowniki, lista i filtry, profil, formularz, zaszyfrowany PESEL, zdjęcia | ✅ |
 | 3. Import | Excel / CSV z podglądem błędów | ⏳ |
 | 4. Karty | PDF, CR80, kod QR | ⏳ |
 | 5. Dokumenty | szablony .docx, pola formularza | ⏳ |
@@ -39,6 +39,20 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Role sprawdzane po stronie serwera; nie da się odebrać sobie roli administratora
   ani wyłączyć ostatniego aktywnego administratora.
 
+## Kartoteka (etap 2)
+
+- Numer ewidencyjny nadawany automatycznie z sekwencji bazy (000001, 000002, …), niezmienny.
+- PESEL szyfrowany AES-256-GCM kluczem `APT_DATA_KEY` trzymanym poza bazą; do wykrywania
+  duplikatów służy skrót HMAC. Pełny numer widzą tylko Administrator i Kadry, po kliknięciu
+  „Pokaż” – każdy odczyt trafia do dziennika zdarzeń.
+- PESEL sprawdzany (suma kontrolna, data, płeć) i sam uzupełnia datę urodzenia i płeć.
+- Duplikaty: ten sam PESEL blokuje zapis; to samo imię, nazwisko i data urodzenia wymaga potwierdzenia.
+- Zdjęcia: plik lub kamera, kadrowanie 3:4, serwer zapisuje JPEG 600×800 do ok. 200 KB bez metadanych.
+- Zwolnienie przenosi do archiwum (z datą), rekord zostaje; można go przywrócić.
+- Historia zmian w profilu – dla danych osobowych zapisywana jest tylko informacja, że pole się zmieniło.
+- **Kopia klucza `APT_DATA_KEY` musi być przechowywana bezpiecznie poza serwerem** – bez niego
+  zaszyfrowanych numerów PESEL nie da się odczytać.
+
 ## Role
 
 | Rola | Opis |
@@ -51,7 +65,8 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 ## Uruchomienie (serwer)
 
 ```bash
-cp .env.example .env        # uzupełnij hasła, klucz i domenę
+cp .env.example .env        # uzupełnij hasła, klucze i domenę
+python3 -c "import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('='))"   # wynik wpisz jako APT_DATA_KEY w .env
 docker compose up -d --build
 docker compose exec api python -m app.cli create-admin --username admin --full-name "Imię Nazwisko"
 ```
@@ -69,6 +84,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 export APT_DATABASE_URL=postgresql+psycopg://apt:apt@localhost:5432/apt APT_COOKIE_SECURE=false
+export APT_DATA_KEY=...   # wygeneruj raz (python -m app.cli generate-key) i zachowaj – nowy klucz = nieczytelne stare PESEL-e
 alembic upgrade head
 python -m app.cli create-admin --username admin --full-name "Admin Lokalny"
 uvicorn app.main:app --reload

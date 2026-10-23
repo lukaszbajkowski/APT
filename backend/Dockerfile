@@ -11,7 +11,7 @@ RUN pip install --upgrade pip && pip install .
 
 COPY . .
 
-RUN useradd --create-home --uid 1000 apt && chown -R apt:apt /app
+RUN useradd --create-home --uid 1000 apt && mkdir -p /app/data && chown -R apt:apt /app
 USER apt
 
 EXPOSE 8000

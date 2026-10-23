@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.deps import DbSession
-from app.routers import audit_log, auth, dictionaries, users
+from app.routers import audit_log, auth, dictionaries, employees, users
 
 app = FastAPI(
     title="Identyfikacja pracowników APT",
@@ -16,6 +16,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(dictionaries.router)
 app.include_router(audit_log.router)
+app.include_router(employees.router)
 
 
 @app.get("/api/health", tags=["system"])

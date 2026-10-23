@@ -29,9 +29,61 @@ export interface Me {
 
 export interface DictionaryItem {
   id: number;
-  code: string;
+  code: string | null;
   name: string;
   is_active: boolean;
+}
+
+export interface PositionItem {
+  id: number;
+  name: string;
+  department_id: number | null;
+  is_active: boolean;
+}
+
+export interface CountryItem {
+  id: number;
+  name: string;
+  iso_code: string | null;
+  is_active: boolean;
+}
+
+export interface Ref {
+  id: number;
+  name: string;
+}
+
+export type Sex = "K" | "M";
+export type EmployeeStatus = "active" | "terminated";
+
+export interface Employee {
+  id: number;
+  number: number;
+  number_display: string;
+  first_name: string;
+  last_name: string;
+  sex: Sex | null;
+  birth_date: string | null;
+  age: number | null;
+  has_pesel: boolean;
+  pesel_masked: string | null;
+  country: Ref | null;
+  agency: Ref | null;
+  department: Ref | null;
+  position: Ref | null;
+  hire_date: string | null;
+  termination_date: string | null;
+  status: EmployeeStatus;
+  notes: string | null;
+  has_photo: boolean;
+  photo_version: string | null;
+  personal_data_visible: boolean;
+}
+
+export interface DuplicateRef {
+  id: number;
+  number: string;
+  name: string;
 }
 
 export interface AuditEntry {
@@ -56,11 +108,13 @@ export interface Page<T> {
 export class ApiError extends Error {
   status: number;
   code?: string;
+  data?: Record<string, unknown>;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, data?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -75,17 +129,28 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler;
 }
 
-function errorMessage(detail: unknown, status: number): { message: string; code?: string } {
+function errorMessage(
+  detail: unknown,
+  status: number,
+): { message: string; code?: string; data?: Record<string, unknown> } {
   if (typeof detail === "string") return { message: detail };
   if (detail && typeof detail === "object" && "message" in detail) {
     const d = detail as { message: string; code?: string };
-    return { message: d.message, code: d.code };
+    return { message: d.message, code: d.code, data: detail as Record<string, unknown> };
   }
-  if (Array.isArray(detail)) return { message: "Niepoprawne dane w formularzu." };
+  if (Array.isArray(detail)) {
+    const first = detail[0] as { msg?: string } | undefined;
+    const msg = first?.msg?.replace(/^Value error, /, "");
+    return { message: msg ? `Niepoprawne dane: ${msg}` : "Niepoprawne dane w formularzu." };
+  }
+  if (status === 413) return { message: "Plik jest za duży." };
   return { message: `Błąd serwera (${status}).` };
 }
 
-export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  options: { method?: string; body?: unknown; form?: FormData } = {},
+): Promise<T> {
   const method = options.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
@@ -95,18 +160,22 @@ export async function api<T>(path: string, options: { method?: string; body?: un
     method,
     headers,
     credentials: "same-origin",
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: options.form ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
   });
 
   if (res.status === 204) return undefined as T;
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const { message, code } = errorMessage(data?.detail, res.status);
+    const { message, code, data: extra } = errorMessage(data?.detail, res.status);
     if (res.status === 401 && path !== "/auth/login" && onUnauthorized) onUnauthorized();
-    throw new ApiError(res.status, message, code);
+    throw new ApiError(res.status, message, code, extra);
   }
   return data as T;
+}
+
+export function errorText(err: unknown): string {
+  return err instanceof ApiError ? err.message : "Wystąpił nieoczekiwany błąd.";
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -127,7 +196,42 @@ export const ACTION_LABELS: Record<string, string> = {
   user_created: "Utworzenie użytkownika",
   user_updated: "Zmiana użytkownika",
   user_unlocked: "Odblokowanie konta",
+  employee_created: "Dodanie pracownika",
+  employee_updated: "Zmiana danych pracownika",
+  employee_terminated: "Przeniesienie do archiwum",
+  employee_restored: "Przywrócenie z archiwum",
+  pesel_viewed: "Odczyt PESEL",
+  photo_uploaded: "Zmiana zdjęcia",
+  photo_deleted: "Usunięcie zdjęcia",
+  agency_created: "Dodanie APT",
+  agency_updated: "Zmiana APT",
+  department_created: "Dodanie wydziału",
+  department_updated: "Zmiana wydziału",
+  position_created: "Dodanie stanowiska",
+  position_updated: "Zmiana stanowiska",
+  country_created: "Dodanie kraju",
+  country_updated: "Zmiana kraju",
 };
+
+export const FIELD_LABELS: Record<string, string> = {
+  first_name: "imię",
+  last_name: "nazwisko",
+  sex: "płeć",
+  birth_date: "data urodzenia",
+  pesel: "PESEL",
+  country_id: "obywatelstwo",
+  agency_id: "APT",
+  department_id: "wydział",
+  position_id: "stanowisko",
+  hire_date: "data zatrudnienia",
+  notes: "uwagi",
+};
+
+export function formatDate(value: string | null): string {
+  if (!value) return "—";
+  const [y, m, d] = value.split("-");
+  return `${d}.${m}.${y}`;
+}
 
 export function formatDateTime(value: string | null): string {
   if (!value) return "—";

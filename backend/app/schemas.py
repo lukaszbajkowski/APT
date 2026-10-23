@@ -92,7 +92,7 @@ class DictionaryItemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    code: str
+    code: str | None
     name: str
     is_active: bool
 

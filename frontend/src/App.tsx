@@ -7,7 +7,10 @@ import type { Role } from "./api";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
-import { HomePage } from "./pages/HomePage";
+import { EmployeesPage } from "./pages/EmployeesPage";
+import { EmployeeFormPage } from "./pages/EmployeeFormPage";
+import { EmployeeProfilePage } from "./pages/EmployeeProfilePage";
+import { DictionariesPage } from "./pages/DictionariesPage";
 import { UsersPage } from "./pages/UsersPage";
 import { AuditPage } from "./pages/AuditPage";
 
@@ -49,7 +52,33 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<HomePage />} />
+        <Route index element={<Navigate to="/pracownicy" replace />} />
+        <Route path="pracownicy" element={<EmployeesPage />} />
+        <Route
+          path="pracownicy/nowy"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <EmployeeFormPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="pracownicy/:id" element={<EmployeeProfilePage />} />
+        <Route
+          path="pracownicy/:id/edycja"
+          element={
+            <RequireAuth roles={["admin", "hr", "manager"]}>
+              <EmployeeFormPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="slowniki"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <DictionariesPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="uzytkownicy"
           element={

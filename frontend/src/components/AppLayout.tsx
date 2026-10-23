@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AppShell, Burger, Group, Menu, NavLink, Text, UnstyledButton, Avatar } from "@mantine/core";
+import { AppShell, Avatar, Box, Burger, Group, Menu, NavLink, Text, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronDown,
-  IconHome,
+  IconBook,
+  IconId,
   IconKey,
   IconListDetails,
   IconLogout,
@@ -20,7 +21,8 @@ export function AppLayout() {
   const location = useLocation();
 
   const items = [
-    { to: "/", label: "Start", icon: IconHome, show: true },
+    { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: true },
+    { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin") },
   ];
@@ -39,28 +41,28 @@ export function AppLayout() {
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="sm">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text fw={700} c="navy.9">
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
+            <Text fw={700} c="navy.9" truncate>
               Identyfikacja pracowników APT
             </Text>
           </Group>
           <Menu position="bottom-end" width={220}>
             <Menu.Target>
-              <UnstyledButton>
+              <UnstyledButton aria-label="Konto użytkownika">
                 <Group gap="xs">
                   <Avatar color="navy" radius="xl" size="sm">
                     {initials}
                   </Avatar>
-                  <div style={{ lineHeight: 1.1 }}>
+                  <Box visibleFrom="sm" style={{ lineHeight: 1.1 }}>
                     <Text size="sm" fw={500}>
                       {me?.user.full_name}
                     </Text>
                     <Text size="xs" c="dimmed">
                       {me ? ROLE_LABELS[me.user.role] : ""}
                     </Text>
-                  </div>
+                  </Box>
                   <IconChevronDown size={14} />
                 </Group>
               </UnstyledButton>
@@ -92,7 +94,7 @@ export function AppLayout() {
               key={i.to}
               component={Link}
               to={i.to}
-              active={i.to === "/" ? location.pathname === "/" : location.pathname.startsWith(i.to)}
+              active={location.pathname.startsWith(i.to)}
               label={i.label}
               leftSection={<i.icon size={18} />}
               onClick={close}

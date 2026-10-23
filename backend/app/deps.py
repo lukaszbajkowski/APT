@@ -93,3 +93,4 @@ def require_roles(*roles: Role) -> Callable[[AuthContext], AuthContext]:
 
 
 AdminAuth = Annotated[AuthContext, Depends(require_roles(Role.admin))]
+StaffAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr))]

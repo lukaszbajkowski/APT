@@ -62,18 +62,55 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 | Kierownik | tylko przypisane APT / wydziały |
 | Podgląd | tylko odczyt, PESEL zamaskowany |
 
-## Uruchomienie (serwer)
+## Uruchomienie na własnym komputerze (Docker)
+
+Wymagane: Git i Docker Desktop.
 
 ```bash
-cp .env.example .env        # uzupełnij hasła, klucze i domenę
-python3 -c "import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('='))"   # wynik wpisz jako APT_DATA_KEY w .env
+git clone https://github.com/lukaszbajkowski/APT.git
+cd APT
+cp .env.example .env            # Windows: copy .env.example .env
+```
+
+W pliku `.env` ustaw:
+
+```
+APT_DOMAIN=:80
+APT_COOKIE_SECURE=false
+POSTGRES_PASSWORD=<litery i cyfry>
+APT_SECRET_KEY=<losowy ciąg>
+APT_DATA_KEY=<klucz z polecenia poniżej>
+```
+
+Klucz `APT_DATA_KEY` (jednorazowo, potem go nie zmieniaj):
+
+```bash
+docker run --rm python:3.12-slim python -c "import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('='))"
+```
+
+Start i pierwszy administrator:
+
+```bash
 docker compose up -d --build
 docker compose exec api python -m app.cli create-admin --username admin --full-name "Imię Nazwisko"
 ```
 
-Polecenie wypisze hasło tymczasowe. Przy pierwszym logowaniu trzeba je zmienić.
+Aplikacja: http://localhost (albo http://localhost:8080 przy `APT_HTTP_PORT=8080`).
 
-## Praca lokalna
+| Co | Polecenie |
+|---|---|
+| zatrzymanie / start | `docker compose stop` / `docker compose start` |
+| aktualizacja kodu | `git pull` i `docker compose up -d --build` |
+| logi | `docker compose logs -f api` |
+| stan kontenerów | `docker compose ps` |
+| usunięcie wszystkiego **razem z danymi** | `docker compose down -v` |
+
+## Uruchomienie na serwerze
+
+Jak wyżej, ale w `.env`: `APT_DOMAIN=twoja-domena.pl`, `APT_COOKIE_SECURE=true`. Caddy sam pobierze
+certyfikat HTTPS (domena musi wskazywać na serwer, porty 80 i 443 otwarte).
+
+## Praca nad kodem (bez Dockera dla API)
 
 ```bash
 # baza
@@ -84,7 +121,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 export APT_DATABASE_URL=postgresql+psycopg://apt:apt@localhost:5432/apt APT_COOKIE_SECURE=false
-export APT_DATA_KEY=...   # wygeneruj raz (python -m app.cli generate-key) i zachowaj – nowy klucz = nieczytelne stare PESEL-e
+export APT_DATA_KEY=...   # wygeneruj raz (python -m app.cli generate-key) i zachowaj
 alembic upgrade head
 python -m app.cli create-admin --username admin --full-name "Admin Lokalny"
 uvicorn app.main:app --reload

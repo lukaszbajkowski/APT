@@ -3,7 +3,7 @@
 Uprawnienia (patrz specyfikacja, sekcja „Role i uprawnienia”):
 - Administrator, Kadry: wszyscy pracownicy, pełna edycja, odczyt PESEL (logowany).
 - Kierownik: tylko pracownicy z przypisanych APT / wydziałów; edycja tylko stanowiska i uwag;
-  zamiast daty urodzenia i obywatelstwa widzi wiek; PESEL niedostępny.
+  zamiast daty urodzenia widzi wiek; widzi obywatelstwo; PESEL niedostępny.
 - Podgląd: wszyscy, tylko odczyt, jak kierownik bez edycji.
 """
 
@@ -196,7 +196,7 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
         age=age_on(e.birth_date, today),
         has_pesel=e.pesel_hash is not None,
         pesel_masked=("•" * 9 + (e.pesel_last2 or "")) if personal and e.pesel_hash else None,
-        country=Ref.model_validate(e.country) if personal and e.country else None,
+        country=Ref.model_validate(e.country) if e.country else None,
         agency=Ref.model_validate(e.agency) if e.agency else None,
         department=Ref.model_validate(e.department) if e.department else None,
         position=Ref.model_validate(e.position) if e.position else None,

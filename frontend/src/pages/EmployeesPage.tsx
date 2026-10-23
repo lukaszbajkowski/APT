@@ -181,7 +181,7 @@ export function EmployeesPage() {
           placeholder={missing.length ? undefined : "—"}
           clearable
           w={230}
-          data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date", "country"].includes(m.value))}
+          data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
           value={missing}
           onChange={(v) => update({ missing: v })}
         />

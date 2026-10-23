@@ -237,7 +237,9 @@ def test_terminate_and_restore(hr):
 
 
 def _employees(hr, dicts):
-    a = create(hr, first_name="Jan", last_name="A", agency_id=dicts["a1"], pesel=PESEL_JAN).json()
+    a = create(
+        hr, first_name="Jan", last_name="A", agency_id=dicts["a1"], pesel=PESEL_JAN, country_id=2
+    ).json()
     b = create(hr, first_name="Anna", last_name="B", agency_id=dicts["a2"], department_id=dicts["d1"]).json()
     c = create(hr, first_name="Ola", last_name="C", agency_id=dicts["a2"], department_id=dicts["d2"]).json()
     return a, b, c
@@ -263,7 +265,7 @@ def test_manager_sees_only_scope_and_no_personal_data(hr, make_user, dicts):
     assert item["birth_date"] is None
     assert item["age"] is not None
     assert item["pesel_masked"] is None
-    assert item["country"] is None
+    assert item["country"] == {"id": 2, "name": "Ukraina"}
     assert item["personal_data_visible"] is False
 
     assert m.get(f"/api/employees/{c['id']}").status_code == 404

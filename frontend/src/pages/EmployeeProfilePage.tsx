@@ -268,11 +268,11 @@ export function EmployeeProfilePage() {
                     {formatDate(e.birth_date)}
                     {e.age !== null && <Text span c="dimmed"> ({e.age} lat)</Text>}
                   </Field>
-                  <Field label="Obywatelstwo">{e.country?.name ?? "—"}</Field>
                 </>
               ) : (
                 <Field label="Wiek">{e.age !== null ? `${e.age} lat` : "—"}</Field>
               )}
+              <Field label="Obywatelstwo">{e.country?.name ?? "—"}</Field>
               <Field label="Płeć">{e.sex === "K" ? "kobieta" : e.sex === "M" ? "mężczyzna" : "—"}</Field>
             </SimpleGrid>
           </Stack>

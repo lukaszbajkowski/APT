@@ -1,0 +1,19 @@
+# Tylko do pracy lokalnej: sama baza PostgreSQL wystawiona na localhost:5432.
+# Uruchomienie: docker compose -f docker-compose.dev.yml up -d
+name: apt-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: apt
+      POSTGRES_USER: apt
+      POSTGRES_PASSWORD: apt
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+      - ./deploy/dev-init.sql:/docker-entrypoint-initdb.d/dev-init.sql:ro
+
+volumes:
+  pgdata_dev:

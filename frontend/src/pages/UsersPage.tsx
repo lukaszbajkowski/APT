@@ -1,0 +1,338 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Code,
+  CopyButton,
+  Group,
+  Loader,
+  Menu,
+  Modal,
+  MultiSelect,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconDots, IconPlus } from "@tabler/icons-react";
+
+import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
+import { useAuth } from "../auth";
+
+const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).map((r) => ({ value: r, label: ROLE_LABELS[r] }));
+
+interface FormState {
+  username: string;
+  full_name: string;
+  role: Role;
+  agency_ids: string[];
+  department_ids: string[];
+}
+
+const EMPTY_FORM: FormState = { username: "", full_name: "", role: "viewer", agency_ids: [], department_ids: [] };
+
+function isLocked(u: User) {
+  return !!u.locked_until && new Date(u.locked_until) > new Date();
+}
+
+function errorText(err: unknown) {
+  return err instanceof ApiError ? err.message : "Wystąpił nieoczekiwany błąd.";
+}
+
+export function UsersPage() {
+  const qc = useQueryClient();
+  const { me } = useAuth();
+  const users = useQuery({ queryKey: ["users"], queryFn: () => api<User[]>("/users") });
+  const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
+
+  // editing zostaje ustawione także podczas animacji zamykania, żeby tytuł okna nie "skakał"
+  const [editing, setEditing] = useState<User | "new" | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [tempOpen, setTempOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
+
+  function openNew() {
+    setForm(EMPTY_FORM);
+    setFormError(null);
+    setEditing("new");
+    setFormOpen(true);
+  }
+
+  function openEdit(u: User) {
+    setForm({
+      username: u.username,
+      full_name: u.full_name,
+      role: u.role,
+      agency_ids: u.scopes.filter((s) => s.agency_id !== null).map((s) => String(s.agency_id)),
+      department_ids: u.scopes.filter((s) => s.department_id !== null).map((s) => String(s.department_id)),
+    });
+    setFormError(null);
+    setEditing(u);
+    setFormOpen(true);
+  }
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const scopes = {
+        agency_ids: form.agency_ids.map(Number),
+        department_ids: form.department_ids.map(Number),
+      };
+      if (editing === "new") {
+        const res = await api<{ user: User; temporary_password: string }>("/users", {
+          method: "POST",
+          body: { username: form.username, full_name: form.full_name, role: form.role, scopes },
+        });
+        setTempPassword({ username: res.user.username, password: res.temporary_password });
+        setTempOpen(true);
+      } else if (editing) {
+        const body: Record<string, unknown> = { full_name: form.full_name, scopes };
+        if (form.role !== editing.role) body.role = form.role;
+        await api<User>(`/users/${editing.id}`, { method: "PATCH", body });
+        notifications.show({ color: "green", message: "Zapisano zmiany." });
+      }
+    },
+    onSuccess: () => {
+      setFormOpen(false);
+      invalidate();
+    },
+    onError: (err) => setFormError(errorText(err)),
+  });
+
+  const action = useMutation({
+    mutationFn: async ({ user, kind }: { user: User; kind: "reset" | "unlock" | "toggle" }) => {
+      if (kind === "reset") {
+        const res = await api<{ temporary_password: string }>(`/users/${user.id}/reset-password`, {
+          method: "POST",
+        });
+        setTempPassword({ username: user.username, password: res.temporary_password });
+        setTempOpen(true);
+      } else if (kind === "unlock") {
+        await api(`/users/${user.id}/unlock`, { method: "POST" });
+        notifications.show({ color: "green", message: `Odblokowano konto ${user.username}.` });
+      } else {
+        await api(`/users/${user.id}`, { method: "PATCH", body: { is_active: !user.is_active } });
+        notifications.show({
+          color: "green",
+          message: user.is_active ? `Wyłączono konto ${user.username}.` : `Włączono konto ${user.username}.`,
+        });
+      }
+    },
+    onSuccess: invalidate,
+    onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
+  });
+
+  const agencyName = (id: number | null) => agencies.data?.find((a) => a.id === id)?.name ?? `#${id}`;
+  const departmentName = (id: number | null) => departments.data?.find((d) => d.id === id)?.name ?? `#${id}`;
+
+  return (
+    <Stack>
+      <Group justify="space-between">
+        <Title order={2}>Użytkownicy</Title>
+        <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
+          Dodaj użytkownika
+        </Button>
+      </Group>
+
+      {users.isLoading && <Loader />}
+      {users.error && <Alert color="red">{errorText(users.error)}</Alert>}
+
+      {users.data && (
+        <Table.ScrollContainer minWidth={760}>
+          <Table striped highlightOnHover verticalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Login</Table.Th>
+                <Table.Th>Imię i nazwisko</Table.Th>
+                <Table.Th>Rola</Table.Th>
+                <Table.Th>Zakres</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Ostatnie logowanie</Table.Th>
+                <Table.Th w={48} />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {users.data.map((u) => (
+                <Table.Tr key={u.id} opacity={u.is_active ? 1 : 0.55}>
+                  <Table.Td>
+                    <Code>{u.username}</Code>
+                  </Table.Td>
+                  <Table.Td>{u.full_name}</Table.Td>
+                  <Table.Td>{ROLE_LABELS[u.role]}</Table.Td>
+                  <Table.Td>
+                    {u.role === "manager" ? (
+                      u.scopes.length ? (
+                        <Text size="sm">
+                          {u.scopes
+                            .map((s) => (s.agency_id !== null ? agencyName(s.agency_id) : departmentName(s.department_id)))
+                            .join(", ")}
+                        </Text>
+                      ) : (
+                        <Text size="sm" c="orange">
+                          brak przypisań
+                        </Text>
+                      )
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {u.is_active ? <Badge color="green">aktywne</Badge> : <Badge color="gray">wyłączone</Badge>}
+                      {isLocked(u) && <Badge color="red">zablokowane</Badge>}
+                      {u.must_change_password && u.is_active && (
+                        <Badge color="yellow" variant="light">
+                          hasło tymczasowe
+                        </Badge>
+                      )}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>{formatDateTime(u.last_login_at)}</Table.Td>
+                  <Table.Td>
+                    <Menu position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray" aria-label="Akcje">
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item onClick={() => openEdit(u)}>Edytuj</Menu.Item>
+                        <Menu.Item onClick={() => action.mutate({ user: u, kind: "reset" })}>
+                          Resetuj hasło
+                        </Menu.Item>
+                        {isLocked(u) && (
+                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "unlock" })}>Odblokuj</Menu.Item>
+                        )}
+                        {u.id !== me?.user.id && (
+                          <Menu.Item
+                            color={u.is_active ? "red" : undefined}
+                            onClick={() => action.mutate({ user: u, kind: "toggle" })}
+                          >
+                            {u.is_active ? "Wyłącz konto" : "Włącz konto"}
+                          </Menu.Item>
+                        )}
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      )}
+
+      <Modal
+        opened={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={editing === "new" ? "Nowy użytkownik" : "Edycja użytkownika"}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setFormError(null);
+            save.mutate();
+          }}
+        >
+          <Stack>
+            {formError && <Alert color="red">{formError}</Alert>}
+            <TextInput
+              label="Login"
+              description="małe litery, cyfry, kropka, myślnik; min. 3 znaki"
+              required
+              disabled={editing !== "new"}
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.currentTarget.value })}
+            />
+            <TextInput
+              label="Imię i nazwisko"
+              required
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.currentTarget.value })}
+            />
+            <Select
+              label="Rola"
+              data={ROLE_OPTIONS}
+              allowDeselect={false}
+              disabled={editing !== "new" && editing?.id === me?.user.id}
+              value={form.role}
+              onChange={(v) => v && setForm({ ...form, role: v as Role })}
+            />
+            {form.role === "manager" && (
+              <>
+                <MultiSelect
+                  label="Widoczne APT"
+                  placeholder={agencies.data?.length ? "Wybierz" : "Brak APT w słowniku (etap 2)"}
+                  data={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+                  value={form.agency_ids}
+                  onChange={(v) => setForm({ ...form, agency_ids: v })}
+                  searchable
+                />
+                <MultiSelect
+                  label="Widoczne wydziały"
+                  placeholder={departments.data?.length ? "Wybierz" : "Brak wydziałów w słowniku (etap 2)"}
+                  data={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
+                  value={form.department_ids}
+                  onChange={(v) => setForm({ ...form, department_ids: v })}
+                  searchable
+                />
+              </>
+            )}
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setFormOpen(false)}>
+                Anuluj
+              </Button>
+              <Button type="submit" loading={save.isPending}>
+                {editing === "new" ? "Utwórz" : "Zapisz"}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      <Modal
+        opened={tempOpen}
+        onClose={() => setTempOpen(false)}
+        onExitTransitionEnd={() => setTempPassword(null)}
+        title="Hasło tymczasowe"
+        closeOnClickOutside={false}
+      >
+        {tempPassword && (
+          <Stack>
+            <Text size="sm">
+              Przekaż to hasło użytkownikowi <b>{tempPassword.username}</b> bezpiecznym kanałem. Po zamknięciu tego
+              okna nie będzie można go ponownie wyświetlić. Przy pierwszym logowaniu użytkownik musi ustawić własne
+              hasło.
+            </Text>
+            <Group>
+              <Code fz="lg" p="sm">
+                {tempPassword.password}
+              </Code>
+              <CopyButton value={tempPassword.password}>
+                {({ copied, copy }) => (
+                  <Button variant="light" onClick={copy}>
+                    {copied ? "Skopiowano" : "Kopiuj"}
+                  </Button>
+                )}
+              </CopyButton>
+            </Group>
+            <Group justify="flex-end">
+              <Button onClick={() => setTempOpen(false)}>Zamknij</Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+    </Stack>
+  );
+}

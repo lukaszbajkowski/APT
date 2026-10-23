@@ -1,0 +1,24 @@
+from fastapi import FastAPI
+from sqlalchemy import text
+
+from app.deps import DbSession
+from app.routers import audit_log, auth, dictionaries, users
+
+app = FastAPI(
+    title="Identyfikacja pracowników APT",
+    version="0.1.0",
+    docs_url="/api/docs",
+    redoc_url=None,
+    openapi_url="/api/openapi.json",
+)
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(dictionaries.router)
+app.include_router(audit_log.router)
+
+
+@app.get("/api/health", tags=["system"])
+def health(db: DbSession) -> dict[str, str]:
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}

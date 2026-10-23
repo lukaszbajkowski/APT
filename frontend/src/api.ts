@@ -211,6 +211,7 @@ export const ACTION_LABELS: Record<string, string> = {
   position_updated: "Zmiana stanowiska",
   country_created: "Dodanie kraju",
   country_updated: "Zmiana kraju",
+  import_completed: "Import z pliku",
 };
 
 export const FIELD_LABELS: Record<string, string> = {

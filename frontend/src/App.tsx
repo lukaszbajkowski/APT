@@ -11,6 +11,7 @@ import { EmployeesPage } from "./pages/EmployeesPage";
 import { EmployeeFormPage } from "./pages/EmployeeFormPage";
 import { EmployeeProfilePage } from "./pages/EmployeeProfilePage";
 import { DictionariesPage } from "./pages/DictionariesPage";
+import { ImportPage } from "./pages/ImportPage";
 import { UsersPage } from "./pages/UsersPage";
 import { AuditPage } from "./pages/AuditPage";
 
@@ -68,6 +69,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr", "manager"]}>
               <EmployeeFormPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="import"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <ImportPage />
             </RequireAuth>
           }
         />

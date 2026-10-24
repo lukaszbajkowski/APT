@@ -258,3 +258,56 @@ def test_only_staff_can_import(client, make_user):
     login(client, "kierownik")
     assert client.get("/api/import/template").status_code == 403
     assert post(client, "analyze", xlsx([["A", "B"], [1, 2]])).status_code == 403
+
+
+# ---------- Numbers (macOS) ----------
+
+
+def numbers_file(rows: list[list], tmp_path) -> bytes:
+    from numbers_parser import Document
+
+    doc = Document()
+    table = doc.sheets[0].tables[0]
+    for r, row in enumerate(rows):
+        for c, value in enumerate(row):
+            if value is not None:
+                table.write(r, c, value)
+    path = tmp_path / "lista.numbers"
+    doc.save(str(path))
+    return path.read_bytes()
+
+
+def test_numbers_file_imports(hr, tmp_path):
+    data = numbers_file(
+        [
+            ["Nazwisko", "Imię", "PESEL", "Obywatelstwo", "Agencja", "Zatrudniony od"],
+            ["Kowalski", "Jan", P1, "ukraińskie", "AA", datetime(2026, 3, 1)],
+            ["Nowak", "Anna", int(P2), "Polska", "Agencja A", "15.02.2026"],
+        ],
+        tmp_path,
+    )
+    r = post(hr, "analyze", data, name="Lista pracowników.numbers")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total_rows"] == 2
+    assert body["mapping"] == {
+        "last_name": 0,
+        "first_name": 1,
+        "pesel": 2,
+        "country": 3,
+        "agency": 4,
+        "hire_date": 5,
+    }
+    r = post(hr, "commit", data, name="Lista pracowników.numbers", mapping=body["mapping"])
+    assert r.status_code == 200, r.text
+    assert r.json()["imported"] == 2
+    with SessionLocal() as db:
+        nowak = db.scalar(select(Employee).where(Employee.last_name == "Nowak"))
+        assert nowak.birth_date == date(2003, 5, 7)  # PESEL z odtworzonym zerem
+        assert nowak.hire_date == date(2026, 2, 15)
+
+
+def test_broken_numbers_file(hr):
+    r = post(hr, "analyze", b"to nie jest arkusz", name="lista.numbers")
+    assert r.status_code == 400
+    assert "Numbers" in r.json()["detail"]

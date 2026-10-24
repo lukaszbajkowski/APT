@@ -182,7 +182,7 @@ export function ImportPage() {
       <div>
         <Title order={2}>Import pracowników</Title>
         <Text c="dimmed" size="sm">
-          Wczytaj listę z Excela (.xlsx) lub CSV. Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.
+          Wczytaj listę z Excela (.xlsx), Numbers na Macu (.numbers) lub CSV. Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.
         </Text>
       </div>
 
@@ -194,7 +194,7 @@ export function ImportPage() {
 
       <Stepper active={step} size="sm" allowNextStepsSelect={false} onStepClick={(s) => s < step && step < 3 && setStep(s)}>
         {/* ---------- 1. plik ---------- */}
-        <Stepper.Step label="Plik" description="xlsx lub csv">
+        <Stepper.Step label="Plik" description="xlsx, numbers, csv">
           <Paper withBorder p="xl" mt="md">
             <Stack align="center" gap="md">
               <IconFileSpreadsheet size={48} stroke={1.3} color="var(--mantine-color-navy-6)" />
@@ -203,9 +203,12 @@ export function ImportPage() {
                 <br />
                 Puste wiersze i tytuły nad tabelą są pomijane.
               </Text>
+              <Text size="sm" c="dimmed" ta="center">
+                Obsługiwane: Excel (.xlsx), Numbers (.numbers), CSV. Szablon otworzysz w Excelu i w Numbers.
+              </Text>
               <Group>
                 <FileButton
-                  accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".xlsx,.numbers,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.apple.numbers"
                   onChange={(f) => {
                     setError(null);
                     setFile(f);

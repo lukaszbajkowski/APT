@@ -6,6 +6,7 @@ Ten moduł nie dotyka bazy – walidacja względem słowników i duplikatów jes
 import csv
 import io
 import re
+import tempfile
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -123,11 +124,13 @@ def read_table(raw: bytes, filename: str) -> Table:
     name = (filename or "").lower()
     if name.endswith(".xls"):
         raise ImportFileError("Stary format .xls nie jest obsługiwany. Zapisz plik w Excelu jako .xlsx.")
+    if name.endswith(".numbers"):
+        return _read_numbers(raw)
     if name.endswith((".xlsx", ".xlsm")) or raw[:2] == b"PK":
         return _read_xlsx(raw)
     if name.endswith((".csv", ".txt")):
         return _read_csv(raw)
-    raise ImportFileError("Obsługiwane formaty: .xlsx i .csv.")
+    raise ImportFileError("Obsługiwane formaty: .xlsx, .numbers (Numbers na Macu) i .csv.")
 
 
 def _is_empty(v: Any) -> bool:
@@ -175,6 +178,39 @@ def _read_xlsx(raw: bytes) -> Table:
     finally:
         wb.close()
     raise ImportFileError("Arkusz jest pusty.")
+
+
+def _read_numbers(raw: bytes) -> Table:
+    """Arkusz Apple Numbers. Czytamy pierwszą tabelę z danymi (w Numbers arkusz może mieć kilka tabel)."""
+    from numbers_parser import Document
+    from numbers_parser.exceptions import FileError, FileFormatError
+
+    if raw[:2] != b"PK":
+        raise ImportFileError(
+            "Nie udało się otworzyć pliku Numbers. W Numbers wybierz Plik → Eksportuj do → Excel "
+            "albo zapisz plik ponownie (Plik → Zapisz)."
+        )
+    with tempfile.NamedTemporaryFile(suffix=".numbers") as tmp:
+        tmp.write(raw)
+        tmp.flush()
+        try:
+            doc = Document(tmp.name)
+        except (FileError, FileFormatError, KeyError, ValueError, OSError) as exc:
+            msg = str(exc).lower()
+            if "password" in msg or "encrypted" in msg:
+                raise ImportFileError(
+                    "Plik Numbers jest chroniony hasłem. Usuń hasło i spróbuj ponownie."
+                ) from exc
+            raise ImportFileError("Nie udało się otworzyć pliku Numbers.") from exc
+        except Exception as exc:  # biblioteka potrafi rzucić różnymi wyjątkami przy nietypowych plikach
+            raise ImportFileError("Nie udało się odczytać pliku Numbers.") from exc
+        for sheet in doc.sheets:
+            for table in sheet.tables:
+                rows = [[cell.value for cell in row] for row in table.iter_rows()]
+                if any(sum(not _is_empty(c) for c in r) >= 2 for r in rows):
+                    name = sheet.name if len(sheet.tables) == 1 else f"{sheet.name} / {table.name}"
+                    return _from_rows(rows, name)
+    raise ImportFileError("Plik Numbers nie zawiera tabeli z danymi.")
 
 
 def _read_csv(raw: bytes) -> Table:

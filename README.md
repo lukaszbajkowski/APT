@@ -11,7 +11,7 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 |---|---|---|
 | 1. Fundament | repozytorium, Docker Compose, baza i migracje, logowanie, role, użytkownicy, dziennik zdarzeń | ✅ |
 | 2. Kartoteka | słowniki, lista i filtry, profil, formularz, zaszyfrowany PESEL, zdjęcia | ✅ |
-| 3. Import | Excel / CSV z podglądem błędów | ✅ |
+| 3. Import | Excel / Numbers / CSV z podglądem błędów | ✅ |
 | 4. Karty | PDF, CR80, kod QR | ⏳ |
 | 5. Dokumenty | szablony .docx, pola formularza | ⏳ |
 | 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ⏳ |
@@ -55,6 +55,7 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 
 ## Import z Excela / CSV (etap 3)
 
+- Pliki: Excel (.xlsx), Numbers z macOS (.numbers), CSV.
 - Kreator: plik → przypisanie kolumn (proponowane automatycznie po nazwach nagłówków) → podgląd → zapis.
 - Rozpoznaje m.in. „Nazwisko i imię” w jednej kolumnie, daty w kilku formatach, płeć K/M lub słownie,
   obywatelstwo jako nazwę kraju, kod ISO lub przymiotnik („ukraińskie”), PESEL bez zera na początku

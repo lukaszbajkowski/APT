@@ -23,7 +23,7 @@ export function AppLayout() {
 
   const items = [
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: true },
-    { to: "/import", label: "Import z Excela", icon: IconFileImport, show: hasRole("admin", "hr") },
+    { to: "/import", label: "Import z arkusza", icon: IconFileImport, show: hasRole("admin", "hr") },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin") },

@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Badge,
   Button,
+  Checkbox,
+  Paper,
   Group,
   Loader,
   MultiSelect,
@@ -18,12 +20,13 @@ import {
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Page } from "../api";
 import { useAuth } from "../auth";
 import { options, useAgencies, useDepartments, usePositions } from "../dictionaries";
 import { EmployeePhoto } from "../components/EmployeePhoto";
+import { PrintCardsModal } from "../components/PrintCardsModal";
 
 const PAGE_SIZE = 50;
 
@@ -40,6 +43,10 @@ const MISSING = [
 export function EmployeesPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
+  const canPrint = hasRole("admin", "hr", "manager");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [printOpen, setPrintOpen] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
 
@@ -82,6 +89,32 @@ export function EmployeesPage() {
     missing.forEach((m) => p.append("missing", m));
     return p.toString();
   }, [status, sort, page, debouncedQ, agency, department, position, missing]);
+
+  const filterQuery = useMemo(() => {
+    const p = new URLSearchParams(query);
+    p.delete("limit");
+    p.delete("offset");
+    return p.toString();
+  }, [query]);
+
+  async function selectAllResults() {
+    setSelectingAll(true);
+    try {
+      const ids = await api<number[]>(`/employees/ids?${filterQuery}`);
+      setSelected(new Set(ids));
+    } finally {
+      setSelectingAll(false);
+    }
+  }
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const list = useQuery({
     queryKey: ["employees", query],
@@ -187,6 +220,42 @@ export function EmployeesPage() {
         />
       </Group>
 
+      {canPrint && list.data && list.data.total > 0 && (
+        <Paper withBorder px="md" py={8} bg={selected.size ? "navy.0" : undefined}>
+          <Group justify="space-between" gap="xs">
+            <Text size="sm">
+              {selected.size ? (
+                <>
+                  Zaznaczono: <b>{selected.size}</b>
+                </>
+              ) : (
+                "Zaznacz osoby, aby wydrukować karty."
+              )}
+            </Text>
+            <Group gap="xs">
+              {selected.size < list.data.total && (
+                <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
+                  Zaznacz wszystkie wyniki ({list.data.total})
+                </Button>
+              )}
+              {selected.size > 0 && (
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setSelected(new Set())}>
+                  Wyczyść
+                </Button>
+              )}
+              <Button
+                size="xs"
+                leftSection={<IconPrinter size={14} />}
+                disabled={selected.size === 0}
+                onClick={() => setPrintOpen(true)}
+              >
+                Drukuj karty{selected.size ? ` (${selected.size})` : ""}
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
       {list.isLoading && <Loader />}
       {list.error && <Alert color="red">{errorText(list.error)}</Alert>}
 
@@ -195,6 +264,26 @@ export function EmployeesPage() {
           <Table highlightOnHover verticalSpacing={6} striped>
             <Table.Thead>
               <Table.Tr>
+                {canPrint && (
+                  <Table.Th w={36}>
+                    <Checkbox
+                      aria-label="Zaznacz wszystkich na tej stronie"
+                      checked={list.data.items.every((e) => selected.has(e.id))}
+                      indeterminate={
+                        list.data.items.some((e) => selected.has(e.id)) &&
+                        !list.data.items.every((e) => selected.has(e.id))
+                      }
+                      onChange={(ev) => {
+                        const on = ev.currentTarget.checked;
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          list.data!.items.forEach((e) => (on ? next.add(e.id) : next.delete(e.id)));
+                          return next;
+                        });
+                      }}
+                    />
+                  </Table.Th>
+                )}
                 <Table.Th w={52} />
                 {sortHeader("number", "Nr")}
                 {sortHeader("name", "Nazwisko i imię")}
@@ -207,7 +296,21 @@ export function EmployeesPage() {
             </Table.Thead>
             <Table.Tbody>
               {list.data.items.map((e) => (
-                <Table.Tr key={e.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/pracownicy/${e.id}`)}>
+                <Table.Tr
+                  key={e.id}
+                  style={{ cursor: "pointer" }}
+                  bg={selected.has(e.id) ? "var(--mantine-color-navy-0)" : undefined}
+                  onClick={() => navigate(`/pracownicy/${e.id}`)}
+                >
+                  {canPrint && (
+                    <Table.Td onClick={(ev) => ev.stopPropagation()}>
+                      <Checkbox
+                        aria-label={`Zaznacz ${e.last_name} ${e.first_name}`}
+                        checked={selected.has(e.id)}
+                        onChange={() => toggle(e.id)}
+                      />
+                    </Table.Td>
+                  )}
                   <Table.Td>
                     <EmployeePhoto employee={e} width={30} />
                   </Table.Td>
@@ -251,6 +354,10 @@ export function EmployeesPage() {
           value={page}
           onChange={(p) => update({ page: p === 1 ? null : String(p) }, false)}
         />
+      )}
+
+      {canPrint && (
+        <PrintCardsModal ids={[...selected]} opened={printOpen} onClose={() => setPrintOpen(false)} />
       )}
     </Stack>
   );

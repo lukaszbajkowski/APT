@@ -28,6 +28,7 @@ import {
   IconEye,
   IconEyeOff,
   IconPencil,
+  IconPrinter,
   IconRestore,
   IconTrash,
 } from "@tabler/icons-react";
@@ -45,6 +46,7 @@ import {
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
+import { PrintCardsModal } from "../components/PrintCardsModal";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -132,6 +134,7 @@ export function EmployeeProfilePage() {
   });
 
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -231,6 +234,11 @@ export function EmployeeProfilePage() {
                     Edytuj
                   </Button>
                 )}
+                {canEdit && (
+                  <Button variant="light" leftSection={<IconPrinter size={16} />} onClick={() => setPrintOpen(true)}>
+                    Drukuj kartę
+                  </Button>
+                )}
                 {staff && (
                   <Menu position="bottom-end">
                     <Menu.Target>
@@ -311,6 +319,7 @@ export function EmployeeProfilePage() {
       )}
 
       {staff && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
+      {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
 
       <Modal opened={terminateOpen} onClose={() => setTerminateOpen(false)} title="Przeniesienie do archiwum">
         <Stack>

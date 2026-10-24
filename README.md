@@ -12,7 +12,7 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 | 1. Fundament | repozytorium, Docker Compose, baza i migracje, logowanie, role, użytkownicy, dziennik zdarzeń | ✅ |
 | 2. Kartoteka | słowniki, lista i filtry, profil, formularz, zaszyfrowany PESEL, zdjęcia | ✅ |
 | 3. Import | Excel / Numbers / CSV z podglądem błędów | ✅ |
-| 4. Karty | PDF, CR80, kod QR | ⏳ |
+| 4. Karty | PDF, CR80, kod QR | ✅ |
 | 5. Dokumenty | szablony .docx, pola formularza | ⏳ |
 | 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ⏳ |
 
@@ -64,6 +64,17 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Brakujące APT, wydziały i stanowiska mogą zostać dodane do słowników (opcja w kreatorze).
 - Zapis wszystkich wierszy w jednej transakcji; w dzienniku wpis dla każdej osoby i podsumowanie importu.
 - Szablon .xlsx do pobrania w kreatorze.
+
+## Karty identyfikacyjne (etap 4)
+
+- Wariant A: granatowy pasek „Identyfikator pracownika” (opcjonalnie data ważności), zdjęcie,
+  nazwisko i imię, APT, wydział, kod QR z numerem ewidencyjnym. Bez PESEL.
+- Dwa układy PDF: arkusz A4 z 10 kartami 85,6 × 54 mm i znacznikami cięcia
+  albo jedna karta na stronę w formacie CR80 (drukarki kart PVC).
+- Druk z profilu pracownika albo seryjnie z listy (zaznaczanie, także „wszystkie wyniki” filtra).
+- Przed drukiem ostrzeżenie o osobach bez zdjęcia; każdy wydruk trafia do dziennika i historii pracownika.
+- Długie nazwiska dwuczłonowe przechodzą do drugiej linii zamiast być obcinane.
+- Czcionka IBM Plex (licencja SIL OFL, `backend/app/assets/fonts/OFL.txt`) osadzona w PDF.
 
 ## Role
 

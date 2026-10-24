@@ -174,6 +174,35 @@ export async function api<T>(
   return data as T;
 }
 
+/** POST zwracający plik (np. PDF) – zapisuje go na dysku użytkownika. */
+export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers,
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const { message, code, data: extra } = errorMessage(data?.detail, res.status);
+    if (res.status === 401 && onUnauthorized) onUnauthorized();
+    throw new ApiError(res.status, message, code, extra);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function errorText(err: unknown): string {
   return err instanceof ApiError ? err.message : "Wystąpił nieoczekiwany błąd.";
 }
@@ -212,6 +241,8 @@ export const ACTION_LABELS: Record<string, string> = {
   country_created: "Dodanie kraju",
   country_updated: "Zmiana kraju",
   import_completed: "Import z pliku",
+  cards_printed: "Druk kart",
+  card_printed: "Druk karty",
 };
 
 export const FIELD_LABELS: Record<string, string> = {

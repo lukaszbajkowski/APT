@@ -344,3 +344,16 @@ def test_photo_rejects_non_images(hr):
     assert r.status_code == 400
     r = hr.put(f"/api/employees/{e['id']}/photo", files={"file": ("x.jpg", _jpeg(50, 50), "image/jpeg")})
     assert r.status_code == 400
+
+
+def test_ids_endpoint_respects_filters_and_scope(hr, make_user, dicts):
+    a, b, c = _employees(hr, dicts)
+    assert hr.get("/api/employees/ids").json() == [a["id"], b["id"], c["id"]]
+    assert hr.get("/api/employees/ids", params={"agency_id": dicts["a2"]}).json() == [b["id"], c["id"]]
+    mgr = make_user("kierownik", Role.manager)
+    with SessionLocal() as db:
+        db.add(UserScope(user_id=mgr.id, agency_id=dicts["a1"]))
+        db.commit()
+    m = TestClient(app)
+    login(m, "kierownik")
+    assert m.get("/api/employees/ids").json() == [a["id"]]

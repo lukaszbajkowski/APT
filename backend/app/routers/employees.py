@@ -10,7 +10,7 @@ Uprawnienia (patrz specyfikacja, sekcja „Role i uprawnienia”):
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import Select, String, and_, cast, false, func, or_, select
@@ -396,68 +396,96 @@ SortKey = Literal["name", "-name", "number", "-number", "hire_date", "-hire_date
 MissingKey = Literal["photo", "birth_date", "country", "pesel", "agency", "department", "position"]
 
 
+class ListFilters:
+    """Filtry listy pracowników – wspólne dla listy i dla pobrania samych identyfikatorów."""
+
+    def __init__(
+        self,
+        q: str | None = None,
+        agency_id: int | None = None,
+        department_id: int | None = None,
+        position_id: int | None = None,
+        status_: Annotated[Literal["active", "terminated", "all"], Query(alias="status")] = "active",
+        missing: Annotated[list[MissingKey] | None, Query()] = None,
+        sort: SortKey = "name",
+    ):
+        self.q, self.agency_id, self.department_id, self.position_id = (
+            q,
+            agency_id,
+            department_id,
+            position_id,
+        )
+        self.status, self.missing, self.sort = status_, missing or [], sort
+
+    def query(self, user: User) -> Select:
+        conditions: list[Any] = []
+        if self.q and self.q.strip():
+            for token in self.q.split():
+                like = f"%{token.lower()}%"
+                digits = token.lstrip("0") or "0"
+                conditions.append(
+                    or_(
+                        func.lower(Employee.first_name).like(like),
+                        func.lower(Employee.last_name).like(like),
+                        cast(Employee.number, String) == digits if token.isdigit() else false(),
+                    )
+                )
+        if self.agency_id is not None:
+            conditions.append(Employee.agency_id == self.agency_id)
+        if self.department_id is not None:
+            conditions.append(Employee.department_id == self.department_id)
+        if self.position_id is not None:
+            conditions.append(Employee.position_id == self.position_id)
+        if self.status != "all":
+            conditions.append(Employee.status == EmployeeStatus(self.status))
+        for m in self.missing:
+            if m == "photo":
+                conditions.append(~select(Photo.id).where(Photo.employee_id == Employee.id).exists())
+            elif m == "pesel":
+                conditions.append(Employee.pesel_hash.is_(None))
+            elif m == "country":
+                conditions.append(Employee.country_id.is_(None))
+            else:
+                conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
+        base = select(Employee).where(and_(*conditions)) if conditions else select(Employee)
+        return apply_scope(base, user)
+
+    def order(self) -> tuple:
+        return {
+            "name": (func.lower(Employee.last_name), func.lower(Employee.first_name), Employee.number),
+            "-name": (func.lower(Employee.last_name).desc(), func.lower(Employee.first_name).desc()),
+            "number": (Employee.number,),
+            "-number": (Employee.number.desc(),),
+            "hire_date": (Employee.hire_date.asc().nulls_last(), Employee.number),
+            "-hire_date": (Employee.hire_date.desc().nulls_last(), Employee.number),
+        }[self.sort]
+
+
+Filters = Annotated[ListFilters, Depends()]
+
+
 @router.get("", response_model=Page[EmployeeOut])
 def list_employees(
     ctx: Auth,
     db: DbSession,
-    q: str | None = None,
-    agency_id: int | None = None,
-    department_id: int | None = None,
-    position_id: int | None = None,
-    status_: Annotated[Literal["active", "terminated", "all"], Query(alias="status")] = "active",
-    missing: Annotated[list[MissingKey] | None, Query()] = None,
-    sort: SortKey = "name",
+    filters: Filters,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[EmployeeOut]:
-    conditions: list[Any] = []
-    if q and q.strip():
-        for token in q.split():
-            like = f"%{token.lower()}%"
-            digits = token.lstrip("0") or "0"
-            conditions.append(
-                or_(
-                    func.lower(Employee.first_name).like(like),
-                    func.lower(Employee.last_name).like(like),
-                    cast(Employee.number, String) == digits if token.isdigit() else false(),
-                )
-            )
-    if agency_id is not None:
-        conditions.append(Employee.agency_id == agency_id)
-    if department_id is not None:
-        conditions.append(Employee.department_id == department_id)
-    if position_id is not None:
-        conditions.append(Employee.position_id == position_id)
-    if status_ != "all":
-        conditions.append(Employee.status == EmployeeStatus(status_))
-    for m in missing or []:
-        if m == "photo":
-            conditions.append(~select(Photo.id).where(Photo.employee_id == Employee.id).exists())
-        elif m == "pesel":
-            conditions.append(Employee.pesel_hash.is_(None))
-        elif m == "country":
-            conditions.append(Employee.country_id.is_(None))
-        else:
-            conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
-
-    base = apply_scope(
-        select(Employee).where(and_(*conditions)) if conditions else select(Employee), ctx.user
-    )
+    base = filters.query(ctx.user)
     total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
-
-    order = {
-        "name": (func.lower(Employee.last_name), func.lower(Employee.first_name), Employee.number),
-        "-name": (func.lower(Employee.last_name).desc(), func.lower(Employee.first_name).desc()),
-        "number": (Employee.number,),
-        "-number": (Employee.number.desc(),),
-        "hire_date": (Employee.hire_date.asc().nulls_last(), Employee.number),
-        "-hire_date": (Employee.hire_date.desc().nulls_last(), Employee.number),
-    }[sort]
-    rows = db.scalars(base.order_by(*order).limit(limit).offset(offset)).unique()
+    rows = db.scalars(base.order_by(*filters.order()).limit(limit).offset(offset)).unique()
     today = date.today()
     return Page[EmployeeOut](
         items=[to_out(e, ctx.user, today) for e in rows], total=total, limit=limit, offset=offset
     )
+
+
+@router.get("/ids", response_model=list[int])
+def list_ids(ctx: Auth, db: DbSession, filters: Filters) -> list[int]:
+    """Identyfikatory wszystkich pracowników spełniających filtry (np. „zaznacz wszystkie” do druku)."""
+    base = filters.query(ctx.user).with_only_columns(Employee.id)
+    return list(db.scalars(base.order_by(*filters.order()).limit(5000)))
 
 
 # ---------- PESEL: sprawdzenie w formularzu ----------

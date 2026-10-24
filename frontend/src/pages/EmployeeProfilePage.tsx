@@ -47,6 +47,7 @@ import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
+import { DocumentsCard } from "../components/DocumentsCard";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -295,6 +296,8 @@ export function EmployeeProfilePage() {
           <Text style={{ whiteSpace: "pre-wrap" }}>{e.notes}</Text>
         </Card>
       )}
+
+      {canEdit && <DocumentsCard employee={e} />}
 
       {staff && (
         <Card withBorder padding="lg">

@@ -86,6 +86,55 @@ export interface DuplicateRef {
   name: string;
 }
 
+export type FieldType = "text" | "textarea" | "date" | "select" | "checkbox" | "number";
+
+export interface TemplateField {
+  key: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
+  options: { value: string; label: string }[];
+  help: string | null;
+}
+
+export interface DocTemplate {
+  id: number;
+  name: string;
+  description: string | null;
+  language: string;
+  version: number;
+  original_filename: string;
+  variables: string[];
+  builtins: string[];
+  fields: TemplateField[];
+  sensitive: boolean;
+  is_active: boolean;
+  updated_at: string;
+}
+
+export interface GeneratedDoc {
+  id: string;
+  template_id: number | null;
+  template_name: string;
+  template_version: number;
+  has_pdf: boolean;
+  created_by_name: string | null;
+  created_at: string;
+  pdf_error: string | null;
+}
+
+export const LANGUAGES: Record<string, string> = {
+  pl: "polski",
+  en: "angielski",
+  uk: "ukraiński",
+  ru: "rosyjski",
+  de: "niemiecki",
+  es: "hiszpański",
+  ro: "rumuński",
+  hi: "hindi",
+  ne: "nepalski",
+};
+
 export interface AuditEntry {
   id: number;
   ts: string;
@@ -243,6 +292,11 @@ export const ACTION_LABELS: Record<string, string> = {
   import_completed: "Import z pliku",
   cards_printed: "Druk kart",
   card_printed: "Druk karty",
+  template_created: "Dodanie szablonu",
+  template_updated: "Zmiana szablonu",
+  template_file_replaced: "Nowa wersja pliku szablonu",
+  document_generated: "Wygenerowanie dokumentu",
+  document_downloaded: "Pobranie dokumentu",
 };
 
 export const FIELD_LABELS: Record<string, string> = {

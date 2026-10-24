@@ -13,7 +13,7 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 | 2. Kartoteka | słowniki, lista i filtry, profil, formularz, zaszyfrowany PESEL, zdjęcia | ✅ |
 | 3. Import | Excel / Numbers / CSV z podglądem błędów | ✅ |
 | 4. Karty | PDF, CR80, kod QR | ✅ |
-| 5. Dokumenty | szablony .docx, pola formularza | ⏳ |
+| 5. Dokumenty | szablony .docx, pola formularza | ✅ |
 | 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ⏳ |
 
 ## Architektura
@@ -75,6 +75,18 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Przed drukiem ostrzeżenie o osobach bez zdjęcia; każdy wydruk trafia do dziennika i historii pracownika.
 - Długie nazwiska dwuczłonowe przechodzą do drugiej linii zamiast być obcinane.
 - Czcionka IBM Plex (licencja SIL OFL, `backend/app/assets/fonts/OFL.txt`) osadzona w PDF.
+
+## Dokumenty z szablonów (etap 5)
+
+- Administrator wgrywa szablon Word (.docx) ze znacznikami Jinja: `{{ nazwisko_imie }}`, `{% if … %}`,
+  `{{ '☒' if wariant == 'rodzinny' else '☐' }}`.
+- Aplikacja sama rozpoznaje znaczniki: dane z kartoteki (lista w „Ściądze znaczników”) wstawia automatycznie,
+  pozostałe zamienia w pola formularza. Z porównań `pole == 'wartość'` tworzy listy wyboru.
+- Pola można opisać, zmienić typ (tekst, data, lista, tak/nie, liczba), oznaczyć jako wymagane i ułożyć.
+- Nowa wersja pliku zachowuje ustawienia pól; poprzednie wersje zostają na dysku.
+- Generowanie z profilu pracownika: Word i PDF (LibreOffice w kontenerze API), lista dokumentów w profilu.
+- Szablony z PESEL/datą urodzenia są niedostępne dla Kierownika. Generowanie i pobranie trafia do dziennika.
+- Przykład: `examples/szablony/medicover_deklaracja.docx`.
 
 ## Role
 

@@ -270,3 +270,41 @@ class Photo(Base):
     )
 
     employee: Mapped[Employee] = relationship(back_populates="photo")
+
+
+class DocumentTemplate(TimestampMixin, Base):
+    """Szablon dokumentu .docx. Plik na dysku: templates/<id>_v<wersja>.docx."""
+
+    __tablename__ = "templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(5), default="pl", nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    file_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    variables: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    fields: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class GeneratedDocument(Base):
+    """Wygenerowany dokument pracownika. Pliki na dysku: documents/<employee_id>/<id>.(docx|pdf)."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    template_id: Mapped[int | None] = mapped_column(ForeignKey("templates.id", ondelete="SET NULL"))
+    template_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    template_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    has_pdf: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

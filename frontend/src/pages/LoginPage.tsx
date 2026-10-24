@@ -34,12 +34,12 @@ export function LoginPage() {
   }
 
   return (
-    <Center mih="100vh" bg="gray.0" p="md">
+    <Center mih="100vh" className="surface-subtle" p="md">
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={380}>
         <form onSubmit={submit}>
           <Stack>
             <div>
-              <Title order={3} c="navy.9">
+              <Title order={3} className="brand-title">
                 Identyfikacja pracowników APT
               </Title>
               <Text size="sm" c="dimmed">

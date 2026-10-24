@@ -9,7 +9,7 @@ export function EmployeePhoto({ employee, width }: { employee: Employee; width: 
       <Box
         w={width}
         h={height}
-        bg="gray.1"
+        className="photo-placeholder"
         style={{ borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}
         aria-label="Brak zdjęcia"
       >

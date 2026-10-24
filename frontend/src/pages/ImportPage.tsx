@@ -21,7 +21,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
+import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
 import { api, errorText, formatDate } from "../api";
 
@@ -180,7 +180,12 @@ export function ImportPage() {
   return (
     <Stack maw={1200}>
       <div>
-        <Title order={2}>Import pracowników</Title>
+        <Anchor component={Link} to="/pracownicy" size="sm">
+          <Group gap={4}>
+            <IconArrowLeft size={14} /> Wróć do listy pracowników
+          </Group>
+        </Anchor>
+        <Title order={2} mt={4}>Import pracowników</Title>
         <Text c="dimmed" size="sm">
           Wczytaj listę z Excela (.xlsx), Numbers na Macu (.numbers) lub CSV. Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.
         </Text>

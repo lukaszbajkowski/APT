@@ -85,8 +85,20 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Pola można opisać, zmienić typ (tekst, data, lista, tak/nie, liczba), oznaczyć jako wymagane i ułożyć.
 - Nowa wersja pliku zachowuje ustawienia pól; poprzednie wersje zostają na dysku.
 - Generowanie z profilu pracownika: Word i PDF (LibreOffice w kontenerze API), lista dokumentów w profilu.
-- Szablony z PESEL/datą urodzenia są niedostępne dla Kierownika. Generowanie i pobranie trafia do dziennika.
+- Każdy dokument można obejrzeć online (PDF w nowej karcie). W ustawieniach szablonu: formaty do pobrania
+  (PDF, Word albo oba) oraz „Dostępny dla kierownika”.
+- Kierownik generuje dokumenty z szablonów z PESEL/datą urodzenia, ale te pola zostają puste; dokumentów
+  z tymi danymi (wygenerowanych przez Kadry) nie zobaczy ani nie pobierze.
+- Generowanie, podgląd i pobranie trafiają do dziennika zdarzeń.
 - Przykład: `examples/szablony/medicover_deklaracja.docx`.
+
+## Interfejs
+
+- Strona startowa (kliknięcie w nazwę aplikacji): liczniki – aktywni, nowi, bez zdjęcia, bez PESEL, karty,
+  archiwum – ostatnio dodani i szybkie akcje. Kierownik widzi tylko swoje APT / wydziały.
+- Motyw jasny, ciemny lub systemowy (menu konta); wybór zapamiętuje przeglądarka.
+- Import z arkusza: Pracownicy → Dodaj pracownika → Importuj z arkusza.
+- Użytkownicy: osobne zakładki dla aktywnych i wyłączonych kont.
 
 ## Role
 

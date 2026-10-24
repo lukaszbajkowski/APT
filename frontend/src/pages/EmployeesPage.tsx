@@ -9,6 +9,7 @@ import {
   Paper,
   Group,
   Loader,
+  Menu,
   MultiSelect,
   Pagination,
   SegmentedControl,
@@ -20,7 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
+import { IconChevronDown, IconFileSpreadsheet, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Page } from "../api";
 import { useAuth } from "../auth";
@@ -151,9 +152,21 @@ export function EmployeesPage() {
           )}
         </div>
         {staff && (
-          <Button component={Link} to="/pracownicy/nowy" leftSection={<IconPlus size={16} />}>
-            Dodaj pracownika
-          </Button>
+          <Menu position="bottom-end" width={290}>
+            <Menu.Target>
+              <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
+                Dodaj pracownika
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item component={Link} to="/pracownicy/nowy" leftSection={<IconPencil size={16} />}>
+                Wpisz ręcznie
+              </Menu.Item>
+              <Menu.Item component={Link} to="/pracownicy/import" leftSection={<IconFileSpreadsheet size={16} />}>
+                Importuj z arkusza (Excel, Numbers, CSV)
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         )}
       </Group>
 
@@ -221,7 +234,7 @@ export function EmployeesPage() {
       </Group>
 
       {canPrint && list.data && list.data.total > 0 && (
-        <Paper withBorder px="md" py={8} bg={selected.size ? "navy.0" : undefined}>
+        <Paper withBorder px="md" py={8} className={selected.size ? "row-selected" : undefined}>
           <Group justify="space-between" gap="xs">
             <Text size="sm">
               {selected.size ? (
@@ -299,7 +312,7 @@ export function EmployeesPage() {
                 <Table.Tr
                   key={e.id}
                   style={{ cursor: "pointer" }}
-                  bg={selected.has(e.id) ? "var(--mantine-color-navy-0)" : undefined}
+                  className={selected.has(e.id) ? "row-selected" : undefined}
                   onClick={() => navigate(`/pracownicy/${e.id}`)}
                 >
                   {canPrint && (

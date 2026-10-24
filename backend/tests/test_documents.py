@@ -143,7 +143,7 @@ def test_generate_document_fills_data(admin):
     assert r.status_code == 201, r.text
     doc = r.json()
     assert doc["template_name"] == "Deklaracja Medicover"
-    assert doc["has_pdf"] is False
+    assert doc["contains_sensitive"] is True
 
     r = admin.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"})
     assert r.status_code == 200
@@ -158,7 +158,6 @@ def test_generate_document_fills_data(admin):
     assert "☒ przystąpienia" in text
     assert "{{" not in text
 
-    assert admin.get(f"/api/documents/{doc['id']}/download").status_code == 404  # brak PDF
     listed = admin.get(f"/api/employees/{e['id']}/documents").json()
     assert [d["id"] for d in listed] == [doc["id"]]
     with SessionLocal() as db:
@@ -201,28 +200,75 @@ def test_form_validation(admin):
     assert doc_text(data).split("\n") == ["a 01.11.2026", "A"]
 
 
-def test_manager_cannot_use_sensitive_template(admin, make_user):
+def _manager_setup(admin, make_user):
     with SessionLocal() as db:
         db.add(Agency(name="Agencja A"))
         db.commit()
-    e = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "K", "agency_id": 1}).json()
-    sensitive = upload(admin, MEDICOVER, "Medicover").json()
-    plain = upload(admin, simple_docx("{{ nazwisko_imie }}, {{ stanowisko }}"), "Skierowanie").json()
+    e = admin.post(
+        "/api/employees", json={"first_name": "Jan", "last_name": "K", "agency_id": 1, "pesel": PESEL}
+    ).json()
     mgr = make_user("kierownik", Role.manager)
     with SessionLocal() as db:
         db.add(UserScope(user_id=mgr.id, agency_id=1))
         db.commit()
     m = TestClient(app)
     login(m, "kierownik")
-    assert [t["name"] for t in m.get("/api/templates").json()] == ["Skierowanie"]
-    r = m.post(f"/api/employees/{e['id']}/documents", json={"template_id": sensitive["id"], "pdf": False})
+    return e, m
+
+
+def test_manager_gets_sensitive_template_without_sensitive_values(admin, make_user):
+    e, m = _manager_setup(admin, make_user)
+    t = upload(
+        admin, simple_docx("{{ nazwisko_imie }} PESEL:{{ pesel }} UR:{{ data_urodzenia }}"), "Z PESEL"
+    ).json()
+    r = m.post(f"/api/employees/{e['id']}/documents", json={"template_id": t["id"], "pdf": False})
+    assert r.status_code == 201, r.text
+    doc = r.json()
+    assert doc["masked"] is True
+    assert doc["contains_sensitive"] is False
+    data = m.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"}).content
+    assert doc_text(data) == "K Jan PESEL: UR:"
+
+    # Ten sam szablon u Kadr/Administratora – z PESEL; kierownik nie ma do niego dostępu.
+    full = admin.post(
+        f"/api/employees/{e['id']}/documents", json={"template_id": t["id"], "pdf": False}
+    ).json()
+    assert PESEL in doc_text(
+        admin.get(f"/api/documents/{full['id']}/download", params={"format": "docx"}).content
+    )
+    assert m.get(f"/api/documents/{full['id']}/download", params={"format": "docx"}).status_code == 403
+    assert m.get(f"/api/documents/{full['id']}/view").status_code == 403
+    listed = {d["id"]: d for d in m.get(f"/api/employees/{e['id']}/documents").json()}
+    assert listed[full["id"]]["accessible"] is False
+    assert listed[full["id"]]["download"] == []
+    assert listed[doc["id"]]["accessible"] is True
+
+
+def test_allow_manager_switch(admin, make_user):
+    e, m = _manager_setup(admin, make_user)
+    t = upload(admin, simple_docx("{{ nazwisko_imie }}"), "Tylko kadry").json()
+    admin.patch(f"/api/templates/{t['id']}", json={"allow_manager": False})
+    assert m.get("/api/templates").json() == []
+    r = m.post(f"/api/employees/{e['id']}/documents", json={"template_id": t["id"], "pdf": False})
     assert r.status_code == 403
-    r = m.post(f"/api/employees/{e['id']}/documents", json={"template_id": plain["id"], "pdf": False})
-    assert r.status_code == 201
     assert (
         m.post("/api/templates", files={"file": ("a.docx", simple_docx("x"))}, data={"name": "x"}).status_code
         == 403
     )
+
+
+def test_download_formats_setting(admin):
+    e = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "K"}).json()
+    t = upload(admin, simple_docx("{{ nazwisko_imie }}")).json()
+    r = admin.patch(f"/api/templates/{t['id']}", json={"download_formats": "docx"})
+    assert r.json()["download_formats"] == "docx"
+    doc = admin.post(
+        f"/api/employees/{e['id']}/documents", json={"template_id": t["id"], "pdf": False}
+    ).json()
+    assert doc["download"] == ["docx"]
+    assert admin.get(f"/api/documents/{doc['id']}/download", params={"format": "pdf"}).status_code == 403
+    assert admin.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"}).status_code == 200
+    assert admin.patch(f"/api/templates/{t['id']}", json={"download_formats": "xls"}).status_code == 422
 
 
 def test_inactive_template_hidden_and_blocked(admin):
@@ -243,3 +289,21 @@ def test_pdf_generation(admin):
     assert r.json()["has_pdf"] is True
     pdf = admin.get(f"/api/documents/{r.json()['id']}/download")
     assert pdf.content[:4] == b"%PDF"
+
+
+@pytest.mark.skipif(soffice_path() is None, reason="brak LibreOffice")
+def test_online_view_is_logged(admin):
+    e = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "Kowalski"}).json()
+    t = upload(admin, simple_docx("Dla {{ nazwisko_imie }}")).json()
+    admin.patch(f"/api/templates/{t['id']}", json={"download_formats": "docx"})
+    doc = admin.post(
+        f"/api/employees/{e['id']}/documents", json={"template_id": t["id"], "pdf": False}
+    ).json()
+    assert doc["has_pdf"] is True  # PDF powstaje do podglądu, nawet gdy do pobrania jest tylko Word
+    assert doc["can_view"] is True
+    r = admin.get(f"/api/documents/{doc['id']}/view")
+    assert r.status_code == 200
+    assert r.headers["content-disposition"].startswith("inline")
+    assert r.content[:4] == b"%PDF"
+    with SessionLocal() as db:
+        assert db.scalar(select(AuditLog).where(AuditLog.action == "document_viewed")) is not None

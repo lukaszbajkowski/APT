@@ -41,7 +41,7 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <Center mih="100vh" bg="gray.0" p="md">
+    <Center mih="100vh" className="surface-subtle" p="md">
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={420}>
         <form onSubmit={submit}>
           <Stack>

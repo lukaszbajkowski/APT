@@ -287,6 +287,10 @@ class DocumentTemplate(TimestampMixin, Base):
     variables: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     fields: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Czy Kierownik może używać szablonu (PESEL i data urodzenia zostaną wtedy puste).
+    allow_manager: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Formaty do pobrania: "pdf", "docx" albo "both". Podgląd online jest zawsze w PDF.
+    download_formats: Mapped[str] = mapped_column(String(8), default="both", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
@@ -303,6 +307,8 @@ class GeneratedDocument(Base):
     template_name: Mapped[str] = mapped_column(String(200), nullable=False)
     template_version: Mapped[int] = mapped_column(Integer, nullable=False)
     has_pdf: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Dokument zawiera PESEL lub datę urodzenia – niedostępny dla Kierownika.
+    contains_sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_by_name: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(

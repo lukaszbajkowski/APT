@@ -1,10 +1,26 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AppShell, Avatar, Box, Burger, Group, Menu, NavLink, Text, UnstyledButton } from "@mantine/core";
+import {
+  AppShell,
+  Avatar,
+  Box,
+  Burger,
+  Group,
+  Menu,
+  NavLink,
+  SegmentedControl,
+  Text,
+  UnstyledButton,
+  useMantineColorScheme,
+  type MantineColorScheme,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronDown,
   IconBook,
-  IconFileImport,
+  IconDeviceDesktop,
+  IconHome,
+  IconMoon,
+  IconSun,
   IconFileText,
   IconId,
   IconKey,
@@ -21,10 +37,11 @@ export function AppLayout() {
   const { me, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const items = [
+    { to: "/", label: "Start", icon: IconHome, show: true },
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: true },
-    { to: "/import", label: "Import z arkusza", icon: IconFileImport, show: hasRole("admin", "hr") },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
@@ -48,11 +65,13 @@ export function AppLayout() {
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
-            <Text fw={700} c="navy.9" truncate>
-              Identyfikacja pracowników APT
-            </Text>
+            <Link to="/" className="brand-link" onClick={close}>
+              <Text fw={700} className="brand-title" truncate>
+                Identyfikacja pracowników APT
+              </Text>
+            </Link>
           </Group>
-          <Menu position="bottom-end" width={220}>
+          <Menu position="bottom-end" width={260} closeOnItemClick>
             <Menu.Target>
               <UnstyledButton aria-label="Konto użytkownika">
                 <Group gap="xs">
@@ -72,6 +91,42 @@ export function AppLayout() {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Label>Motyw</Menu.Label>
+              <Box px="xs" pb="xs">
+                <SegmentedControl
+                  fullWidth
+                  size="xs"
+                  value={colorScheme}
+                  onChange={(v) => setColorScheme(v as MantineColorScheme)}
+                  data={[
+                    {
+                      value: "light",
+                      label: (
+                        <Group gap={4} justify="center" wrap="nowrap">
+                          <IconSun size={14} /> Jasny
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: "dark",
+                      label: (
+                        <Group gap={4} justify="center" wrap="nowrap">
+                          <IconMoon size={14} /> Ciemny
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: "auto",
+                      label: (
+                        <Group gap={4} justify="center" wrap="nowrap">
+                          <IconDeviceDesktop size={14} /> System
+                        </Group>
+                      ),
+                    },
+                  ]}
+                />
+              </Box>
+              <Menu.Divider />
               <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
                 Zmień hasło
               </Menu.Item>
@@ -98,7 +153,7 @@ export function AppLayout() {
               key={i.to}
               component={Link}
               to={i.to}
-              active={location.pathname.startsWith(i.to)}
+              active={i.to === "/" ? location.pathname === "/" : location.pathname.startsWith(i.to)}
               label={i.label}
               leftSection={<i.icon size={18} />}
               onClick={close}

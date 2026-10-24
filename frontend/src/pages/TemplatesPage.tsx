@@ -20,7 +20,7 @@ import {
 } from "@mantine/core";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 
-import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -121,6 +121,12 @@ export function TemplatesPage() {
                   zawiera PESEL / datę ur.
                 </Badge>
               )}
+              <Badge variant="light" color={t.allow_manager ? "blue" : "gray"}>
+                {t.allow_manager ? (t.sensitive ? "kierownik: bez PESEL" : "kierownik: tak") : "kierownik: nie"}
+              </Badge>
+              <Badge variant="light" color="grape">
+                pobieranie: {DOWNLOAD_FORMAT_LABELS[t.download_formats]}
+              </Badge>
             </Group>
             <Text size="xs" c="dimmed" mt="sm">
               Zmieniony {formatDateTime(t.updated_at)}

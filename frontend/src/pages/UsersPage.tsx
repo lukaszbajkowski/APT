@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -15,6 +16,7 @@ import {
   Select,
   Stack,
   Table,
+  Tabs,
   Text,
   TextInput,
   Title,
@@ -48,6 +50,9 @@ function errorText(err: unknown) {
 export function UsersPage() {
   const qc = useQueryClient();
   const { me } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const showDisabled = location.pathname.endsWith("/wylaczeni");
   const users = useQuery({ queryKey: ["users"], queryFn: () => api<User[]>("/users") });
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
@@ -134,6 +139,9 @@ export function UsersPage() {
 
   const agencyName = (id: number | null) => agencies.data?.find((a) => a.id === id)?.name ?? `#${id}`;
   const departmentName = (id: number | null) => departments.data?.find((d) => d.id === id)?.name ?? `#${id}`;
+  const activeCount = users.data?.filter((u) => u.is_active).length;
+  const disabledCount = users.data?.filter((u) => !u.is_active).length;
+  const visible = users.data?.filter((u) => u.is_active !== showDisabled) ?? [];
 
   return (
     <Stack>
@@ -144,10 +152,36 @@ export function UsersPage() {
         </Button>
       </Group>
 
+      <Tabs
+        value={showDisabled ? "wylaczeni" : "aktywni"}
+        onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
+      >
+        <Tabs.List>
+          <Tabs.Tab
+            value="aktywni"
+            rightSection={activeCount !== undefined && <Badge size="sm" variant="light">{activeCount}</Badge>}
+          >
+            Aktywni
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="wylaczeni"
+            rightSection={disabledCount !== undefined && <Badge size="sm" variant="light" color="gray">{disabledCount}</Badge>}
+          >
+            Wyłączeni
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+
       {users.isLoading && <Loader />}
       {users.error && <Alert color="red">{errorText(users.error)}</Alert>}
 
-      {users.data && (
+      {users.data && visible.length === 0 && (
+        <Text c="dimmed" size="sm">
+          {showDisabled ? "Brak wyłączonych kont." : "Brak aktywnych kont."}
+        </Text>
+      )}
+
+      {users.data && visible.length > 0 && (
         <Table.ScrollContainer minWidth={760}>
           <Table striped highlightOnHover verticalSpacing="xs">
             <Table.Thead>
@@ -162,8 +196,8 @@ export function UsersPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {users.data.map((u) => (
-                <Table.Tr key={u.id} opacity={u.is_active ? 1 : 0.55}>
+              {visible.map((u) => (
+                <Table.Tr key={u.id}>
                   <Table.Td>
                     <Code>{u.username}</Code>
                   </Table.Td>

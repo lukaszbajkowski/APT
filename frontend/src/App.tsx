@@ -12,6 +12,7 @@ import { EmployeeFormPage } from "./pages/EmployeeFormPage";
 import { EmployeeProfilePage } from "./pages/EmployeeProfilePage";
 import { DictionariesPage } from "./pages/DictionariesPage";
 import { ImportPage } from "./pages/ImportPage";
+import { HomePage } from "./pages/HomePage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { TemplateEditPage } from "./pages/TemplateEditPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -55,7 +56,7 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/pracownicy" replace />} />
+        <Route index element={<HomePage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />
         <Route
           path="pracownicy/nowy"
@@ -74,8 +75,9 @@ export function App() {
             </RequireAuth>
           }
         />
+        <Route path="import" element={<Navigate to="/pracownicy/import" replace />} />
         <Route
-          path="import"
+          path="pracownicy/import"
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <ImportPage />
@@ -108,6 +110,14 @@ export function App() {
         />
         <Route
           path="uzytkownicy"
+          element={
+            <RequireAuth roles={["admin"]}>
+              <UsersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="uzytkownicy/wylaczeni"
           element={
             <RequireAuth roles={["admin"]}>
               <UsersPage />

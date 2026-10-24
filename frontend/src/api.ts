@@ -108,9 +108,19 @@ export interface DocTemplate {
   builtins: string[];
   fields: TemplateField[];
   sensitive: boolean;
+  allow_manager: boolean;
+  download_formats: DownloadFormats;
   is_active: boolean;
   updated_at: string;
 }
+
+export type DownloadFormats = "pdf" | "docx" | "both";
+
+export const DOWNLOAD_FORMAT_LABELS: Record<DownloadFormats, string> = {
+  pdf: "PDF",
+  docx: "Word",
+  both: "PDF i Word",
+};
 
 export interface GeneratedDoc {
   id: string;
@@ -120,7 +130,22 @@ export interface GeneratedDoc {
   has_pdf: boolean;
   created_by_name: string | null;
   created_at: string;
+  contains_sensitive: boolean;
+  accessible: boolean;
+  can_view: boolean;
+  download: ("pdf" | "docx")[];
+  masked: boolean;
   pdf_error: string | null;
+}
+
+export interface Dashboard {
+  active: number;
+  terminated: number;
+  added_30_days: number;
+  without_photo: number;
+  without_pesel: number | null;
+  cards_printed_30_days: number;
+  recent: Employee[];
 }
 
 export const LANGUAGES: Record<string, string> = {
@@ -297,6 +322,7 @@ export const ACTION_LABELS: Record<string, string> = {
   template_file_replaced: "Nowa wersja pliku szablonu",
   document_generated: "Wygenerowanie dokumentu",
   document_downloaded: "Pobranie dokumentu",
+  document_viewed: "Podgląd dokumentu",
 };
 
 export const FIELD_LABELS: Record<string, string> = {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -19,7 +20,9 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileText, IconFileTypeDocx, IconFileTypePdf, IconPlus } from "@tabler/icons-react";
+import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus } from "@tabler/icons-react";
+
+import { useAuth } from "../auth";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
 
@@ -61,6 +64,39 @@ function FieldInput({ field, value, onChange }: { field: TemplateField; value: V
   }
 }
 
+function viewOnline(doc: GeneratedDoc) {
+  window.open(`/api/documents/${doc.id}/view`, "_blank", "noopener");
+}
+
+function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "compact-xs" | "sm" }) {
+  if (!doc.accessible) {
+    return (
+      <Badge variant="light" color="gray" leftSection={<IconLock size={12} />}>
+        zawiera dane wrażliwe
+      </Badge>
+    );
+  }
+  return (
+    <Group gap={4} justify="flex-end" wrap="nowrap">
+      {doc.can_view && (
+        <Button size={size} variant="light" leftSection={<IconEye size={14} />} onClick={() => viewOnline(doc)}>
+          Podgląd
+        </Button>
+      )}
+      {doc.download.includes("pdf") && (
+        <Button size={size} variant="default" leftSection={<IconFileTypePdf size={14} />} onClick={() => download(doc, "pdf")}>
+          PDF
+        </Button>
+      )}
+      {doc.download.includes("docx") && (
+        <Button size={size} variant="default" leftSection={<IconFileTypeDocx size={14} />} onClick={() => download(doc, "docx")}>
+          Word
+        </Button>
+      )}
+    </Group>
+  );
+}
+
 function download(doc: GeneratedDoc, format: "pdf" | "docx") {
   const a = document.createElement("a");
   a.href = `/api/documents/${doc.id}/download?format=${format}`;
@@ -72,6 +108,8 @@ function download(doc: GeneratedDoc, format: "pdf" | "docx") {
 
 export function DocumentsCard({ employee }: { employee: Employee }) {
   const qc = useQueryClient();
+  const { hasRole } = useAuth();
+  const isManager = hasRole("manager");
   const docs = useQuery({
     queryKey: ["documents", employee.id],
     queryFn: () => api<GeneratedDoc[]>(`/employees/${employee.id}/documents`),
@@ -84,7 +122,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [values, setValues] = useState<Values>({});
-  const [pdf, setPdf] = useState(true);
+  const [done, setDone] = useState<GeneratedDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);
@@ -92,27 +130,27 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   useEffect(() => {
     setValues({});
     setError(null);
+    setDone(null);
   }, [templateId]);
 
   const generate = useMutation({
     mutationFn: () =>
       api<GeneratedDoc>(`/employees/${employee.id}/documents`, {
         method: "POST",
-        body: { template_id: Number(templateId), values, pdf },
+        body: { template_id: Number(templateId), values },
       }),
     onSuccess: (doc) => {
       qc.invalidateQueries({ queryKey: ["documents", employee.id] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
-      setOpen(false);
-      if (doc.pdf_error) notifications.show({ color: "orange", message: `${doc.pdf_error} Pobieram plik Word.` });
-      else notifications.show({ color: "green", message: "Dokument wygenerowany." });
-      download(doc, doc.has_pdf ? "pdf" : "docx");
+      setDone(doc);
+      if (doc.pdf_error) notifications.show({ color: "orange", message: doc.pdf_error });
     },
     onError: (e) => setError(errorText(e)),
   });
 
   const missing = template?.fields.filter((f) => f.required && (values[f.key] === undefined || values[f.key] === "" || values[f.key] === null)) ?? [];
   const warnPesel = template?.builtins.includes("pesel") && employee.personal_data_visible && !employee.has_pesel;
+  const warnMasked = isManager && template?.sensitive;
 
   return (
     <Card withBorder padding="lg">
@@ -123,6 +161,8 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
           leftSection={<IconPlus size={14} />}
           onClick={() => {
             setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
+            setValues({});
+            setDone(null);
             setOpen(true);
           }}
           disabled={!templates.data?.length}
@@ -155,21 +195,13 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                       </Text>
                       <Text size="xs" c="dimmed">
                         {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
+                        {d.masked && " · bez PESEL i daty urodzenia"}
                       </Text>
                     </div>
                   </Group>
                 </Table.Td>
                 <Table.Td align="right">
-                  <Group gap={4} justify="flex-end" wrap="nowrap">
-                    {d.has_pdf && (
-                      <Button size="compact-xs" variant="light" leftSection={<IconFileTypePdf size={14} />} onClick={() => download(d, "pdf")}>
-                        PDF
-                      </Button>
-                    )}
-                    <Button size="compact-xs" variant="default" leftSection={<IconFileTypeDocx size={14} />} onClick={() => download(d, "docx")}>
-                      Word
-                    </Button>
-                  </Group>
+                  <DocActions doc={d} />
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -178,6 +210,31 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
       )}
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Nowy dokument" size="lg">
+        {done ? (
+          <Stack>
+            <Group gap="sm" wrap="nowrap">
+              <IconCircleCheck size={32} color="var(--mantine-color-green-6)" />
+              <div>
+                <Text fw={600}>Gotowe: {done.template_name}</Text>
+                <Text size="sm" c="dimmed">
+                  Dokument jest też na liście w profilu pracownika.
+                  {done.masked && " PESEL i data urodzenia zostały pominięte."}
+                </Text>
+              </div>
+            </Group>
+            <Group justify="space-between">
+              <Button variant="subtle" onClick={() => setDone(null)}>
+                Kolejny dokument
+              </Button>
+              <Group gap="xs">
+                <DocActions doc={done} size="sm" />
+                <Button variant="default" onClick={() => setOpen(false)}>
+                  Zamknij
+                </Button>
+              </Group>
+            </Group>
+          </Stack>
+        ) : (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -220,19 +277,22 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 ))}
               </SimpleGrid>
             )}
-            {template && (
-              <Checkbox label="Utwórz także PDF (do druku)" checked={pdf} onChange={(e) => setPdf(e.currentTarget.checked)} />
+            {warnMasked && (
+              <Alert color="blue" variant="light">
+                Ten szablon zawiera PESEL lub datę urodzenia – w Twoim dokumencie te pola zostaną puste.
+              </Alert>
             )}
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setOpen(false)}>
                 Anuluj
               </Button>
               <Button type="submit" loading={generate.isPending} disabled={!template || missing.length > 0}>
-                Generuj i pobierz
+                Generuj
               </Button>
             </Group>
           </Stack>
         </form>
+        )}
       </Modal>
     </Card>
   );

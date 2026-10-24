@@ -5,7 +5,6 @@ import {
   ActionIcon,
   Alert,
   Anchor,
-  Badge,
   Button,
   Card,
   Code,
@@ -14,6 +13,7 @@ import {
   Grid,
   Group,
   Loader,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -37,7 +37,7 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 
-import { api, errorText, type DocTemplate, type FieldType, type TemplateField } from "../api";
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 
 const TYPES: { value: FieldType; label: string }[] = [
@@ -108,6 +108,8 @@ export function TemplateEditPage() {
   const [description, setDescription] = useState("");
   const [language, setLanguage] = useState("pl");
   const [active, setActive] = useState(true);
+  const [allowManager, setAllowManager] = useState(true);
+  const [formats, setFormats] = useState<DownloadFormats>("both");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,6 +120,8 @@ export function TemplateEditPage() {
       setDescription(t.description ?? "");
       setLanguage(t.language);
       setActive(t.is_active);
+      setAllowManager(t.allow_manager);
+      setFormats(t.download_formats);
     }
   }, [template.data]);
 
@@ -130,7 +134,7 @@ export function TemplateEditPage() {
     mutationFn: () =>
       api<DocTemplate>(`/templates/${id}`, {
         method: "PATCH",
-        body: { name, description: description || null, language, is_active: active, fields },
+        body: { name, description: description || null, language, is_active: active, allow_manager: allowManager, download_formats: formats, fields },
       }),
     onSuccess: (t) => {
       refresh(t);
@@ -214,6 +218,32 @@ export function TemplateEditPage() {
                 </Group>
                 <Textarea label="Opis" autosize minRows={2} value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
                 <Switch label="Aktywny (dostępny przy generowaniu)" checked={active} onChange={(e) => setActive(e.currentTarget.checked)} />
+                <Switch
+                  label={t.sensitive ? "Dostępny dla kierownika (bez PESEL i daty urodzenia)" : "Dostępny dla kierownika"}
+                  description={
+                    t.sensitive
+                      ? "Kierownik wygeneruje dokument, ale pola PESEL i data urodzenia zostaną w nim puste."
+                      : undefined
+                  }
+                  checked={allowManager}
+                  onChange={(e) => setAllowManager(e.currentTarget.checked)}
+                />
+                <div>
+                  <Text size="sm" fw={500} mb={4}>
+                    Pobieranie
+                  </Text>
+                  <SegmentedControl
+                    value={formats}
+                    onChange={(v) => setFormats(v as DownloadFormats)}
+                    data={(Object.keys(DOWNLOAD_FORMAT_LABELS) as DownloadFormats[]).map((value) => ({
+                      value,
+                      label: DOWNLOAD_FORMAT_LABELS[value],
+                    }))}
+                  />
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Podgląd online (PDF) jest dostępny zawsze.
+                  </Text>
+                </div>
               </Stack>
             </Card>
 
@@ -313,9 +343,10 @@ export function TemplateEditPage() {
                 </Stack>
               )}
               {t.sensitive && (
-                <Badge color="orange" variant="light" mt="sm">
-                  Zawiera PESEL / datę urodzenia – niedostępny dla kierowników
-                </Badge>
+                <Text size="xs" c="orange" mt="sm">
+                  Zawiera PESEL / datę urodzenia. Kierownik ich nie zobaczy – dokumenty z tymi danymi może tylko
+                  wygenerować bez nich (jeśli szablon jest dla niego dostępny).
+                </Text>
               )}
             </Card>
 

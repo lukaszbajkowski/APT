@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "./app.css";
 
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -28,6 +29,7 @@ const navy: MantineColorsTuple = [
 
 const theme = createTheme({
   primaryColor: "navy",
+  primaryShade: { light: 7, dark: 5 },
   colors: { navy },
   defaultRadius: "md",
   fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
@@ -44,7 +46,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="bottom-right" />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

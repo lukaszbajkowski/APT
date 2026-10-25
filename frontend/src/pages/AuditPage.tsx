@@ -16,6 +16,14 @@ function describe(e: AuditEntry): string {
       if (d.reason === "unknown") return "nieznany login";
       if (d.reason === "inactive") return "konto wyłączone";
       return d.locked ? "błędne hasło – konto zablokowane" : `błędne hasło (${String(d.failed_count ?? "")})`;
+    case "login":
+      return d.mfa === "recovery" ? "z kodem zapasowym 2FA" : d.mfa ? "z kodem 2FA" : "";
+    case "logout":
+      return d.reason === "idle" ? "po 30 min bezczynności" : "";
+    case "session_expired":
+      return d.reason === "idle" ? "bezczynność" : "upłynął maksymalny czas sesji (12 h)";
+    case "mfa_failed":
+      return d.locked ? "błędny kod – konto zablokowane" : `błędny kod (${String(d.failed_count ?? "")})`;
     default:
       return e.details ? JSON.stringify(e.details) : "";
   }

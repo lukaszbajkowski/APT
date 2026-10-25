@@ -339,6 +339,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ACTION_LABELS: Record<string, string> = {
   login: "Logowanie",
   logout: "Wylogowanie",
+  session_expired: "Automatyczne wylogowanie (wygaśnięcie sesji)",
   login_failed: "Nieudane logowanie",
   login_blocked: "Próba logowania na zablokowane konto",
   password_changed: "Zmiana hasła",

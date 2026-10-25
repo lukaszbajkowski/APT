@@ -132,9 +132,11 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession) ->
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(ctx: AuthMfaPending, request: Request, response: Response, db: DbSession) -> None:
+def logout(
+    ctx: AuthMfaPending, request: Request, response: Response, db: DbSession, reason: str | None = None
+) -> None:
     ctx.session.revoked_at = utcnow()
-    audit(db, request, "logout", user=ctx.user)
+    audit(db, request, "logout", user=ctx.user, details={"reason": "idle"} if reason == "idle" else None)
     db.commit()
     response.delete_cookie(get_settings().session_cookie_name, path="/api")
 

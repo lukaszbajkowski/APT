@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.audit import audit
 from app.config import get_settings
 from app.db import get_db
 from app.models import Role, User, UserSession
@@ -32,6 +33,14 @@ def _unauthorized(detail: str = "Nie jesteś zalogowany.") -> HTTPException:
     return HTTPException(status.HTTP_401_UNAUTHORIZED, detail=detail)
 
 
+def _expire(db: Session, request: Request, sess: UserSession, now: datetime, reason: str) -> None:
+    """Zamyka wygasłą sesję i zapisuje automatyczne wylogowanie w dzienniku."""
+    sess.revoked_at = now
+    if not sess.mfa_pending:
+        audit(db, request, "session_expired", user=sess.user, details={"reason": reason})
+    db.commit()
+
+
 def _load_session(request: Request, db: Session) -> AuthContext:
     settings = get_settings()
     token = request.cookies.get(settings.session_cookie_name)
@@ -40,11 +49,13 @@ def _load_session(request: Request, db: Session) -> AuthContext:
 
     sess = db.scalar(select(UserSession).where(UserSession.token_hash == token_hash(token)))
     now = utcnow()
-    if sess is None or sess.revoked_at is not None or sess.expires_at <= now:
+    if sess is None or sess.revoked_at is not None:
+        raise _unauthorized("Sesja wygasła. Zaloguj się ponownie.")
+    if sess.expires_at <= now:
+        _expire(db, request, sess, now, "max_time")
         raise _unauthorized("Sesja wygasła. Zaloguj się ponownie.")
     if sess.last_seen_at + timedelta(minutes=settings.session_idle_minutes) <= now:
-        sess.revoked_at = now
-        db.commit()
+        _expire(db, request, sess, now, "idle")
         raise _unauthorized("Sesja wygasła z powodu bezczynności. Zaloguj się ponownie.")
     if not sess.user.is_active:
         raise _unauthorized("Konto jest wyłączone.")

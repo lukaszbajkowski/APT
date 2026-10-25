@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconShieldLock } from "@tabler/icons-react";
@@ -119,6 +119,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const [params] = useSearchParams();
+  const idleLogout = params.get("powod") === "bezczynnosc";
   const config = useQuery({
     queryKey: ["auth-config"],
     queryFn: () => api<{ password_reset: boolean }>("/auth/config"),
@@ -158,6 +160,11 @@ export function LoginPage() {
                   Zaloguj się, aby kontynuować
                 </Text>
               </div>
+              {idleLogout && !error && (
+                <Alert color="blue" variant="light">
+                  Wylogowano automatycznie po okresie bezczynności. Zaloguj się ponownie.
+                </Alert>
+              )}
               {error && (
                 <Alert color="red" icon={<IconAlertCircle size={18} />}>
                   {error}

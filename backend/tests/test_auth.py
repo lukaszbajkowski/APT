@@ -96,6 +96,22 @@ def test_idle_timeout(client, make_user):
     r = client.get("/api/auth/me")
     assert r.status_code == 401
     assert "bezczynności" in r.json()["detail"]
+    with SessionLocal() as db:
+        log = db.scalars(select(AuditLog).where(AuditLog.action == "session_expired")).one()
+        assert log.username == "jan" and log.details == {"reason": "idle"}
+    # kolejne żądania z tą sesją nie dopisują już wpisów
+    client.get("/api/auth/me")
+    with SessionLocal() as db:
+        assert len(list(db.scalars(select(AuditLog).where(AuditLog.action == "session_expired")))) == 1
+
+
+def test_logout_reason_idle(client, make_user):
+    make_user("jan")
+    login(client, "jan")
+    assert client.post("/api/auth/logout?reason=idle").status_code == 204
+    with SessionLocal() as db:
+        log = db.scalars(select(AuditLog).where(AuditLog.action == "logout")).one()
+        assert log.details == {"reason": "idle"}
 
 
 def test_must_change_password_blocks_other_endpoints(client, make_user):

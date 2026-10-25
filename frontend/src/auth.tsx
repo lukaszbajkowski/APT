@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, setCsrfToken, setUnauthorizedHandler, type Me, type Role } from "./api";
+import { useIdleLogout } from "./idle";
 
 interface AuthState {
   me: Me | null;
@@ -62,6 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
     }
   }, [setMe, queryClient]);
+
+  const onIdle = useCallback(async () => {
+    try {
+      await api("/auth/logout?reason=idle", { method: "POST" });
+    } catch {
+      /* sesja mogła już wygasnąć na serwerze */
+    }
+    setMe(null);
+    queryClient.clear();
+    window.location.assign("/login?powod=bezczynnosc");
+  }, [setMe, queryClient]);
+  useIdleLogout(!!me && !me.mfa_pending, me?.session_idle_minutes ?? 0, onIdle);
 
   const value = useMemo<AuthState>(
     () => ({

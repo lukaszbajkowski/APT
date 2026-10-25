@@ -49,7 +49,6 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
-import { CardsHistory } from "../components/CardsHistory";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -152,7 +151,6 @@ export function EmployeeProfilePage() {
       api<Employee>(`/employees/${id}/terminate`, { method: "POST", body: { termination_date: terminationDate } }),
     onSuccess: (e) => {
       refresh(e);
-      qc.invalidateQueries({ queryKey: ["cards", e.id] });
       setTerminateOpen(false);
       notifications.show({ color: "green", message: "Pracownik przeniesiony do archiwum." });
     },
@@ -313,7 +311,6 @@ export function EmployeeProfilePage() {
         </Card>
       )}
 
-      <CardsHistory employee={e} />
       {canEdit && <DocumentsCard employee={e} />}
 
       {staff && (
@@ -345,7 +342,7 @@ export function EmployeeProfilePage() {
         <Stack>
           <Text size="sm">
             Pracownik zniknie z listy aktywnych. Dane zostaną zachowane w archiwum i będzie można je przywrócić.
-            Aktualna karta identyfikacyjna zostanie unieważniona. Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
+            Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
           </Text>
           <TextInput
             label="Data zwolnienia"

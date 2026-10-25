@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
   IconAlertTriangle,
@@ -147,22 +147,6 @@ export function HomePage() {
 
       {data.data && (
         <>
-          {(data.data.cards_expiring > 0 || data.data.cards_expired > 0) && (
-            <Alert color="yellow" variant="light" icon={<IconIdBadge2 size={18} />} title="Ważność kart">
-              <Group gap="md">
-                {data.data.cards_expired > 0 && (
-                  <Anchor component={Link} to="/pracownicy?card=expired" size="sm">
-                    Po terminie: {data.data.cards_expired}
-                  </Anchor>
-                )}
-                {data.data.cards_expiring > 0 && (
-                  <Anchor component={Link} to="/pracownicy?card=expiring" size="sm">
-                    Wygasa w ciągu 30 dni: {data.data.cards_expiring}
-                  </Anchor>
-                )}
-              </Group>
-            </Alert>
-          )}
           {!!data.data.retention_due && (
             <Alert color="orange" variant="light" icon={<IconClockShield size={18} />} title="Dane do usunięcia (RODO)">
               <Group justify="space-between" gap="xs">

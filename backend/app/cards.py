@@ -61,7 +61,6 @@ class CardData:
     agency: str | None
     department: str | None
     photo: Path | None
-    qr: str | None = None  # treść kodu QR (domyślnie sam numer)
 
 
 def _fit(text: str, font: str, size: float, max_w: float, min_size: float) -> tuple[str, float]:
@@ -161,7 +160,7 @@ def draw_card(c: Canvas, ox: float, oy: float, card: CardData, valid_until: date
     c.setFillColor(INK)
     c.setFont("PlexMono-SemiBold", 7.6)
     c.drawCentredString(qr_x + qr / 2, num_y, card.number)
-    _qr(c, qr_x, num_y + 3.6 * mm, qr, card.qr or card.number)
+    _qr(c, qr_x, num_y + 3.6 * mm, qr, card.number)
 
     # Tekst
     tx = ox + pad + ph_w + 4.0 * mm

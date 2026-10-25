@@ -57,7 +57,6 @@ export function EmployeesPage() {
   const department = params.get("department");
   const position = params.get("position");
   const missing = params.getAll("missing");
-  const card = params.get("card");
   const sort = params.get("sort") ?? "name";
   const page = Number(params.get("page") ?? "1");
   const [debouncedQ] = useDebouncedValue(q, 300);
@@ -89,9 +88,8 @@ export function EmployeesPage() {
     if (department) p.set("department_id", department);
     if (position) p.set("position_id", position);
     missing.forEach((m) => p.append("missing", m));
-    if (card) p.set("card", card);
     return p.toString();
-  }, [status, sort, page, debouncedQ, agency, department, position, missing, card]);
+  }, [status, sort, page, debouncedQ, agency, department, position, missing]);
 
   const filterQuery = useMemo(() => {
     const p = new URLSearchParams(query);
@@ -232,19 +230,6 @@ export function EmployeesPage() {
           data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
           value={missing}
           onChange={(v) => update({ missing: v })}
-        />
-        <Select
-          label="Karta"
-          placeholder="—"
-          clearable
-          w={190}
-          data={[
-            { value: "none", label: "brak ważnej karty" },
-            { value: "expiring", label: "wygasa w 30 dni" },
-            { value: "expired", label: "po terminie ważności" },
-          ]}
-          value={card}
-          onChange={(v) => update({ card: v })}
         />
       </Group>
 

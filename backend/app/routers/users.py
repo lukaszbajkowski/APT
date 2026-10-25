@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app import totp
 from app.audit import audit
 from app.deps import AdminAuth, DbSession, utcnow
 from app.models import Agency, Department, Role, User, UserScope, UserSession
@@ -203,6 +204,26 @@ def reset_password(user_id: int, ctx: AdminAuth, request: Request, db: DbSession
     audit(db, request, "password_reset", user=ctx.user, entity_type="user", entity_id=user.id)
     db.commit()
     return PasswordResetOut(temporary_password=temporary_password)
+
+
+@router.post("/{user_id}/mfa-reset", response_model=UserOut)
+def reset_mfa(user_id: int, ctx: AdminAuth, request: Request, db: DbSession) -> User:
+    """Wyłącza 2FA użytkownika (np. zgubiony telefon). Dla Administratora i Kadr
+    przy następnym logowaniu konfiguracja będzie wymagana ponownie."""
+    user = _get_user(db, user_id)
+    if user.id == ctx.user.id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Nie możesz zresetować własnego logowania dwuetapowego. Poproś innego administratora.",
+        )
+    if not user.mfa_enabled and user.totp_secret_enc is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ten użytkownik nie ma włączonego 2FA.")
+    totp.clear(user)
+    _revoke_sessions(db, user.id)
+    audit(db, request, "mfa_reset", user=ctx.user, entity_type="user", entity_id=user.id)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/{user_id}/unlock", response_model=UserOut)

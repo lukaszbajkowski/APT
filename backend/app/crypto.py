@@ -61,6 +61,23 @@ def decrypt(blob: bytes) -> str:
     return AESGCM(enc_key).decrypt(nonce, ct, b"pesel").decode()
 
 
+@lru_cache
+def _totp_key() -> bytes:
+    return _derive(b"apt/totp/enc/v1")
+
+
+def encrypt_secret(secret: bytes) -> bytes:
+    """Szyfrowanie sekretu TOTP (osobny klucz wyprowadzony z APT_DATA_KEY)."""
+    nonce = os.urandom(12)
+    return _VERSION + nonce + AESGCM(_totp_key()).encrypt(nonce, secret, b"totp")
+
+
+def decrypt_secret(blob: bytes) -> bytes:
+    if not blob or blob[:1] != _VERSION:
+        raise ValueError("Nieznany format zaszyfrowanych danych.")
+    return AESGCM(_totp_key()).decrypt(blob[1:13], blob[13:], b"totp")
+
+
 def blind_index(value: str) -> str:
     _, mac_key = _keys()
     return hmac.new(mac_key, value.encode(), hashlib.sha256).hexdigest()
@@ -68,3 +85,4 @@ def blind_index(value: str) -> str:
 
 def reset_cache() -> None:
     _keys.cache_clear()
+    _totp_key.cache_clear()

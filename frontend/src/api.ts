@@ -19,12 +19,17 @@ export interface User {
   last_login_at: string | null;
   created_at: string;
   scopes: Scope[];
+  mfa_enabled: boolean;
+  mfa_required: boolean;
 }
 
 export interface Me {
   user: User;
   csrf_token: string;
   session_idle_minutes: number;
+  mfa_pending: boolean;
+  mfa_setup_required: boolean;
+  recovery_codes_left: number;
 }
 
 export interface DictionaryItem {
@@ -192,6 +197,8 @@ export class ApiError extends Error {
   }
 }
 
+export const MFA_PATH = "/logowanie-dwuetapowe";
+
 let csrfToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 
@@ -243,6 +250,9 @@ export async function api<T>(
   if (!res.ok) {
     const { message, code, data: extra } = errorMessage(data?.detail, res.status);
     if (res.status === 401 && path !== "/auth/login" && onUnauthorized) onUnauthorized();
+    if (res.status === 403 && code === "mfa_setup_required" && window.location.pathname !== MFA_PATH) {
+      window.location.assign(MFA_PATH);
+    }
     throw new ApiError(res.status, message, code, extra);
   }
   return data as T;
@@ -323,6 +333,12 @@ export const ACTION_LABELS: Record<string, string> = {
   document_generated: "Wygenerowanie dokumentu",
   document_downloaded: "Pobranie dokumentu",
   document_viewed: "Podgląd dokumentu",
+  mfa_enabled: "Włączenie logowania dwuetapowego",
+  mfa_disabled: "Wyłączenie logowania dwuetapowego",
+  mfa_reset: "Reset logowania dwuetapowego",
+  mfa_failed: "Błędny kod logowania dwuetapowego",
+  mfa_recovery_used: "Logowanie kodem zapasowym",
+  mfa_recovery_regenerated: "Nowe kody zapasowe",
 };
 
 export const FIELD_LABELS: Record<string, string> = {

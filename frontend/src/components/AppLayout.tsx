@@ -20,6 +20,7 @@ import {
   IconDeviceDesktop,
   IconHome,
   IconMoon,
+  IconShieldLock,
   IconSun,
   IconFileText,
   IconId,
@@ -30,7 +31,7 @@ import {
 } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { ROLE_LABELS } from "../api";
+import { MFA_PATH, ROLE_LABELS } from "../api";
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -127,6 +128,9 @@ export function AppLayout() {
                 />
               </Box>
               <Menu.Divider />
+              <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
+                Logowanie dwuetapowe
+              </Menu.Item>
               <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
                 Zmień hasło
               </Menu.Item>

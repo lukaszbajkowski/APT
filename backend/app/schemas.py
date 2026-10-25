@@ -38,12 +38,17 @@ class UserOut(BaseModel):
     last_login_at: datetime | None
     created_at: datetime
     scopes: list[ScopeOut]
+    mfa_enabled: bool
+    mfa_required: bool
 
 
 class MeOut(BaseModel):
     user: UserOut
     csrf_token: str
     session_idle_minutes: int
+    mfa_pending: bool = False
+    mfa_setup_required: bool = False
+    recovery_codes_left: int = 0
 
 
 class ScopesIn(BaseModel):

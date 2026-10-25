@@ -33,6 +33,7 @@ services:
       APT_SESSION_MAX_HOURS: ${APT_SESSION_MAX_HOURS:-12}
       APT_LOGIN_MAX_FAILURES: ${APT_LOGIN_MAX_FAILURES:-5}
       APT_LOGIN_LOCK_MINUTES: ${APT_LOGIN_LOCK_MINUTES:-15}
+      APT_MFA_ENFORCE: ${APT_MFA_ENFORCE:-true}
     volumes:
       - appdata:/app/data
     networks: [internal]

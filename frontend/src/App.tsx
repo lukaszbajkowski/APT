@@ -3,10 +3,11 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Center, Loader } from "@mantine/core";
 
 import { useAuth } from "./auth";
-import type { Role } from "./api";
+import { MFA_PATH, type Role } from "./api";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
+import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { EmployeeFormPage } from "./pages/EmployeeFormPage";
 import { EmployeeProfilePage } from "./pages/EmployeeProfilePage";
@@ -29,9 +30,12 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
       </Center>
     );
   }
-  if (!me) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!me || me.mfa_pending) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (me.user.must_change_password && location.pathname !== "/zmiana-hasla") {
     return <Navigate to="/zmiana-hasla" replace />;
+  }
+  if (!me.user.must_change_password && me.mfa_setup_required && location.pathname !== MFA_PATH) {
+    return <Navigate to={MFA_PATH} replace />;
   }
   if (roles && !roles.includes(me.user.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -46,6 +50,14 @@ export function App() {
         element={
           <RequireAuth>
             <ChangePasswordPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path={MFA_PATH}
+        element={
+          <RequireAuth>
+            <MfaPage />
           </RequireAuth>
         }
       />

@@ -115,13 +115,19 @@ export function UsersPage() {
   });
 
   const action = useMutation({
-    mutationFn: async ({ user, kind }: { user: User; kind: "reset" | "unlock" | "toggle" }) => {
+    mutationFn: async ({ user, kind }: { user: User; kind: "reset" | "unlock" | "toggle" | "mfa" }) => {
       if (kind === "reset") {
         const res = await api<{ temporary_password: string }>(`/users/${user.id}/reset-password`, {
           method: "POST",
         });
         setTempPassword({ username: user.username, password: res.temporary_password });
         setTempOpen(true);
+      } else if (kind === "mfa") {
+        await api(`/users/${user.id}/mfa-reset`, { method: "POST" });
+        notifications.show({
+          color: "green",
+          message: `Wyłączono logowanie dwuetapowe konta ${user.username}. Przy następnym logowaniu skonfiguruje je od nowa.`,
+        });
       } else if (kind === "unlock") {
         await api(`/users/${user.id}/unlock`, { method: "POST" });
         notifications.show({ color: "green", message: `Odblokowano konto ${user.username}.` });
@@ -226,6 +232,18 @@ export function UsersPage() {
                     <Group gap={4}>
                       {u.is_active ? <Badge color="green">aktywne</Badge> : <Badge color="gray">wyłączone</Badge>}
                       {isLocked(u) && <Badge color="red">zablokowane</Badge>}
+                      {u.mfa_enabled ? (
+                        <Badge color="teal" variant="light">
+                          2FA
+                        </Badge>
+                      ) : (
+                        u.mfa_required &&
+                        u.is_active && (
+                          <Badge color="orange" variant="light">
+                            bez 2FA
+                          </Badge>
+                        )
+                      )}
                       {u.must_change_password && u.is_active && (
                         <Badge color="yellow" variant="light">
                           hasło tymczasowe
@@ -248,6 +266,11 @@ export function UsersPage() {
                         </Menu.Item>
                         {isLocked(u) && (
                           <Menu.Item onClick={() => action.mutate({ user: u, kind: "unlock" })}>Odblokuj</Menu.Item>
+                        )}
+                        {u.mfa_enabled && u.id !== me?.user.id && (
+                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "mfa" })}>
+                            Resetuj logowanie dwuetapowe
+                          </Menu.Item>
                         )}
                         {u.id !== me?.user.id && (
                           <Menu.Item

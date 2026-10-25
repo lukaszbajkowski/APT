@@ -92,9 +92,34 @@ class User(TimestampMixin, Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Logowanie dwuetapowe (TOTP). Sekret zaszyfrowany kluczem APT_DATA_KEY.
+    # Gdy totp_enabled_at jest puste, a sekret jest ustawiony – konfiguracja w toku.
+    totp_secret_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    totp_last_step: Mapped[int | None] = mapped_column(BigInteger)
+    # skróty SHA-256 niewykorzystanych kodów zapasowych
+    recovery_codes: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+
+    @property
+    def mfa_enabled(self) -> bool:
+        return self.totp_enabled_at is not None
+
+    @property
+    def mfa_required(self) -> bool:
+        from app.config import get_settings
+
+        return self.role in MFA_REQUIRED_ROLES and get_settings().mfa_enforce
+
+    @property
+    def recovery_codes_left(self) -> int:
+        return len(self.recovery_codes or [])
+
     scopes: Mapped[list["UserScope"]] = relationship(
         back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
+
+
+MFA_REQUIRED_ROLES = frozenset({Role.admin, Role.hr})
 
 
 class UserScope(Base):
@@ -137,6 +162,8 @@ class UserSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # hasło poprawne, czeka na kod z aplikacji (logowanie dwuetapowe)
+    mfa_pending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     ip: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(String(400))
 

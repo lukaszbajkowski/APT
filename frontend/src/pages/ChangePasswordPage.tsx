@@ -5,7 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertCircle } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { api, ApiError, type Me } from "../api";
+import { api, ApiError, MFA_PATH, type Me } from "../api";
 
 export function ChangePasswordPage() {
   const { me, setMe, logout } = useAuth();
@@ -32,7 +32,7 @@ export function ChangePasswordPage() {
       });
       setMe(result);
       notifications.show({ color: "green", message: "Hasło zostało zmienione." });
-      navigate("/", { replace: true });
+      navigate(result.mfa_setup_required ? MFA_PATH : "/", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Nie udało się zmienić hasła.");
     } finally {

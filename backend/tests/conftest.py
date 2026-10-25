@@ -3,6 +3,8 @@ import os
 # Ustawienia testowe muszą być ustawione przed importem aplikacji.
 os.environ.setdefault("APT_DATABASE_URL", "postgresql+psycopg://apt:apt@localhost:5432/apt_test")
 os.environ["APT_COOKIE_SECURE"] = "false"
+# 2FA wymuszane tylko w testach logowania dwuetapowego (test_mfa.py)
+os.environ["APT_MFA_ENFORCE"] = "false"
 os.environ.setdefault("APT_SECRET_KEY", "test-secret")
 os.environ.setdefault("APT_DATA_KEY", "re3IC_kTb6y861Lgk6PnpjvG1Bn7WvZf0iOgw4oHYHE")
 import tempfile  # noqa: E402

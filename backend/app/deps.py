@@ -63,14 +63,22 @@ def _load_session(request: Request, db: Session) -> AuthContext:
     return AuthContext(user=sess.user, session=sess)
 
 
-def get_auth_allow_password_change(request: Request, db: DbSession) -> AuthContext:
-    """Zalogowany użytkownik, także taki, który musi jeszcze zmienić hasło."""
+def get_auth_mfa_pending(request: Request, db: DbSession) -> AuthContext:
+    """Sesja po poprawnym haśle, także czekająca jeszcze na kod logowania dwuetapowego."""
     return _load_session(request, db)
 
 
-def get_auth(request: Request, db: DbSession) -> AuthContext:
-    """Zalogowany użytkownik z aktualnym hasłem."""
+def get_auth_allow_password_change(request: Request, db: DbSession) -> AuthContext:
+    """Zalogowany użytkownik, także taki, który musi jeszcze zmienić hasło lub włączyć 2FA."""
     ctx = _load_session(request, db)
+    if ctx.session.mfa_pending:
+        raise _unauthorized("Podaj kod z aplikacji uwierzytelniającej.")
+    return ctx
+
+
+def get_auth_allow_mfa_setup(request: Request, db: DbSession) -> AuthContext:
+    """Zalogowany użytkownik z aktualnym hasłem, także bez wymaganego jeszcze 2FA."""
+    ctx = get_auth_allow_password_change(request, db)
     if ctx.user.must_change_password:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
@@ -79,8 +87,24 @@ def get_auth(request: Request, db: DbSession) -> AuthContext:
     return ctx
 
 
+def get_auth(request: Request, db: DbSession) -> AuthContext:
+    """W pełni zalogowany użytkownik: aktualne hasło i (jeśli wymagane) włączone 2FA."""
+    ctx = get_auth_allow_mfa_setup(request, db)
+    if ctx.user.mfa_required and not ctx.user.mfa_enabled:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "mfa_setup_required",
+                "message": "Włącz logowanie dwuetapowe, aby kontynuować.",
+            },
+        )
+    return ctx
+
+
 Auth = Annotated[AuthContext, Depends(get_auth)]
 AuthPwChange = Annotated[AuthContext, Depends(get_auth_allow_password_change)]
+AuthMfaSetup = Annotated[AuthContext, Depends(get_auth_allow_mfa_setup)]
+AuthMfaPending = Annotated[AuthContext, Depends(get_auth_mfa_pending)]
 
 
 def require_roles(*roles: Role) -> Callable[[AuthContext], AuthContext]:

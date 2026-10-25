@@ -14,7 +14,7 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 | 3. Import | Excel / Numbers / CSV z podglądem błędów | ✅ |
 | 4. Karty | PDF, CR80, kod QR | ✅ |
 | 5. Dokumenty | szablony .docx, pola formularza | ✅ |
-| 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ⏳ |
+| 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ✅ |
 
 ## Architektura
 
@@ -36,6 +36,11 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Ochrona CSRF: nagłówek `X-CSRF-Token` wymagany dla każdej zmiany danych.
 - Nowe konto i reset hasła: hasło tymczasowe, zmiana wymuszona przy pierwszym logowaniu.
 - Dziennik zdarzeń tylko do dopisywania (UPDATE/DELETE zablokowane wyzwalaczem w bazie).
+- Logowanie dwuetapowe (TOTP, np. Google / Microsoft Authenticator): obowiązkowe dla Administratora i Kadr,
+  opcjonalne dla pozostałych. 10 jednorazowych kodów zapasowych, kod nie może być użyty dwa razy, błędne
+  kody liczą się do blokady konta. Sekret szyfrowany kluczem `APT_DATA_KEY`. Administrator może zresetować
+  2FA innej osoby (Użytkownicy → menu); własne – poleceniem
+  `docker compose exec api python -m app.cli reset-mfa --username LOGIN` na serwerze.
 - Role sprawdzane po stronie serwera; nie da się odebrać sobie roli administratora
   ani wyłączyć ostatniego aktywnego administratora.
 

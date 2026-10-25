@@ -103,6 +103,8 @@ export interface TemplateField {
   required: boolean;
   options: { value: string; label: string }[];
   help: string | null;
+  format?: string | null;
+  pattern?: string | null;
 }
 
 export interface DocTemplate {

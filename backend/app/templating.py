@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from docxtpl import DocxTemplate
 from jinja2 import Environment, TemplateSyntaxError, nodes
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------- zmienne z kartoteki ----------
 
@@ -82,6 +82,9 @@ class FieldOption(BaseModel):
     label: str = Field(min_length=1, max_length=200)
 
 
+from app.masks import MaskError, format_value, guess_format  # noqa: E402
+
+
 class FieldDef(BaseModel):
     key: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$", max_length=64)
     label: str = Field(min_length=1, max_length=200)
@@ -89,6 +92,30 @@ class FieldDef(BaseModel):
     required: bool = False
     options: list[FieldOption] = Field(default_factory=list)
     help: str | None = Field(default=None, max_length=300)
+    # format pola tekstowego: klucz z masks.PRESETS albo "custom" (wtedy pattern = maska, np. "99-999")
+    format: str | None = Field(default=None, max_length=20)
+    pattern: str | None = Field(default=None, max_length=60)
+
+    @field_validator("format")
+    @classmethod
+    def _fmt(cls, v: str | None) -> str | None:
+        from app.masks import PRESETS
+
+        if v in (None, ""):
+            return None
+        if v != "custom" and v not in PRESETS:
+            raise ValueError("Nieznany format pola.")
+        return v
+
+    @model_validator(mode="after")
+    def _custom_needs_pattern(self) -> "FieldDef":
+        from app.masks import valid_pattern
+
+        if self.format == "custom" and not valid_pattern(self.pattern or ""):
+            raise ValueError(f"Pole „{self.label}”: podaj wzór maski, np. 99-999 (9 = cyfra, A = litera).")
+        if self.format != "custom":
+            self.pattern = None
+        return self
 
 
 # Podpowiedzi etykiet dla typowych nazw (np. z deklaracji Medicover). Admin może je zmienić.
@@ -225,7 +252,14 @@ def analyze(data: bytes) -> Analysis:
             )
         else:
             ftype: FieldType = "date" if key.startswith("data_") else "text"
-            fields.append(FieldDef(key=key, label=humanize(key), type=ftype))
+            fields.append(
+                FieldDef(
+                    key=key,
+                    label=humanize(key),
+                    type=ftype,
+                    format=guess_format(key) if ftype == "text" else None,
+                )
+            )
     return Analysis(variables=ordered, builtins=builtins, fields=fields)
 
 
@@ -278,6 +312,11 @@ def form_values(fields: list[FieldDef], raw: dict[str, Any]) -> dict[str, Any]:
                 out[f.key] = int(n) if n.is_integer() else n
             except ValueError:
                 errors.append(f"Pole „{f.label}”: to nie jest liczba.")
+        elif f.type == "text" and f.format:
+            try:
+                out[f.key] = format_value(str(v), f.format, f.pattern)
+            except MaskError as exc:
+                errors.append(f"Pole „{f.label}”: {exc}.")
         else:
             out[f.key] = str(v)[:2000]
     if errors:

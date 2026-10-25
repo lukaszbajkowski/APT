@@ -78,6 +78,14 @@ class TemplatePatch(BaseModel):
 class GenerateIn(BaseModel):
     template_id: int
     values: dict[str, Any] = Field(default_factory=dict)
+    # PESEL wpisany przy generowaniu, gdy pracownik go nie ma – zapisywany w kartotece
+    pesel: str | None = Field(default=None, max_length=20)
+
+
+class FormatOut(BaseModel):
+    value: str
+    label: str
+    mask: str
 
 
 class DocumentOut(BaseModel):
@@ -160,6 +168,13 @@ def _check_language(lang: str) -> str:
 
 
 # ---------- szablony ----------
+
+
+@router.get("/templates/formats", response_model=list[FormatOut])
+def field_formats(ctx: DocAuth) -> list[FormatOut]:
+    from app.masks import PRESETS
+
+    return [FormatOut(value=k, label=v["label"], mask=v["mask"]) for k, v in PRESETS.items()]
 
 
 @router.get("/templates/builtins", response_model=list[BuiltinOut])
@@ -408,13 +423,44 @@ def _usable_template(db: Session, user: User, template_id: int) -> DocumentTempl
     return t
 
 
+def _save_missing_pesel(db: Session, request: Request, user: User, e: Any, pesel: str) -> None:
+    """PESEL wpisany przy generowaniu dokumentu trafia do kartoteki (z pełną walidacją)."""
+    from app.routers.employees import _assign, _check_duplicates, _validate, full_access
+
+    if not full_access(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień do wpisania numeru PESEL.")
+    if e.pesel_enc is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Pracownik ma już wpisany PESEL.")
+    data = _validate(db, e, {"pesel": pesel}, creating=False)
+    pesel_hash = _check_duplicates(db, e, data, confirm=True)
+    changes = _assign(e, data, pesel_hash)
+    audit(
+        db,
+        request,
+        "employee_updated",
+        user=user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"number": format_number(e.number), "changes": changes, "source": "dokument"},
+    )
+    db.flush()
+
+
 def _create_document(
-    db: Session, request: Request, user: User, e: Any, t: DocumentTemplate, raw_values: dict[str, Any]
+    db: Session,
+    request: Request,
+    user: User,
+    e: Any,
+    t: DocumentTemplate,
+    raw_values: dict[str, Any],
+    pesel_input: str | None = None,
 ) -> _Generated:
     """Wypełnia szablon dla jednej osoby, zapisuje pliki i wpis w historii (bez commita)."""
     masked = user.role == Role.manager and t.sensitive
     fields = [FieldDef.model_validate(f) for f in t.fields]
     values = templating.form_values(fields, raw_values)  # TemplateError → obsługuje wywołujący
+    if pesel_input and pesel_input.strip():
+        _save_missing_pesel(db, request, user, e, pesel_input)
 
     uses_pesel = "pesel" in t.variables
     pesel = crypto.decrypt(e.pesel_enc) if (uses_pesel and e.pesel_enc and not masked) else None
@@ -471,7 +517,7 @@ def generate(
     e = get_visible(db, ctx.user, employee_id)
     t = _usable_template(db, ctx.user, body.template_id)
     try:
-        g = _create_document(db, request, ctx.user, e, t, body.values)
+        g = _create_document(db, request, ctx.user, e, t, body.values, body.pesel)
     except TemplateError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.commit()
@@ -488,6 +534,7 @@ MAX_BATCH = 50
 class BatchItem(BaseModel):
     employee_id: int
     values: dict[str, Any] = Field(default_factory=dict)
+    pesel: str | None = Field(default=None, max_length=20)
 
 
 class BatchIn(BaseModel):
@@ -509,7 +556,7 @@ def generate_batch(body: BatchIn, ctx: DocAuth, request: Request, db: DbSession)
     ids = [it.employee_id for it in body.items]
     if len(set(ids)) != len(ids):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ta sama osoba występuje dwa razy.")
-    people = [(get_visible(db, ctx.user, it.employee_id), it.values) for it in body.items]
+    people = [(get_visible(db, ctx.user, it.employee_id), it.values, it.pesel) for it in body.items]
 
     buf = io.BytesIO()
     names: set[str] = set()
@@ -523,12 +570,15 @@ def generate_batch(body: BatchIn, ctx: DocAuth, request: Request, db: DbSession)
         return HTTPException(code, detail=detail)
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for e, values in people:
+        for e, values, pesel_input in people:
             who = f"{format_number(e.number)} {e.last_name} {e.first_name}"
             try:
-                g = _create_document(db, request, ctx.user, e, t, values)
+                g = _create_document(db, request, ctx.user, e, t, values, pesel_input)
             except TemplateError as exc:
                 raise fail(status.HTTP_400_BAD_REQUEST, f"{who}: {exc}") from exc
+            except HTTPException as exc:
+                msg = exc.detail.get("message") if isinstance(exc.detail, dict) else exc.detail
+                raise fail(exc.status_code, f"{who}: {msg}") from exc
             created.append(g.doc)
             content, ext = (g.pdf, "pdf") if body.format == "pdf" and g.pdf else (g.docx, "docx")
             if body.format == "pdf" and g.pdf is None:

@@ -37,6 +37,7 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 
+import { useFieldFormats } from "../components/DocumentsCard";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 
@@ -101,6 +102,7 @@ export function TemplateEditPage() {
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
+  const fieldFormats = useFieldFormats();
   const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
 
   const [fields, setFields] = useState<TemplateField[]>([]);
@@ -281,12 +283,43 @@ export function TemplateEditPage() {
                           <Table.Td>
                             <Select
                               size="xs"
-                              w={170}
+                              w={200}
                               data={TYPES}
                               allowDeselect={false}
                               value={f.type}
-                              onChange={(v) => v && update(i, { ...f, type: v as FieldType })}
+                              onChange={(v) =>
+                                v && update(i, { ...f, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })
+                              }
                             />
+                            {f.type === "text" && (
+                              <Select
+                                size="xs"
+                                w={200}
+                                mt={6}
+                                aria-label={`Format: ${f.label}`}
+                                placeholder="bez formatu"
+                                clearable
+                                data={[
+                                  ...(fieldFormats.data ?? []).map((p) => ({ value: p.value, label: p.label })),
+                                  { value: "custom", label: "Własna maska…" },
+                                ]}
+                                value={f.format ?? null}
+                                onChange={(v) => update(i, { ...f, format: v, pattern: v === "custom" ? f.pattern ?? "" : null })}
+                              />
+                            )}
+                            {f.type === "text" && f.format === "custom" && (
+                              <TextInput
+                                size="xs"
+                                w={200}
+                                mt={6}
+                                aria-label={`Maska: ${f.label}`}
+                                placeholder="np. 99-999"
+                                description="9 cyfra, A litera, * dowolny"
+                                value={f.pattern ?? ""}
+                                onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}
+                                styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+                              />
+                            )}
                           </Table.Td>
                           <Table.Td pt={12}>
                             <Switch

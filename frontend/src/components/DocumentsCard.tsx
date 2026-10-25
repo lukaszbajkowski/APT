@@ -23,12 +23,45 @@ import { notifications } from "@mantine/notifications";
 import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
 
 export type Values = Record<string, string | boolean | number | null>;
 
+export function useFieldFormats() {
+  return useQuery({
+    queryKey: ["template-formats"],
+    queryFn: () => api<FormatPreset[]>("/templates/formats"),
+    staleTime: Infinity,
+  });
+}
+
+function MaskedText({ field, value, onChange }: { field: TemplateField; value: string; onChange: (v: string) => void }) {
+  const formats = useFieldFormats();
+  const [touched, setTouched] = useState(false);
+  const mask = fieldMask(field, formats.data);
+  const problem = touched ? fieldProblem(field, value, formats.data) : null;
+  return (
+    <TextInput
+      label={field.label}
+      description={field.help ?? undefined}
+      required={field.required}
+      placeholder={mask ? maskExample(mask) : field.format === "email" ? "nazwa@domena.pl" : undefined}
+      inputMode={mask && !/[A*]/.test(mask) ? "numeric" : field.format === "email" ? "email" : undefined}
+      value={value}
+      error={problem ? `Oczekiwany ${problem}` : undefined}
+      onBlur={() => setTouched(true)}
+      onChange={(e) => onChange(mask ? maskPartial(e.currentTarget.value, mask) : e.currentTarget.value)}
+      styles={mask ? { input: { fontFamily: "var(--mantine-font-family-monospace)" } } : undefined}
+    />
+  );
+}
+
 export function FieldInput({ field, value, onChange }: { field: TemplateField; value: Values[string]; onChange: (v: Values[string]) => void }) {
+  if (field.type === "text" && field.format) {
+    return <MaskedText field={field} value={(value as string) ?? ""} onChange={onChange} />;
+  }
   const common = { label: field.label, description: field.help ?? undefined, required: field.required };
   switch (field.type) {
     case "select":
@@ -122,6 +155,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [values, setValues] = useState<Values>({});
+  const [pesel, setPesel] = useState("");
   const [done, setDone] = useState<GeneratedDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,6 +163,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
 
   useEffect(() => {
     setValues({});
+    setPesel("");
     setError(null);
     setDone(null);
   }, [templateId]);
@@ -137,11 +172,12 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
     mutationFn: () =>
       api<GeneratedDoc>(`/employees/${employee.id}/documents`, {
         method: "POST",
-        body: { template_id: Number(templateId), values },
+        body: { template_id: Number(templateId), values, pesel: askPesel && pesel.trim() ? pesel.trim() : null },
       }),
     onSuccess: (doc) => {
       qc.invalidateQueries({ queryKey: ["documents", employee.id] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
+      if (askPesel && pesel.trim()) qc.invalidateQueries({ queryKey: ["employee", String(employee.id)] });
       setDone(doc);
       if (doc.pdf_error) notifications.show({ color: "orange", message: doc.pdf_error });
     },
@@ -149,7 +185,12 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   });
 
   const missing = template?.fields.filter((f) => f.required && (values[f.key] === undefined || values[f.key] === "" || values[f.key] === null)) ?? [];
-  const warnPesel = template?.builtins.includes("pesel") && employee.personal_data_visible && !employee.has_pesel;
+  const askPesel = !!template?.builtins.includes("pesel") && employee.personal_data_visible && !employee.has_pesel;
+  const peselError = askPesel ? peselProblem(pesel) : null;
+  const formats = useFieldFormats();
+  const formatErrors = (template?.fields ?? []).filter(
+    (f) => f.type === "text" && fieldProblem(f, String(values[f.key] ?? ""), formats.data),
+  );
   const warnMasked = isManager && template?.sensitive;
 
   return (
@@ -265,10 +306,18 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 Dane z kartoteki ({template.builtins.length}) zostaną wstawione automatycznie.
               </Text>
             )}
-            {warnPesel && (
-              <Alert color="orange" variant="light">
-                Ten pracownik nie ma wpisanego numeru PESEL – w dokumencie to pole zostanie puste.
-              </Alert>
+            {askPesel && (
+              <TextInput
+                label="PESEL pracownika"
+                description="Pracownik nie ma PESEL w kartotece. Wpisany numer trafi do dokumentu i zostanie zapisany w kartotece (uzupełni też datę urodzenia i płeć). Puste pole = PESEL w dokumencie pozostanie pusty."
+                placeholder="11 cyfr"
+                inputMode="numeric"
+                maxLength={11}
+                value={pesel}
+                onChange={(e) => setPesel(e.currentTarget.value.replace(/\D/g, ""))}
+                error={pesel.length === 11 || pesel.length === 0 ? peselError : undefined}
+                styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)", letterSpacing: 1 } }}
+              />
             )}
             {template && template.fields.length > 0 && (
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -286,7 +335,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               <Button variant="default" onClick={() => setOpen(false)}>
                 Anuluj
               </Button>
-              <Button type="submit" loading={generate.isPending} disabled={!template || missing.length > 0}>
+              <Button type="submit" loading={generate.isPending} disabled={!template || missing.length > 0 || !!peselError || formatErrors.length > 0}>
                 Generuj
               </Button>
             </Group>

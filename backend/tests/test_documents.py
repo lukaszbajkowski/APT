@@ -363,3 +363,61 @@ def test_batch_validation_error_names_person_and_rolls_back(admin):
     )
     assert r.status_code == 400 and "Nowak Ewa" in r.json()["detail"]
     assert admin.get(f"/api/employees/{a['id']}/documents").json() == []
+
+
+def test_missing_pesel_entered_at_generation_is_saved(admin):
+    from datetime import date as d
+
+    from tests.conftest import make_pesel
+
+    e = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "Kowalski", "sex": "M"}).json()
+    t = upload(admin, simple_docx("{{ nazwisko_imie }} PESEL {{ pesel }} ur. {{ data_urodzenia }}")).json()
+    url = f"/api/employees/{e['id']}/documents"
+    # zła suma kontrolna / niezgodna płeć
+    assert admin.post(url, json={"template_id": t["id"], "pesel": "12345678901"}).status_code == 400
+    woman = make_pesel(d(1990, 5, 1), "K")
+    r = admin.post(url, json={"template_id": t["id"], "pesel": woman})
+    assert r.status_code == 400 and "Płeć" in r.json()["detail"]
+    assert admin.get(f"/api/employees/{e['id']}").json()["has_pesel"] is False
+
+    good = make_pesel(d(1990, 5, 1), "M")
+    r = admin.post(url, json={"template_id": t["id"], "pesel": good})
+    assert r.status_code == 201, r.text
+    emp = admin.get(f"/api/employees/{e['id']}").json()
+    assert emp["has_pesel"] is True and emp["birth_date"] == "1990-05-01"
+    text = doc_text(admin.get(f"/api/documents/{r.json()['id']}/download", params={"format": "docx"}).content)
+    assert good in text and "01.05.1990" in text
+    # duplikat u innej osoby
+    other = admin.post("/api/employees", json={"first_name": "Ewa", "last_name": "Nowak"}).json()
+    r = admin.post(f"/api/employees/{other['id']}/documents", json={"template_id": t["id"], "pesel": good})
+    assert r.status_code == 409
+
+
+def test_field_formats(admin):
+    t = upload(admin, simple_docx("{{ zam_kod }} {{ tel_kom }} {{ uwagi }}")).json()
+    fmts = {f["key"]: f["format"] for f in t["fields"]}
+    assert fmts == {"zam_kod": "postal", "tel_kom": "phone", "uwagi": None}
+    fields = t["fields"]
+    fields[2]["format"] = "custom"
+    assert admin.patch(f"/api/templates/{t['id']}", json={"fields": fields}).status_code == 422
+    fields[2]["pattern"] = "AA/9999"
+    assert admin.patch(f"/api/templates/{t['id']}", json={"fields": fields}).status_code == 200
+    e = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "Kowalski"}).json()
+    url = f"/api/employees/{e['id']}/documents"
+    bad = admin.post(
+        url, json={"template_id": t["id"], "values": {"zam_kod": "5000", "tel_kom": "600100200"}}
+    )
+    assert bad.status_code == 400 and "00-000" in bad.json()["detail"]
+    ok = admin.post(
+        url,
+        json={
+            "template_id": t["id"],
+            "values": {"zam_kod": "50001", "tel_kom": "600100200", "uwagi": "ab1234"},
+        },
+    )
+    assert ok.status_code == 201, ok.text
+    text = doc_text(
+        admin.get(f"/api/documents/{ok.json()['id']}/download", params={"format": "docx"}).content
+    )
+    assert text == "50-001 600 100 200 AB/1234"
+    assert {f["value"] for f in admin.get("/api/templates/formats").json()} >= {"postal", "nip", "iban"}

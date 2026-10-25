@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Alert, Badge, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconArrowRight, IconFileZip } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, LANGUAGES, type DocTemplate, type Employee } from "../api";
 import { useAuth } from "../auth";
-import { FieldInput, type Values } from "./DocumentsCard";
+import { FieldInput, useFieldFormats, type Values } from "./DocumentsCard";
+import { fieldProblem, peselProblem } from "../masks";
 
 const MAX = 50;
 
@@ -34,6 +35,8 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
   const [step, setStep] = useState(0); // 0 = wybór szablonu, 1..n = osoby (albo 1 = wspólne wartości)
   const [values, setValues] = useState<Values[]>([]);
   const [busy, setBusy] = useState(false);
+  const [peselBy, setPeselBy] = useState<Record<number, string>>({});
+  const formatsQ = useFieldFormats();
   const [error, setError] = useState<string | null>(null);
 
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);
@@ -58,6 +61,32 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
   const steps = !hasFields ? 0 : same ? 1 : list.length;
   const current = step >= 1 ? values[step - 1] ?? {} : {};
 
+  const needsPesel = (e: Employee) => !!template?.builtins.includes("pesel") && e.personal_data_visible && !e.has_pesel;
+  const peselInvalid = list.some((e) => needsPesel(e) && peselProblem(peselBy[e.id] ?? ""));
+  const formatInvalid = (v: Values) =>
+    !!template && template.fields.some((f) => f.type === "text" && fieldProblem(f, String(v[f.key] ?? ""), formatsQ.data));
+
+  function peselInput(e: Employee) {
+    const v = peselBy[e.id] ?? "";
+    return (
+      <TextInput
+        key={`pesel-${e.id}`}
+        label={same || !hasFields ? `PESEL – ${e.last_name} ${e.first_name}` : "PESEL pracownika"}
+        description="Brak w kartotece – wpisany numer trafi do dokumentu i zostanie zapisany w kartotece. Puste = pole w dokumencie puste."
+        placeholder="11 cyfr"
+        inputMode="numeric"
+        maxLength={11}
+        value={v}
+        onChange={(ev) => {
+          const val = ev.currentTarget.value.replace(/\D/g, "");
+          setPeselBy((p) => ({ ...p, [e.id]: val }));
+        }}
+        error={v.length === 11 ? peselProblem(v) : undefined}
+        styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+      />
+    );
+  }
+
   function setCurrent(key: string, v: Values[string]) {
     setValues((all) => {
       const next = [...all];
@@ -70,6 +99,14 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
     setError(null);
     if (step >= 1 && template && missingRequired(template, current).length) {
       setError("Uzupełnij pola wymagane.");
+      return;
+    }
+    if (step >= 1 && formatInvalid(current)) {
+      setError("Popraw pola w nieprawidłowym formacie.");
+      return;
+    }
+    if (person && needsPesel(person) && peselProblem(peselBy[person.id] ?? "")) {
+      setError("Popraw numer PESEL.");
       return;
     }
     // przejście do kolejnej osoby: wartości przechodzą dalej (jak w poprzednim programie), można je zmienić
@@ -88,9 +125,21 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
       setError("Uzupełnij pola wymagane.");
       return;
     }
+    if (hasFields && formatInvalid(current)) {
+      setError("Popraw pola w nieprawidłowym formacie.");
+      return;
+    }
+    if (peselInvalid) {
+      setError("Popraw numery PESEL.");
+      return;
+    }
     setBusy(true);
     try {
-      const items = list.map((e, i) => ({ employee_id: e.id, values: hasFields ? (same ? values[0] : values[i]) ?? {} : {} }));
+      const items = list.map((e, i) => ({
+        employee_id: e.id,
+        values: hasFields ? (same ? values[0] : values[i]) ?? {} : {},
+        pesel: needsPesel(e) && peselBy[e.id] ? peselBy[e.id] : null,
+      }));
       await apiDownload("/documents/batch", { template_id: template.id, format, items }, "dokumenty.zip");
       notifications.show({ color: "green", message: `Pobrano paczkę ZIP z dokumentami (${items.length}).` });
       qc.invalidateQueries({ queryKey: ["documents"] });
@@ -158,6 +207,14 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
                   <Text size="sm" c="dimmed">
                     Osoby: {list.map((e) => `${e.last_name} ${e.first_name}`).join(", ")}
                   </Text>
+                  {(same || !hasFields) && list.some(needsPesel) && (
+                    <Stack gap="xs">
+                      <Text size="sm" fw={600}>
+                        Brakujące numery PESEL ({list.filter(needsPesel).length})
+                      </Text>
+                      {list.filter(needsPesel).map(peselInput)}
+                    </Stack>
+                  )}
                 </>
               )}
             </>
@@ -175,6 +232,7 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
                   </Badge>
                 )}
               </Group>
+              {person && needsPesel(person) && peselInput(person)}
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 {template.fields.map((f) => (
                   <FieldInput key={`${step}-${f.key}`} field={f} value={current[f.key] ?? null} onChange={(v) => setCurrent(f.key, v)} />

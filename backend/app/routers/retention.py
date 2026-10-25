@@ -119,6 +119,8 @@ def _remove_files(employee_id: int, photo_file: str | None) -> None:
         photos.delete(photo_file)
     docs = Path(get_settings().data_dir) / "documents" / str(employee_id)
     shutil.rmtree(docs, ignore_errors=True)
+    scans = Path(get_settings().data_dir) / "trainings" / str(employee_id)
+    shutil.rmtree(scans, ignore_errors=True)
 
 
 @router.post("/purge", response_model=PurgeOut)

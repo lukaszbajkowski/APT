@@ -113,6 +113,23 @@ def quality_email(user: User, counts: list[tuple[str, int]], people: int) -> Ema
     )
 
 
+def trainings_email(user: User, items: list[str], expired: int) -> Email:
+    return Email(
+        subject=f"Identyfikacja APT – kończące się szkolenia ({len(items)})",
+        title="Kończące się szkolenia i uprawnienia",
+        preheader=f"{len(items)} szkoleń wygasa w ciągu 30 dni lub już wygasło.",
+        paragraphs=[
+            f"Dzień dobry {user.full_name},",
+            "w Twoim zakresie ważność tych szkoleń i uprawnień kończy się w ciągu 30 dni"
+            + (f" (w tym {expired} już wygasło):" if expired else ":"),
+        ],
+        items=items,
+        button=("Zobacz szkolenia", mailer.link("/szkolenia")),
+        tone="danger" if expired else "warning",
+        footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wygasa.",
+    )
+
+
 def test_email() -> Email:
     return Email(
         subject="Test – Identyfikacja pracowników APT",

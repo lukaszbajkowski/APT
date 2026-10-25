@@ -390,6 +390,13 @@ export const ACTION_LABELS: Record<string, string> = {
   mfa_failed: "Błędny kod logowania dwuetapowego",
   mfa_recovery_used: "Logowanie kodem zapasowym",
   mfa_recovery_regenerated: "Nowe kody zapasowe",
+  training_created: "Dodanie szkolenia",
+  training_updated: "Zmiana szkolenia",
+  training_deleted: "Usunięcie szkolenia",
+  training_scan_uploaded: "Dodanie skanu zaświadczenia",
+  training_scan_deleted: "Usunięcie skanu zaświadczenia",
+  training_type_created: "Dodanie rodzaju szkolenia",
+  training_type_updated: "Zmiana rodzaju szkolenia",
 };
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -439,3 +446,67 @@ export interface ReportSummary {
   missing_photo: number;
   missing_pesel: number | null;
 }
+
+// ---------- szkolenia ----------
+
+export type TrainingKind = "general" | "position";
+
+export interface TrainingType {
+  id: number;
+  name: string;
+  kind: TrainingKind;
+  validity_months: number | null;
+  fields: TemplateField[];
+  template_id: number | null;
+  template_name: string | null;
+  is_active: boolean;
+  in_use: number;
+}
+
+export type TrainingStatus = "valid" | "expiring" | "expired" | "none";
+
+export interface Training {
+  id: number;
+  employee_id: number;
+  type_id: number;
+  type_name: string;
+  kind: TrainingKind;
+  name: string | null;
+  department_id: number | null;
+  department: string | null;
+  start_date: string | null;
+  exam_date: string | null;
+  end_date: string | null;
+  completed_on: string | null;
+  valid_until: string | null;
+  mentor_id: number | null;
+  mentor_name: string | null;
+  standard_days: number | null;
+  values: Record<string, string | boolean | number | null>;
+  notes: string | null;
+  has_scan: boolean;
+  scan_name: string | null;
+  status: TrainingStatus;
+  can_generate: boolean;
+  created_by_name: string | null;
+}
+
+export interface ExpiringTraining {
+  training_id: number;
+  employee_id: number;
+  number: string;
+  last_name: string;
+  first_name: string;
+  department: string | null;
+  type_name: string;
+  name: string | null;
+  valid_until: string;
+  status: TrainingStatus;
+}
+
+export const TRAINING_STATUS: Record<TrainingStatus, { label: string; color: string }> = {
+  valid: { label: "ważne", color: "teal" },
+  expiring: { label: "kończy się", color: "orange" },
+  expired: { label: "wygasło", color: "red" },
+  none: { label: "bezterminowe", color: "gray" },
+};

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ActionIcon,
   Alert,
   Anchor,
   Button,
@@ -14,9 +13,7 @@ import {
   Group,
   Loader,
   SegmentedControl,
-  Paper,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -27,91 +24,21 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconArrowDown,
   IconArrowLeft,
-  IconArrowUp,
   IconCheck,
   IconCopy,
   IconDownload,
-  IconPlus,
-  IconTrash,
   IconUpload,
 } from "@tabler/icons-react";
 
-import { useFieldFormats } from "../components/DocumentsCard";
-import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
+import { FieldsEditor } from "../components/FieldsEditor";
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
-
-const TYPES: { value: FieldType; label: string }[] = [
-  { value: "text", label: "Tekst" },
-  { value: "textarea", label: "Tekst wielowierszowy" },
-  { value: "date", label: "Data" },
-  { value: "select", label: "Lista wyboru" },
-  { value: "checkbox", label: "Pole wyboru (tak/nie)" },
-  { value: "number", label: "Liczba" },
-];
-
-function OptionsEditor({ field, onChange }: { field: TemplateField; onChange: (f: TemplateField) => void }) {
-  const set = (i: number, key: "value" | "label", v: string) =>
-    onChange({ ...field, options: field.options.map((o, j) => (j === i ? { ...o, [key]: v } : o)) });
-  return (
-    <Stack gap="xs" mt="sm">
-      <SimpleGrid cols={2} spacing="xs">
-        <Text size="xs" fw={500}>
-          Wartość w szablonie
-        </Text>
-        <Text size="xs" fw={500}>
-          Tekst na liście w formularzu
-        </Text>
-      </SimpleGrid>
-      {field.options.map((o, i) => (
-        <SimpleGrid key={i} cols={2} spacing="xs">
-          <TextInput
-            size="xs"
-            placeholder="np. przystapienie"
-            aria-label="Wartość w szablonie"
-            value={o.value}
-            onChange={(e) => set(i, "value", e.currentTarget.value)}
-            styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
-          />
-          <TextInput
-            size="xs"
-            placeholder="np. przystąpienie"
-            aria-label="Tekst na liście w formularzu"
-            value={o.label}
-            onChange={(e) => set(i, "label", e.currentTarget.value)}
-            rightSection={
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="red"
-                aria-label="Usuń opcję"
-                onClick={() => onChange({ ...field, options: field.options.filter((_, j) => j !== i) })}
-              >
-                <IconTrash size={14} />
-              </ActionIcon>
-            }
-          />
-        </SimpleGrid>
-      ))}
-      <Button
-        size="compact-sm"
-        variant="light"
-        leftSection={<IconPlus size={14} />}
-        w="fit-content"
-        onClick={() => onChange({ ...field, options: [...field.options, { value: "", label: "" }] })}
-      >
-        Dodaj opcję
-      </Button>
-    </Stack>
-  );
-}
 
 export function TemplateEditPage() {
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
-  const fieldFormats = useFieldFormats();
   const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
 
   const [fields, setFields] = useState<TemplateField[]>([]);
@@ -173,13 +100,6 @@ export function TemplateEditPage() {
   const t = template.data;
   const builtinLabel = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;
 
-  const update = (i: number, f: TemplateField) => setFields((list) => list.map((x, j) => (j === i ? f : x)));
-  const move = (i: number, d: number) =>
-    setFields((list) => {
-      const next = [...list];
-      [next[i], next[i + d]] = [next[i + d], next[i]];
-      return next;
-    });
 
   return (
     <Stack maw={1200}>
@@ -268,84 +188,7 @@ export function TemplateEditPage() {
                   Ten szablon używa tylko danych z kartoteki.
                 </Text>
               ) : (
-                <Stack gap="xs">
-                  {fields.map((f, i) => (
-                    <Paper key={f.key} withBorder p="sm" radius="md">
-                      <Group justify="space-between" wrap="nowrap" mb={8}>
-                        <Code>{f.key}</Code>
-                        <Group gap="md" wrap="nowrap">
-                          <Switch
-                            size="sm"
-                            label="Wymagane"
-                            checked={f.required}
-                            onChange={(e) => update(i, { ...f, required: e.currentTarget.checked })}
-                            aria-label={`Wymagane: ${f.label}`}
-                          />
-                          <Group gap={0} wrap="nowrap">
-                            <ActionIcon variant="subtle" color="gray" disabled={i === 0} onClick={() => move(i, -1)} aria-label="W górę">
-                              <IconArrowUp size={14} />
-                            </ActionIcon>
-                            <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              disabled={i === fields.length - 1}
-                              onClick={() => move(i, 1)}
-                              aria-label="W dół"
-                            >
-                              <IconArrowDown size={14} />
-                            </ActionIcon>
-                          </Group>
-                        </Group>
-                      </Group>
-                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" verticalSpacing="xs">
-                        <TextInput
-                          size="xs"
-                          label="Etykieta w formularzu"
-                          value={f.label}
-                          onChange={(e) => update(i, { ...f, label: e.currentTarget.value })}
-                        />
-                        <Select
-                          size="xs"
-                          label="Typ"
-                          data={TYPES}
-                          allowDeselect={false}
-                          value={f.type}
-                          onChange={(v) =>
-                            v && update(i, { ...f, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })
-                          }
-                        />
-                        {f.type === "text" && (
-                          <Select
-                            size="xs"
-                            label="Format"
-                            aria-label={`Format: ${f.label}`}
-                            placeholder="bez formatu"
-                            clearable
-                            data={[
-                              ...(fieldFormats.data ?? []).map((p) => ({ value: p.value, label: p.label })),
-                              { value: "custom", label: "Własna maska…" },
-                            ]}
-                            value={f.format ?? null}
-                            onChange={(v) => update(i, { ...f, format: v, pattern: v === "custom" ? f.pattern ?? "" : null })}
-                          />
-                        )}
-                        {f.type === "text" && f.format === "custom" && (
-                          <TextInput
-                            size="xs"
-                            label="Maska"
-                            aria-label={`Maska: ${f.label}`}
-                            placeholder="np. 99-999"
-                            description="9 = cyfra, A = litera, * = dowolny znak"
-                            value={f.pattern ?? ""}
-                            onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}
-                            styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
-                          />
-                        )}
-                      </SimpleGrid>
-                      {f.type === "select" && <OptionsEditor field={f} onChange={(nf) => update(i, nf)} />}
-                    </Paper>
-                  ))}
-                </Stack>
+                <FieldsEditor fields={fields} onChange={setFields} />
               )}
             </Card>
 

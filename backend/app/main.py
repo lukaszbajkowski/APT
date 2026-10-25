@@ -14,6 +14,7 @@ from app.routers import (
     quality,
     reports,
     retention,
+    trainings,
     users,
 )
 
@@ -37,6 +38,7 @@ app.include_router(dashboard.router)
 app.include_router(retention.router)
 app.include_router(reports.router)
 app.include_router(quality.router)
+app.include_router(trainings.router)
 
 
 @app.get("/api/health", tags=["system"])

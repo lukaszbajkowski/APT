@@ -140,6 +140,51 @@ def quality_reminders() -> int:
     return 0
 
 
+def training_reminders() -> int:
+    """Przypomnienia o szkoleniach wygasających w ciągu 30 dni: admin, HR, kierownicy (swój zakres)."""
+    from sqlalchemy import select
+
+    from app import mailer, notify
+    from app.models import Role, User
+    from app.routers.trainings import expiring
+
+    if not mailer.enabled():
+        print("E-maile wyłączone – pomijam przypomnienia o szkoleniach.")
+        return 0
+    sent = 0
+    with SessionLocal() as db:
+        users = db.scalars(
+            select(User)
+            .where(User.role.in_([Role.admin, Role.hr, Role.manager]), User.is_active)
+            .order_by(User.username)
+        ).unique()
+        for u in users:
+            if not u.email:
+                print(f"- {u.username}: pominięty (brak adresu e-mail)")
+                continue
+            rows = expiring(db, u)
+            if not rows:
+                print(f"- {u.username}: nic nie wygasa – nie wysyłam")
+                continue
+            items = [
+                f"{r.last_name} {r.first_name} – {r.name or r.type_name}: "
+                + ("wygasło " if r.status == "expired" else "ważne do ")
+                + r.valid_until.strftime("%d.%m.%Y")
+                for r in rows[:50]
+            ]
+            if len(rows) > 50:
+                items.append(f"… i {len(rows) - 50} więcej w aplikacji")
+            expired = sum(r.status == "expired" for r in rows)
+            try:
+                mailer.send_now(u.email, notify.trainings_email(u, items, expired))
+                sent += 1
+                print(f"- {u.username}: wysłano na {u.email} ({len(rows)} szkoleń)")
+            except Exception as e:  # noqa: BLE001
+                print(f"- {u.username}: błąd wysyłki do {u.email}: {e}", file=sys.stderr)
+    print(f"Przypomnienia o szkoleniach wysłane: {sent}.")
+    return 0
+
+
 def notify_daily() -> int:
     """Codzienne ostrzeżenia dla administratorów (wywoływane przez deploy/backup.sh)."""
     from datetime import UTC, datetime, timedelta
@@ -170,6 +215,7 @@ def notify_daily() -> int:
         admins = notify.admins_with_email(db)
     if datetime.now(ZoneInfo("Europe/Warsaw")).weekday() == 0:
         quality_reminders()
+        training_reminders()
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
@@ -196,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--to", required=True)
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
+    sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
 
@@ -209,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
         return notify_daily()
     if args.command == "notify-quality":
         return quality_reminders()
+    if args.command == "notify-trainings":
+        return training_reminders()
     if args.command == "generate-key":
         from app.crypto import generate_key
 

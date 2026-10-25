@@ -454,6 +454,7 @@ def _create_document(
     t: DocumentTemplate,
     raw_values: dict[str, Any],
     pesel_input: str | None = None,
+    training: Any = None,
 ) -> _Generated:
     """Wypełnia szablon dla jednej osoby, zapisuje pliki i wpis w historii (bez commita)."""
     masked = user.role == Role.manager and t.sensitive
@@ -464,7 +465,7 @@ def _create_document(
 
     uses_pesel = "pesel" in t.variables
     pesel = crypto.decrypt(e.pesel_enc) if (uses_pesel and e.pesel_enc and not masked) else None
-    builtin = templating.builtin_values(e, pesel)
+    builtin = templating.builtin_values(e, pesel, training=training)
     if masked:
         builtin |= {k: "" for k in templating.SENSITIVE}
     context = {v: "" for v in t.variables} | builtin | values
@@ -503,6 +504,7 @@ def _create_document(
             "version": t.version,
             "contains_pesel": bool(pesel),
             "masked": masked,
+            **({"training_id": training.id} if training is not None else {}),
         },
     )
     return _Generated(doc, docx, pdf, pdf_error, masked)

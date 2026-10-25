@@ -365,3 +365,50 @@ class PasswordToken(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(lazy="joined")
+
+
+class TrainingType(TimestampMixin, Base):
+    """Rodzaj szkolenia / uprawnienia (słownik). Własne pola jak w szablonach dokumentów."""
+
+    __tablename__ = "training_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    # "general" – zwykłe szkolenie/uprawnienie, "position" – szkolenie stanowiskowe (daty, opiekun, standard)
+    kind: Mapped[str] = mapped_column(String(10), default="general", nullable=False)
+    # domyślny okres ważności w miesiącach (podpowiada „ważne do”); None = bezterminowe / wpisywane ręcznie
+    validity_months: Mapped[int | None] = mapped_column(Integer)
+    fields: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    template_id: Mapped[int | None] = mapped_column(ForeignKey("templates.id", ondelete="SET NULL"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class Training(TimestampMixin, Base):
+    """Szkolenie / uprawnienie pracownika. Skan zaświadczenia: trainings/<employee_id>/<id>.<ext>."""
+
+    __tablename__ = "trainings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    type_id: Mapped[int] = mapped_column(ForeignKey("training_types.id"), index=True, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(200))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id", ondelete="SET NULL"))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    exam_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    completed_on: Mapped[date | None] = mapped_column(Date)
+    valid_until: Mapped[date | None] = mapped_column(Date, index=True)
+    mentor_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id", ondelete="SET NULL"))
+    standard_days: Mapped[int | None] = mapped_column(Integer)
+    values: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    scan_file: Mapped[str | None] = mapped_column(String(200))
+    scan_name: Mapped[str | None] = mapped_column(String(255))
+    scan_type: Mapped[str | None] = mapped_column(String(50))
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+
+    type: Mapped[TrainingType] = relationship(lazy="joined")
+    department: Mapped[Department | None] = relationship(lazy="joined")
+    mentor: Mapped[Employee | None] = relationship(foreign_keys=[mentor_id], lazy="joined")

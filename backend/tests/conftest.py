@@ -29,6 +29,19 @@ BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PASSWORD = "Bezpieczne-Haslo-123"
 
 
+def _load_training_seed() -> list:
+    import importlib.util
+
+    path = os.path.join(BACKEND_DIR, "alembic", "versions", "0011_szkolenia.py")
+    spec = importlib.util.spec_from_file_location("m0011", path)
+    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod.SEED
+
+
+_TRAINING_SEED = _load_training_seed()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _migrate() -> None:
     cfg = Config(os.path.join(BACKEND_DIR, "alembic.ini"))
@@ -45,9 +58,15 @@ def _clean_db() -> Iterator[None]:
             text(
                 "TRUNCATE audit_log, password_tokens, user_sessions, user_scopes, users, documents, "
                 "templates, photos, "
-                "employees, positions, agencies, departments RESTART IDENTITY CASCADE"
+                "employees, positions, agencies, departments, trainings, training_types "
+                "RESTART IDENTITY CASCADE"
             )
         )
+        for name, kind, months in _TRAINING_SEED:
+            conn.execute(
+                text("INSERT INTO training_types (name, kind, validity_months) VALUES (:n, :k, :m)"),
+                {"n": name, "k": kind, "m": months},
+            )
         conn.execute(text("DELETE FROM countries WHERE name LIKE 'Test%'"))
         conn.execute(text("UPDATE countries SET is_active = true"))
 

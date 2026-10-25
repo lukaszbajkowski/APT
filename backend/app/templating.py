@@ -41,16 +41,52 @@ BUILTINS: dict[str, str] = {
     "stanowisko": "Stanowisko",
     "data_zatrudnienia": "Data zatrudnienia",
     "data_dzisiaj": "Dzisiejsza data",
+    # wypełniane tylko przy dokumencie generowanym ze szkolenia (inaczej puste)
+    "szkolenie_rodzaj": "Szkolenie: rodzaj",
+    "szkolenie_nazwa": "Szkolenie: nazwa",
+    "szkolenie_wydzial": "Szkolenie: wydział",
+    "szkolenie_data_rozpoczecia": "Szkolenie: data rozpoczęcia",
+    "szkolenie_data_egzaminu": "Szkolenie: data egzaminu",
+    "szkolenie_data_zakonczenia": "Szkolenie: data zakończenia",
+    "szkolenie_data_ukonczenia": "Szkolenie: data ukończenia",
+    "szkolenie_wazne_do": "Szkolenie: ważne do",
+    "szkolenie_opiekun": "Szkolenie: opiekun (imię i nazwisko)",
+    "szkolenie_czas_dni": "Szkolenie: czas nauki wg standardu (dni)",
+    "szkolenie_uwagi": "Szkolenie: uwagi",
 }
 # Zmienne z danymi wrażliwymi – szablonów z nimi nie może używać Kierownik.
 SENSITIVE = {"pesel", "data_urodzenia"}
 
 
-def builtin_values(e: Any, pesel: str | None, today: date | None = None) -> dict[str, str]:
-    today = today or date.today()
+def _d(v: date | None) -> str:
+    return v.strftime("%d.%m.%Y") if v else ""
 
-    def d(v: date | None) -> str:
-        return v.strftime("%d.%m.%Y") if v else ""
+
+def training_values(tr: Any | None) -> dict[str, str]:
+    """Zmienne szkolenie_* (puste, gdy dokument nie jest generowany ze szkolenia)."""
+    if tr is None:
+        return {k: "" for k in BUILTINS if k.startswith("szkolenie_")}
+    m = tr.mentor
+    return {
+        "szkolenie_rodzaj": tr.type.name,
+        "szkolenie_nazwa": tr.name or tr.type.name,
+        "szkolenie_wydzial": tr.department.name if tr.department else "",
+        "szkolenie_data_rozpoczecia": _d(tr.start_date),
+        "szkolenie_data_egzaminu": _d(tr.exam_date),
+        "szkolenie_data_zakonczenia": _d(tr.end_date),
+        "szkolenie_data_ukonczenia": _d(tr.completed_on),
+        "szkolenie_wazne_do": _d(tr.valid_until),
+        "szkolenie_opiekun": f"{m.first_name} {m.last_name}" if m else "",
+        "szkolenie_czas_dni": str(tr.standard_days) if tr.standard_days is not None else "",
+        "szkolenie_uwagi": tr.notes or "",
+    }
+
+
+def builtin_values(
+    e: Any, pesel: str | None, today: date | None = None, training: Any = None
+) -> dict[str, str]:
+    today = today or date.today()
+    d = _d
 
     sex = e.sex.value if e.sex else None
     return {
@@ -69,7 +105,7 @@ def builtin_values(e: Any, pesel: str | None, today: date | None = None) -> dict
         "stanowisko": e.position.name if e.position else "",
         "data_zatrudnienia": d(e.hire_date),
         "data_dzisiaj": d(today),
-    }
+    } | training_values(training)
 
 
 # ---------- definicje pól formularza ----------

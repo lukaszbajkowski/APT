@@ -29,3 +29,6 @@ backups/
 .DS_Store
 Thumbs.db
 *.egg-info/
+.offsite.env
+.offsite.env.new
+.offsite.key

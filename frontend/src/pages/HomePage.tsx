@@ -4,7 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
+  IconAlertTriangle,
   IconCamera,
+  IconCircleCheck,
   IconClockShield,
   IconFileSpreadsheet,
   IconId,
@@ -15,7 +17,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
-import { api, errorText, formatDate, type Dashboard } from "../api";
+import { api, errorText, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 
@@ -61,6 +63,66 @@ function Stat({
     <UnstyledButton component={Link} to={to} aria-label={label} style={{ display: "block" }}>
       {body}
     </UnstyledButton>
+  );
+}
+
+const STALE_HOURS = 36;
+
+function backupProblems(b: BackupStatus | null): string[] {
+  if (!b?.local) return ["Brak informacji o kopiach zapasowych – kopia jeszcze się nie wykonała albo nie działa."];
+  const problems: string[] = [];
+  const ageH = (Date.now() - new Date(b.local.at).getTime()) / 36e5;
+  if (!b.local.ok) problems.push(`Ostatnia kopia nie powiodła się: ${b.local.info}`);
+  else if (ageH > STALE_HOURS) problems.push(`Ostatnia kopia jest z ${formatDateTime(b.local.at)} – sprawdź serwer.`);
+  if (b.offsite && !b.offsite.ok) problems.push(`Wysyłka kopii poza serwer nie powiodła się: ${b.offsite.info}`);
+  return problems;
+}
+
+function BackupCard({ status }: { status: BackupStatus | null }) {
+  const problems = backupProblems(status);
+  return (
+    <Card withBorder padding="lg">
+      <Group justify="space-between" mb="xs">
+        <Title order={4}>Kopie zapasowe</Title>
+        <ThemeIcon variant="light" color={problems.length ? "orange" : "green"} size="md">
+          {problems.length ? <IconAlertTriangle size={16} /> : <IconCircleCheck size={16} />}
+        </ThemeIcon>
+      </Group>
+      <Stack gap={4}>
+        <Text size="sm">
+          Na serwerze: <b>{status?.local ? formatDateTime(status.local.at) : "—"}</b>
+          {status?.local && !status.local.ok && (
+            <Text span c="red" size="sm">
+              {" "}
+              (błąd)
+            </Text>
+          )}
+        </Text>
+        <Text size="sm">
+          Poza serwerem:{" "}
+          {status?.offsite ? (
+            <>
+              <b>{formatDateTime(status.offsite.at)}</b>
+              {!status.offsite.ok && (
+                <Text span c="red" size="sm">
+                  {" "}
+                  (błąd)
+                </Text>
+              )}
+            </>
+          ) : (
+            <Text span c="orange" size="sm">
+              nie skonfigurowano
+            </Text>
+          )}
+        </Text>
+        {problems.map((p) => (
+          <Text key={p} size="xs" c="orange">
+            {p}
+          </Text>
+        ))}
+      </Stack>
+    </Card>
   );
 }
 
@@ -184,7 +246,8 @@ export function HomePage() {
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder padding="lg" h="100%">
+            <Stack h="100%">
+            <Card withBorder padding="lg" style={{ flex: 1 }}>
               <Title order={4} mb="sm">
                 Szybkie akcje
               </Title>
@@ -215,6 +278,8 @@ export function HomePage() {
                 )}
               </Stack>
             </Card>
+            {hasRole("admin") && <BackupCard status={data.data.backup} />}
+            </Stack>
             </Grid.Col>
           </Grid>
         </>

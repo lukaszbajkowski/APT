@@ -31,3 +31,35 @@ def test_dashboard_counts_respect_scope(client, make_user):
     assert (d["active"], d["terminated"]) == (1, 0)
     assert d["without_pesel"] is None
     assert [e["last_name"] for e in d["recent"]] == ["B"]
+
+
+def test_backup_status_for_admin(client, make_user):
+    import json
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    make_user("admin", Role.admin)
+    login(client, "admin")
+    path = Path(get_settings().data_dir) / "backup-status.json"
+    path.unlink(missing_ok=True)
+    assert client.get("/api/dashboard").json()["backup"] is None
+    path.write_text(
+        json.dumps(
+            {
+                "local": {"at": "2026-10-25T02:30:05+01:00", "ok": True, "info": "2026-10-25_0230, 12M"},
+                "offsite": {"at": "2026-10-25T02:30:09+01:00", "ok": False, "info": "Access denied"},
+            }
+        )
+    )
+    b = client.get("/api/dashboard").json()["backup"]
+    assert b["local"]["ok"] is True and b["offsite"]["ok"] is False
+    local = {"at": "2026-10-25T02:30:05+01:00", "ok": True, "info": "x"}
+    path.write_text(json.dumps({"local": local, "offsite": None}))
+    assert client.get("/api/dashboard").json()["backup"]["offsite"] is None
+    path.unlink()
+
+    make_user("kadry", Role.hr)
+    other = TestClient(app)
+    login(other, "kadry")
+    assert other.get("/api/dashboard").json()["backup"] is None

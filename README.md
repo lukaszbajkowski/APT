@@ -191,11 +191,26 @@ Na końcu wypisuje **klucz `APT_DATA_KEY` – zapisz go w menedżerze haseł**.
 | logi | `cd /opt/apt && docker compose logs -f api` |
 
 Kopie: codziennie o 2:30 do `/var/backups/apt`, przechowywane 14 dni (baza `baza.dump` + pliki
-`pliki.tar.gz`). Trzymaj też kopię poza serwerem, np. na swoim komputerze:
+`pliki.tar.gz`). Wynik ostatniej kopii (także błędy) Administrator widzi na stronie startowej.
+
+### Kopie poza serwerem (FTP / SFTP, np. hosting home.pl)
 
 ```bash
-rsync -a root@ADRES_SERWERA:/var/backups/apt/ ~/APT-kopie/
+/opt/apt/deploy/offsite-setup.sh
 ```
+
+Pyta o serwer, użytkownika, hasło i katalog, sprawdza połączenie i wysyła pierwszą kopię. Od tej pory
+codzienna kopia jest dodatkowo **szyfrowana (GPG, AES-256) i wysyłana**; na serwerze zdalnym zostaje
+30 ostatnich dni. FTP działa tylko z szyfrowaniem TLS (FTPS). Na końcu skrypt wypisuje **hasło
+szyfrowania kopii – zapisz je w menedżerze haseł** (bez niego kopii zdalnych nie da się odczytać).
+
+| Co | Polecenie |
+|---|---|
+| lista kopii zdalnych | `/opt/apt/deploy/offsite.sh list` |
+| pobranie i odszyfrowanie | `/opt/apt/deploy/offsite.sh fetch apt-RRRR-MM-DD_GGMM.tar.gpg` |
+| test połączenia | `/opt/apt/deploy/offsite.sh test` |
+
+Ręcznie na swój komputer (opcjonalnie): `rsync -a root@ADRES_SERWERA:/var/backups/apt/ ~/APT-kopie/`.
 
 ## Praca nad kodem (bez Dockera dla API)
 

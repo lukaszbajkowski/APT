@@ -154,6 +154,18 @@ export interface Dashboard {
   cards_printed_30_days: number;
   recent: Employee[];
   retention_due: number | null;
+  backup: BackupStatus | null;
+}
+
+export interface BackupRun {
+  at: string;
+  ok: boolean;
+  info: string;
+}
+
+export interface BackupStatus {
+  local: BackupRun | null;
+  offsite: BackupRun | null;
 }
 
 export interface RetentionItem {

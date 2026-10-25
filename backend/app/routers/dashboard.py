@@ -1,17 +1,39 @@
 """Strona startowa: liczniki i ostatnio dodani – w zakresie widoczności użytkownika."""
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from app.config import get_settings
 from app.deps import Auth, DbSession
 from app.models import AuditLog, Employee, EmployeeStatus, Photo, Role
 from app.routers.employees import EmployeeOut, apply_scope, full_access, to_out
 from app.routers.retention import count_due
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+class BackupRun(BaseModel):
+    at: datetime
+    ok: bool
+    info: str = ""
+
+
+class BackupStatus(BaseModel):
+    local: BackupRun | None = None
+    offsite: BackupRun | None = None
+
+
+def read_backup_status() -> BackupStatus | None:
+    """Wynik ostatniej kopii zapisany przez deploy/backup.sh (brak pliku = kopie nie działały)."""
+    path = Path(get_settings().data_dir) / "backup-status.json"
+    try:
+        return BackupStatus.model_validate_json(path.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 class DashboardOut(BaseModel):
@@ -22,6 +44,7 @@ class DashboardOut(BaseModel):
     without_pesel: int | None  # tylko dla Administratora i Kadr
     cards_printed_30_days: int
     retention_due: int | None = None  # tylko dla Administratora
+    backup: BackupStatus | None = None  # tylko dla Administratora
     recent: list[EmployeeOut]
 
 
@@ -59,4 +82,5 @@ def dashboard(ctx: Auth, db: DbSession) -> DashboardOut:
         cards_printed_30_days=cards,
         recent=[to_out(e, user) for e in recent],
         retention_due=count_due(db) if user.role == Role.admin else None,
+        backup=read_backup_status() if user.role == Role.admin else None,
     )

@@ -22,6 +22,7 @@ import { AuditPage } from "./pages/AuditPage";
 import { RetentionPage } from "./pages/RetentionPage";
 import { ScannerPage } from "./pages/ScannerPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { QualityPage } from "./pages/QualityPage";
 
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { me, loading } = useAuth();
@@ -148,6 +149,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin"]}>
               <UsersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="braki"
+          element={
+            <RequireAuth roles={["admin", "hr", "manager"]}>
+              <QualityPage />
             </RequireAuth>
           }
         />

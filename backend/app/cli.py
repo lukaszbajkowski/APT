@@ -103,9 +103,42 @@ def send_test_mail(to: str) -> int:
     return 0
 
 
+def quality_reminders() -> int:
+    """Przypomnienia o brakach w danych: HR (wszyscy pracownicy) i kierownicy (swój zakres)."""
+    from sqlalchemy import select
+
+    from app import mailer, notify
+    from app.models import Role, User
+    from app.routers.quality import summary
+
+    if not mailer.enabled():
+        print("E-maile wyłączone – pomijam przypomnienia o brakach.")
+        return 0
+    sent = 0
+    with SessionLocal() as db:
+        users = db.scalars(
+            select(User).where(
+                User.role.in_([Role.hr, Role.manager]), User.is_active, User.email.is_not(None)
+            )
+        ).unique()
+        for u in users:
+            s = summary(db, u)
+            if not s.rows:
+                continue
+            msg = notify.quality_email(u, [(c.label, c.count) for c in s.checks], len(s.rows))
+            try:
+                mailer.send_now(u.email, msg)
+                sent += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"Błąd wysyłki do {u.email}: {e}", file=sys.stderr)
+    print(f"Przypomnienia o brakach wysłane: {sent}.")
+    return 0
+
+
 def notify_daily() -> int:
     """Codzienne ostrzeżenia dla administratorów (wywoływane przez deploy/backup.sh)."""
     from datetime import UTC, datetime, timedelta
+    from zoneinfo import ZoneInfo
 
     from app import mailer, notify
     from app.routers.dashboard import read_backup_status
@@ -130,6 +163,8 @@ def notify_daily() -> int:
                 f"Dane {due} os. mają za sobą okres przechowywania – usuń je w zakładce Retencja danych."
             )
         admins = notify.admins_with_email(db)
+    if datetime.now(ZoneInfo("Europe/Warsaw")).weekday() == 0:
+        quality_reminders()
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
@@ -155,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("send-test-mail", help="Wyślij e-mail testowy")
     p.add_argument("--to", required=True)
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
+    sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
 
@@ -166,6 +202,8 @@ def main(argv: list[str] | None = None) -> int:
         return send_test_mail(args.to)
     if args.command == "notify-daily":
         return notify_daily()
+    if args.command == "notify-quality":
+        return quality_reminders()
     if args.command == "generate-key":
         from app.crypto import generate_key
 

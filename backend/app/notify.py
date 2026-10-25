@@ -97,6 +97,22 @@ def admin_alert_email(problems: list[str]) -> Email:
     )
 
 
+def quality_email(user: User, counts: list[tuple[str, int]], people: int) -> Email:
+    return Email(
+        subject=f"Identyfikacja APT – braki w danych ({people} os.)",
+        title="Braki w danych pracowników",
+        preheader=f"{people} aktywnych pracowników ma niekompletne dane.",
+        paragraphs=[
+            f"Dzień dobry {user.full_name},",
+            f"w Twoim zakresie {people} aktywnych pracowników ma niekompletne dane w kartotece:",
+        ],
+        items=[f"{label}: {n}" for label, n in counts if n],
+        button=("Zobacz braki", mailer.link("/braki")),
+        tone="warning",
+        footer_note="Przypomnienie wysyłane w poniedziałki, gdy w danych są braki.",
+    )
+
+
 def test_email() -> Email:
     return Email(
         subject="Test – Identyfikacja pracowników APT",

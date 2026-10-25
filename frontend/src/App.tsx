@@ -19,6 +19,7 @@ import { TemplateEditPage } from "./pages/TemplateEditPage";
 import { UsersPage } from "./pages/UsersPage";
 import { AuditPage } from "./pages/AuditPage";
 import { RetentionPage } from "./pages/RetentionPage";
+import { ScannerPage } from "./pages/ScannerPage";
 
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { me, loading } = useAuth();
@@ -80,6 +81,7 @@ export function App() {
           }
         />
         <Route path="pracownicy/:id" element={<EmployeeProfilePage />} />
+        <Route path="skaner" element={<ScannerPage />} />
         <Route
           path="pracownicy/:id/edycja"
           element={

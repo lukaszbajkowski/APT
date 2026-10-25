@@ -357,3 +357,26 @@ def test_ids_endpoint_respects_filters_and_scope(hr, make_user, dicts):
     m = TestClient(app)
     login(m, "kierownik")
     assert m.get("/api/employees/ids").json() == [a["id"]]
+
+
+def test_lookup_by_card_number(hr, client, make_user):
+    from app.models import AuditLog, UserScope
+
+    e = hr.post("/api/employees", json={"first_name": "Jan", "last_name": "Skan"}).json()
+    r = hr.get(f"/api/employees/by-number/{e['number_display']}")
+    assert r.status_code == 200 and r.json()["id"] == e["id"]
+    assert hr.get(f"/api/employees/by-number/{e['number']}").json()["id"] == e["id"]
+    assert hr.get("/api/employees/by-number/999999").status_code == 404
+    assert hr.get("/api/employees/by-number/abc").status_code == 400
+    with SessionLocal() as db:
+        assert db.scalar(select(AuditLog).where(AuditLog.action == "card_scanned")) is not None
+    # kierownik bez dostępu do tego pracownika
+    mgr = make_user("kier", Role.manager)
+    with SessionLocal() as db:
+        db.add(Agency(name="Inna"))
+        db.flush()
+        db.add(UserScope(user_id=mgr.id, agency_id=1))
+        db.commit()
+    other = TestClient(client.app)
+    login(other, "kier")
+    assert other.get(f"/api/employees/by-number/{e['number_display']}").status_code == 404

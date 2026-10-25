@@ -113,6 +113,9 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
   archiwum – ostatnio dodani i szybkie akcje. Kierownik widzi tylko swoje APT / wydziały.
 - Motyw jasny, ciemny lub systemowy (menu konta); wybór zapamiętuje przeglądarka.
 - Import z arkusza: Pracownicy → Dodaj pracownika → Importuj z arkusza.
+- Skaner kart (menu „Skaner kart”): aparat telefonu odczytuje kod QR z karty i pokazuje zdjęcie, dane
+  i status (aktywny / archiwum). Działa też wpisanie numeru ręcznie. Kierownik znajdzie tylko swoich
+  pracowników; każde skanowanie trafia do dziennika zdarzeń.
 - Użytkownicy: osobne zakładki dla aktywnych i wyłączonych kont.
 
 ## Role

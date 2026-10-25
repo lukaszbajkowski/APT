@@ -12,6 +12,7 @@ import {
   IconId,
   IconIdBadge2,
   IconPrinter,
+  IconScan,
   IconSearch,
   IconUserPlus,
   IconUsers,
@@ -254,6 +255,9 @@ export function HomePage() {
               <Stack gap="xs">
                 <Button component={Link} to="/pracownicy" variant="light" justify="flex-start" leftSection={<IconSearch size={16} />}>
                   Szukaj pracownika
+                </Button>
+                <Button component={Link} to="/skaner" variant="light" justify="flex-start" leftSection={<IconScan size={16} />}>
+                  Skanuj kartę
                 </Button>
                 {staff && (
                   <>

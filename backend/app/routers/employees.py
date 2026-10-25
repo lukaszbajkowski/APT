@@ -519,6 +519,31 @@ def check_pesel(body: PeselCheckIn, ctx: StaffAuth, db: DbSession, exclude_id: i
 # ---------- jeden pracownik ----------
 
 
+@router.get("/by-number/{code}", response_model=EmployeeOut)
+def get_by_card(code: str, ctx: Auth, request: Request, db: DbSession) -> EmployeeOut:
+    """Wyszukanie po numerze ewidencyjnym z karty (kod QR lub wpisany ręcznie)."""
+    digits = "".join(ch for ch in code if ch.isdigit())
+    if not digits or len(digits) > 9:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="To nie jest numer z karty pracownika.")
+    e = db.scalar(apply_scope(select(Employee).where(Employee.number == int(digits)), ctx.user))
+    if e is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f"Nie znaleziono pracownika o numerze {digits.zfill(6)} (albo nie masz do niego dostępu).",
+        )
+    audit(
+        db,
+        request,
+        "card_scanned",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"number": format_number(e.number)},
+    )
+    db.commit()
+    return to_out(e, ctx.user)
+
+
 @router.get("/{employee_id}", response_model=EmployeeOut)
 def get_employee(employee_id: int, ctx: Auth, db: DbSession) -> EmployeeOut:
     return to_out(get_visible(db, ctx.user, employee_id), ctx.user)

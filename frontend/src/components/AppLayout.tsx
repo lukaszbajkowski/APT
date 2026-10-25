@@ -20,6 +20,7 @@ import {
   IconDeviceDesktop,
   IconHome,
   IconMoon,
+  IconScan,
   IconShieldLock,
   IconSun,
   IconFileText,
@@ -44,6 +45,7 @@ export function AppLayout() {
   const items = [
     { to: "/", label: "Start", icon: IconHome, show: true },
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: true },
+    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: true },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },

@@ -363,6 +363,7 @@ export const ACTION_LABELS: Record<string, string> = {
   import_completed: "Import z pliku",
   cards_printed: "Druk kart",
   card_printed: "Druk karty",
+  card_scanned: "Skanowanie karty",
   template_created: "Dodanie szablonu",
   template_updated: "Zmiana szablonu",
   template_file_replaced: "Nowa wersja pliku szablonu",

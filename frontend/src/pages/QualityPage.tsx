@@ -49,7 +49,7 @@ export function QualityPage() {
         <Title order={2}>Braki w danych</Title>
         <Text c="dimmed" size="sm">
           Aktywni pracownicy z niekompletną kartoteką ({data.rows.length} z {data.active_total}). Przypomnienie e-mail
-          wychodzi w poniedziałki do HR i kierowników.
+          wychodzi w poniedziałki do administratorów, HR i kierowników.
         </Text>
       </div>
 

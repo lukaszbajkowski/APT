@@ -104,7 +104,7 @@ def send_test_mail(to: str) -> int:
 
 
 def quality_reminders() -> int:
-    """Przypomnienia o brakach w danych: HR (wszyscy pracownicy) i kierownicy (swój zakres)."""
+    """Przypomnienia o brakach w danych: admin i HR (wszyscy pracownicy), kierownicy (swój zakres)."""
     from sqlalchemy import select
 
     from app import mailer, notify
@@ -117,20 +117,25 @@ def quality_reminders() -> int:
     sent = 0
     with SessionLocal() as db:
         users = db.scalars(
-            select(User).where(
-                User.role.in_([Role.hr, Role.manager]), User.is_active, User.email.is_not(None)
-            )
+            select(User)
+            .where(User.role.in_([Role.admin, Role.hr, Role.manager]), User.is_active)
+            .order_by(User.username)
         ).unique()
         for u in users:
+            if not u.email:
+                print(f"- {u.username}: pominięty (brak adresu e-mail)")
+                continue
             s = summary(db, u)
             if not s.rows:
+                print(f"- {u.username}: brak braków w zakresie – nie wysyłam")
                 continue
             msg = notify.quality_email(u, [(c.label, c.count) for c in s.checks], len(s.rows))
             try:
                 mailer.send_now(u.email, msg)
                 sent += 1
+                print(f"- {u.username}: wysłano na {u.email} ({len(s.rows)} os.)")
             except Exception as e:  # noqa: BLE001
-                print(f"Błąd wysyłki do {u.email}: {e}", file=sys.stderr)
+                print(f"- {u.username}: błąd wysyłki do {u.email}: {e}", file=sys.stderr)
     print(f"Przypomnienia o brakach wysłane: {sent}.")
     return 0
 

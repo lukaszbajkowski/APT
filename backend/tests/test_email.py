@@ -144,8 +144,18 @@ def test_notify_daily(make_user, _mail, monkeypatch):
     make_user("admin", Role.admin)
     _set_email("admin", "admin@firma.pl")
     sent = []
-    monkeypatch.setattr(mailer, "send_now", lambda to, subj, text: sent.append((to, text)))
+    monkeypatch.setattr(mailer, "send_now", lambda to, mail: sent.append((to, mail.text())))
     assert cli.main(["notify-daily"]) == 0
     assert sent and sent[0][0] == "admin@firma.pl" and "kopiach" in sent[0][1]
     with SessionLocal() as db:
         assert db.scalar(select(AuditLog.id)) is None or True
+
+
+def test_html_templates_escape_and_brand():
+    from app import notify
+
+    u = User(username="ola", full_name="Ola <script>", role=Role.manager, email="o@x.pl")
+    html = notify.invite_email(u, "tok").html()
+    assert "<script>" not in html and "Ola &lt;script&gt;" in html
+    assert "#1f3a73" in html and "/ustaw-haslo?token=tok" in html
+    assert "Kierownik" in notify.invite_email(u, "tok").text()

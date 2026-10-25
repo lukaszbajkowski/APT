@@ -89,15 +89,13 @@ def reset_mfa(username: str) -> int:
 
 
 def send_test_mail(to: str) -> int:
-    from app import mailer
+    from app import mailer, notify
 
     if not mailer.enabled():
         print("Wysyłka wyłączona: ustaw APT_SMTP_HOST i APT_MAIL_FROM.", file=sys.stderr)
         return 1
     try:
-        mailer.send_now(
-            to, "Test – Identyfikacja pracowników APT", "To jest wiadomość testowa. E-maile działają."
-        )
+        mailer.send_now(to, notify.test_email())
     except Exception as e:  # noqa: BLE001
         print(f"Błąd wysyłki: {e}", file=sys.stderr)
         return 1
@@ -135,11 +133,11 @@ def notify_daily() -> int:
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
-    text = "Wymaga uwagi:\n\n" + "\n".join(f"• {p}" for p in problems) + f"\n\n{mailer.link('/')}"
+    alert = notify.admin_alert_email(problems)
     if mailer.enabled():
         for a in admins:
             try:
-                mailer.send_now(a.email, "Identyfikacja APT – wymaga uwagi", text)
+                mailer.send_now(a.email, alert)
             except Exception as e:  # noqa: BLE001
                 print(f"Błąd wysyłki do {a.email}: {e}", file=sys.stderr)
     print(f"Problemy: {len(problems)}, powiadomieni administratorzy: {len(admins)}.")

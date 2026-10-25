@@ -8,10 +8,9 @@ from email.message import EmailMessage
 from email.utils import formataddr, formatdate, make_msgid, parseaddr
 
 from app.config import get_settings
+from app.emails import Email
 
 log = logging.getLogger("apt.mail")
-
-FOOTER = "\n\n—\nIdentyfikacja pracowników APT\nWiadomość wysłana automatycznie, nie odpowiadaj na nią."
 
 
 def enabled() -> bool:
@@ -23,23 +22,24 @@ def link(path: str) -> str:
     return get_settings().public_url.rstrip("/") + path
 
 
-def _build(to: str, subject: str, text: str) -> EmailMessage:
+def _build(to: str, mail: Email) -> EmailMessage:
     s = get_settings()
     msg = EmailMessage()
     name, addr = parseaddr(s.mail_from)
     msg["From"] = formataddr((name or "Identyfikacja APT", addr))
     msg["To"] = to
-    msg["Subject"] = subject
+    msg["Subject"] = mail.subject
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain=addr.split("@")[-1] if "@" in addr else None)
-    msg.set_content(text + FOOTER)
+    msg.set_content(mail.text())
+    msg.add_alternative(mail.html(), subtype="html")
     return msg
 
 
-def send_now(to: str, subject: str, text: str) -> None:
+def send_now(to: str, mail: Email) -> None:
     """Wysyła od razu; wyjątki przekazuje dalej (do testów i polecenia CLI)."""
     s = get_settings()
-    msg = _build(to, subject, text)
+    msg = _build(to, mail)
     ctx = ssl.create_default_context()
     if s.smtp_security == "ssl":
         server: smtplib.SMTP = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, context=ctx, timeout=20)
@@ -57,22 +57,22 @@ def send_now(to: str, subject: str, text: str) -> None:
 outbox: list[tuple[str, str, str]] | None = None
 
 
-def send(to: str | None, subject: str, text: str) -> bool:
+def send(to: str | None, mail: Email) -> bool:
     """Wysyła w tle (nie blokuje odpowiedzi). False, gdy brak adresu lub wysyłka wyłączona."""
     if not to:
         return False
     if outbox is not None:
-        outbox.append((to, subject, text))
+        outbox.append((to, mail.subject, mail.text()))
         return True
     if not enabled():
-        log.info("E-mail wyłączony (brak APT_SMTP_HOST) – pomijam: %s", subject)
+        log.info("E-mail wyłączony (brak APT_SMTP_HOST) – pomijam: %s", mail.subject)
         return False
 
     def worker() -> None:
         try:
-            send_now(to, subject, text)
+            send_now(to, mail)
         except Exception:  # noqa: BLE001
-            log.exception("Nie udało się wysłać e-maila: %s", subject)
+            log.exception("Nie udało się wysłać e-maila: %s", mail.subject)
 
     threading.Thread(target=worker, daemon=True).start()
     return True

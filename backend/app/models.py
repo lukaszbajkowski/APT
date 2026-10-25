@@ -268,6 +268,9 @@ class Employee(TimestampMixin, Base):
         index=True,
     )
     notes: Mapped[str | None] = mapped_column(Text)
+    # Wstrzymanie usunięcia po okresie retencji (np. toczące się postępowanie)
+    retention_hold_until: Mapped[date | None] = mapped_column(Date)
+    retention_hold_reason: Mapped[str | None] = mapped_column(String(500))
 
     country: Mapped[Country | None] = relationship(lazy="joined")
     agency: Mapped[Agency | None] = relationship(lazy="joined")

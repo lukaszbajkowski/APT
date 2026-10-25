@@ -5,6 +5,7 @@ import { Alert, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Tex
 import {
   IconArchive,
   IconCamera,
+  IconClockShield,
   IconFileSpreadsheet,
   IconId,
   IconIdBadge2,
@@ -83,6 +84,19 @@ export function HomePage() {
 
       {data.data && (
         <>
+          {!!data.data.retention_due && (
+            <Alert color="orange" variant="light" icon={<IconClockShield size={18} />} title="Dane do usunięcia (RODO)">
+              <Group justify="space-between" gap="xs">
+                <Text size="sm">
+                  {data.data.retention_due} os. ma za sobą okres przechowywania danych. Przejrzyj i usuń je trwale.
+                </Text>
+                <Button component={Link} to="/retencja" size="xs" variant="light" color="orange">
+                  Przejdź do retencji
+                </Button>
+              </Group>
+            </Alert>
+          )}
+
           <SimpleGrid cols={{ base: 2, md: 3, lg: staff ? 6 : 5 }}>
             <Stat label="Aktywni" value={data.data.active} icon={<IconUsers size={20} />} color="navy" to="/pracownicy" />
             <Stat

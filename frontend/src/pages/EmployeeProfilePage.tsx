@@ -18,6 +18,7 @@ import {
   TextInput,
   Timeline,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -227,6 +228,19 @@ export function EmployeeProfilePage() {
                   ) : (
                     <Badge color="gray">archiwum od {formatDate(e.termination_date)}</Badge>
                   )}
+                  {e.retention_until && (
+                    <Tooltip
+                      label={
+                        e.retention_hold_until
+                          ? "Usunięcie wstrzymane przez administratora"
+                          : "Po tej dacie administrator usunie dane trwale (okres przechowywania)"
+                      }
+                    >
+                      <Badge color={e.retention_hold_until ? "orange" : "gray"} variant="outline">
+                        przechowywane do {formatDate(e.retention_until)}
+                      </Badge>
+                    </Tooltip>
+                  )}
                 </Group>
               </div>
               <Group gap="xs">
@@ -328,6 +342,7 @@ export function EmployeeProfilePage() {
         <Stack>
           <Text size="sm">
             Pracownik zniknie z listy aktywnych. Dane zostaną zachowane w archiwum i będzie można je przywrócić.
+            Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
           </Text>
           <TextInput
             label="Data zwolnienia"

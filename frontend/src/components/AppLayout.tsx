@@ -26,6 +26,7 @@ import {
   IconId,
   IconKey,
   IconListDetails,
+  IconClockShield,
   IconLogout,
   IconUsers,
 } from "@tabler/icons-react";
@@ -46,6 +47,7 @@ export function AppLayout() {
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
+    { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin") },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin") },
   ];
 

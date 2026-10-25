@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from app.deps import Auth, DbSession
 from app.models import AuditLog, Employee, EmployeeStatus, Photo, Role
 from app.routers.employees import EmployeeOut, apply_scope, full_access, to_out
+from app.routers.retention import count_due
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -20,6 +21,7 @@ class DashboardOut(BaseModel):
     without_photo: int
     without_pesel: int | None  # tylko dla Administratora i Kadr
     cards_printed_30_days: int
+    retention_due: int | None = None  # tylko dla Administratora
     recent: list[EmployeeOut]
 
 
@@ -56,4 +58,5 @@ def dashboard(ctx: Auth, db: DbSession) -> DashboardOut:
         without_pesel=count(active, Employee.pesel_hash.is_(None)) if full_access(user) else None,
         cards_printed_30_days=cards,
         recent=[to_out(e, user) for e in recent],
+        retention_due=count_due(db) if user.role == Role.admin else None,
     )

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Wyłączać tylko w testach / lokalnie.
     mfa_enforce: bool = True
 
+    # Retencja: dane zwolnionego pracownika przechowujemy tyle lat, licząc od końca roku
+    # kalendarzowego, w którym nastąpiło zwolnienie. Potem administrator usuwa je trwale.
+    retention_years: int = 10
+
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key
     data_key: str = ""

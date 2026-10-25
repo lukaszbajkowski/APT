@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import Select, String, and_, cast, false, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import crypto, photos
+from app import crypto, photos, retention
 from app.audit import audit
 from app.config import get_settings
 from app.deps import Auth, DbSession, StaffAuth
@@ -75,6 +75,8 @@ class EmployeeOut(BaseModel):
     has_photo: bool
     photo_version: str | None
     personal_data_visible: bool
+    retention_until: date | None = None
+    retention_hold_until: date | None = None
 
 
 def _clean_str(v: Any) -> Any:
@@ -207,6 +209,8 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
         has_photo=e.photo is not None,
         photo_version=str(e.photo.id) if e.photo else None,
         personal_data_visible=personal,
+        retention_until=retention.delete_after(e),
+        retention_hold_until=e.retention_hold_until if e.status == EmployeeStatus.terminated else None,
     )
 
 
@@ -613,6 +617,8 @@ def restore(employee_id: int, ctx: StaffAuth, request: Request, db: DbSession) -
     previous = e.termination_date
     e.status = EmployeeStatus.active
     e.termination_date = None
+    e.retention_hold_until = None
+    e.retention_hold_reason = None
     audit(
         db,
         request,

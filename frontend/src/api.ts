@@ -83,6 +83,8 @@ export interface Employee {
   has_photo: boolean;
   photo_version: string | null;
   personal_data_visible: boolean;
+  retention_until: string | null;
+  retention_hold_until: string | null;
 }
 
 export interface DuplicateRef {
@@ -151,6 +153,28 @@ export interface Dashboard {
   without_pesel: number | null;
   cards_printed_30_days: number;
   recent: Employee[];
+  retention_due: number | null;
+}
+
+export interface RetentionItem {
+  id: number;
+  number: string;
+  name: string;
+  agency: string | null;
+  termination_date: string | null;
+  retention_end: string | null;
+  delete_after: string | null;
+  hold_until: string | null;
+  hold_reason: string | null;
+}
+
+export interface RetentionOverview {
+  years: number;
+  today: string;
+  due: RetentionItem[];
+  upcoming: RetentionItem[];
+  held: RetentionItem[];
+  missing_date: RetentionItem[];
 }
 
 export const LANGUAGES: Record<string, string> = {
@@ -333,6 +357,10 @@ export const ACTION_LABELS: Record<string, string> = {
   document_generated: "Wygenerowanie dokumentu",
   document_downloaded: "Pobranie dokumentu",
   document_viewed: "Podgląd dokumentu",
+  employee_purged: "Trwałe usunięcie danych pracownika (retencja)",
+  retention_purge: "Usunięcie danych po okresie przechowywania",
+  retention_hold_set: "Wstrzymanie usunięcia danych",
+  retention_hold_cleared: "Zniesienie wstrzymania usunięcia",
   mfa_enabled: "Włączenie logowania dwuetapowego",
   mfa_disabled: "Wyłączenie logowania dwuetapowego",
   mfa_reset: "Reset logowania dwuetapowego",

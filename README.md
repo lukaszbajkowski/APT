@@ -97,6 +97,16 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Generowanie, podgląd i pobranie trafiają do dziennika zdarzeń.
 - Przykład: `examples/szablony/medicover_deklaracja.docx`.
 
+## Retencja danych
+
+- Dane zwolnionego pracownika są przechowywane 10 lat (`APT_RETENTION_YEARS`), licząc od końca roku
+  kalendarzowego zwolnienia: zwolnienie w 2026 → przechowywanie do 31.12.2036.
+- Nic nie usuwa się samo. Po terminie Administrator widzi przypomnienie na stronie startowej i w zakładce
+  „Retencja danych” zaznacza osoby i usuwa je trwale (potwierdzenie słowem USUŃ): dane, PESEL, zdjęcie,
+  wygenerowane dokumenty. W dzienniku zdarzeń zostaje tylko numer ewidencyjny i daty.
+- Usunięcie można wstrzymać do wybranej daty z podaniem powodu (np. postępowanie sądowe).
+- Usunięte dane znikają z kopii zapasowych po 14 dniach (rotacja kopii).
+
 ## Interfejs
 
 - Strona startowa (kliknięcie w nazwę aplikacji): liczniki – aktywni, nowi, bez zdjęcia, bez PESEL, karty,

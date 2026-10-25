@@ -4,7 +4,7 @@ import jsQR from "jsqr";
 import { Alert, Badge, Box, Button, Card, Group, Loader, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } from "@tabler/icons-react";
 
-import { api, errorText, formatDate, type Employee } from "../api";
+import { api, errorText, formatDate, REVOKE_LABELS, type ScanOut } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 
 type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
@@ -23,19 +23,72 @@ function cameraError(e: unknown): string {
   return "Nie udało się uruchomić aparatu.";
 }
 
-function ResultCard({ employee, onNext }: { employee: Employee; onNext: () => void }) {
-  const active = employee.status === "active";
+type Verdict = { color: string; title: string; ok: boolean };
+
+function verdict(scan: ScanOut): Verdict {
+  const e = scan.employee;
+  if (e.status !== "active") return { color: "red", title: "nieaktywny – archiwum", ok: false };
+  switch (scan.result) {
+    case "valid":
+      return { color: "green", title: "karta ważna", ok: true };
+    case "replaced":
+      return { color: "red", title: "karta nieważna", ok: false };
+    case "revoked":
+      return { color: "red", title: "karta unieważniona", ok: false };
+    case "expired":
+      return { color: "red", title: "karta po terminie", ok: false };
+    case "unknown_card":
+      return { color: "red", title: "nieznana karta", ok: false };
+    case "legacy":
+      return { color: "orange", title: "stara karta", ok: true };
+    default:
+      return { color: "blue", title: "aktywny pracownik", ok: true };
+  }
+}
+
+function cardDetail(scan: ScanOut): string | null {
+  const c = scan.card;
+  const cur = scan.current_card;
+  switch (scan.result) {
+    case "replaced":
+      return `Wydano nowszą kartę. To karta nr ${c?.version}. Aktualna jest karta nr ${cur?.version ?? "—"}${cur ? ` z ${formatDate(cur.issued_at.slice(0, 10))}` : ""}.`;
+    case "revoked":
+      return `Powód: ${REVOKE_LABELS[c?.revoke_reason ?? ""] ?? "—"}${c?.closed_at ? `, ${formatDate(c.closed_at.slice(0, 10))}` : ""}.`;
+    case "expired":
+      return `Karta była ważna do ${formatDate(c?.valid_until ?? null)}.`;
+    case "unknown_card":
+      return "Tej karty nie ma w rejestrze – mogła zostać podrobiona.";
+    case "legacy":
+      return "Karta wydrukowana przed wprowadzeniem rejestru kart. Porównaj zdjęcie z osobą i wydrukuj nową kartę.";
+    case "manual":
+      return cur
+        ? `Sprawdzenie po numerze. Aktualna karta nr ${cur.version}${cur.valid_until ? `, ważna do ${formatDate(cur.valid_until)}` : ""}.`
+        : "Sprawdzenie po numerze. Pracownik nie ma karty w rejestrze.";
+    default:
+      return c?.valid_until ? `Ważna do ${formatDate(c.valid_until)}.` : null;
+  }
+}
+
+function ResultCard({ scan, onNext }: { scan: ScanOut; onNext: () => void }) {
+  const employee = scan.employee;
+  const v = verdict(scan);
+  const detail = cardDetail(scan);
+  const inactive = employee.status !== "active";
   return (
-    <Card withBorder padding="lg" style={{ borderColor: `var(--mantine-color-${active ? "green" : "red"}-6)`, borderWidth: 2 }}>
+    <Card withBorder padding="lg" style={{ borderColor: `var(--mantine-color-${v.color}-6)`, borderWidth: 2 }}>
       <Stack>
-        {active ? (
-          <Badge color="green" size="xl" fullWidth leftSection={<IconCircleCheck size={18} />}>
-            aktywny pracownik
-          </Badge>
-        ) : (
-          <Badge color="red" size="xl" fullWidth leftSection={<IconAlertTriangle size={18} />}>
-            nieaktywny – archiwum
-          </Badge>
+        <Badge
+          color={v.color}
+          size="xl"
+          fullWidth
+          leftSection={v.ok ? <IconCircleCheck size={18} /> : <IconAlertTriangle size={18} />}
+        >
+          {v.title}
+        </Badge>
+        {detail && (
+          <Text size="sm" c={v.ok ? "dimmed" : v.color}>
+            {detail}
+          </Text>
         )}
         <Group wrap="nowrap" align="flex-start">
           <EmployeePhoto employee={employee} width={110} />
@@ -48,7 +101,7 @@ function ResultCard({ employee, onNext }: { employee: Employee; onNext: () => vo
             </Text>
             <Text size="sm">{[employee.agency?.name, employee.department?.name].filter(Boolean).join(" · ") || "—"}</Text>
             {employee.position && <Text size="sm">{employee.position.name}</Text>}
-            {!active && employee.termination_date && (
+            {inactive && employee.termination_date && (
               <Text size="sm" c="red">
                 Zwolniony {formatDate(employee.termination_date)}
               </Text>
@@ -80,7 +133,7 @@ export function ScannerPage() {
   const [error, setError] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employee, setEmployee] = useState<ScanOut | null>(null);
   const [manual, setManual] = useState("");
 
   const stop = useCallback(() => {
@@ -94,14 +147,14 @@ export function ScannerPage() {
   useEffect(() => stop, [stop]);
 
   const lookup = useCallback(
-    async (code: string) => {
+    async (code: string, manual = false) => {
       setLoading(true);
       setLookupError(null);
       setEmployee(null);
       try {
-        const e = await api<Employee>(`/employees/by-number/${encodeURIComponent(code.trim())}`);
+        const e = await api<ScanOut>(`/cards/scan/${encodeURIComponent(code.trim())}${manual ? "?manual=true" : ""}`);
         setEmployee(e);
-        navigator.vibrate?.(e.status === "active" ? 80 : [80, 60, 80]);
+        navigator.vibrate?.(verdict(e).ok ? 80 : [80, 60, 80, 60, 80]);
       } catch (err) {
         setLookupError(errorText(err));
         navigator.vibrate?.([200]);
@@ -179,7 +232,7 @@ export function ScannerPage() {
     e.preventDefault();
     if (!manual.trim()) return;
     stop();
-    lookup(manual);
+    lookup(manual, true);
   }
 
   return (
@@ -252,7 +305,7 @@ export function ScannerPage() {
           </Stack>
         </Alert>
       )}
-      {employee && <ResultCard employee={employee} onNext={start} />}
+      {employee && <ResultCard scan={employee} onNext={start} />}
 
       <form onSubmit={submitManual}>
         <Group align="flex-end" gap="xs">

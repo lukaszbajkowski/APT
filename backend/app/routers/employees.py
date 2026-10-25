@@ -7,7 +7,7 @@ Uprawnienia (patrz specyfikacja, sekcja „Role i uprawnienia”):
 - Podgląd: wszyscy, tylko odczyt, jak kierownik bez edycji.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
@@ -16,13 +16,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from sqlalchemy import Select, String, and_, cast, false, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import crypto, photos, retention
+from app import cardreg, crypto, photos, retention
 from app.audit import audit
 from app.config import get_settings
 from app.deps import Auth, DbSession, StaffAuth
 from app.models import (
     Agency,
     AuditLog,
+    Card,
+    CardStatus,
     Country,
     Department,
     Employee,
@@ -397,6 +399,23 @@ def _plain(v: Any) -> Any:
 # ---------- lista ----------
 
 SortKey = Literal["name", "-name", "number", "-number", "hire_date", "-hire_date"]
+CardFilter = Literal["none", "expiring", "expired"]
+CARD_EXPIRING_DAYS = 30
+
+
+def card_condition(kind: str, today: date | None = None) -> Any:
+    """Warunek SQL na aktualną kartę pracownika (z rejestru kart)."""
+    today = today or date.today()
+    active = and_(Card.employee_id == Employee.id, Card.status == CardStatus.active)
+    if kind == "none":
+        valid = or_(Card.valid_until.is_(None), Card.valid_until >= today)
+        return ~select(Card.id).where(active, valid).exists()
+    if kind == "expiring":
+        window = Card.valid_until.between(today, today + timedelta(days=CARD_EXPIRING_DAYS))
+        return select(Card.id).where(active, window).exists()
+    return select(Card.id).where(active, Card.valid_until < today).exists()
+
+
 MissingKey = Literal["photo", "birth_date", "country", "pesel", "agency", "department", "position"]
 
 
@@ -412,7 +431,9 @@ class ListFilters:
         status_: Annotated[Literal["active", "terminated", "all"], Query(alias="status")] = "active",
         missing: Annotated[list[MissingKey] | None, Query()] = None,
         sort: SortKey = "name",
+        card: CardFilter | None = None,
     ):
+        self.card = card
         self.q, self.agency_id, self.department_id, self.position_id = (
             q,
             agency_id,
@@ -451,6 +472,8 @@ class ListFilters:
                 conditions.append(Employee.country_id.is_(None))
             else:
                 conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
+        if self.card:
+            conditions.append(card_condition(self.card))
         base = select(Employee).where(and_(*conditions)) if conditions else select(Employee)
         return apply_scope(base, user)
 
@@ -620,6 +643,9 @@ def terminate(
         raise _bad("Data zwolnienia jest wcześniejsza niż data zatrudnienia.")
     e.status = EmployeeStatus.terminated
     e.termination_date = body.termination_date
+    current = cardreg.active_card(db, e.id)
+    if current is not None:
+        cardreg.revoke(current, ctx.user, "termination", None, datetime.now(UTC))
     audit(
         db,
         request,

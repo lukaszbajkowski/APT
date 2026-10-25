@@ -79,6 +79,10 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Druk z profilu pracownika albo seryjnie z listy (zaznaczanie, także „wszystkie wyniki” filtra).
 - Przed drukiem ostrzeżenie o osobach bez zdjęcia; każdy wydruk trafia do dziennika i historii pracownika.
 - Długie nazwiska dwuczłonowe przechodzą do drugiej linii zamiast być obcinane.
+- Rejestr kart: każdy wydruk to nowa karta z numerem wersji w kodzie QR (np. `000123-2`); poprzednia
+  traci ważność. Kartę można unieważnić (zgubiona, zniszczona), zwolnienie unieważnia ją automatycznie.
+  Skaner rozróżnia: ważna, zastąpiona nowszą, unieważniona, po terminie, nieznana, stara (sprzed rejestru).
+  Lista pracowników ma filtr „Karta” (brak ważnej, wygasa w 30 dni, po terminie), strona startowa – licznik.
 - Czcionka IBM Plex (licencja SIL OFL, `backend/app/assets/fonts/OFL.txt`) osadzona w PDF.
 
 ## Dokumenty z szablonów (etap 5)

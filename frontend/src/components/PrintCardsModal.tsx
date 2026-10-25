@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPrinter } from "@tabler/icons-react";
@@ -17,6 +17,7 @@ interface Check {
   count: number;
   without_photo: PersonRef[];
   terminated: PersonRef[];
+  replacing: PersonRef[];
 }
 
 const LAYOUT_KEY = "apt.cards.layout";
@@ -56,6 +57,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const check = useQuery({
     queryKey: ["cards-check", ids],
@@ -82,6 +84,8 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
         "karty.pdf",
       );
       notifications.show({ color: "green", message: "Plik PDF z kartami został pobrany." });
+      qc.invalidateQueries({ queryKey: ["cards"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       onClose();
     } catch (e) {
       setError(errorText(e));
@@ -103,6 +107,14 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
               Na tych kartach zamiast zdjęcia będzie szary symbol osoby:
             </Text>
             <PeopleList people={check.data.without_photo} />
+          </Alert>
+        )}
+        {check.data && check.data.replacing.length > 0 && (
+          <Alert color="blue" title={`Mają już kartę: ${check.data.replacing.length}`}>
+            <Text size="sm" mb={4}>
+              Nowa karta zastąpi poprzednią – stara przestanie być ważna przy skanowaniu.
+            </Text>
+            <PeopleList people={check.data.replacing} />
           </Alert>
         )}
         {check.data && check.data.terminated.length > 0 && (

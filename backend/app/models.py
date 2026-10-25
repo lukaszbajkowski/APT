@@ -344,3 +344,47 @@ class GeneratedDocument(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class CardStatus(str, enum.Enum):
+    active = "active"  # aktualna karta pracownika
+    replaced = "replaced"  # wydano nowszą kartę
+    revoked = "revoked"  # unieważniona (zgubiona, zniszczona, zwolnienie)
+
+
+class Card(Base):
+    """Wydana (wydrukowana) karta identyfikacyjna. Kod QR zawiera numer pracownika i wersję karty."""
+
+    __tablename__ = "cards"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "version", name="uq_cards_employee_version"),
+        Index(
+            "uq_cards_one_active",
+            "employee_id",
+            unique=True,
+            postgresql_where="status = 'active'",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[CardStatus] = mapped_column(
+        Enum(CardStatus, name="card_status", values_callable=lambda e: [m.value for m in e]),
+        default=CardStatus.active,
+        nullable=False,
+    )
+    layout: Mapped[str] = mapped_column(String(8), nullable=False)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    issued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    issued_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    revoke_reason: Mapped[str | None] = mapped_column(String(20))
+    revoke_note: Mapped[str | None] = mapped_column(String(300))
+
+    issuer: Mapped["User | None"] = relationship(foreign_keys=[issued_by], lazy="joined")

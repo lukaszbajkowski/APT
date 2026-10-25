@@ -155,7 +155,41 @@ export interface Dashboard {
   recent: Employee[];
   retention_due: number | null;
   backup: BackupStatus | null;
+  cards_expiring: number;
+  cards_expired: number;
 }
+
+export type CardState = "valid" | "replaced" | "revoked" | "expired";
+
+export interface CardInfo {
+  id: number;
+  version: number;
+  code: string;
+  state: CardState;
+  layout: string;
+  valid_until: string | null;
+  issued_at: string;
+  issued_by_name: string | null;
+  closed_at: string | null;
+  revoke_reason: string | null;
+  revoke_note: string | null;
+}
+
+export type ScanResult = CardState | "unknown_card" | "legacy" | "manual";
+
+export interface ScanOut {
+  employee: Employee;
+  result: ScanResult;
+  card: CardInfo | null;
+  current_card: CardInfo | null;
+}
+
+export const REVOKE_LABELS: Record<string, string> = {
+  lost: "zgubiona",
+  damaged: "zniszczona",
+  termination: "zwolnienie pracownika",
+  other: "inny powód",
+};
 
 export interface BackupRun {
   at: string;
@@ -364,6 +398,7 @@ export const ACTION_LABELS: Record<string, string> = {
   cards_printed: "Druk kart",
   card_printed: "Druk karty",
   card_scanned: "Skanowanie karty",
+  card_revoked: "Unieważnienie karty",
   template_created: "Dodanie szablonu",
   template_updated: "Zmiana szablonu",
   template_file_replaced: "Nowa wersja pliku szablonu",

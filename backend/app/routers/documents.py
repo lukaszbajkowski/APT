@@ -393,24 +393,28 @@ def list_documents(employee_id: int, ctx: DocAuth, db: DbSession) -> list[Docume
     return [_doc_out(d, templates.get(d.template_id or 0), ctx.user) for d in docs]
 
 
-@router.post(
-    "/employees/{employee_id}/documents", response_model=DocumentOut, status_code=status.HTTP_201_CREATED
-)
-def generate(
-    employee_id: int, body: GenerateIn, ctx: DocAuth, request: Request, db: DbSession
-) -> DocumentOut:
-    e = get_visible(db, ctx.user, employee_id)
-    t = _get_template(db, body.template_id)
+class _Generated:
+    def __init__(
+        self, doc: GeneratedDocument, docx: bytes, pdf: bytes | None, pdf_error: str | None, masked: bool
+    ):
+        self.doc, self.docx, self.pdf, self.pdf_error, self.masked = doc, docx, pdf, pdf_error, masked
+
+
+def _usable_template(db: Session, user: User, template_id: int) -> DocumentTemplate:
+    t = _get_template(db, template_id)
     if not t.is_active:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Szablon jest wyłączony.")
-    _check_template_access(ctx.user, t)
-    masked = ctx.user.role == Role.manager and t.sensitive
+    _check_template_access(user, t)
+    return t
 
+
+def _create_document(
+    db: Session, request: Request, user: User, e: Any, t: DocumentTemplate, raw_values: dict[str, Any]
+) -> _Generated:
+    """Wypełnia szablon dla jednej osoby, zapisuje pliki i wpis w historii (bez commita)."""
+    masked = user.role == Role.manager and t.sensitive
     fields = [FieldDef.model_validate(f) for f in t.fields]
-    try:
-        values = templating.form_values(fields, body.values)
-    except TemplateError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    values = templating.form_values(fields, raw_values)  # TemplateError → obsługuje wywołujący
 
     uses_pesel = "pesel" in t.variables
     pesel = crypto.decrypt(e.pesel_enc) if (uses_pesel and e.pesel_enc and not masked) else None
@@ -418,10 +422,7 @@ def generate(
     if masked:
         builtin |= {k: "" for k in templating.SENSITIVE}
     context = {v: "" for v in t.variables} | builtin | values
-    try:
-        docx = templating.render_docx(_template_path(t).read_bytes(), context)
-    except TemplateError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    docx = templating.render_docx(_template_path(t).read_bytes(), context)
 
     doc = GeneratedDocument(
         id=uuid.uuid4(),
@@ -429,15 +430,16 @@ def generate(
         template_id=t.id,
         template_name=t.name,
         template_version=t.version,
-        created_by=ctx.user.id,
-        created_by_name=ctx.user.full_name,
+        created_by=user.id,
+        created_by_name=user.full_name,
         contains_sensitive=t.sensitive and not masked,
     )
     _doc_path(doc, "docx").write_bytes(docx)
-    pdf_error = None
+    pdf_error, pdf = None, None
     # PDF powstaje zawsze, gdy się da – służy do podglądu online.
     try:
-        _doc_path(doc, "pdf").write_bytes(templating.to_pdf(docx))
+        pdf = templating.to_pdf(docx)
+        _doc_path(doc, "pdf").write_bytes(pdf)
         doc.has_pdf = True
     except templating.PdfUnavailable as exc:
         pdf_error = str(exc)
@@ -446,7 +448,7 @@ def generate(
         db,
         request,
         "document_generated",
-        user=ctx.user,
+        user=user,
         entity_type="employee",
         entity_id=e.id,
         details={
@@ -457,12 +459,106 @@ def generate(
             "masked": masked,
         },
     )
+    return _Generated(doc, docx, pdf, pdf_error, masked)
+
+
+@router.post(
+    "/employees/{employee_id}/documents", response_model=DocumentOut, status_code=status.HTTP_201_CREATED
+)
+def generate(
+    employee_id: int, body: GenerateIn, ctx: DocAuth, request: Request, db: DbSession
+) -> DocumentOut:
+    e = get_visible(db, ctx.user, employee_id)
+    t = _usable_template(db, ctx.user, body.template_id)
+    try:
+        g = _create_document(db, request, ctx.user, e, t, body.values)
+    except TemplateError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.commit()
-    db.refresh(doc)
-    out = _doc_out(doc, t, ctx.user)
-    out.masked = masked
-    out.pdf_error = pdf_error
+    db.refresh(g.doc)
+    out = _doc_out(g.doc, t, ctx.user)
+    out.masked = g.masked
+    out.pdf_error = g.pdf_error
     return out
+
+
+MAX_BATCH = 50
+
+
+class BatchItem(BaseModel):
+    employee_id: int
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
+class BatchIn(BaseModel):
+    template_id: int
+    format: Literal["pdf", "docx"] = "pdf"
+    items: list[BatchItem] = Field(min_length=1, max_length=MAX_BATCH)
+
+
+@router.post("/documents/batch")
+def generate_batch(body: BatchIn, ctx: DocAuth, request: Request, db: DbSession) -> Response:
+    """Ten sam dokument dla kilku osób naraz – paczka ZIP (każda osoba może mieć własne wartości pól)."""
+    import io
+    import zipfile
+
+    t = _usable_template(db, ctx.user, body.template_id)
+    allowed = ["pdf", "docx"] if t.download_formats == "both" else [t.download_formats]
+    if body.format not in allowed:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ten format nie jest dostępny dla szablonu.")
+    ids = [it.employee_id for it in body.items]
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ta sama osoba występuje dwa razy.")
+    people = [(get_visible(db, ctx.user, it.employee_id), it.values) for it in body.items]
+
+    buf = io.BytesIO()
+    names: set[str] = set()
+    created: list[GeneratedDocument] = []
+
+    def fail(code: int, detail: str) -> HTTPException:
+        db.rollback()
+        for d in created:  # pliki osób wygenerowanych przed błędem
+            for ext in ("docx", "pdf"):
+                _doc_path(d, ext).unlink(missing_ok=True)
+        return HTTPException(code, detail=detail)
+
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for e, values in people:
+            who = f"{format_number(e.number)} {e.last_name} {e.first_name}"
+            try:
+                g = _create_document(db, request, ctx.user, e, t, values)
+            except TemplateError as exc:
+                raise fail(status.HTTP_400_BAD_REQUEST, f"{who}: {exc}") from exc
+            created.append(g.doc)
+            content, ext = (g.pdf, "pdf") if body.format == "pdf" and g.pdf else (g.docx, "docx")
+            if body.format == "pdf" and g.pdf is None:
+                raise fail(
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                    f"Nie udało się utworzyć PDF ({g.pdf_error}). Wybierz format Word.",
+                )
+            name = templating.safe_filename(f"{who} {t.name}") + f".{ext}"
+            n = 2
+            while name in names:
+                name = templating.safe_filename(f"{who} {t.name} {n}") + f".{ext}"
+                n += 1
+            names.add(name)
+            zf.writestr(name, content)
+    audit(
+        db,
+        request,
+        "documents_batch_generated",
+        user=ctx.user,
+        entity_type="template",
+        entity_id=t.id,
+        details={"template": t.name, "count": len(people), "format": body.format},
+    )
+    db.commit()
+    zip_name = templating.safe_filename(f"{t.name} {len(people)} os {datetime.now():%Y-%m-%d}") + ".zip"
+    return Response(
+        buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_name}"', "Cache-Control": "no-store"},
+    )
 
 
 @router.get("/documents/{document_id}/download")

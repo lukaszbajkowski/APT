@@ -95,6 +95,9 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Kierownik generuje dokumenty z szablonów z PESEL/datą urodzenia, ale te pola zostają puste; dokumentów
   z tymi danymi (wygenerowanych przez Kadry) nie zobaczy ani nie pobierze.
 - Generowanie, podgląd i pobranie trafiają do dziennika zdarzeń.
+- Dokument dla kilku osób naraz: zaznacz pracowników na liście → „Dokument”. Wartości pól wspólne dla
+  wszystkich albo osobno dla każdej osoby (przechodzą na kolejną osobę i można je zmienić); wynik to paczka
+  ZIP (PDF albo Word, do 50 osób), a każdy dokument trafia też do profilu pracownika.
 - Przykład: `examples/szablony/medicover_deklaracja.docx`.
 
 ## Retencja danych

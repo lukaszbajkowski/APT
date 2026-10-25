@@ -26,9 +26,9 @@ import { useAuth } from "../auth";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
 
-type Values = Record<string, string | boolean | number | null>;
+export type Values = Record<string, string | boolean | number | null>;
 
-function FieldInput({ field, value, onChange }: { field: TemplateField; value: Values[string]; onChange: (v: Values[string]) => void }) {
+export function FieldInput({ field, value, onChange }: { field: TemplateField; value: Values[string]; onChange: (v: Values[string]) => void }) {
   const common = { label: field.label, description: field.help ?? undefined, required: field.required };
   switch (field.type) {
     case "select":

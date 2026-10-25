@@ -21,7 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconChevronDown, IconFileSpreadsheet, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
+import { IconChevronDown, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -29,6 +29,7 @@ import { useAuth } from "../auth";
 import { options, useAgencies, useDepartments, usePositions } from "../dictionaries";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PrintCardsModal } from "../components/PrintCardsModal";
+import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 
 const PAGE_SIZE = 50;
 
@@ -100,6 +101,7 @@ export function EmployeesPage() {
   }, [query]);
 
   const [exporting, setExporting] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
   async function exportXlsx(withPesel: boolean) {
     setExporting(true);
     try {
@@ -285,6 +287,15 @@ export function EmployeesPage() {
               >
                 Drukuj karty{selected.size ? ` (${selected.size})` : ""}
               </Button>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconFileText size={14} />}
+                disabled={selected.size === 0}
+                onClick={() => setDocsOpen(true)}
+              >
+                Dokument{selected.size ? ` (${selected.size})` : ""}
+              </Button>
               <Menu position="bottom-end" width={260}>
                 <Menu.Target>
                   <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
@@ -409,6 +420,7 @@ export function EmployeesPage() {
       {canPrint && (
         <PrintCardsModal ids={[...selected]} opened={printOpen} onClose={() => setPrintOpen(false)} />
       )}
+      {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
     </Stack>
   );
 }

@@ -307,3 +307,59 @@ def test_online_view_is_logged(admin):
     assert r.content[:4] == b"%PDF"
     with SessionLocal() as db:
         assert db.scalar(select(AuditLog).where(AuditLog.action == "document_viewed")) is not None
+
+
+def test_batch_zip_with_own_values(admin):
+    import zipfile
+
+    a = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "Kowalski"}).json()
+    b = admin.post("/api/employees", json={"first_name": "Ewa", "last_name": "Nowak"}).json()
+    t = upload(admin, simple_docx("Skierowanie {{ nazwisko_imie }} na {{ badanie }}")).json()
+    body = {
+        "template_id": t["id"],
+        "format": "docx",
+        "items": [
+            {"employee_id": a["id"], "values": {"badanie": "wstępne"}},
+            {"employee_id": b["id"], "values": {"badanie": "okresowe"}},
+        ],
+    }
+    r = admin.post("/api/documents/batch", json=body)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/zip"
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    names = sorted(z.namelist())
+    assert len(names) == 2 and names[0].startswith(a["number_display"]) and names[0].endswith(".docx")
+    texts = sorted(doc_text(z.read(n)) for n in names)
+    assert texts == ["Skierowanie Kowalski Jan na wstępne", "Skierowanie Nowak Ewa na okresowe"]
+    # każda osoba ma dokument w profilu
+    assert len(admin.get(f"/api/employees/{b['id']}/documents").json()) == 1
+
+    body["format"] = "pdf"
+    t2 = admin.patch(f"/api/templates/{t['id']}", json={"download_formats": "docx"})
+    assert t2.status_code == 200
+    assert admin.post("/api/documents/batch", json=body).status_code == 400
+    body["items"].append(body["items"][0])
+    body["format"] = "docx"
+    assert admin.post("/api/documents/batch", json=body).status_code == 400
+
+
+def test_batch_validation_error_names_person_and_rolls_back(admin):
+    a = admin.post("/api/employees", json={"first_name": "Jan", "last_name": "Kowalski"}).json()
+    b = admin.post("/api/employees", json={"first_name": "Ewa", "last_name": "Nowak"}).json()
+    t = upload(admin, simple_docx("{{ data_badania }}")).json()
+    fields = t["fields"]
+    fields[0]["type"] = "date"
+    admin.patch(f"/api/templates/{t['id']}", json={"fields": fields})
+    r = admin.post(
+        "/api/documents/batch",
+        json={
+            "template_id": t["id"],
+            "format": "docx",
+            "items": [
+                {"employee_id": a["id"], "values": {"data_badania": "2026-11-02"}},
+                {"employee_id": b["id"], "values": {"data_badania": "jutro"}},
+            ],
+        },
+    )
+    assert r.status_code == 400 and "Nowak Ewa" in r.json()["detail"]
+    assert admin.get(f"/api/employees/{a['id']}/documents").json() == []

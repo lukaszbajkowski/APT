@@ -55,41 +55,49 @@ function OptionsEditor({ field, onChange }: { field: TemplateField; onChange: (f
   const set = (i: number, key: "value" | "label", v: string) =>
     onChange({ ...field, options: field.options.map((o, j) => (j === i ? { ...o, [key]: v } : o)) });
   return (
-    <Stack gap={4} mt={6}>
+    <Stack gap="xs" mt="sm">
+      <SimpleGrid cols={2} spacing="xs">
+        <Text size="xs" fw={500}>
+          Wartość w szablonie
+        </Text>
+        <Text size="xs" fw={500}>
+          Tekst na liście w formularzu
+        </Text>
+      </SimpleGrid>
       {field.options.map((o, i) => (
-        <Group key={i} gap={4} wrap="nowrap">
+        <SimpleGrid key={i} cols={2} spacing="xs">
           <TextInput
             size="xs"
-            placeholder="wartość w szablonie"
+            placeholder="np. przystapienie"
             aria-label="Wartość w szablonie"
             value={o.value}
             onChange={(e) => set(i, "value", e.currentTarget.value)}
-            style={{ flex: 1, minWidth: 0 }}
             styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
           />
           <TextInput
             size="xs"
-            placeholder="opis w formularzu"
-            aria-label="Opis w formularzu"
+            placeholder="np. przystąpienie"
+            aria-label="Tekst na liście w formularzu"
             value={o.label}
             onChange={(e) => set(i, "label", e.currentTarget.value)}
-            style={{ flex: 1, minWidth: 0 }}
+            rightSection={
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="red"
+                aria-label="Usuń opcję"
+                onClick={() => onChange({ ...field, options: field.options.filter((_, j) => j !== i) })}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            }
           />
-          <ActionIcon
-            size="sm"
-            variant="subtle"
-            color="red"
-            aria-label="Usuń opcję"
-            onClick={() => onChange({ ...field, options: field.options.filter((_, j) => j !== i) })}
-          >
-            <IconTrash size={14} />
-          </ActionIcon>
-        </Group>
+        </SimpleGrid>
       ))}
       <Button
-        size="compact-xs"
-        variant="subtle"
-        leftSection={<IconPlus size={12} />}
+        size="compact-sm"
+        variant="light"
+        leftSection={<IconPlus size={14} />}
         w="fit-content"
         onClick={() => onChange({ ...field, options: [...field.options, { value: "", label: "" }] })}
       >

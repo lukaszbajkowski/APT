@@ -107,6 +107,14 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Usunięcie można wstrzymać do wybranej daty z podaniem powodu (np. postępowanie sądowe).
 - Usunięte dane znikają z kopii zapasowych po 14 dniach (rotacja kopii).
 
+## Raporty i eksport
+
+- **Pracownicy → „Excel”** – lista z bieżącymi filtrami (.xlsx, nagłówki z filtrem, daty jako daty).
+  Administrator i Kadry mogą świadomie dołączyć numery PESEL; Kierownik dostaje tylko swoich pracowników
+  i wiek zamiast daty urodzenia. Każdy eksport (z filtrami i informacją o PESEL) trafia do dziennika.
+- **Raporty** – aktywni wg APT, wydziałów, obywatelstwa, stanowisk, APT × wydział, zatrudnienia
+  i zwolnienia w ostatnich 12 miesiącach; całość do pobrania jako zestawienie Excel (osobne arkusze).
+
 ## E-maile
 
 Konfiguracja na serwerze (skrzynka pocztowa, np. `powiadomienia@aptid.pl` w hostingu home.pl):

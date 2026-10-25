@@ -297,13 +297,14 @@ export async function api<T>(
 
 /** POST zwracający plik (np. PDF) – zapisuje go na dysku użytkownika. */
 export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<void> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   const res = await fetch(`/api${path}`, {
-    method: "POST",
+    method: body === undefined ? "GET" : "POST",
     headers,
     credentials: "same-origin",
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
@@ -368,6 +369,8 @@ export const ACTION_LABELS: Record<string, string> = {
   password_reset_requested: "Prośba o reset hasła e-mailem",
   password_set_by_link: "Ustawienie hasła przez link z e-maila",
   password_link_sent: "Wysłanie linku do ustawienia hasła",
+  employees_exported: "Eksport listy pracowników",
+  report_exported: "Eksport zestawienia",
   template_created: "Dodanie szablonu",
   template_updated: "Zmiana szablonu",
   template_file_replaced: "Nowa wersja pliku szablonu",
@@ -412,4 +415,24 @@ export function formatDateTime(value: string | null): string {
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+export interface ReportRow {
+  name: string;
+  count: number;
+}
+
+export interface ReportSummary {
+  generated_at: string;
+  active: number;
+  terminated: number;
+  by_agency: ReportRow[];
+  by_department: ReportRow[];
+  by_position: ReportRow[];
+  by_country: ReportRow[];
+  by_sex: ReportRow[];
+  agency_department: { agency: string; department: string; count: number }[];
+  months: { month: string; label: string; hired: number; terminated: number }[];
+  missing_photo: number;
+  missing_pesel: number | null;
 }

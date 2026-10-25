@@ -23,7 +23,8 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconChevronDown, IconFileSpreadsheet, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
-import { api, errorText, formatDate, type Employee, type Page } from "../api";
+import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
+import { notifications } from "@mantine/notifications";
 import { useAuth } from "../auth";
 import { options, useAgencies, useDepartments, usePositions } from "../dictionaries";
 import { EmployeePhoto } from "../components/EmployeePhoto";
@@ -97,6 +98,26 @@ export function EmployeesPage() {
     p.delete("offset");
     return p.toString();
   }, [query]);
+
+  const [exporting, setExporting] = useState(false);
+  async function exportXlsx(withPesel: boolean) {
+    setExporting(true);
+    try {
+      const q = new URLSearchParams(filterQuery);
+      if (withPesel) q.set("include_pesel", "true");
+      await apiDownload(`/reports/employees.xlsx?${q.toString()}`, undefined, "pracownicy.xlsx");
+      notifications.show({
+        color: withPesel ? "orange" : "green",
+        message: withPesel
+          ? "Pobrano listę z numerami PESEL – przechowuj plik bezpiecznie i usuń, gdy nie będzie potrzebny."
+          : "Pobrano listę pracowników.",
+      });
+    } catch (e) {
+      notifications.show({ color: "red", message: errorText(e) });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function selectAllResults() {
     setSelectingAll(true);
@@ -264,6 +285,22 @@ export function EmployeesPage() {
               >
                 Drukuj karty{selected.size ? ` (${selected.size})` : ""}
               </Button>
+              <Menu position="bottom-end" width={260}>
+                <Menu.Target>
+                  <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
+                    Excel ({list.data.total})
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Eksport wyników z bieżącymi filtrami</Menu.Label>
+                  <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (.xlsx)</Menu.Item>
+                  {staff && (
+                    <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
+                      Pobierz listę z numerami PESEL
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           </Group>
         </Paper>

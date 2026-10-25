@@ -152,10 +152,35 @@ Aplikacja: http://localhost (albo http://localhost:8080 przy `APT_HTTP_PORT=8080
 | stan kontenerów | `docker compose ps` |
 | usunięcie wszystkiego **razem z danymi** | `docker compose down -v` |
 
-## Uruchomienie na serwerze
+## Uruchomienie na serwerze (Ubuntu 24.04)
 
-Jak wyżej, ale w `.env`: `APT_DOMAIN=twoja-domena.pl`, `APT_COOKIE_SECURE=true`. Caddy sam pobierze
-certyfikat HTTPS (domena musi wskazywać na serwer, porty 80 i 443 otwarte).
+1. W panelu domeny ustaw rekordy A dla `twoja-domena.pl` i `www.twoja-domena.pl` na adres IP serwera.
+2. Zaloguj się na serwer jako root i uruchom:
+
+   ```bash
+   bash <(curl -fsSL https://raw.githubusercontent.com/lukaszbajkowski/APT/main/deploy/install.sh) twoja-domena.pl
+   ```
+
+Skrypt `deploy/install.sh`: aktualizuje system (i włącza automatyczne poprawki bezpieczeństwa), dodaje swap,
+instaluje Dockera, włącza zaporę (22, 80, 443) i fail2ban, wyłącza logowanie SSH hasłem (jeśli jest klucz),
+pobiera aplikację do `/opt/apt`, tworzy `.env` z losowymi hasłami, uruchamia aplikację z certyfikatem
+Let's Encrypt, ustawia codzienną kopię zapasową i tworzy pierwszego administratora.
+Na końcu wypisuje **klucz `APT_DATA_KEY` – zapisz go w menedżerze haseł**.
+
+| Co | Polecenie (na serwerze) |
+|---|---|
+| aktualizacja aplikacji (z kopią przed) | `aptid-aktualizuj` |
+| kopia zapasowa teraz | `/opt/apt/deploy/backup.sh` |
+| lista kopii | `ls /var/backups/apt` |
+| odtworzenie kopii | `/opt/apt/deploy/restore.sh /var/backups/apt/RRRR-MM-DD_GGMM` |
+| logi | `cd /opt/apt && docker compose logs -f api` |
+
+Kopie: codziennie o 2:30 do `/var/backups/apt`, przechowywane 14 dni (baza `baza.dump` + pliki
+`pliki.tar.gz`). Trzymaj też kopię poza serwerem, np. na swoim komputerze:
+
+```bash
+rsync -a root@ADRES_SERWERA:/var/backups/apt/ ~/APT-kopie/
+```
 
 ## Praca nad kodem (bez Dockera dla API)
 

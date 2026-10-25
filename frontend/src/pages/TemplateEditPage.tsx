@@ -14,10 +14,11 @@ import {
   Group,
   Loader,
   SegmentedControl,
+  Paper,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
-  Table,
   Text,
   TextInput,
   Textarea,
@@ -259,91 +260,84 @@ export function TemplateEditPage() {
                   Ten szablon używa tylko danych z kartoteki.
                 </Text>
               ) : (
-                <Table.ScrollContainer minWidth={680}>
-                  <Table verticalSpacing="xs">
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Znacznik</Table.Th>
-                        <Table.Th miw={240}>Etykieta w formularzu</Table.Th>
-                        <Table.Th w={190}>Typ</Table.Th>
-                        <Table.Th w={70}>Wymag.</Table.Th>
-                        <Table.Th w={64} />
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {fields.map((f, i) => (
-                        <Table.Tr key={f.key} style={{ verticalAlign: "top" }}>
-                          <Table.Td pt={14}>
-                            <Code>{f.key}</Code>
-                          </Table.Td>
-                          <Table.Td>
-                            <TextInput size="xs" value={f.label} onChange={(e) => update(i, { ...f, label: e.currentTarget.value })} />
-                            {f.type === "select" && <OptionsEditor field={f} onChange={(nf) => update(i, nf)} />}
-                          </Table.Td>
-                          <Table.Td>
-                            <Select
-                              size="xs"
-                              w={200}
-                              data={TYPES}
-                              allowDeselect={false}
-                              value={f.type}
-                              onChange={(v) =>
-                                v && update(i, { ...f, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })
-                              }
-                            />
-                            {f.type === "text" && (
-                              <Select
-                                size="xs"
-                                w={200}
-                                mt={6}
-                                aria-label={`Format: ${f.label}`}
-                                placeholder="bez formatu"
-                                clearable
-                                data={[
-                                  ...(fieldFormats.data ?? []).map((p) => ({ value: p.value, label: p.label })),
-                                  { value: "custom", label: "Własna maska…" },
-                                ]}
-                                value={f.format ?? null}
-                                onChange={(v) => update(i, { ...f, format: v, pattern: v === "custom" ? f.pattern ?? "" : null })}
-                              />
-                            )}
-                            {f.type === "text" && f.format === "custom" && (
-                              <TextInput
-                                size="xs"
-                                w={200}
-                                mt={6}
-                                aria-label={`Maska: ${f.label}`}
-                                placeholder="np. 99-999"
-                                description="9 cyfra, A litera, * dowolny"
-                                value={f.pattern ?? ""}
-                                onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}
-                                styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
-                              />
-                            )}
-                          </Table.Td>
-                          <Table.Td pt={12}>
-                            <Switch
-                              size="sm"
-                              checked={f.required}
-                              onChange={(e) => update(i, { ...f, required: e.currentTarget.checked })}
-                              aria-label={`Wymagane: ${f.label}`}
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap={0} wrap="nowrap">
-                              <ActionIcon variant="subtle" color="gray" disabled={i === 0} onClick={() => move(i, -1)} aria-label="W górę">
-                                <IconArrowUp size={14} />
-                              </ActionIcon>
-                              <ActionIcon variant="subtle" color="gray" disabled={i === fields.length - 1} onClick={() => move(i, 1)} aria-label="W dół">
-                                <IconArrowDown size={14} />
-                              </ActionIcon>
-                            </Group>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Table.ScrollContainer>
+                <Stack gap="xs">
+                  {fields.map((f, i) => (
+                    <Paper key={f.key} withBorder p="sm" radius="md">
+                      <Group justify="space-between" wrap="nowrap" mb={8}>
+                        <Code>{f.key}</Code>
+                        <Group gap="md" wrap="nowrap">
+                          <Switch
+                            size="sm"
+                            label="Wymagane"
+                            checked={f.required}
+                            onChange={(e) => update(i, { ...f, required: e.currentTarget.checked })}
+                            aria-label={`Wymagane: ${f.label}`}
+                          />
+                          <Group gap={0} wrap="nowrap">
+                            <ActionIcon variant="subtle" color="gray" disabled={i === 0} onClick={() => move(i, -1)} aria-label="W górę">
+                              <IconArrowUp size={14} />
+                            </ActionIcon>
+                            <ActionIcon
+                              variant="subtle"
+                              color="gray"
+                              disabled={i === fields.length - 1}
+                              onClick={() => move(i, 1)}
+                              aria-label="W dół"
+                            >
+                              <IconArrowDown size={14} />
+                            </ActionIcon>
+                          </Group>
+                        </Group>
+                      </Group>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" verticalSpacing="xs">
+                        <TextInput
+                          size="xs"
+                          label="Etykieta w formularzu"
+                          value={f.label}
+                          onChange={(e) => update(i, { ...f, label: e.currentTarget.value })}
+                        />
+                        <Select
+                          size="xs"
+                          label="Typ"
+                          data={TYPES}
+                          allowDeselect={false}
+                          value={f.type}
+                          onChange={(v) =>
+                            v && update(i, { ...f, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })
+                          }
+                        />
+                        {f.type === "text" && (
+                          <Select
+                            size="xs"
+                            label="Format"
+                            aria-label={`Format: ${f.label}`}
+                            placeholder="bez formatu"
+                            clearable
+                            data={[
+                              ...(fieldFormats.data ?? []).map((p) => ({ value: p.value, label: p.label })),
+                              { value: "custom", label: "Własna maska…" },
+                            ]}
+                            value={f.format ?? null}
+                            onChange={(v) => update(i, { ...f, format: v, pattern: v === "custom" ? f.pattern ?? "" : null })}
+                          />
+                        )}
+                        {f.type === "text" && f.format === "custom" && (
+                          <TextInput
+                            size="xs"
+                            label="Maska"
+                            aria-label={`Maska: ${f.label}`}
+                            placeholder="np. 99-999"
+                            description="9 = cyfra, A = litera, * = dowolny znak"
+                            value={f.pattern ?? ""}
+                            onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}
+                            styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+                          />
+                        )}
+                      </SimpleGrid>
+                      {f.type === "select" && <OptionsEditor field={f} onChange={(nf) => update(i, nf)} />}
+                    </Paper>
+                  ))}
+                </Stack>
               )}
             </Card>
 

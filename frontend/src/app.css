@@ -30,3 +30,6 @@
   text-decoration: none;
   min-width: 0;
 }
+
+/* znaczniki w kodzie zawijają się zamiast przewijać na boki */
+.mantine-Code-root { white-space: pre-wrap; overflow-wrap: anywhere; }

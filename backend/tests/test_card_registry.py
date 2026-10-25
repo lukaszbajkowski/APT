@@ -68,8 +68,7 @@ def test_revoke_lost_card(admin_client):
 
 def test_expired_and_filters(admin_client):
     c = admin_client
-    a, b = _emp(c, "A"), _emp(c, "B")
-    _emp(c, "Bez")
+    a, b, n = _emp(c, "A"), _emp(c, "B"), _emp(c, "Bez")
     _print(c, [a["id"]], (date.today() + timedelta(days=10)).isoformat())
     _print(c, [b["id"]], (date.today() + timedelta(days=200)).isoformat())
     with SessionLocal() as db:

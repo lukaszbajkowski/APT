@@ -160,6 +160,11 @@ cat > /etc/cron.d/apt-backup <<EOF
 # Codzienna kopia bazy i plików aplikacji o 2:30
 30 2 * * * root $APP_DIR/deploy/backup.sh >> /var/log/apt-backup.log 2>&1
 EOF
+chmod +x deploy/monitor.sh deploy/monitor-setup.sh
+cat > /etc/cron.d/apt-monitor <<CRON
+# Monitoring aplikacji co 5 minut (e-mail po ustawieniu APT_MONITOR_TO: deploy/monitor-setup.sh)
+*/5 * * * * root $APP_DIR/deploy/monitor.sh >> /var/log/apt-monitor.log 2>&1
+CRON
 cat > /usr/local/bin/aptid-aktualizuj <<EOF
 #!/usr/bin/env bash
 set -euo pipefail

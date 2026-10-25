@@ -110,6 +110,20 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Usunięcie można wstrzymać do wybranej daty z podaniem powodu (np. postępowanie sądowe).
 - Usunięte dane znikają z kopii zapasowych po 14 dniach (rotacja kopii).
 
+## Monitoring
+
+```bash
+/opt/apt/deploy/monitor-setup.sh     # adresy e-mail do powiadomień, cron co 5 min, e-mail testowy
+/opt/apt/deploy/monitor.sh status    # stan teraz
+```
+
+Co 5 minut serwer sprawdza: odpowiedź `https://domena/api/health` (HTTPS, API i baza), działanie kontenerów,
+zajętość dysku (próg 85%) i ważność certyfikatu (ostrzeżenie < 14 dni). Przy awarii wysyła e-mail
+(po dwóch nieudanych sprawdzeniach z rzędu, żeby restart przy aktualizacji nie alarmował), przypomina
+co 6 h i informuje o powrocie. E-maile idą bezpośrednio przez SMTP, bez udziału aplikacji.
+Całkowitej niedostępności serwera (wyłączony VPS) serwer sam nie zgłosi – do tego zewnętrzny monitoring,
+np. darmowy UptimeRobot sprawdzający `https://domena/api/health`.
+
 ## Raporty i eksport
 
 - **Pracownicy → „Excel”** – lista z bieżącymi filtrami (.xlsx, nagłówki z filtrem, daty jako daty).

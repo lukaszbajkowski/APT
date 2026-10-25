@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, setCsrfToken, setUnauthorizedHandler, type Me, type Role } from "./api";
 
@@ -17,13 +17,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMeState] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
+  const meRef = useRef<Me | null>(null);
 
   const setMe = useCallback((value: Me | null) => {
     setCsrfToken(value?.csrf_token ?? null);
+    meRef.current = value;
     setMeState(value);
   }, []);
 
+  // Czyścimy dane tylko po wygaśnięciu prawdziwej sesji. Gość (np. strona resetu hasła)
+  // też dostaje 401 z /auth/me – wyczyszczenie pamięci zapytań zawiesiłoby jego stronę.
   const clear = useCallback(() => {
+    if (meRef.current === null) return;
     setMe(null);
     queryClient.clear();
   }, [setMe, queryClient]);
@@ -53,9 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api("/auth/logout", { method: "POST" });
     } finally {
-      clear();
+      setMe(null);
+      queryClient.clear();
     }
-  }, [clear]);
+  }, [setMe, queryClient]);
 
   const value = useMemo<AuthState>(
     () => ({

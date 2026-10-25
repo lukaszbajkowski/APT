@@ -32,12 +32,13 @@ const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).map((r) => ({ value: r
 interface FormState {
   username: string;
   full_name: string;
+  email: string;
   role: Role;
   agency_ids: string[];
   department_ids: string[];
 }
 
-const EMPTY_FORM: FormState = { username: "", full_name: "", role: "viewer", agency_ids: [], department_ids: [] };
+const EMPTY_FORM: FormState = { username: "", full_name: "", email: "", role: "viewer", agency_ids: [], department_ids: [] };
 
 function isLocked(u: User) {
   return !!u.locked_until && new Date(u.locked_until) > new Date();
@@ -63,7 +64,7 @@ export function UsersPage() {
   const [tempOpen, setTempOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
-  const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ username: string; password: string; inviteTo?: string } | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
 
@@ -78,6 +79,7 @@ export function UsersPage() {
     setForm({
       username: u.username,
       full_name: u.full_name,
+      email: u.email ?? "",
       role: u.role,
       agency_ids: u.scopes.filter((s) => s.agency_id !== null).map((s) => String(s.agency_id)),
       department_ids: u.scopes.filter((s) => s.department_id !== null).map((s) => String(s.department_id)),
@@ -94,14 +96,18 @@ export function UsersPage() {
         department_ids: form.department_ids.map(Number),
       };
       if (editing === "new") {
-        const res = await api<{ user: User; temporary_password: string }>("/users", {
+        const res = await api<{ user: User; temporary_password: string; invite_sent: boolean }>("/users", {
           method: "POST",
-          body: { username: form.username, full_name: form.full_name, role: form.role, scopes },
+          body: { username: form.username, full_name: form.full_name, email: form.email || null, role: form.role, scopes },
         });
-        setTempPassword({ username: res.user.username, password: res.temporary_password });
+        setTempPassword({
+          username: res.user.username,
+          password: res.temporary_password,
+          inviteTo: res.invite_sent ? (res.user.email ?? undefined) : undefined,
+        });
         setTempOpen(true);
       } else if (editing) {
-        const body: Record<string, unknown> = { full_name: form.full_name, scopes };
+        const body: Record<string, unknown> = { full_name: form.full_name, email: form.email.trim(), scopes };
         if (form.role !== editing.role) body.role = form.role;
         await api<User>(`/users/${editing.id}`, { method: "PATCH", body });
         notifications.show({ color: "green", message: "Zapisano zmiany." });
@@ -115,13 +121,16 @@ export function UsersPage() {
   });
 
   const action = useMutation({
-    mutationFn: async ({ user, kind }: { user: User; kind: "reset" | "unlock" | "toggle" | "mfa" }) => {
+    mutationFn: async ({ user, kind }: { user: User; kind: "reset" | "unlock" | "toggle" | "mfa" | "link" }) => {
       if (kind === "reset") {
         const res = await api<{ temporary_password: string }>(`/users/${user.id}/reset-password`, {
           method: "POST",
         });
         setTempPassword({ username: user.username, password: res.temporary_password });
         setTempOpen(true);
+      } else if (kind === "link") {
+        await api(`/users/${user.id}/send-password-link`, { method: "POST" });
+        notifications.show({ color: "green", message: `Wysłano link do ustawienia hasła na ${user.email}.` });
       } else if (kind === "mfa") {
         await api(`/users/${user.id}/mfa-reset`, { method: "POST" });
         notifications.show({
@@ -207,7 +216,14 @@ export function UsersPage() {
                   <Table.Td>
                     <Code>{u.username}</Code>
                   </Table.Td>
-                  <Table.Td>{u.full_name}</Table.Td>
+                  <Table.Td>
+                    <Text size="sm">{u.full_name}</Text>
+                    {u.email && (
+                      <Text size="xs" c="dimmed">
+                        {u.email}
+                      </Text>
+                    )}
+                  </Table.Td>
                   <Table.Td>{ROLE_LABELS[u.role]}</Table.Td>
                   <Table.Td>
                     {u.role === "manager" ? (
@@ -264,6 +280,11 @@ export function UsersPage() {
                         <Menu.Item onClick={() => action.mutate({ user: u, kind: "reset" })}>
                           Resetuj hasło
                         </Menu.Item>
+                        {u.email && u.is_active && (
+                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "link" })}>
+                            Wyślij link do ustawienia hasła
+                          </Menu.Item>
+                        )}
                         {isLocked(u) && (
                           <Menu.Item onClick={() => action.mutate({ user: u, kind: "unlock" })}>Odblokuj</Menu.Item>
                         )}
@@ -317,6 +338,13 @@ export function UsersPage() {
               required
               value={form.full_name}
               onChange={(e) => setForm({ ...form, full_name: e.currentTarget.value })}
+            />
+            <TextInput
+              label="E-mail"
+              description="opcjonalnie – link do ustawienia hasła, reset hasła i powiadomienia o bezpieczeństwie"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.currentTarget.value })}
             />
             <Select
               label="Rola"
@@ -372,6 +400,12 @@ export function UsersPage() {
               okna nie będzie można go ponownie wyświetlić. Przy pierwszym logowaniu użytkownik musi ustawić własne
               hasło.
             </Text>
+            {tempPassword.inviteTo && (
+              <Alert color="green" variant="light">
+                Wysłano też e-mail z linkiem do ustawienia hasła na <b>{tempPassword.inviteTo}</b> – użytkownik może
+                skorzystać z linku zamiast hasła tymczasowego.
+              </Alert>
+            )}
             <Group>
               <Code fz="lg" p="sm">
                 {tempPassword.password}

@@ -12,6 +12,7 @@ export interface User {
   id: number;
   username: string;
   full_name: string;
+  email: string | null;
   role: Role;
   is_active: boolean;
   must_change_password: boolean;
@@ -364,6 +365,9 @@ export const ACTION_LABELS: Record<string, string> = {
   cards_printed: "Druk kart",
   card_printed: "Druk karty",
   card_scanned: "Skanowanie karty",
+  password_reset_requested: "Prośba o reset hasła e-mailem",
+  password_set_by_link: "Ustawienie hasła przez link z e-maila",
+  password_link_sent: "Wysłanie linku do ustawienia hasła",
   template_created: "Dodanie szablonu",
   template_updated: "Zmiana szablonu",
   template_file_replaced: "Nowa wersja pliku szablonu",

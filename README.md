@@ -107,6 +107,26 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Usunięcie można wstrzymać do wybranej daty z podaniem powodu (np. postępowanie sądowe).
 - Usunięte dane znikają z kopii zapasowych po 14 dniach (rotacja kopii).
 
+## E-maile
+
+Konfiguracja na serwerze (skrzynka pocztowa, np. `powiadomienia@aptid.pl` w hostingu home.pl):
+
+```bash
+/opt/apt/deploy/mail-setup.sh
+```
+
+Pyta o serwer SMTP, login i hasło skrzynki, zapisuje je w `.env`, restartuje aplikację i wysyła e-mail
+testowy (przy błędzie przywraca poprzednie ustawienia). Potem:
+
+- **„Nie pamiętasz hasła?”** na ekranie logowania – link do ustawienia nowego hasła (ważny 60 min,
+  jednorazowy, najwyżej 3 na godzinę). Logowanie dwuetapowe nadal obowiązuje.
+- **Nowe konto z adresem e-mail** – link do ustawienia hasła (72 h); Administrator może wysłać go ponownie
+  (Użytkownicy → menu → „Wyślij link do ustawienia hasła”).
+- **Powiadomienia o bezpieczeństwie** dla właściciela konta: zmiana hasła, blokada po nieudanych logowaniach,
+  wyłączenie / reset 2FA.
+- **Codziennie po kopii zapasowej** – administratorzy z adresem e-mail dostają wiadomość, jeśli kopia
+  się nie udała albo są dane do usunięcia (retencja).
+
 ## Interfejs
 
 - Strona startowa (kliknięcie w nazwę aplikacji): liczniki – aktywni, nowi, bez zdjęcia, bez PESEL, karty,

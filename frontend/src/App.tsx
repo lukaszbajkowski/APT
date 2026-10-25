@@ -6,6 +6,7 @@ import { useAuth } from "./auth";
 import { MFA_PATH, type Role } from "./api";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
+import { ForgotPasswordPage, SetPasswordPage } from "./pages/PasswordResetPages";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
@@ -47,6 +48,8 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-hasla" element={<ForgotPasswordPage />} />
+      <Route path="/ustaw-haslo" element={<SetPasswordPage />} />
       <Route
         path="/zmiana-hasla"
         element={

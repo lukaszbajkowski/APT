@@ -30,6 +30,7 @@ write_status() { # local_ok local_info offsite_state offsite_info
 fail() {
   echo "$(date '+%F %T') BŁĄD kopii: $1" >&2
   write_status false "$1" none ""
+  docker compose exec -T api python -m app.cli notify-daily >/dev/null 2>&1 || true
   exit 1
 }
 
@@ -59,3 +60,6 @@ if [ -f "$APP_DIR/.offsite.env" ]; then
 else
   write_status true "$STAMP, $SIZE" none ""
 fi
+
+# ostrzeżenia e-mail dla administratorów (nieudana kopia, dane do usunięcia) – jeśli e-mail skonfigurowany
+docker compose exec -T api python -m app.cli notify-daily >/dev/null 2>&1 || true

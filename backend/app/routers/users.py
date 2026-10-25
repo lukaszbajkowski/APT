@@ -1,8 +1,10 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app import totp
+from app import mailer, notify, totp
 from app.audit import audit
 from app.deps import AdminAuth, DbSession, utcnow
 from app.models import Agency, Department, Role, User, UserScope, UserSession
@@ -102,12 +104,14 @@ def get_user(user_id: int, ctx: AdminAuth, db: DbSession) -> User:
 def create_user(body: UserCreateIn, ctx: AdminAuth, request: Request, db: DbSession) -> UserCreatedOut:
     if db.scalar(select(User.id).where(User.username == body.username)) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Taki login już istnieje.")
+    _check_email_free(db, body.email, None)
     _validate_scopes(db, body.scopes)
 
     temporary_password = generate_temporary_password()
     user = User(
         username=body.username,
         full_name=body.full_name,
+        email=body.email,
         role=body.role,
         password_hash=hash_password(temporary_password),
         is_active=True,
@@ -130,9 +134,18 @@ def create_user(body: UserCreateIn, ctx: AdminAuth, request: Request, db: DbSess
             "scopes": _scopes_snapshot(user),
         },
     )
+    invite_token = None
+    if body.send_invite and user.email and mailer.enabled():
+        invite_token = notify.create_token(db, user, "invite", datetime.now(UTC))
     db.commit()
     db.refresh(user)
-    return UserCreatedOut(user=UserOut.model_validate(user), temporary_password=temporary_password)
+    if invite_token:
+        notify.send_invite(user, invite_token)
+    return UserCreatedOut(
+        user=UserOut.model_validate(user),
+        temporary_password=temporary_password,
+        invite_sent=invite_token is not None,
+    )
 
 
 @router.patch("/{user_id}", response_model=UserOut)
@@ -163,6 +176,13 @@ def update_user(user_id: int, body: UserUpdateIn, ctx: AdminAuth, request: Reque
         if not body.is_active:
             _revoke_sessions(db, user.id)
 
+    if "email" in body.model_fields_set:
+        new_email = body.email or None
+        if new_email != user.email:
+            _check_email_free(db, new_email, user.id)
+            changes["email"] = {"from": user.email, "to": new_email}
+            user.email = new_email
+
     if body.full_name is not None and body.full_name.strip() != user.full_name:
         changes["full_name"] = {"from": user.full_name, "to": body.full_name.strip()}
         user.full_name = body.full_name.strip()
@@ -190,6 +210,28 @@ def update_user(user_id: int, body: UserUpdateIn, ctx: AdminAuth, request: Reque
     db.commit()
     db.refresh(user)
     return user
+
+
+def _check_email_free(db: Session, email: str | None, user_id: int | None) -> None:
+    if not email:
+        return
+    other = db.scalar(select(User.id).where(User.email == email))
+    if other is not None and other != user_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Ten adres e-mail ma już inne konto.")
+
+
+@router.post("/{user_id}/send-password-link", status_code=status.HTTP_204_NO_CONTENT)
+def send_password_link(user_id: int, ctx: AdminAuth, request: Request, db: DbSession) -> None:
+    """E-mail z linkiem do ustawienia hasła (zamiast podawania hasła tymczasowego)."""
+    user = _get_user(db, user_id)
+    if not user.email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Użytkownik nie ma adresu e-mail.")
+    if not mailer.enabled():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wysyłka e-maili nie jest skonfigurowana.")
+    token = notify.create_token(db, user, "invite", datetime.now(UTC))
+    audit(db, request, "password_link_sent", user=ctx.user, entity_type="user", entity_id=user.id)
+    db.commit()
+    notify.send_invite(user, token)
 
 
 @router.post("/{user_id}/reset-password", response_model=PasswordResetOut)
@@ -222,6 +264,7 @@ def reset_mfa(user_id: int, ctx: AdminAuth, request: Request, db: DbSession) -> 
     _revoke_sessions(db, user.id)
     audit(db, request, "mfa_reset", user=ctx.user, entity_type="user", entity_id=user.id)
     db.commit()
+    notify.security_notice(user, "administrator zresetował logowanie dwuetapowe")
     db.refresh(user)
     return user
 

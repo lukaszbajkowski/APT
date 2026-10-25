@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     # kalendarzowego, w którym nastąpiło zwolnienie. Potem administrator usuwa je trwale.
     retention_years: int = 10
 
+    # E-mail (SMTP), np. konto pocztowe w hostingu. Puste smtp_host = wysyłka wyłączona.
+    smtp_host: str = ""
+    smtp_port: int = 465
+    smtp_security: str = "ssl"  # ssl (port 465) | starttls (port 587) | none
+    smtp_user: str = ""
+    smtp_password: str = ""
+    mail_from: str = ""  # np. "Identyfikacja APT <powiadomienia@aptid.pl>"
+    # Adres aplikacji do linków w e-mailach, np. https://aptid.pl
+    public_url: str = "http://localhost"
+
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key
     data_key: str = ""

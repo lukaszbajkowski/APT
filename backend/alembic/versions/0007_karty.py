@@ -48,5 +48,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("cards")
-    card_status.drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TABLE IF EXISTS cards")
+    op.execute("DROP TYPE IF EXISTS card_status")

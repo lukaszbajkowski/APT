@@ -34,6 +34,13 @@ services:
       APT_LOGIN_MAX_FAILURES: ${APT_LOGIN_MAX_FAILURES:-5}
       APT_LOGIN_LOCK_MINUTES: ${APT_LOGIN_LOCK_MINUTES:-15}
       APT_MFA_ENFORCE: ${APT_MFA_ENFORCE:-true}
+      APT_SMTP_HOST: ${APT_SMTP_HOST:-}
+      APT_SMTP_PORT: ${APT_SMTP_PORT:-465}
+      APT_SMTP_SECURITY: ${APT_SMTP_SECURITY:-ssl}
+      APT_SMTP_USER: ${APT_SMTP_USER:-}
+      APT_SMTP_PASSWORD: ${APT_SMTP_PASSWORD:-}
+      APT_MAIL_FROM: ${APT_MAIL_FROM:-}
+      APT_PUBLIC_URL: ${APT_PUBLIC_URL:-http://localhost}
     volumes:
       - appdata:/app/data
     networks: [internal]

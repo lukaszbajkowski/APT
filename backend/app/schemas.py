@@ -31,6 +31,7 @@ class UserOut(BaseModel):
     id: int
     username: str
     full_name: str
+    email: str | None = None
     role: Role
     is_active: bool
     must_change_password: bool
@@ -60,9 +61,21 @@ def _norm_username(v: str) -> str:
     return v.strip().lower()
 
 
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+
+def _norm_email(v: Any) -> Any:
+    if isinstance(v, str):
+        v = v.strip().lower()
+        return v or None
+    return v
+
+
 class UserCreateIn(BaseModel):
     username: str = Field(pattern=USERNAME_PATTERN)
     full_name: str = Field(min_length=2, max_length=200)
+    email: str | None = Field(default=None, max_length=254, pattern=EMAIL_PATTERN)
+    send_invite: bool = True
     role: Role
     scopes: ScopesIn = Field(default_factory=ScopesIn)
 
@@ -70,6 +83,11 @@ class UserCreateIn(BaseModel):
     @classmethod
     def _norm(cls, v: Any) -> Any:
         return _norm_username(v) if isinstance(v, str) else v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _email(cls, v: Any) -> Any:
+        return _norm_email(v)
 
     @field_validator("full_name")
     @classmethod
@@ -79,14 +97,22 @@ class UserCreateIn(BaseModel):
 
 class UserUpdateIn(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=200)
+    email: str | None = Field(default=None, max_length=254, pattern=r"^$|" + EMAIL_PATTERN)
     role: Role | None = None
     is_active: bool | None = None
     scopes: ScopesIn | None = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _email(cls, v: Any) -> Any:
+        # "" = usuń adres; None (brak pola) = bez zmian – rozróżniamy przez model_fields_set
+        return _norm_email(v) if v != "" else ""
 
 
 class UserCreatedOut(BaseModel):
     user: UserOut
     temporary_password: str
+    invite_sent: bool = False
 
 
 class PasswordResetOut(BaseModel):

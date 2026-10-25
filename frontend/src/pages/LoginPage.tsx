@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconShieldLock } from "@tabler/icons-react";
 
@@ -118,6 +119,11 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const config = useQuery({
+    queryKey: ["auth-config"],
+    queryFn: () => api<{ password_reset: boolean }>("/auth/config"),
+    staleTime: Infinity,
+  });
 
   if (me && !me.mfa_pending) return <Navigate to={nextPath(me, from)} replace />;
 
@@ -175,9 +181,15 @@ export function LoginPage() {
               <Button type="submit" loading={busy} fullWidth>
                 Zaloguj
               </Button>
-              <Text size="xs" c="dimmed" ta="center">
-                Nie pamiętasz hasła? Poproś administratora o reset.
-              </Text>
+              {config.data?.password_reset ? (
+                <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">
+                  Nie pamiętasz hasła?
+                </Anchor>
+              ) : (
+                <Text size="xs" c="dimmed" ta="center">
+                  Nie pamiętasz hasła? Poproś administratora o reset.
+                </Text>
+              )}
             </Stack>
           </form>
         )}

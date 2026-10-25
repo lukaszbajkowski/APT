@@ -2,15 +2,15 @@ from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app import totp
+from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.crypto import decrypt_secret, encrypt_secret
 from app.deps import AuthMfaPending, AuthMfaSetup, AuthPwChange, DbSession, utcnow
-from app.models import User, UserSession
+from app.models import PasswordToken, User, UserSession
 from app.schemas import ChangePasswordIn, LoginIn, MeOut, UserOut
 from app.security import (
     hash_password,
@@ -52,6 +52,10 @@ def _register_failure(db: Session, user: User, request: Request, action: str, **
         user.failed_login_count = 0
         info["locked"] = True
         locked = True
+        notify.security_notice(
+            user,
+            f"konto zablokowano na {settings.login_lock_minutes} min po kilku nieudanych próbach logowania",
+        )
     audit(db, request, action, user=user, details=info)
     return locked
 
@@ -169,6 +173,7 @@ def change_password(body: ChangePasswordIn, ctx: AuthPwChange, request: Request,
     )
     audit(db, request, "password_changed", user=user)
     db.commit()
+    notify.security_notice(user, "zmieniono hasło")
     return _me(user, ctx.session)
 
 
@@ -319,4 +324,102 @@ def mfa_disable(body: MfaDisableIn, ctx: AuthMfaSetup, request: Request, db: DbS
     totp.clear(user)
     audit(db, request, "mfa_disabled", user=user)
     db.commit()
+    notify.security_notice(user, "wyłączono logowanie dwuetapowe")
     return _me(user, ctx.session)
+
+
+# --- reset hasła e-mailem ------------------------------------------------------
+
+RESET_LIMIT_PER_HOUR = 3
+
+
+class ResetRequestIn(BaseModel):
+    login: str = Field(min_length=1, max_length=254)
+
+
+class ResetConfirmIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    new_password: str = Field(min_length=1, max_length=256)
+
+
+class ResetCheckOut(BaseModel):
+    valid: bool
+    username: str | None = None
+    purpose: str | None = None
+
+
+class AuthConfigOut(BaseModel):
+    password_reset: bool
+
+
+@router.get("/config", response_model=AuthConfigOut)
+def auth_config() -> AuthConfigOut:
+    return AuthConfigOut(password_reset=mailer.enabled())
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+def password_reset_request(body: ResetRequestIn, request: Request, db: DbSession) -> dict[str, str]:
+    """Zawsze ta sama odpowiedź – nie zdradzamy, czy login / e-mail istnieje."""
+    ok = {"message": "Jeśli konto istnieje i ma adres e-mail, wysłaliśmy link do ustawienia nowego hasła."}
+    if not mailer.enabled():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Reset hasła e-mailem nie jest włączony.")
+    value = body.login.strip().lower()
+    user = db.scalar(select(User).where((User.username == value) | (User.email == value)))
+    if user is None or not user.is_active or not user.email:
+        audit(db, request, "password_reset_requested", username=value[:64], details={"sent": False})
+        db.commit()
+        return ok
+    now = utcnow()
+    recent = db.scalar(
+        select(func.count())
+        .select_from(PasswordToken)
+        .where(PasswordToken.user_id == user.id, PasswordToken.created_at >= now - timedelta(hours=1))
+    )
+    if (recent or 0) >= RESET_LIMIT_PER_HOUR:
+        audit(
+            db, request, "password_reset_requested", user=user, details={"sent": False, "rate_limited": True}
+        )
+        db.commit()
+        return ok
+    token = notify.create_token(db, user, "reset", now)
+    audit(db, request, "password_reset_requested", user=user, details={"sent": True})
+    db.commit()
+    notify.send_reset(user, token)
+    return ok
+
+
+@router.get("/password-reset/check", response_model=ResetCheckOut)
+def password_reset_check(token: str, db: DbSession) -> ResetCheckOut:
+    t = notify.find_token(db, token, utcnow())
+    if t is None:
+        return ResetCheckOut(valid=False)
+    return ResetCheckOut(valid=True, username=t.user.username, purpose=t.purpose)
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+def password_reset_confirm(body: ResetConfirmIn, request: Request, db: DbSession) -> None:
+    now = utcnow()
+    t = notify.find_token(db, body.token, now)
+    if t is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Link wygasł albo został już użyty. Poproś o nowy.",
+        )
+    user = t.user
+    problems = password_problems(body.new_password, user.username)
+    if problems:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=" ".join(problems))
+    user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
+    user.password_changed_at = now
+    user.failed_login_count = 0
+    user.locked_until = None
+    t.used_at = now
+    db.execute(
+        update(UserSession)
+        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    audit(db, request, "password_set_by_link", user=user, details={"purpose": t.purpose})
+    db.commit()
+    notify.security_notice(user, "ustawiono nowe hasło przez link z e-maila")

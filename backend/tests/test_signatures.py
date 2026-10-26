@@ -183,6 +183,10 @@ def test_trusted_scan_lockout_and_cancel(admin_client, outboxes):
     assert st["roles"][0]["method"] == "zaufany"
     sid = st["roles"][0]["request_id"]
     assert c.get(f"/api/signatures/{sid}/file").content == fake
+    # podpisana wersja = plik z podpisem zaufanym bez zmian (podgląd, PDF, „Pobierz podpisany”)
+    assert c.get(f"/api/documents/{doc['id']}/signed").content == fake
+    assert c.get(f"/api/documents/{doc['id']}/view").content == fake
+    assert c.get(f"/api/documents/{doc['id']}/download?format=pdf").content == fake
 
     # anulowanie prośby firmy
     req = c.post(f"/api/documents/{doc['id']}/signatures", json={"role": "firmy"}).json()

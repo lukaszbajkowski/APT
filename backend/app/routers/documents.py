@@ -703,19 +703,37 @@ def download_document(
     )
 
 
-def _view_source(db: Session, doc: GeneratedDocument) -> tuple[Path, str, bool]:
-    """Plik do podglądu: wersja podpisana (PDF z podpisami / plik z gov.pl / skan) albo oryginalny PDF."""
+def _view_source(db: Session, doc: GeneratedDocument) -> tuple[bytes, str, bool, bool]:
+    """Plik do podglądu: (dane, rozszerzenie, czy wersja podpisana, czy to plik z podpisem zaufanym).
+
+    Wersja podpisana: plik z gov.pl (PDF albo dokument zaszyty w XML), PDF z podpisami z ekranu, skan.
+    """
+    from app import signing
     from app.routers.signatures import signed_file
 
     signed = signed_file(db, doc) if (doc.has_signed_pdf or doc.signed_at) else None
+    if signed and signed[1] == "xml":
+        inner = signing.embedded_pdf(signed[0].read_bytes())
+        if inner:
+            return inner, "pdf", True, True
+        stamped = _doc_path(doc, "pdf").with_name(f"{doc.id}_signed.pdf")
+        if stamped.exists():
+            return stamped.read_bytes(), "pdf", True, False
+        signed = None
     if signed:
-        return signed[0], signed[1], True
+        path, ext, _ = signed
+        return (
+            path.read_bytes(),
+            ext,
+            True,
+            path.name != f"{doc.id}_signed.pdf" and ext == "pdf" and "_sig_" in path.name,
+        )
     path = _doc_path(doc, "pdf")
     if not doc.has_pdf or not path.exists():
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny – dokument nie ma wersji PDF."
         )
-    return path, "pdf", False
+    return path.read_bytes(), "pdf", False, False
 
 
 def _audit_view(
@@ -747,12 +765,11 @@ def _preview_parts(db: Session, doc: GeneratedDocument) -> tuple[list[tuple[byte
     """Pliki składające się na podgląd: dokument + (dla podpisu zaufanego) strona potwierdzenia."""
     from app.routers.signatures import preview_extra
 
-    path, ext, signed = _view_source(db, doc)
-    parts = [(path.read_bytes(), ext)]
-    if signed and ext == "pdf":
-        extra = preview_extra(db, doc)
-        if extra and path.name != f"{doc.id}_signed.pdf":
-            parts.append((extra, "pdf"))
+    data, ext, signed, trusted = _view_source(db, doc)
+    parts = [(data, ext)]
+    extra = preview_extra(db, doc) if trusted else None
+    if extra:  # podpis zaufany jest w pliku niewidoczny – dokładamy stronę potwierdzenia
+        parts.append((extra, "pdf"))
     return parts, signed
 
 
@@ -789,13 +806,13 @@ def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: Db
     """Plik PDF w przeglądarce – tylko kadry i admin (kierownik ma podgląd w aplikacji)."""
     forbid_download(ctx.user)
     doc, e, _ = _get_doc(db, ctx.user, document_id)
-    path, ext, signed = _view_source(db, doc)
+    data, ext, signed, _ = _view_source(db, doc)
     _audit_view(db, request, ctx.user, doc, e, signed)
     media = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}[ext]
     suffix = "_podpisany" if signed else ""
     name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}{suffix}") + f".{ext}"
     return Response(
-        path.read_bytes(),
+        data,
         media_type=media,
         headers={"Content-Disposition": f'inline; filename="{name}"', "Cache-Control": "no-store"},
     )

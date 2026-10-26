@@ -273,3 +273,39 @@ def test_delete_document(admin_client, make_user, outboxes):
         log = db.scalars(select(AuditLog).where(AuditLog.action == "document_deleted")).one()
         assert log.details["reason"] == "zła osoba" and log.details["signed"] is True
         assert log.details["signatures"] == 1
+
+
+def test_trusted_xades_xml(admin_client, outboxes):
+    """gov.pl zwraca często plik XML (XAdES) z dokumentem PDF zaszytym w środku."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    c = admin_client
+    _, doc = _doc(c)
+    original = c.get(f"/api/documents/{doc['id']}/download?format=pdf").content
+    pages = len(PdfReader(io.BytesIO(original)).pages)
+    token = c.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika"}).json()["link"]
+    token = token.rsplit("/", 1)[1]
+    pub = TestClient(app)
+    view = pub.post(f"/api/sign/{token}/verify", json={"birth_date": str(BORN)}).json()["view"]
+    b64 = base64.encodebytes(original).decode()
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">'
+        f"<ds:SignatureValue>abc</ds:SignatureValue><ds:Object>{b64}</ds:Object></ds:Signature>"
+    ).encode()
+    r = pub.post(
+        f"/api/sign/{token}/trusted", files={"file": ("deklaracja.pdf.xml", xml)}, data={"view": view}
+    )
+    assert r.status_code == 200, r.text
+    # pobieranie = oryginalny plik XML z podpisem
+    signed = c.get(f"/api/documents/{doc['id']}/signed")
+    assert signed.content == xml and signed.headers["content-disposition"].endswith(".xml")
+    assert c.get(f"/api/documents/{doc['id']}/download?format=pdf").content == xml
+    # podgląd = dokument z wnętrza XML + strona potwierdzenia
+    assert c.get(f"/api/documents/{doc['id']}/preview").json() == {
+        "pages": pages + 1,
+        "signed": True,
+        "title": "Deklaracja z podpisem – Nowak Ola",
+    }
+    assert c.get(f"/api/documents/{doc['id']}/view").content == original

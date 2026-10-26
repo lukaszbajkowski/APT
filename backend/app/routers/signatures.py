@@ -446,18 +446,16 @@ def preview_extra(db: Session, doc: GeneratedDocument) -> bytes | None:
 def signed_file(db: Session, doc: GeneratedDocument) -> tuple[Path, str, str] | None:
     """Podpisana wersja dokumentu (ścieżka, rozszerzenie, typ).
 
-    Kolejność: PDF podpisany podpisem zaufanym / kwalifikowanym (oryginalny plik – każda zmiana unieważniłaby
-    podpis), PDF z podpisami z ekranu, skan papieru.
+    Kolejność: plik (PDF albo XML) z podpisem zaufanym / kwalifikowanym – bez zmian, bo każda zmiana
+    unieważniłaby podpis; PDF z podpisami z ekranu; skan papieru.
     """
-    trusted = [
-        s
-        for s in _sigs(db, doc)
-        if s.status == "signed" and s.method == "zaufany" and (s.file_name or "").endswith(".pdf")
-    ]
+    trusted = [s for s in _sigs(db, doc) if s.status == "signed" and s.method == "zaufany" and s.file_name]
     if trusted:
         last = max(trusted, key=lambda s: s.signed_at or datetime.min.replace(tzinfo=UTC))
         path = _dir(doc) / (last.file_name or "")
         if path.exists():
+            if path.suffix == ".xml":  # XAdES z gov.pl – podpisany dokument jest w środku pliku XML
+                return path, "xml", "application/xml"
             return path, "pdf", "application/pdf"
     if doc.has_signed_pdf:
         path = _dir(doc) / f"{doc.id}_signed.pdf"

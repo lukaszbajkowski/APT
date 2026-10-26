@@ -279,6 +279,20 @@ def looks_signed(data: bytes, filename: str) -> bool:
     return False
 
 
+def embedded_pdf(xml: bytes) -> bytes | None:
+    """Dokument PDF zaszyty w pliku XAdES (gov.pl „podpis otaczający”) – base64 zaczynający się od JVBER."""
+    import re
+
+    for m in re.finditer(rb">\s*(JVBER[A-Za-z0-9+/=\s]+?)\s*<", xml):
+        try:
+            data = base64.b64decode(re.sub(rb"\s+", b"", m.group(1)))
+        except ValueError:
+            continue
+        if data.startswith(b"%PDF"):
+            return data
+    return None
+
+
 def render_pages(pdf: bytes, scale: float = 1.6) -> list[bytes]:
     """Strony PDF jako PNG (podgląd na stronie podpisu – telefony słabo wyświetlają PDF)."""
     import pypdfium2 as pdfium

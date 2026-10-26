@@ -8,7 +8,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ from app.models import (
     EmployeeStatus,
     Role,
     Training,
+    TrainingProgram,
     TrainingType,
     User,
 )
@@ -66,25 +67,47 @@ class TrainingTypeIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     kind: Literal["general", "position"] = "general"
     validity_months: int | None = Field(default=None, ge=1, le=600)
-    fields: list[FieldDef] = Field(default_factory=list, max_length=50)
     template_id: int | None = None
     is_active: bool = True
 
-    @model_validator(mode="after")
-    def _unique_keys(self) -> "TrainingTypeIn":
-        keys = [f.key for f in self.fields]
-        if len(keys) != len(set(keys)):
-            raise ValueError("Klucze pól muszą być unikalne.")
-        clash = set(keys) & set(templating.BUILTINS)
-        if clash:
-            raise ValueError(f"Klucz „{sorted(clash)[0]}” jest zarezerwowany – użyj innej nazwy.")
-        return self
+
+class ProgramIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    department_id: int | None = None
+    standard_days: int | None = Field(default=None, ge=0, le=3650)
+    is_active: bool = True
+
+
+class ProgramOut(ProgramIn):
+    id: int
+    type_id: int
+    department: str | None = None
 
 
 class TrainingTypeOut(TrainingTypeIn):
     id: int
     template_name: str | None = None
     in_use: int = 0
+    # pola formularza – z szablonu dokumentu (ustawiane w edytorze szablonu)
+    fields: list[FieldDef] = Field(default_factory=list)
+    programs: list[ProgramOut] = Field(default_factory=list)
+
+
+def _program_out(p: TrainingProgram) -> ProgramOut:
+    return ProgramOut(
+        id=p.id,
+        type_id=p.type_id,
+        name=p.name,
+        department_id=p.department_id,
+        department=p.department.name if p.department else None,
+        standard_days=p.standard_days,
+        is_active=p.is_active,
+    )
+
+
+def type_fields(db: Session, t: TrainingType) -> list[FieldDef]:
+    tpl = db.get(DocumentTemplate, t.template_id) if t.template_id else None
+    return [FieldDef.model_validate(f) for f in tpl.fields] if tpl else []
 
 
 def _type_out(db: Session, t: TrainingType) -> TrainingTypeOut:
@@ -95,7 +118,13 @@ def _type_out(db: Session, t: TrainingType) -> TrainingTypeOut:
         name=t.name,
         kind=t.kind,  # type: ignore[arg-type]
         validity_months=t.validity_months,
-        fields=[FieldDef.model_validate(f) for f in t.fields],
+        fields=type_fields(db, t),
+        programs=[
+            _program_out(p)
+            for p in db.scalars(
+                select(TrainingProgram).where(TrainingProgram.type_id == t.id).order_by(TrainingProgram.name)
+            ).unique()
+        ],
         template_id=t.template_id,
         template_name=tpl.name if tpl else None,
         is_active=t.is_active,
@@ -117,7 +146,7 @@ def list_types(ctx: AnyAuth, db: DbSession) -> list[TrainingTypeOut]:
 @router.post("/training-types", response_model=TrainingTypeOut, status_code=status.HTTP_201_CREATED)
 def create_type(body: TrainingTypeIn, ctx: EditAuth, request: Request, db: DbSession) -> TrainingTypeOut:
     _check_template(db, body.template_id)
-    t = TrainingType(**body.model_dump(exclude={"fields"}), fields=[f.model_dump() for f in body.fields])
+    t = TrainingType(**body.model_dump(), fields=[])
     t.name = t.name.strip()
     db.add(t)
     try:
@@ -145,10 +174,9 @@ def update_type(
     if t is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono rodzaju szkolenia.")
     _check_template(db, body.template_id)
-    for k, v in body.model_dump(exclude={"fields"}).items():
+    for k, v in body.model_dump().items():
         setattr(t, k, v)
     t.name = t.name.strip()
-    t.fields = [f.model_dump() for f in body.fields]
     try:
         db.flush()
     except IntegrityError as exc:
@@ -166,11 +194,95 @@ def update_type(
     return _type_out(db, t)
 
 
+def _program_data(db: Session, body: ProgramIn) -> dict[str, Any]:
+    if body.department_id is not None and db.get(Department, body.department_id) is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiego wydziału.")
+    return {**body.model_dump(), "name": body.name.strip()}
+
+
+def _save_program(db: Session) -> None:
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="Takie szkolenie (nazwa i wydział) jest już w katalogu."
+        ) from exc
+
+
+@router.post(
+    "/training-types/{type_id}/programs", response_model=ProgramOut, status_code=status.HTTP_201_CREATED
+)
+def create_program(
+    type_id: int, body: ProgramIn, ctx: EditAuth, request: Request, db: DbSession
+) -> ProgramOut:
+    t = db.get(TrainingType, type_id)
+    if t is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono rodzaju szkolenia.")
+    p = TrainingProgram(type_id=t.id, **_program_data(db, body))
+    db.add(p)
+    _save_program(db)
+    audit(
+        db,
+        request,
+        "training_program_saved",
+        user=ctx.user,
+        entity_type="training_type",
+        entity_id=t.id,
+        details={"name": p.name},
+    )
+    db.commit()
+    db.refresh(p)
+    return _program_out(p)
+
+
+@router.put("/training-programs/{program_id}", response_model=ProgramOut)
+def update_program(
+    program_id: int, body: ProgramIn, ctx: EditAuth, request: Request, db: DbSession
+) -> ProgramOut:
+    p = db.get(TrainingProgram, program_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pozycji katalogu.")
+    for k, v in _program_data(db, body).items():
+        setattr(p, k, v)
+    _save_program(db)
+    audit(
+        db,
+        request,
+        "training_program_saved",
+        user=ctx.user,
+        entity_type="training_type",
+        entity_id=p.type_id,
+        details={"name": p.name},
+    )
+    db.commit()
+    db.refresh(p)
+    return _program_out(p)
+
+
+@router.delete("/training-programs/{program_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_program(program_id: int, ctx: EditAuth, request: Request, db: DbSession) -> None:
+    p = db.get(TrainingProgram, program_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pozycji katalogu.")
+    audit(
+        db,
+        request,
+        "training_program_deleted",
+        user=ctx.user,
+        entity_type="training_type",
+        entity_id=p.type_id,
+        details={"name": p.name},
+    )
+    db.delete(p)  # wpisane szkolenia zachowują skopiowane dane (program_id → NULL)
+    db.commit()
+
+
 # ---------- szkolenia pracownika ----------
 
 
 class TrainingIn(BaseModel):
     type_id: int
+    program_id: int | None = None
     name: str | None = Field(default=None, max_length=200)
     department_id: int | None = None
     start_date: date | None = None
@@ -190,6 +302,7 @@ class TrainingOut(BaseModel):
     type_id: int
     type_name: str
     kind: str
+    program_id: int | None
     name: str | None
     department_id: int | None
     department: str | None
@@ -220,6 +333,7 @@ def _out(db: Session, tr: Training) -> TrainingOut:
         type_id=tr.type_id,
         type_name=tr.type.name,
         kind=tr.type.kind,
+        program_id=tr.program_id,
         name=tr.name,
         department_id=tr.department_id,
         department=tr.department.name if tr.department else None,
@@ -247,7 +361,7 @@ def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiego rodzaju szkolenia.")
     if not t.is_active and tr.type_id != t.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ten rodzaj szkolenia jest wyłączony.")
-    fields = [FieldDef.model_validate(f) for f in t.fields]
+    fields = type_fields(db, t)
     try:
         templating.form_values(fields, body.values)  # tylko walidacja
     except TemplateError as exc:
@@ -261,6 +375,11 @@ def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
             values[f.key] = v
 
     position = t.kind == "position"
+    program = None
+    if position and body.program_id is not None:
+        program = db.get(TrainingProgram, body.program_id)
+        if program is None or program.type_id != t.id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiej pozycji w katalogu.")
     if position:
         dates = [d for d in (body.start_date, body.exam_date, body.end_date) if d]
         if dates != sorted(dates):
@@ -289,6 +408,7 @@ def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
 
     tr.type_id = t.id
     tr.type = t
+    tr.program_id = program.id if program else None
     tr.name = ((body.name or "").strip() or None) if position else None
     tr.department_id = body.department_id if position else None
     tr.start_date = body.start_date if position else None

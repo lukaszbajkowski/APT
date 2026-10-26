@@ -397,6 +397,8 @@ export const ACTION_LABELS: Record<string, string> = {
   training_scan_deleted: "Usunięcie skanu zaświadczenia",
   training_type_created: "Dodanie rodzaju szkolenia",
   training_type_updated: "Zmiana rodzaju szkolenia",
+  training_program_saved: "Zmiana katalogu szkoleń stanowiskowych",
+  training_program_deleted: "Usunięcie pozycji z katalogu szkoleń",
 };
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -451,12 +453,23 @@ export interface ReportSummary {
 
 export type TrainingKind = "general" | "position";
 
+export interface TrainingProgram {
+  id: number;
+  type_id: number;
+  name: string;
+  department_id: number | null;
+  department: string | null;
+  standard_days: number | null;
+  is_active: boolean;
+}
+
 export interface TrainingType {
   id: number;
   name: string;
   kind: TrainingKind;
   validity_months: number | null;
-  fields: TemplateField[];
+  fields: TemplateField[]; // z szablonu dokumentu
+  programs: TrainingProgram[];
   template_id: number | null;
   template_name: string | null;
   is_active: boolean;
@@ -471,6 +484,7 @@ export interface Training {
   type_id: number;
   type_name: string;
   kind: TrainingKind;
+  program_id: number | null;
   name: string | null;
   department_id: number | null;
   department: string | null;

@@ -77,19 +77,26 @@ def test_position_training_and_document(admin_client):
         "Karta szkolenia stanowiskowego",
     ).json()
     assert [f["key"] for f in t["fields"]] == ["maszyna"]  # zmienne szkolenie_* nie są polami formularza
+    # pola formularza ustawia się w edytorze szablonu
+    tf = [{**t["fields"][0], "label": "Maszyna", "required": True}]
+    assert c.patch(f"/api/templates/{t['id']}", json={"fields": tf}).status_code == 200
     pos = _types(c)["Szkolenie stanowiskowe"]
     r = c.put(
         f"/api/training-types/{pos['id']}",
-        json={
-            "name": pos["name"],
-            "kind": "position",
-            "fields": [{"key": "maszyna", "label": "Maszyna", "type": "text", "required": True}],
-            "template_id": t["id"],
-        },
+        json={"name": pos["name"], "kind": "position", "template_id": t["id"]},
     )
     assert r.status_code == 200, r.text
+    assert [(f["key"], f["label"]) for f in r.json()["fields"]] == [("maszyna", "Maszyna")]
+
+    # katalog szkoleń stanowiskowych
+    prog = {"name": "Operator prasy", "department_id": dep, "standard_days": 10}
+    p = c.post(f"/api/training-types/{pos['id']}/programs", json=prog)
+    assert p.status_code == 201 and p.json()["department"] == "Montaż"
+    assert c.post(f"/api/training-types/{pos['id']}/programs", json=prog).status_code == 409
+    assert _types(c)["Szkolenie stanowiskowe"]["programs"][0]["name"] == "Operator prasy"
     body = {
         "type_id": pos["id"],
+        "program_id": p.json()["id"],
         "name": "Operator prasy",
         "department_id": dep,
         "start_date": "2026-03-01",
@@ -106,6 +113,7 @@ def test_position_training_and_document(admin_client):
         c.post(f"/api/employees/{e['id']}/trainings", json={**body, "mentor_id": e["id"]}).status_code == 400
     )
     tr = c.post(f"/api/employees/{e['id']}/trainings", json=body).json()
+    assert tr["program_id"] == p.json()["id"]
     assert tr["mentor_name"] == "Opiekun Jan" and tr["completed_on"] == "2026-03-12" and tr["can_generate"]
 
     d = c.post(f"/api/trainings/{tr['id']}/document")
@@ -178,3 +186,17 @@ def test_expiring_latest_only_and_reminders(client, make_user, monkeypatch):
     assert cli.training_reminders() == 0
     assert {to for to, _ in sent} == {"kadry@example.com", "kier@example.com"}
     assert "Nowak Ola – Uprawnienia SEP (elektryczne): ważne do" in sent[0][1].items[0]
+
+
+def test_delete_program_keeps_training(admin_client):
+    c = admin_client
+    pos = _types(c)["Szkolenie stanowiskowe"]
+    p = c.post(
+        f"/api/training-types/{pos['id']}/programs", json={"name": "Spawacz", "standard_days": 5}
+    ).json()
+    e = _emp(c)
+    body = {"type_id": pos["id"], "program_id": p["id"], "name": "Spawacz", "standard_days": 5}
+    tr = c.post(f"/api/employees/{e['id']}/trainings", json=body).json()
+    assert c.delete(f"/api/training-programs/{p['id']}").status_code == 204
+    after = c.get(f"/api/employees/{e['id']}/trainings").json()[0]
+    assert after["id"] == tr["id"] and after["program_id"] is None and after["name"] == "Spawacz"

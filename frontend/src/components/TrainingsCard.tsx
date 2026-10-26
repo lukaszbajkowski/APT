@@ -51,6 +51,7 @@ import { FieldInput, type Values } from "./DocumentsCard";
 
 interface Form {
   type_id: string | null;
+  program_id: string | null;
   name: string;
   department_id: string | null;
   start_date: string;
@@ -66,6 +67,7 @@ interface Form {
 
 const EMPTY: Form = {
   type_id: null,
+  program_id: null,
   name: "",
   department_id: null,
   start_date: "",
@@ -82,6 +84,7 @@ const EMPTY: Form = {
 function toForm(t: Training): Form {
   return {
     type_id: String(t.type_id),
+    program_id: t.program_id ? String(t.program_id) : null,
     name: t.name ?? "",
     department_id: t.department_id ? String(t.department_id) : null,
     start_date: t.start_date ?? "",
@@ -187,6 +190,7 @@ function TrainingModal({
     mutationFn: () => {
       const body = {
         type_id: Number(form.type_id),
+        program_id: position && form.program_id ? Number(form.program_id) : null,
         name: form.name || null,
         department_id: form.department_id ? Number(form.department_id) : null,
         start_date: form.start_date || null,
@@ -227,10 +231,40 @@ function TrainingModal({
           value={form.type_id}
           allowDeselect={false}
           searchable
-          onChange={(v) => set("type_id", v)}
+          onChange={(v) => setForm((f) => ({ ...f, type_id: v, program_id: null }))}
         />
         {type && position && (
           <>
+            {type.programs.length > 0 && (
+              <Select
+                label="Szkolenie z katalogu"
+                description="Wpisuje nazwę, wydział i standard – możesz je potem zmienić."
+                placeholder="Wybierz albo wpisz dane ręcznie poniżej"
+                clearable
+                searchable
+                data={type.programs
+                  .filter((p) => p.is_active || String(p.id) === form.program_id)
+                  .map((p) => ({
+                    value: String(p.id),
+                    label: [p.name, p.department, p.standard_days !== null ? `${p.standard_days} dni` : null].filter(Boolean).join(" · "),
+                  }))}
+                value={form.program_id}
+                onChange={(v) => {
+                  const p = type.programs.find((x) => String(x.id) === v);
+                  setForm((f) =>
+                    p
+                      ? {
+                          ...f,
+                          program_id: v,
+                          name: p.name,
+                          department_id: p.department_id ? String(p.department_id) : null,
+                          standard_days: p.standard_days ?? "",
+                        }
+                      : { ...f, program_id: null },
+                  );
+                }}
+              />
+            )}
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <TextInput
                 label="Nazwa szkolenia"

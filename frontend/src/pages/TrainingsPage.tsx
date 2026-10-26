@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ActionIcon,
   Alert,
   Anchor,
   Badge,
@@ -24,7 +25,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCircleCheck, IconPencil, IconPlus } from "@tabler/icons-react";
+import { IconCheck, IconCircleCheck, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import {
   api,
@@ -33,12 +34,12 @@ import {
   TRAINING_STATUS,
   type DocTemplate,
   type ExpiringTraining,
-  type TemplateField,
+  type DictionaryItem,
+  type TrainingProgram,
   type TrainingKind,
   type TrainingType,
 } from "../api";
 import { useAuth } from "../auth";
-import { FieldsEditor } from "../components/FieldsEditor";
 
 function Expiring() {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -98,20 +99,137 @@ function Expiring() {
   );
 }
 
+function ProgramRow({
+  typeId,
+  program,
+  departments,
+  onDone,
+}: {
+  typeId: number;
+  program: TrainingProgram | null;
+  departments: DictionaryItem[];
+  onDone?: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(program?.name ?? "");
+  const [dep, setDep] = useState<string | null>(program?.department_id ? String(program.department_id) : null);
+  const [days, setDays] = useState<number | string>(program?.standard_days ?? "");
+  const dirty =
+    !program ||
+    name !== program.name ||
+    dep !== (program.department_id ? String(program.department_id) : null) ||
+    days !== (program.standard_days ?? "");
+  const onError = (e: unknown) => notifications.show({ color: "red", message: errorText(e) });
+  const save = useMutation({
+    mutationFn: () => {
+      const body = { name, department_id: dep ? Number(dep) : null, standard_days: days === "" ? null : Number(days), is_active: true };
+      return program
+        ? api(`/training-programs/${program.id}`, { method: "PUT", body })
+        : api(`/training-types/${typeId}/programs`, { method: "POST", body });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["training-types"] });
+      if (!program) {
+        setName("");
+        setDep(null);
+        setDays("");
+      }
+      onDone?.();
+    },
+    onError,
+  });
+  const remove = useMutation({
+    mutationFn: () => api(`/training-programs/${program!.id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["training-types"] }),
+    onError,
+  });
+  return (
+    <Group gap="xs" wrap="nowrap" align="flex-end">
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs" style={{ flex: 1 }}>
+        <TextInput size="xs" aria-label="Nazwa szkolenia" placeholder="Nazwa szkolenia" value={name} onChange={(e) => setName(e.currentTarget.value)} />
+        <Select
+          size="xs"
+          aria-label="Wydział"
+          placeholder="Wydział (dowolny)"
+          clearable
+          searchable
+          data={departments.map((d) => ({ value: String(d.id), label: d.name }))}
+          value={dep}
+          onChange={setDep}
+        />
+        <NumberInput
+          size="xs"
+          aria-label="Standard (dni)"
+          placeholder="Standard (dni)"
+          min={0}
+          max={3650}
+          allowDecimal={false}
+          suffix=" dni"
+          value={days}
+          onChange={setDays}
+        />
+      </SimpleGrid>
+      <ActionIcon
+        variant={program ? "subtle" : "filled"}
+        aria-label={program ? "Zapisz pozycję" : "Dodaj do katalogu"}
+        disabled={!name.trim() || !dirty}
+        loading={save.isPending}
+        onClick={() => save.mutate()}
+      >
+        {program ? <IconCheck size={14} /> : <IconPlus size={14} />}
+      </ActionIcon>
+      {!program && <div style={{ width: 28, flexShrink: 0 }} />}
+      {program && (
+        <ActionIcon
+          variant="subtle"
+          color="red"
+          aria-label="Usuń z katalogu"
+          onClick={() => window.confirm(`Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`) && remove.mutate()}
+        >
+          <IconTrash size={14} />
+        </ActionIcon>
+      )}
+    </Group>
+  );
+}
+
+function ProgramsEditor({ type }: { type: TrainingType }) {
+  const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
+  const programs = types.data?.find((t) => t.id === type.id)?.programs ?? type.programs;
+  const deps = departments.data ?? [];
+  return (
+    <div>
+      <Text size="sm" fw={500}>
+        Katalog szkoleń stanowiskowych
+      </Text>
+      <Text size="xs" c="dimmed" mb="xs">
+        Przy dodawaniu szkolenia wybierasz pozycję z katalogu – nazwa, wydział i standard czasu nauki wpiszą się same.
+      </Text>
+      <Stack gap="xs">
+        {programs.map((p) => (
+          <ProgramRow key={p.id} typeId={type.id} program={p} departments={deps} />
+        ))}
+        <ProgramRow typeId={type.id} program={null} departments={deps} />
+      </Stack>
+    </div>
+  );
+}
+
 interface TypeForm {
   name: string;
   kind: TrainingKind;
   validity_months: number | string;
   template_id: string | null;
   is_active: boolean;
-  fields: TemplateField[];
 }
 
 function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null; opened: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const templates = useQuery({ queryKey: ["templates"], queryFn: () => api<DocTemplate[]>("/templates"), enabled: opened });
-  const [f, setF] = useState<TypeForm>({ name: "", kind: "general", validity_months: "", template_id: null, is_active: true, fields: [] });
+  const [f, setF] = useState<TypeForm>({ name: "", kind: "general", validity_months: "", template_id: null, is_active: true });
   const [error, setError] = useState<string | null>(null);
+  const selectedTemplate = templates.data?.find((t) => String(t.id) === f.template_id);
 
   useEffect(() => {
     if (!opened) return;
@@ -124,9 +242,8 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
             validity_months: editing.validity_months ?? "",
             template_id: editing.template_id ? String(editing.template_id) : null,
             is_active: editing.is_active,
-            fields: editing.fields,
           }
-        : { name: "", kind: "general", validity_months: "", template_id: null, is_active: true, fields: [] },
+        : { name: "", kind: "general", validity_months: "", template_id: null, is_active: true },
     );
   }, [opened, editing]);
 
@@ -138,7 +255,6 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
         validity_months: f.validity_months === "" ? null : Number(f.validity_months),
         template_id: f.template_id ? Number(f.template_id) : null,
         is_active: f.is_active,
-        fields: f.fields,
       };
       return editing
         ? api<TrainingType>(`/training-types/${editing.id}`, { method: "PUT", body })
@@ -188,7 +304,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
         </div>
         <Select
           label="Szablon dokumentu"
-          description="Opcjonalnie – przy szkoleniu pojawi się „Generuj dokument”. W szablonie użyj znaczników szkolenie_* i kluczy pól poniżej."
+          description="Opcjonalnie – przy szkoleniu pojawi się „Generuj dokument”. W szablonie użyj znaczników szkolenie_* (ściąga w edytorze szablonu)."
           clearable
           data={(templates.data ?? []).map((t) => ({ value: String(t.id), label: t.name }))}
           value={f.template_id}
@@ -197,14 +313,46 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
         <Switch label="Aktywny (do wyboru przy dodawaniu szkolenia)" checked={f.is_active} onChange={(e) => setF({ ...f, is_active: e.currentTarget.checked })} />
         <div>
           <Text size="sm" fw={500}>
-            Dodatkowe pola
+            Pola formularza
           </Text>
-          <Text size="xs" c="dimmed" mb="xs">
-            Wypełniane przy szkoleniu (np. nr zaświadczenia, kategoria uprawnień). Klucz pola = znacznik w szablonie, np.{" "}
-            <code>{"{{ nr_zaswiadczenia }}"}</code>.
-          </Text>
-          <FieldsEditor fields={f.fields} onChange={(fields) => setF({ ...f, fields })} editableKeys />
+          {selectedTemplate ? (
+            <>
+              <Text size="xs" c="dimmed" mb="xs">
+                Pochodzą z szablonu „{selectedTemplate.name}” – zmieniasz je w edytorze szablonu (etykiety, typy, formaty,
+                wymagane).{" "}
+                <Anchor component={Link} to={`/szablony/${selectedTemplate.id}`} size="xs">
+                  Otwórz edytor szablonu
+                </Anchor>
+              </Text>
+              {selectedTemplate.fields.length === 0 ? (
+                <Text size="sm" c="dimmed">
+                  Szablon używa tylko danych z kartoteki i szkolenia.
+                </Text>
+              ) : (
+                <Group gap={6}>
+                  {selectedTemplate.fields.map((x) => (
+                    <Badge key={x.key} variant="light" color={x.required ? "blue" : "gray"}>
+                      {x.label}
+                      {x.required ? " *" : ""}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+            </>
+          ) : (
+            <Text size="xs" c="dimmed">
+              Wybierz szablon dokumentu – jego pola formularza pojawią się przy dodawaniu szkolenia.
+            </Text>
+          )}
         </div>
+        {f.kind === "position" &&
+          (editing ? (
+            <ProgramsEditor type={editing} />
+          ) : (
+            <Text size="xs" c="dimmed">
+              Katalog szkoleń stanowiskowych (nazwa, wydział, standard) uzupełnisz po zapisaniu rodzaju.
+            </Text>
+          ))}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             Anuluj
@@ -246,7 +394,7 @@ function Types() {
                   {[
                     t.kind === "position" ? "stanowiskowe" : "szkolenie / uprawnienie",
                     t.validity_months ? `ważność ${t.validity_months} mies.` : "bez okresu ważności",
-                    t.fields.length ? `pola: ${t.fields.length}` : null,
+                    t.kind === "position" ? `katalog: ${t.programs.length}` : null,
                     t.template_name ? `szablon: ${t.template_name}` : null,
                     `wpisów: ${t.in_use}`,
                   ]

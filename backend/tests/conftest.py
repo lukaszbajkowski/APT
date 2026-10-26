@@ -58,7 +58,7 @@ def _clean_db() -> Iterator[None]:
             text(
                 "TRUNCATE audit_log, password_tokens, user_sessions, user_scopes, users, documents, "
                 "templates, photos, "
-                "employees, positions, agencies, departments, trainings, training_types "
+                "employees, positions, agencies, departments, trainings, training_programs, training_types "
                 "RESTART IDENTITY CASCADE"
             )
         )

@@ -383,6 +383,32 @@ class TrainingType(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
+class TrainingProgram(TimestampMixin, Base):
+    """Pozycja katalogu szkoleń stanowiskowych: nazwa, wydział i standard czasu nauki."""
+
+    __tablename__ = "training_programs"
+    __table_args__ = (
+        UniqueConstraint(
+            "type_id",
+            "name",
+            "department_id",
+            name="uq_training_programs",
+            postgresql_nulls_not_distinct=True,
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_id: Mapped[int] = mapped_column(
+        ForeignKey("training_types.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id", ondelete="SET NULL"))
+    standard_days: Mapped[int | None] = mapped_column(Integer)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    department: Mapped[Department | None] = relationship(lazy="joined")
+
+
 class Training(TimestampMixin, Base):
     """Szkolenie / uprawnienie pracownika. Skan zaświadczenia: trainings/<employee_id>/<id>.<ext>."""
 
@@ -393,6 +419,7 @@ class Training(TimestampMixin, Base):
         ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
     )
     type_id: Mapped[int] = mapped_column(ForeignKey("training_types.id"), index=True, nullable=False)
+    program_id: Mapped[int | None] = mapped_column(ForeignKey("training_programs.id", ondelete="SET NULL"))
     name: Mapped[str | None] = mapped_column(String(200))
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id", ondelete="SET NULL"))
     start_date: Mapped[date | None] = mapped_column(Date)

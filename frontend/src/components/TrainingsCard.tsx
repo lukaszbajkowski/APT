@@ -210,6 +210,8 @@ function TrainingModal({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trainings", employee.id] });
       qc.invalidateQueries({ queryKey: ["trainings-expiring"] });
+    qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
+      qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
       notifications.show({ color: "green", message: editing ? "Zapisano szkolenie." : "Dodano szkolenie." });
       onClose();
     },
@@ -357,11 +359,13 @@ function TrainingModal({
 function summary(t: Training): string {
   const parts: string[] = [];
   if (t.kind === "position") {
-    if (t.start_date || t.end_date) parts.push(`${formatDate(t.start_date)} – ${formatDate(t.end_date)}`);
+    if (t.start_date || t.end_date)
+      parts.push(t.end_date ? `${formatDate(t.start_date)} – ${formatDate(t.end_date)}` : `od ${formatDate(t.start_date)}`);
     if (t.exam_date) parts.push(`egzamin ${formatDate(t.exam_date)}`);
     if (t.department) parts.push(t.department);
     if (t.mentor_name) parts.push(`opiekun: ${t.mentor_name}`);
-    if (t.standard_days !== null) parts.push(`standard: ${t.standard_days} dni`);
+    if (t.standard_days !== null)
+      parts.push(t.end_date && t.days !== null ? `${t.days} z ${t.standard_days} dni` : `standard: ${t.standard_days} dni`);
   } else if (t.completed_on) {
     parts.push(`ukończone ${formatDate(t.completed_on)}`);
   }
@@ -384,6 +388,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["trainings", employee.id] });
     qc.invalidateQueries({ queryKey: ["trainings-expiring"] });
+    qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
     qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
   };
   const onError = (e: unknown) => notifications.show({ color: "red", message: errorText(e) });
@@ -479,10 +484,18 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                     <Badge color={st.color} variant="light">
                       {st.label}
                     </Badge>
-                    {t.valid_until && (
-                      <Text size="xs" c="dimmed">
-                        do {formatDate(t.valid_until)}
+                    {["planned", "in_progress", "overdue"].includes(t.status) ? (
+                      <Text size="xs" c={t.status === "overdue" ? "red" : "dimmed"}>
+                        {t.status === "planned"
+                          ? `od ${formatDate(t.start_date)}`
+                          : `dzień ${t.days}${t.standard_days !== null ? ` z ${t.standard_days}` : ""}`}
                       </Text>
+                    ) : (
+                      t.valid_until && (
+                        <Text size="xs" c="dimmed">
+                          do {formatDate(t.valid_until)}
+                        </Text>
+                      )
                     )}
                   </Stack>
                   {staff && (

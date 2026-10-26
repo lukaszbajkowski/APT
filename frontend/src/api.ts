@@ -476,7 +476,7 @@ export interface TrainingType {
   in_use: number;
 }
 
-export type TrainingStatus = "valid" | "expiring" | "expired" | "none";
+export type TrainingStatus = "valid" | "expiring" | "expired" | "none" | "completed" | "planned" | "in_progress" | "overdue";
 
 export interface Training {
   id: number;
@@ -501,6 +501,7 @@ export interface Training {
   has_scan: boolean;
   scan_name: string | null;
   status: TrainingStatus;
+  days: number | null;
   can_generate: boolean;
   created_by_name: string | null;
 }
@@ -522,5 +523,26 @@ export const TRAINING_STATUS: Record<TrainingStatus, { label: string; color: str
   valid: { label: "ważne", color: "teal" },
   expiring: { label: "kończy się", color: "orange" },
   expired: { label: "wygasło", color: "red" },
-  none: { label: "bezterminowe", color: "gray" },
+  none: { label: "bez daty", color: "gray" },
+  completed: { label: "ukończone", color: "teal" },
+  planned: { label: "zaplanowane", color: "gray" },
+  in_progress: { label: "w trakcie", color: "blue" },
+  overdue: { label: "ponad standard", color: "red" },
 };
+
+export interface InProgressTraining {
+  training_id: number;
+  employee_id: number;
+  number: string;
+  last_name: string;
+  first_name: string;
+  name: string | null;
+  type_name: string;
+  department: string | null;
+  mentor_name: string | null;
+  start_date: string;
+  exam_date: string | null;
+  standard_days: number | null;
+  days: number;
+  status: TrainingStatus;
+}

@@ -200,3 +200,35 @@ def test_delete_program_keeps_training(admin_client):
     assert c.delete(f"/api/training-programs/{p['id']}").status_code == 204
     after = c.get(f"/api/employees/{e['id']}/trainings").json()[0]
     assert after["id"] == tr["id"] and after["program_id"] is None and after["name"] == "Spawacz"
+
+
+def test_position_status_in_progress(admin_client):
+    c = admin_client
+    pos = _types(c)["Szkolenie stanowiskowe"]["id"]
+    e = _emp(c)
+    today = date.today()
+
+    def add(**kw):
+        body = {
+            "type_id": pos,
+            "name": "Spawacz",
+            **{k: v.isoformat() if isinstance(v, date) else v for k, v in kw.items()},
+        }
+        r = c.post(f"/api/employees/{e['id']}/trainings", json=body)
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    a = add(start_date=today - timedelta(days=3), standard_days=10)
+    assert (a["status"], a["days"]) == ("in_progress", 3)
+    b = add(start_date=today - timedelta(days=12), standard_days=10)
+    assert b["status"] == "overdue"
+    p = add(start_date=today + timedelta(days=5))
+    assert p["status"] == "planned"
+    done = add(start_date=today - timedelta(days=20), end_date=today - timedelta(days=2), standard_days=10)
+    assert (done["status"], done["days"], done["completed_on"]) == (
+        "completed",
+        18,
+        (today - timedelta(days=2)).isoformat(),
+    )
+    rows = c.get("/api/trainings/in-progress").json()
+    assert [r["status"] for r in rows] == ["overdue", "in_progress", "planned"]

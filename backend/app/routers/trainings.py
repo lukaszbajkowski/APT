@@ -60,6 +60,28 @@ def status_of(valid_until: date | None, today: date | None = None) -> str:
     return "valid"
 
 
+def training_status(tr: Training, today: date | None = None) -> str:
+    """Status: dla stanowiskowych najpierw etap (zaplanowane / w trakcie / po czasie), potem ważność."""
+    today = today or date.today()
+    if tr.type.kind == "position" and tr.start_date and not (tr.end_date and tr.end_date <= today):
+        if tr.start_date > today:
+            return "planned"
+        if tr.standard_days is not None and (today - tr.start_date).days > tr.standard_days:
+            return "overdue"
+        return "in_progress"
+    st = status_of(tr.valid_until, today)
+    if st == "none" and tr.completed_on:
+        return "completed"
+    return st
+
+
+def days_in_training(tr: Training, today: date | None = None) -> int | None:
+    if tr.type.kind != "position" or not tr.start_date:
+        return None
+    end = tr.end_date if tr.end_date and tr.end_date <= (today or date.today()) else (today or date.today())
+    return max(0, (end - tr.start_date).days)
+
+
 # ---------- rodzaje ----------
 
 
@@ -319,6 +341,7 @@ class TrainingOut(BaseModel):
     has_scan: bool
     scan_name: str | None
     status: str
+    days: int | None  # dni nauki (stanowiskowe): od rozpoczęcia do zakończenia albo do dziś
     can_generate: bool
     created_by_name: str | None
 
@@ -349,7 +372,8 @@ def _out(db: Session, tr: Training) -> TrainingOut:
         notes=tr.notes,
         has_scan=tr.scan_file is not None,
         scan_name=tr.scan_name,
-        status=status_of(tr.valid_until),
+        status=training_status(tr),
+        days=days_in_training(tr),
         can_generate=bool(tpl and tpl.is_active),
         created_by_name=tr.created_by_name,
     )
@@ -670,3 +694,62 @@ def expiring(db: Session, user: User, days: int = WARN_DAYS) -> list[ExpiringOut
 @router.get("/trainings/expiring", response_model=list[ExpiringOut])
 def list_expiring(ctx: ListAuth, db: DbSession, days: int = WARN_DAYS) -> list[ExpiringOut]:
     return expiring(db, ctx.user, max(0, min(days, 365)))
+
+
+class InProgressOut(BaseModel):
+    training_id: int
+    employee_id: int
+    number: str
+    last_name: str
+    first_name: str
+    name: str | None
+    type_name: str
+    department: str | None
+    mentor_name: str | None
+    start_date: date
+    exam_date: date | None
+    standard_days: int | None
+    days: int
+    status: str
+
+
+@router.get("/trainings/in-progress", response_model=list[InProgressOut])
+def list_in_progress(ctx: ListAuth, db: DbSession) -> list[InProgressOut]:
+    """Szkolenia stanowiskowe rozpoczęte (lub zaplanowane), jeszcze nie zakończone – aktywni pracownicy."""
+    today = date.today()
+    q = (
+        select(Training, Employee)
+        .join(Employee, Employee.id == Training.employee_id)
+        .join(TrainingType, TrainingType.id == Training.type_id)
+        .where(
+            Employee.status == EmployeeStatus.active,
+            TrainingType.kind == "position",
+            Training.start_date.is_not(None),
+        )
+    )
+    out = []
+    for tr, e in db.execute(apply_scope(q, ctx.user)).unique().all():
+        st = training_status(tr, today)
+        if st not in ("planned", "in_progress", "overdue"):
+            continue
+        m = tr.mentor
+        out.append(
+            InProgressOut(
+                training_id=tr.id,
+                employee_id=e.id,
+                number=format_number(e.number),
+                last_name=e.last_name,
+                first_name=e.first_name,
+                name=tr.name,
+                type_name=tr.type.name,
+                department=tr.department.name if tr.department else None,
+                mentor_name=f"{m.last_name} {m.first_name}" if m else None,
+                start_date=tr.start_date,
+                exam_date=tr.exam_date,
+                standard_days=tr.standard_days,
+                days=days_in_training(tr, today) or 0,
+                status=st,
+            )
+        )
+    order = {"overdue": 0, "in_progress": 1, "planned": 2}
+    return sorted(out, key=lambda x: (order[x.status], x.start_date, x.last_name))

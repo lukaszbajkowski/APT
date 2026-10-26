@@ -34,6 +34,7 @@ import {
   TRAINING_STATUS,
   type DocTemplate,
   type ExpiringTraining,
+  type InProgressTraining,
   type DictionaryItem,
   type TrainingProgram,
   type TrainingKind,
@@ -213,6 +214,68 @@ function ProgramsEditor({ type }: { type: TrainingType }) {
         <ProgramRow typeId={type.id} program={null} departments={deps} />
       </Stack>
     </div>
+  );
+}
+
+function InProgress() {
+  const q = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress") });
+  if (q.isLoading) return <Loader />;
+  if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
+  const rows = q.data ?? [];
+  if (rows.length === 0)
+    return (
+      <Alert color="gray" icon={<IconCircleCheck />}>
+        Nikt nie jest teraz w trakcie szkolenia stanowiskowego.
+      </Alert>
+    );
+  return (
+    <Card withBorder padding={0}>
+      <Table striped highlightOnHover verticalSpacing="xs">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Pracownik</Table.Th>
+            <Table.Th>Szkolenie</Table.Th>
+            <Table.Th ta="right">Postęp</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map((r) => {
+            const st = TRAINING_STATUS[r.status];
+            return (
+              <Table.Tr key={r.training_id}>
+                <Table.Td>
+                  <Anchor component={Link} to={`/pracownicy/${r.employee_id}`}>
+                    {r.last_name} {r.first_name}
+                  </Anchor>
+                  <Text size="xs" c="dimmed">
+                    nr {r.number}
+                  </Text>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm">{r.name ?? r.type_name}</Text>
+                  <Text size="xs" c="dimmed">
+                    {[`od ${formatDate(r.start_date)}`, r.exam_date ? `egzamin ${formatDate(r.exam_date)}` : null, r.department, r.mentor_name ? `opiekun: ${r.mentor_name}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </Table.Td>
+                <Table.Td ta="right">
+                  <Badge color={st.color} variant="light" size="sm">
+                    {st.label}
+                  </Badge>
+                  {r.status !== "planned" && (
+                    <Text size="xs" c={r.status === "overdue" ? "red" : "dimmed"}>
+                      dzień {r.days}
+                      {r.standard_days !== null ? ` z ${r.standard_days}` : ""}
+                    </Text>
+                  )}
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
+    </Card>
   );
 }
 
@@ -428,10 +491,14 @@ export function TrainingsPage() {
       <Tabs defaultValue="expiring" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="expiring">Kończące się (30 dni)</Tabs.Tab>
+          <Tabs.Tab value="progress">W trakcie</Tabs.Tab>
           {staff && <Tabs.Tab value="types">Rodzaje szkoleń</Tabs.Tab>}
         </Tabs.List>
         <Tabs.Panel value="expiring">
           <Expiring />
+        </Tabs.Panel>
+        <Tabs.Panel value="progress">
+          <InProgress />
         </Tabs.Panel>
         {staff && (
           <Tabs.Panel value="types">

@@ -82,7 +82,7 @@ def test_upcoming_events(admin_client):
         "standard_days": 10,
     }
     c.post(f"/api/employees/{e['id']}/trainings", json=body)
-    ev = c.get("/api/dashboard/upcoming").json()
+    ev = [x for x in c.get("/api/dashboard/upcoming").json() if not x["kind"].startswith("task")]
     assert [(x["kind"], x["date"]) for x in ev] == [
         ("exam", (today + timedelta(days=2)).isoformat()),
         ("hire", (today + timedelta(days=3)).isoformat()),

@@ -480,3 +480,79 @@ class PositionRequirement(Base):
 
     type: Mapped[TrainingType] = relationship(lazy="joined")
     program: Mapped[TrainingProgram | None] = relationship(lazy="joined")
+
+
+class EmploymentPeriod(Base):
+    """Zakończony wcześniejszy okres zatrudnienia (przy ponownym zatrudnieniu)."""
+
+    __tablename__ = "employment_periods"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    hire_date: Mapped[date | None] = mapped_column(Date)
+    termination_date: Mapped[date | None] = mapped_column(Date)
+    agency_name: Mapped[str | None] = mapped_column(String(200))
+    department_name: Mapped[str | None] = mapped_column(String(200))
+    position_name: Mapped[str | None] = mapped_column(String(200))
+
+
+class Assignment(Base):
+    """Historia przydziału: APT, wydział, stanowisko od danej daty (nazwy zapisane na tamtą chwilę)."""
+
+    __tablename__ = "assignments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    valid_from: Mapped[date] = mapped_column(Date, nullable=False)
+    agency_name: Mapped[str | None] = mapped_column(String(200))
+    department_name: Mapped[str | None] = mapped_column(String(200))
+    position_name: Mapped[str | None] = mapped_column(String(200))
+    reason: Mapped[str | None] = mapped_column(String(50))  # zatrudnienie | zmiana | ponowne
+    changed_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ChecklistTemplateItem(TimestampMixin, Base):
+    """Pozycja szablonu checklisty: wdrożenie (od daty zatrudnienia) albo odejście (od daty zwolnienia)."""
+
+    __tablename__ = "checklist_template_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)  # onboarding | offboarding
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    responsible: Mapped[str] = mapped_column(String(10), default="hr", nullable=False)  # hr | manager
+    due_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # automatyczne odhaczenie: photo | card | training:<type_id> | document:<template_id>
+    auto: Mapped[str | None] = mapped_column(String(40))
+    sort: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class ChecklistItem(Base):
+    """Pozycja checklisty konkretnego pracownika (kopia szablonu z chwili utworzenia)."""
+
+    __tablename__ = "checklist_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    responsible: Mapped[str] = mapped_column(String(10), default="hr", nullable=False)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    auto: Mapped[str | None] = mapped_column(String(40))
+    sort: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    done_by_name: Mapped[str | None] = mapped_column(String(200))
+    skipped: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    note: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

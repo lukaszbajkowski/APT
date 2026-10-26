@@ -12,6 +12,7 @@ from app.routers import (
     documents,
     employees,
     imports,
+    lifecycle,
     quality,
     reports,
     retention,
@@ -42,6 +43,7 @@ app.include_router(reports.router)
 app.include_router(quality.router)
 app.include_router(trainings.router)
 app.include_router(competence.router)
+app.include_router(lifecycle.router)
 app.include_router(training_import.router)
 
 

@@ -92,6 +92,8 @@ export interface DuplicateRef {
   id: number;
   number: string;
   name: string;
+  archived?: boolean;
+  termination_date?: string | null;
 }
 
 export type FieldType = "text" | "textarea" | "date" | "select" | "checkbox" | "number";
@@ -391,6 +393,12 @@ export const ACTION_LABELS: Record<string, string> = {
   mfa_recovery_used: "Logowanie kodem zapasowym",
   mfa_recovery_regenerated: "Nowe kody zapasowe",
   training_created: "Dodanie szkolenia",
+  employee_rehired: "Ponowne zatrudnienie",
+  checklist_created: "Utworzenie checklisty",
+  checklist_item_updated: "Zmiana pozycji checklisty",
+  checklist_template_updated: "Zmiana szablonu checklisty",
+  position_requirements_set: "Zmiana wymaganych szkoleń stanowiska",
+  trainings_imported: "Import szkoleń",
   training_updated: "Zmiana szkolenia",
   training_deleted: "Usunięcie szkolenia",
   training_scan_uploaded: "Dodanie skanu zaświadczenia",

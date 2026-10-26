@@ -226,6 +226,18 @@ export function EmployeeFormPage() {
           </div>
         </Group>
 
+        {!editing && peselDuplicate?.archived && (
+          <Alert color="blue" title="Ta osoba jest już w kartotece (archiwum)">
+            {peselDuplicate.name} (nr {peselDuplicate.number}) – zwolniona
+            {peselDuplicate.termination_date ? ` ${new Date(peselDuplicate.termination_date).toLocaleDateString("pl-PL")}` : ""}.
+            Zamiast zakładać nową kartotekę, zatrudnij ją ponownie – zachowasz numer, historię, szkolenia i dokumenty.
+            <Group mt="xs">
+              <Button component={Link} to={`/pracownicy/${peselDuplicate.id}?rehire=1`} size="xs">
+                Zatrudnij ponownie
+              </Button>
+            </Group>
+          </Alert>
+        )}
         {error && (
           <Alert color="red" icon={<IconAlertCircle size={18} />}>
             {error}

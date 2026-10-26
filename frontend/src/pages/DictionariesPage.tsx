@@ -22,6 +22,7 @@ import { IconPencil, IconPlus } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
+import { ChecklistTemplates } from "../components/Lifecycle";
 
 interface Item {
   id: number;
@@ -204,7 +205,11 @@ export function DictionariesPage() {
           <Tabs.Tab value="departments">Wydziały</Tabs.Tab>
           <Tabs.Tab value="positions">Stanowiska</Tabs.Tab>
           <Tabs.Tab value="countries">Kraje</Tabs.Tab>
+          <Tabs.Tab value="checklists">Checklisty</Tabs.Tab>
         </Tabs.List>
+        <Tabs.Panel value="checklists">
+          <ChecklistTemplates />
+        </Tabs.Panel>
         <Tabs.Panel value="agencies">
           <DictionaryTab kind="agencies" query={agencies as UseQueryResult<Item[]>} />
         </Tabs.Panel>

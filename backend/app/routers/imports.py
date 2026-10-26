@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import crypto
+from app import crypto, lifecycle
 from app.audit import audit
 from app.config import get_settings
 from app.deps import DbSession, StaffAuth
@@ -488,6 +488,8 @@ async def commit(
         db.add(e)
         db.flush()
         numbers.append(e.number)
+        lifecycle.record_assignment(db, e, e.hire_date or date.today(), "zatrudnienie", ctx.user.full_name)
+        lifecycle.maybe_onboarding(db, e)
         audit(
             db,
             request,

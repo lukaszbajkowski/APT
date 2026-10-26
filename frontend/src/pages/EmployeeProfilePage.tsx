@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -31,6 +31,7 @@ import {
   IconPencil,
   IconPrinter,
   IconRestore,
+  IconUserCheck,
   IconTrash,
 } from "@tabler/icons-react";
 
@@ -50,6 +51,7 @@ import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
 import { TrainingsCard } from "../components/TrainingsCard";
+import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
 
 const PESEL_VISIBLE_SECONDS = 30;
@@ -140,6 +142,8 @@ export function EmployeeProfilePage() {
   const [photoOpen, setPhotoOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [rehireOpen, setRehireOpen] = useState(searchParams.get("rehire") === "1");
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
 
   const refresh = (e: Employee) => {
@@ -154,7 +158,9 @@ export function EmployeeProfilePage() {
     onSuccess: (e) => {
       refresh(e);
       setTerminateOpen(false);
-      notifications.show({ color: "green", message: "Pracownik przeniesiony do archiwum." });
+      qc.invalidateQueries({ queryKey: ["employee-checklists"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      notifications.show({ color: "green", message: "Pracownik przeniesiony do archiwum – utworzono checklistę odejścia." });
     },
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
@@ -162,7 +168,8 @@ export function EmployeeProfilePage() {
     mutationFn: () => api<Employee>(`/employees/${id}/restore`, { method: "POST" }),
     onSuccess: (e) => {
       refresh(e);
-      notifications.show({ color: "green", message: "Pracownik przywrócony z archiwum." });
+      qc.invalidateQueries({ queryKey: ["employee-checklists"] });
+      notifications.show({ color: "green", message: "Cofnięto zwolnienie." });
     },
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
@@ -183,6 +190,9 @@ export function EmployeeProfilePage() {
 
   return (
     <Stack maw={1000}>
+      {staff && e.status === "terminated" && (
+        <RehireModal employee={e} opened={rehireOpen} onClose={() => setRehireOpen(false)} />
+      )}
       <Anchor component={Link} to="/pracownicy" size="sm">
         <Group gap={4}>
           <IconArrowLeft size={14} /> Lista pracowników
@@ -269,9 +279,14 @@ export function EmployeeProfilePage() {
                           Przenieś do archiwum (zwolnienie)
                         </Menu.Item>
                       ) : (
-                        <Menu.Item leftSection={<IconRestore size={16} />} onClick={() => restore.mutate()}>
-                          Przywróć z archiwum
-                        </Menu.Item>
+                        <>
+                          <Menu.Item leftSection={<IconUserCheck size={16} />} onClick={() => setRehireOpen(true)}>
+                            Zatrudnij ponownie
+                          </Menu.Item>
+                          <Menu.Item leftSection={<IconRestore size={16} />} onClick={() => restore.mutate()}>
+                            Cofnij zwolnienie (omyłkowe)
+                          </Menu.Item>
+                        </>
                       )}
                     </Menu.Dropdown>
                   </Menu>
@@ -315,9 +330,13 @@ export function EmployeeProfilePage() {
 
       {canEdit && <DocumentsCard employee={e} />}
 
+      {canEdit && <ChecklistsCard employee={e} />}
+
       <TrainingsCard employee={e} />
 
       <MentorProgramsCard employee={e} />
+
+      <TimelineCard employee={e} />
 
       {staff && (
         <Card withBorder padding="lg">

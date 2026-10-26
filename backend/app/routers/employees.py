@@ -13,16 +13,17 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import Select, String, and_, cast, false, func, or_, select
+from sqlalchemy import Select, String, and_, cast, delete, false, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import crypto, photos, retention
+from app import crypto, lifecycle, photos, retention
 from app.audit import audit
 from app.config import get_settings
 from app.deps import Auth, DbSession, StaffAuth
 from app.models import (
     Agency,
     AuditLog,
+    ChecklistItem,
     Country,
     Department,
     Employee,
@@ -512,6 +513,8 @@ def check_pesel(body: PeselCheckIn, ctx: StaffAuth, db: DbSession, exclude_id: i
             "id": existing.id,
             "number": format_number(existing.number),
             "name": f"{existing.last_name} {existing.first_name}",
+            "archived": existing.status == EmployeeStatus.terminated,
+            "termination_date": _plain(existing.termination_date),
         }
     return PeselCheckOut(valid=True, birth_date=info.birth_date, sex=Sex(info.sex), duplicate_of=dup)
 
@@ -561,6 +564,8 @@ def create_employee(body: EmployeeIn, ctx: StaffAuth, request: Request, db: DbSe
     db.add(e)
     db.flush()
     db.refresh(e)
+    lifecycle.record_assignment(db, e, e.hire_date or date.today(), "zatrudnienie", ctx.user.full_name)
+    lifecycle.maybe_onboarding(db, e)
     audit(
         db,
         request,
@@ -594,6 +599,7 @@ def update_employee(
     data = _validate(db, e, values, creating=False)
     pesel_hash = _check_duplicates(db, e, data, body.confirm_duplicate)
     changes = _assign(e, data, pesel_hash)
+    lifecycle.after_update(db, e, changes, user.full_name)
     if changes:
         audit(
             db,
@@ -620,6 +626,7 @@ def terminate(
         raise _bad("Data zwolnienia jest wcześniejsza niż data zatrudnienia.")
     e.status = EmployeeStatus.terminated
     e.termination_date = body.termination_date
+    lifecycle.create_checklist(db, e, "offboarding", body.termination_date)
     audit(
         db,
         request,
@@ -640,6 +647,10 @@ def restore(employee_id: int, ctx: StaffAuth, request: Request, db: DbSession) -
     if e.status == EmployeeStatus.active:
         raise _bad("Pracownik jest aktywny.")
     previous = e.termination_date
+    # cofnięcie omyłkowego zwolnienia – checklista odejścia nie jest już potrzebna
+    db.execute(
+        delete(ChecklistItem).where(ChecklistItem.employee_id == e.id, ChecklistItem.kind == "offboarding")
+    )
     e.status = EmployeeStatus.active
     e.termination_date = None
     e.retention_hold_until = None

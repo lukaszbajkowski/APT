@@ -25,7 +25,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 
 interface UpcomingEvent {
   date: string;
-  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire";
+  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "task" | "task_overdue";
   title: string;
   employee_id: number;
   employee: string;
@@ -37,6 +37,8 @@ const EVENT_COLOR: Record<UpcomingEvent["kind"], string> = {
   standard_end: "orange",
   valid_until: "red",
   hire: "teal",
+  task: "gray",
+  task_overdue: "red",
 };
 const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   exam: "egzamin",
@@ -44,6 +46,8 @@ const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   standard_end: "standard",
   valid_until: "ważność",
   hire: "nowa osoba",
+  task: "zadanie",
+  task_overdue: "zaległe",
 };
 
 function dayLabel(iso: string): string {
@@ -68,9 +72,14 @@ function UpcomingCard() {
           <IconCalendarEvent size={20} />
           <Title order={4}>Najbliższe 14 dni</Title>
         </Group>
-        <Button component={Link} to="/szkolenia" variant="subtle" size="xs">
-          Szkolenia
-        </Button>
+        <Group gap={0}>
+          <Button component={Link} to="/zadania" variant="subtle" size="xs">
+            Zadania
+          </Button>
+          <Button component={Link} to="/szkolenia" variant="subtle" size="xs">
+            Szkolenia
+          </Button>
+        </Group>
       </Group>
       {q.isLoading ? (
         <Loader size="sm" />

@@ -40,6 +40,7 @@ def _load_training_seed() -> list:
 
 
 _TRAINING_SEED = _load_training_seed()
+_CHECKLIST_SEED: list[dict] = []
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -48,6 +49,16 @@ def _migrate() -> None:
     cfg.set_main_option("script_location", os.path.join(BACKEND_DIR, "alembic"))
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
+    with engine.begin() as conn:
+        _CHECKLIST_SEED[:] = [
+            dict(r._mapping)
+            for r in conn.execute(
+                text(
+                    "SELECT kind, label, responsible, due_days, auto, sort "
+                    "FROM checklist_template_items ORDER BY id"
+                )
+            )
+        ]
 
 
 @pytest.fixture(autouse=True)
@@ -59,7 +70,8 @@ def _clean_db() -> Iterator[None]:
                 "TRUNCATE audit_log, password_tokens, user_sessions, user_scopes, users, documents, "
                 "templates, photos, "
                 "employees, positions, agencies, departments, trainings, training_program_mentors, "
-                "training_programs, training_types "
+                "training_programs, training_types, assignments, employment_periods, checklist_items, "
+                "position_requirements "
                 "RESTART IDENTITY CASCADE"
             )
         )
@@ -67,6 +79,16 @@ def _clean_db() -> Iterator[None]:
             conn.execute(
                 text("INSERT INTO training_types (name, kind, validity_months) VALUES (:n, :k, :m)"),
                 {"n": name, "k": kind, "m": months},
+            )
+        # szablony checklist jak po migracji (id rodzajów szkoleń są te same dzięki RESTART IDENTITY)
+        conn.execute(text("DELETE FROM checklist_template_items"))
+        for row in _CHECKLIST_SEED:
+            conn.execute(
+                text(
+                    "INSERT INTO checklist_template_items (kind, label, responsible, due_days, auto, sort) "
+                    "VALUES (:kind, :label, :responsible, :due_days, :auto, :sort)"
+                ),
+                row,
             )
         conn.execute(text("DELETE FROM countries WHERE name LIKE 'Test%'"))
         conn.execute(text("UPDATE countries SET is_active = true"))

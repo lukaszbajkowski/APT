@@ -91,7 +91,7 @@ def dashboard(ctx: Auth, db: DbSession) -> DashboardOut:
 
 class UpcomingEvent(BaseModel):
     date: date
-    kind: str  # exam | start | standard_end | valid_until | hire
+    kind: str  # exam | start | standard_end | valid_until | hire | task | task_overdue
     title: str
     employee_id: int
     employee: str
@@ -140,4 +140,19 @@ def upcoming(ctx: Auth, db: DbSession, days: int = UPCOMING_DAYS) -> list[Upcomi
     )
     for e in db.scalars(apply_scope(hires, ctx.user)).unique():
         add(e.hire_date, "hire", "Pierwszy dzień pracy", e)
+    if ctx.user.role != Role.viewer:
+        from app.routers.lifecycle import open_tasks
+
+        for t in open_tasks(db, ctx.user):
+            if t.due_date and t.due_date <= end:
+                due = max(t.due_date, today)  # zaległe pokazujemy jako „dziś”
+                out.append(
+                    UpcomingEvent(
+                        date=due,
+                        kind="task_overdue" if t.state == "overdue" else "task",
+                        title=t.label,
+                        employee_id=t.employee_id,
+                        employee=t.employee,
+                    )  # fmt: skip
+                )
     return sorted(out, key=lambda x: (x.date, x.kind, x.employee))[:100]

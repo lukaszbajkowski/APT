@@ -50,6 +50,7 @@ import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
 import { TrainingsCard } from "../components/TrainingsCard";
+import { MentorProgramsCard } from "../components/MentorPrograms";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -315,6 +316,8 @@ export function EmployeeProfilePage() {
       {canEdit && <DocumentsCard employee={e} />}
 
       <TrainingsCard employee={e} />
+
+      <MentorProgramsCard employee={e} />
 
       {staff && (
         <Card withBorder padding="lg">

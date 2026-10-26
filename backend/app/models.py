@@ -407,6 +407,22 @@ class TrainingProgram(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     department: Mapped[Department | None] = relationship(lazy="joined")
+    mentors: Mapped[list["Employee"]] = relationship(
+        secondary="training_program_mentors", lazy="selectin", order_by="Employee.last_name"
+    )
+
+
+class TrainingProgramMentor(Base):
+    """Kto może prowadzić (być opiekunem) danego szkolenia stanowiskowego z katalogu."""
+
+    __tablename__ = "training_program_mentors"
+
+    program_id: Mapped[int] = mapped_column(
+        ForeignKey("training_programs.id", ondelete="CASCADE"), primary_key=True
+    )
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
 
 
 class Training(TimestampMixin, Base):

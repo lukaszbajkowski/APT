@@ -177,6 +177,7 @@ function TrainingModal({
 
   const type = types.data?.find((t) => String(t.id) === form.type_id);
   const position = type?.kind === "position";
+  const program = type?.programs.find((p) => String(p.id) === form.program_id);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // podpowiedź „ważne do” z okresu ważności rodzaju
@@ -261,6 +262,7 @@ function TrainingModal({
                           name: p.name,
                           department_id: p.department_id ? String(p.department_id) : null,
                           standard_days: p.standard_days ?? "",
+                          mentor_id: p.mentors.some((m) => String(m.id) === f.mentor_id) ? f.mentor_id : null,
                         }
                       : { ...f, program_id: null },
                   );
@@ -294,12 +296,36 @@ function TrainingModal({
                 onChange={(v) => set("standard_days", v)}
               />
             </SimpleGrid>
-            <MentorSelect
-              employeeId={employee.id}
-              value={form.mentor_id}
-              initialLabel={editing?.mentor_name ?? null}
-              onChange={(v) => set("mentor_id", v)}
-            />
+            {program ? (
+              <Select
+                label="Opiekun"
+                description={
+                  program.mentors.length
+                    ? "Tylko osoby uprawnione do prowadzenia tego szkolenia."
+                    : "Nikt nie ma jeszcze uprawnień do tego szkolenia – dodasz je w katalogu albo w kartotece opiekuna."
+                }
+                placeholder={program.mentors.length ? "Wybierz" : "Brak uprawnionych"}
+                clearable
+                searchable
+                data={[
+                  ...program.mentors
+                    .filter((m) => m.id !== employee.id && (m.active || String(m.id) === form.mentor_id))
+                    .map((m) => ({ value: String(m.id), label: m.name })),
+                  ...(form.mentor_id && editing?.mentor_name && !program.mentors.some((m) => String(m.id) === form.mentor_id)
+                    ? [{ value: form.mentor_id, label: `${editing.mentor_name} (bez uprawnień)` }]
+                    : []),
+                ]}
+                value={form.mentor_id}
+                onChange={(v) => set("mentor_id", v)}
+              />
+            ) : (
+              <MentorSelect
+                employeeId={employee.id}
+                value={form.mentor_id}
+                initialLabel={editing?.mentor_name ?? null}
+                onChange={(v) => set("mentor_id", v)}
+              />
+            )}
           </>
         )}
         {type && (

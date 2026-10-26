@@ -399,6 +399,7 @@ export const ACTION_LABELS: Record<string, string> = {
   training_type_updated: "Zmiana rodzaju szkolenia",
   training_program_saved: "Zmiana katalogu szkoleń stanowiskowych",
   training_program_deleted: "Usunięcie pozycji z katalogu szkoleń",
+  training_mentors_set: "Zmiana uprawnień opiekunów szkoleń",
 };
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -461,6 +462,14 @@ export interface TrainingProgram {
   department: string | null;
   standard_days: number | null;
   is_active: boolean;
+  mentors: { id: number; name: string; active: boolean }[];
+}
+
+export interface MentorProgram {
+  id: number;
+  type_name: string;
+  name: string;
+  department: string | null;
 }
 
 export interface TrainingType {

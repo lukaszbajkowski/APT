@@ -25,6 +25,7 @@ from app.models import (
     Role,
     Training,
     TrainingProgram,
+    TrainingProgramMentor,
     TrainingType,
     User,
 )
@@ -100,10 +101,17 @@ class ProgramIn(BaseModel):
     is_active: bool = True
 
 
+class MentorOut(BaseModel):
+    id: int
+    name: str
+    active: bool
+
+
 class ProgramOut(ProgramIn):
     id: int
     type_id: int
     department: str | None = None
+    mentors: list[MentorOut] = Field(default_factory=list)
 
 
 class TrainingTypeOut(TrainingTypeIn):
@@ -124,6 +132,10 @@ def _program_out(p: TrainingProgram) -> ProgramOut:
         department=p.department.name if p.department else None,
         standard_days=p.standard_days,
         is_active=p.is_active,
+        mentors=[
+            MentorOut(id=m.id, name=f"{m.last_name} {m.first_name}", active=m.status == EmployeeStatus.active)
+            for m in p.mentors
+        ],
     )
 
 
@@ -299,6 +311,98 @@ def delete_program(program_id: int, ctx: EditAuth, request: Request, db: DbSessi
     db.commit()
 
 
+class IdsIn(BaseModel):
+    ids: list[int] = Field(default_factory=list, max_length=500)
+
+
+@router.put("/training-programs/{program_id}/mentors", response_model=ProgramOut)
+def set_program_mentors(
+    program_id: int, body: IdsIn, ctx: EditAuth, request: Request, db: DbSession
+) -> ProgramOut:
+    p = db.get(TrainingProgram, program_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pozycji katalogu.")
+    ids = sorted(set(body.ids))
+    people = list(db.scalars(select(Employee).where(Employee.id.in_(ids))).unique()) if ids else []
+    if len(people) != len(ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie znaleziono części pracowników.")
+    p.mentors = people
+    audit(
+        db,
+        request,
+        "training_mentors_set",
+        user=ctx.user,
+        entity_type="training_type",
+        entity_id=p.type_id,
+        details={"program": p.name, "mentors": [format_number(e.number) for e in people]},
+    )
+    db.commit()
+    db.refresh(p)
+    return _program_out(p)
+
+
+class MentorProgramOut(BaseModel):
+    id: int
+    type_name: str
+    name: str
+    department: str | None
+
+
+@router.get("/employees/{employee_id}/mentor-programs", response_model=list[MentorProgramOut])
+def employee_mentor_programs(employee_id: int, ctx: AnyAuth, db: DbSession) -> list[MentorProgramOut]:
+    get_visible(db, ctx.user, employee_id)
+    q = (
+        select(TrainingProgram)
+        .join(TrainingProgramMentor, TrainingProgramMentor.program_id == TrainingProgram.id)
+        .where(TrainingProgramMentor.employee_id == employee_id)
+        .order_by(TrainingProgram.name)
+    )
+    out = []
+    for p in db.scalars(q).unique():
+        t = db.get(TrainingType, p.type_id)
+        out.append(
+            MentorProgramOut(
+                id=p.id,
+                type_name=t.name if t else "",
+                name=p.name,
+                department=p.department.name if p.department else None,
+            )
+        )
+    return out
+
+
+@router.put("/employees/{employee_id}/mentor-programs", response_model=list[MentorProgramOut])
+def set_employee_mentor_programs(
+    employee_id: int, body: IdsIn, ctx: EditAuth, request: Request, db: DbSession
+) -> list[MentorProgramOut]:
+    e = get_visible(db, ctx.user, employee_id)
+    ids = set(body.ids)
+    if ids and len(db.scalars(select(TrainingProgram.id).where(TrainingProgram.id.in_(ids))).all()) != len(
+        ids
+    ):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiej pozycji w katalogu.")
+    current = set(
+        db.scalars(
+            select(TrainingProgramMentor.program_id).where(TrainingProgramMentor.employee_id == e.id)
+        ).all()
+    )
+    for pid in current - ids:
+        db.delete(db.get(TrainingProgramMentor, (pid, e.id)))
+    for pid in ids - current:
+        db.add(TrainingProgramMentor(program_id=pid, employee_id=e.id))
+    audit(
+        db,
+        request,
+        "training_mentors_set",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"number": format_number(e.number), "programs": sorted(ids)},
+    )
+    db.commit()
+    return employee_mentor_programs(e.id, ctx, db)
+
+
 # ---------- szkolenia pracownika ----------
 
 
@@ -420,6 +524,18 @@ def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
                 )
             if db.get(Employee, body.mentor_id) is None:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiego opiekuna.")
+            unchanged = (
+                tr.id is not None and tr.mentor_id == body.mentor_id and tr.program_id == body.program_id
+            )
+            if (
+                program is not None
+                and not unchanged
+                and body.mentor_id not in {m.id for m in program.mentors}
+            ):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    detail=f"Ta osoba nie ma uprawnień do prowadzenia szkolenia „{program.name}”.",
+                )
 
     completed = body.completed_on or (body.end_date if position else None)
     valid_until = body.valid_until

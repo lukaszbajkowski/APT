@@ -94,6 +94,7 @@ def test_position_training_and_document(admin_client):
     assert p.status_code == 201 and p.json()["department"] == "Montaż"
     assert c.post(f"/api/training-types/{pos['id']}/programs", json=prog).status_code == 409
     assert _types(c)["Szkolenie stanowiskowe"]["programs"][0]["name"] == "Operator prasy"
+    pid = p.json()["id"]
     body = {
         "type_id": pos["id"],
         "program_id": p.json()["id"],
@@ -112,6 +113,13 @@ def test_position_training_and_document(admin_client):
     assert (
         c.post(f"/api/employees/{e['id']}/trainings", json={**body, "mentor_id": e["id"]}).status_code == 400
     )
+    # opiekun musi mieć uprawnienie do tej pozycji katalogu
+    r = c.post(f"/api/employees/{e['id']}/trainings", json=body)
+    assert r.status_code == 400 and "uprawnień" in r.json()["detail"]
+    m = c.put(f"/api/training-programs/{pid}/mentors", json={"ids": [mentor["id"]]})
+    assert m.json()["mentors"] == [{"id": mentor["id"], "name": "Opiekun Jan", "active": True}]
+    mp = c.get(f"/api/employees/{mentor['id']}/mentor-programs").json()
+    assert [(x["name"], x["department"]) for x in mp] == [("Operator prasy", "Montaż")]
     tr = c.post(f"/api/employees/{e['id']}/trainings", json=body).json()
     assert tr["program_id"] == p.json()["id"]
     assert tr["mentor_name"] == "Opiekun Jan" and tr["completed_on"] == "2026-03-12" and tr["can_generate"]
@@ -247,3 +255,18 @@ def test_position_status_in_progress(admin_client):
     )
     rows = c.get("/api/trainings/in-progress").json()
     assert [r["status"] for r in rows] == ["overdue", "in_progress", "planned"]
+
+
+def test_mentor_programs_from_employee_side(admin_client):
+    c = admin_client
+    pos = _types(c)["Szkolenie stanowiskowe"]["id"]
+    p1 = c.post(f"/api/training-types/{pos}/programs", json={"name": "A"}).json()
+    p2 = c.post(f"/api/training-types/{pos}/programs", json={"name": "B"}).json()
+    m = _emp(c, "Jan", "Opiekun")
+    r = c.put(f"/api/employees/{m['id']}/mentor-programs", json={"ids": [p1["id"], p2["id"]]})
+    assert [x["name"] for x in r.json()] == ["A", "B"]
+    r = c.put(f"/api/employees/{m['id']}/mentor-programs", json={"ids": [p2["id"]]})
+    assert [x["name"] for x in r.json()] == ["B"]
+    progs = {x["name"]: x for x in _types(c)["Szkolenie stanowiskowe"]["programs"]}
+    assert progs["A"]["mentors"] == [] and progs["B"]["mentors"][0]["id"] == m["id"]
+    assert c.put(f"/api/employees/{m['id']}/mentor-programs", json={"ids": [99999]}).status_code == 400

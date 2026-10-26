@@ -41,6 +41,7 @@ import {
   type TrainingType,
 } from "../api";
 import { useAuth } from "../auth";
+import { ProgramMentorsButton } from "../components/MentorPrograms";
 
 function Expiring() {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -179,7 +180,8 @@ function ProgramRow({
       >
         {program ? <IconCheck size={14} /> : <IconPlus size={14} />}
       </ActionIcon>
-      {!program && <div style={{ width: 28, flexShrink: 0 }} />}
+      {!program && <div style={{ width: 28 + 48 + 8, flexShrink: 0 }} />}
+      {program && <ProgramMentorsButton program={program} />}
       {program && (
         <ActionIcon
           variant="subtle"
@@ -206,6 +208,7 @@ function ProgramsEditor({ type }: { type: TrainingType }) {
       </Text>
       <Text size="xs" c="dimmed" mb="xs">
         Przy dodawaniu szkolenia wybierasz pozycję z katalogu – nazwa, wydział i standard czasu nauki wpiszą się same.
+        Przycisk z liczbą osób – kto może prowadzić (być opiekunem) dane szkolenie.
       </Text>
       <Stack gap="xs">
         {programs.map((p) => (

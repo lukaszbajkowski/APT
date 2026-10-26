@@ -145,6 +145,9 @@ def test_sign_on_screen_flow(admin_client, outboxes):
     view = c.get(f"/api/documents/{doc['id']}/view")
     assert "podpisany" in view.headers["content-disposition"]
     assert "Potwierdzenie podpisów" in PdfReader(io.BytesIO(view.content)).pages[-1].extract_text()
+    dl = c.get(f"/api/documents/{doc['id']}/download?format=pdf")
+    assert "podpisany" in dl.headers["content-disposition"]
+    assert "Potwierdzenie podpisów" in PdfReader(io.BytesIO(dl.content)).pages[-1].extract_text()
     with SessionLocal() as db:
         actions = [a.action for a in db.scalars(select(AuditLog).order_by(AuditLog.id))]
         assert actions.count("document_signed") == 2 and "signature_requested" in actions

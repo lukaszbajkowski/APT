@@ -656,12 +656,18 @@ def download_document(
     format: Literal["pdf", "docx"] = "pdf",
 ) -> Response:
     doc, e, t = _get_doc(db, ctx.user, document_id)
-    if format not in _allowed_formats(t, doc):
+    if format not in _allowed_formats(t, doc) and not (format == "pdf" and doc.signed_at):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail=f"Ten dokument nie jest dostępny do pobrania jako {format.upper()}.",
         )
-    path = _doc_path(doc, format)
+    from app.routers.signatures import signed_file
+
+    path, ext, media = _doc_path(doc, format), format, "application/pdf" if format == "pdf" else DOCX_MIME
+    # PDF podpisanego dokumentu = wersja z podpisami (albo skan); Word zostaje oryginałem do edycji
+    signed = signed_file(db, doc) if format == "pdf" and (doc.has_signed_pdf or doc.signed_at) else None
+    if signed:
+        path, ext, media = signed
     if not path.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku dokumentu.")
     audit(
@@ -671,13 +677,18 @@ def download_document(
         user=ctx.user,
         entity_type="employee",
         entity_id=e.id,
-        details={"number": format_number(e.number), "template": doc.template_name, "format": format},
+        details={
+            "number": format_number(e.number),
+            "template": doc.template_name,
+            "format": "signed" if signed else format,
+        },
     )
     db.commit()
-    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}") + f".{format}"
+    suffix = "_podpisany" if signed else ""
+    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}{suffix}") + f".{ext}"
     return Response(
         path.read_bytes(),
-        media_type="application/pdf" if format == "pdf" else DOCX_MIME,
+        media_type=media,
         headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
     )
 

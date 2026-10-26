@@ -174,7 +174,7 @@ def test_sign_on_screen_flow(admin_client, outboxes):
 
 def test_trusted_scan_lockout_and_cancel(admin_client, outboxes):
     c = admin_client
-    _, doc = _doc(c)
+    emp, doc = _doc(c)
     from fastapi.testclient import TestClient
 
     from app.main import app
@@ -195,7 +195,8 @@ def test_trusted_scan_lockout_and_cancel(admin_client, outboxes):
         f"/api/sign/{token}/trusted", files={"file": ("x.pdf", b"%PDF-1.4 nic")}, data={"view": view}
     )
     assert plain.status_code == 400
-    fake = b"%PDF-1.7 /Type /Sig /ByteRange [0 1 2 3] /Filter /Adobe.PPKLite /SubFilter /ETSI.CAdES.detached"
+    original = c.get(f"/api/documents/{doc['id']}/download?format=pdf").content
+    fake = original + b"\n% /Type /Sig /ByteRange [0 1 2 3] /SubFilter /ETSI.CAdES.detached\n"
     r = pub.post(f"/api/sign/{token}/trusted", files={"file": ("podpisany.pdf", fake)}, data={"view": view})
     assert r.status_code == 200, r.text
     st = c.get(f"/api/documents/{doc['id']}/signatures").json()
@@ -206,14 +207,26 @@ def test_trusted_scan_lockout_and_cancel(admin_client, outboxes):
     assert c.get(f"/api/documents/{doc['id']}/signed").content == fake
     assert c.get(f"/api/documents/{doc['id']}/view").content == fake
     assert c.get(f"/api/documents/{doc['id']}/download?format=pdf").content == fake
+    # podgląd: strony dokumentu + strona potwierdzenia (podpis w pliku jest niewidoczny)
+    pages = len(PdfReader(io.BytesIO(original)).pages)
+    assert c.get(f"/api/documents/{doc['id']}/preview").json()["pages"] == pages + 1
+    assert c.get(f"/api/documents/{doc['id']}/preview/{pages}").content[:4] == b"\x89PNG"
+    # skan niedozwolony, gdy jest podpis elektroniczny
+    assert c.get(f"/api/documents/{doc['id']}/signatures").json()["scan_allowed"] is False
+    r = c.post(f"/api/documents/{doc['id']}/signatures/scan", files={"file": ("skan.pdf", b"%PDF-1.4 skan")})
+    assert r.status_code == 409
 
     # anulowanie prośby firmy
     req = c.post(f"/api/documents/{doc['id']}/signatures", json={"role": "firmy"}).json()
     assert c.delete(f"/api/signatures/{req['id']}").status_code == 204
     assert pub.get(f"/api/sign/{req['link'].rsplit('/', 1)[1]}").status_code == 404
 
-    # skan papierowego dokumentu = podpisany
-    r = c.post(f"/api/documents/{doc['id']}/signatures/scan", files={"file": ("skan.pdf", b"%PDF-1.4 skan")})
+    # skan papierowego dokumentu = podpisany (inny dokument, bez podpisu elektronicznego)
+    doc2 = c.post(
+        f"/api/employees/{emp['id']}/documents",
+        json={"template_id": doc["template_id"], "values": {}},
+    ).json()
+    r = c.post(f"/api/documents/{doc2['id']}/signatures/scan", files={"file": ("skan.pdf", b"%PDF-1.4 skan")})
     assert r.json()["scan"] and r.json()["signed_at"]
 
 

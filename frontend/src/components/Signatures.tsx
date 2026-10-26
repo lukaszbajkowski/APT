@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
-  Anchor,
   Badge,
   Box,
   Button,
@@ -55,6 +54,7 @@ interface SignaturesState {
   has_signed_pdf: boolean;
   scan: boolean;
   scan_id: number | null;
+  scan_allowed: boolean;
   can_remove: boolean;
   can_download: boolean;
   sms_enabled: boolean;
@@ -311,20 +311,16 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                 )}
               </Group>
               {r.status === "signed" ? (
-                <Group justify="space-between" wrap="nowrap" align="flex-start" gap="xs">
-                <Text size="sm">
-                  {r.signer_name} · {formatDateTime(r.signed_at)} · {METHOD[r.method ?? ""] ?? r.method}
-                  {r.method === "zaufany" && r.request_id && st.can_download && (
-                    <>
-                      {" · "}
-                      <Anchor href={`/api/signatures/${r.request_id}/file`} size="sm">
-                        plik z podpisem
-                      </Anchor>
-                    </>
+                <Stack gap={4}>
+                  <Text size="sm">
+                    {r.signer_name} · {formatDateTime(r.signed_at)} · {METHOD[r.method ?? ""] ?? r.method}
+                  </Text>
+                  {st.can_remove && r.request_id && (
+                    <Group justify="flex-end">
+                      <RemoveSignature id={r.request_id} what="podpis" docId={doc.id} onDone={refresh} />
+                    </Group>
                   )}
-                </Text>
-                {st.can_remove && r.request_id && <RemoveSignature id={r.request_id} what="podpis" docId={doc.id} onDone={refresh} />}
-                </Group>
+                </Stack>
               ) : (
                 <>
                   {r.status === "pending" && (
@@ -344,13 +340,15 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
           ))}
           <Divider />
           <Group justify="space-between">
-            <FileButton accept="application/pdf,image/jpeg,image/png" onChange={(f) => f && scan.mutate(f)}>
-              {(props) => (
-                <Button {...props} size="xs" variant="default" leftSection={<IconFileUpload size={14} />} loading={scan.isPending}>
-                  {st.scan ? "Zmień skan podpisanego papieru" : "Dołącz skan podpisanego papieru"}
-                </Button>
-              )}
-            </FileButton>
+            {st.scan_allowed && (
+              <FileButton accept="application/pdf,image/jpeg,image/png" onChange={(f) => f && scan.mutate(f)}>
+                {(props) => (
+                  <Button {...props} size="xs" variant="default" leftSection={<IconFileUpload size={14} />} loading={scan.isPending}>
+                    {st.scan ? "Zmień skan podpisanego papieru" : "Dołącz skan podpisanego papieru"}
+                  </Button>
+                )}
+              </FileButton>
+            )}
             {st.can_remove && st.scan_id && <RemoveSignature id={st.scan_id} what="skan" docId={doc.id} onDone={refresh} />}
             <Box style={{ flex: 1 }} />
             {(st.has_signed_pdf || st.scan) && st.can_download && (

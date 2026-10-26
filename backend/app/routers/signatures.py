@@ -129,6 +129,7 @@ class SignaturesOut(BaseModel):
     has_signed_pdf: bool
     scan: bool
     scan_id: int | None = None
+    scan_allowed: bool = True
     can_remove: bool = False
     can_download: bool = False
     sms_enabled: bool
@@ -163,6 +164,7 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
         signed_at=doc.signed_at,
         has_signed_pdf=doc.has_signed_pdf,
         scan=any(s.role == "skan" and s.status == "signed" for s in sigs),
+        scan_allowed=not any(s.status == "signed" and s.role != "skan" for s in sigs),
         scan_id=next((s.id for s in sigs if s.role == "skan" and s.status == "signed"), None),
         can_remove=user is not None and user.role in (Role.admin, Role.hr),
         can_download=user is not None and user.role != Role.manager,
@@ -365,6 +367,11 @@ async def upload_scan(
 ) -> SignaturesOut:
     """Skan podpisanego papierowego dokumentu – dokument uznajemy za podpisany."""
     doc, e = _get(db, ctx, document_id)
+    if any(x.status == "signed" and x.role != "skan" for x in _sigs(db, doc)):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Dokument ma już podpis elektroniczny – skan nie jest potrzebny. Usuń najpierw podpis.",
+        )
     data = await file.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Plik jest za duży (max 15 MB).")
@@ -416,6 +423,24 @@ def _file_response(data: bytes, name: str, media: str, inline: bool = False) -> 
 
 
 SCAN_MEDIA = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}
+
+
+def preview_extra(db: Session, doc: GeneratedDocument) -> bytes | None:
+    """Strona potwierdzenia do podglądu pliku z podpisem zaufanym (podpis w pliku jest niewidoczny)."""
+    path = _dir(doc) / f"{doc.id}_signed.pdf"
+    trusted = any(s.status == "signed" and s.method == "zaufany" for s in _sigs(db, doc))
+    if not (trusted and doc.has_signed_pdf and path.exists()):
+        return None
+    import io
+
+    from pypdf import PdfReader, PdfWriter
+
+    reader = PdfReader(io.BytesIO(path.read_bytes()))
+    writer = PdfWriter()
+    writer.add_page(reader.pages[-1])
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 
 def signed_file(db: Session, doc: GeneratedDocument) -> tuple[Path, str, str] | None:

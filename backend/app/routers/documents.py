@@ -743,14 +743,27 @@ class PreviewOut(BaseModel):
     title: str
 
 
+def _preview_parts(db: Session, doc: GeneratedDocument) -> tuple[list[tuple[bytes, str]], bool]:
+    """Pliki składające się na podgląd: dokument + (dla podpisu zaufanego) strona potwierdzenia."""
+    from app.routers.signatures import preview_extra
+
+    path, ext, signed = _view_source(db, doc)
+    parts = [(path.read_bytes(), ext)]
+    if signed and ext == "pdf":
+        extra = preview_extra(db, doc)
+        if extra and path.name != f"{doc.id}_signed.pdf":
+            parts.append((extra, "pdf"))
+    return parts, signed
+
+
 @router.get("/documents/{document_id}/preview", response_model=PreviewOut)
 def preview_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> PreviewOut:
     """Podgląd w aplikacji: liczba stron (strony pobiera się jako obrazy ze znakiem wodnym)."""
     from app import preview
 
     doc, e, _ = _get_doc(db, ctx.user, document_id)
-    path, ext, signed = _view_source(db, doc)
-    pages = preview.page_count(path.read_bytes(), ext)
+    parts, signed = _preview_parts(db, doc)
+    pages = sum(preview.page_count(d, x) for d, x in parts)
     _audit_view(db, request, ctx.user, doc, e, signed)
     return PreviewOut(pages=pages, signed=signed, title=f"{doc.template_name} – {e.last_name} {e.first_name}")
 
@@ -760,12 +773,15 @@ def preview_page(document_id: uuid.UUID, page: int, ctx: DocAuth, db: DbSession)
     from app import preview
 
     doc, _, _ = _get_doc(db, ctx.user, document_id)
-    path, ext, _ = _view_source(db, doc)
-    try:
-        png = preview.render_page(path.read_bytes(), ext, page, ctx.user.full_name or ctx.user.username)
-    except IndexError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.") from exc
-    return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
+    parts, _ = _preview_parts(db, doc)
+    viewer = ctx.user.full_name or ctx.user.username
+    for data, ext in parts:
+        n = preview.page_count(data, ext)
+        if 0 <= page < n:
+            png = preview.render_page(data, ext, page, viewer)
+            return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
+        page -= n
+    raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
 
 
 @router.get("/documents/{document_id}/view")

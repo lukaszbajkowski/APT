@@ -102,12 +102,13 @@ export function EmployeesPage() {
 
   const [exporting, setExporting] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
-  async function exportXlsx(withPesel: boolean) {
+  async function exportXlsx(withPesel: boolean, format: "xlsx" | "pdf" = "xlsx") {
     setExporting(true);
     try {
       const q = new URLSearchParams(filterQuery);
       if (withPesel) q.set("include_pesel", "true");
-      await apiDownload(`/reports/employees.xlsx?${q.toString()}`, undefined, "pracownicy.xlsx");
+      if (format === "pdf") q.set("format", "pdf");
+      await apiDownload(`/reports/employees.xlsx?${q.toString()}`, undefined, `pracownicy.${format}`);
       notifications.show({
         color: withPesel ? "orange" : "green",
         message: withPesel
@@ -299,16 +300,23 @@ export function EmployeesPage() {
               <Menu position="bottom-end" width={260}>
                 <Menu.Target>
                   <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
-                    Excel ({list.data.total})
+                    Eksport ({list.data.total})
                   </Button>
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Label>Eksport wyników z bieżącymi filtrami</Menu.Label>
-                  <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (.xlsx)</Menu.Item>
+                  <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (Excel)</Menu.Item>
+                  <Menu.Item onClick={() => exportXlsx(false, "pdf")}>Pobierz listę (PDF)</Menu.Item>
                   {staff && (
-                    <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
-                      Pobierz listę z numerami PESEL
-                    </Menu.Item>
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
+                        Z numerami PESEL (Excel)
+                      </Menu.Item>
+                      <Menu.Item color="orange" onClick={() => exportXlsx(true, "pdf")}>
+                        Z numerami PESEL (PDF)
+                      </Menu.Item>
+                    </>
                   )}
                 </Menu.Dropdown>
               </Menu>

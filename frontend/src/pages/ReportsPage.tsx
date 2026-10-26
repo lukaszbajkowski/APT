@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileSpreadsheet } from "@tabler/icons-react";
+import { IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
 
@@ -67,16 +67,16 @@ function CountTable({ title, rows, limit = 12 }: { title: string; rows: ReportRo
 
 export function ReportsPage() {
   const data = useQuery({ queryKey: ["report-summary"], queryFn: () => api<ReportSummary>("/reports/summary") });
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
 
-  async function download() {
-    setBusy(true);
+  async function download(format: "xlsx" | "pdf") {
+    setBusy(format);
     try {
-      await apiDownload("/reports/summary.xlsx", undefined, "zestawienie.xlsx");
+      await apiDownload(`/reports/summary.xlsx${format === "pdf" ? "?format=pdf" : ""}`, undefined, `zestawienie.${format}`);
     } catch (e) {
       notifications.show({ color: "red", message: errorText(e) });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -94,9 +94,14 @@ export function ReportsPage() {
             Zestawienie aktywnych pracowników · stan na {formatDateTime(s.generated_at)}
           </Text>
         </div>
-        <Button leftSection={<IconFileSpreadsheet size={16} />} onClick={download} loading={busy}>
-          Pobierz zestawienie (Excel)
-        </Button>
+        <Group gap="xs">
+          <Button leftSection={<IconFileSpreadsheet size={16} />} onClick={() => download("xlsx")} loading={busy === "xlsx"}>
+            Excel
+          </Button>
+          <Button variant="default" leftSection={<IconFileTypePdf size={16} />} onClick={() => download("pdf")} loading={busy === "pdf"}>
+            PDF
+          </Button>
+        </Group>
       </Group>
 
       <SimpleGrid cols={{ base: 2, md: s.missing_pesel === null ? 3 : 4 }}>

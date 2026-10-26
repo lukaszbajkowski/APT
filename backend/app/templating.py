@@ -386,13 +386,13 @@ def soffice_path() -> str | None:
     return shutil.which("soffice") or shutil.which("libreoffice")
 
 
-def to_pdf(docx: bytes, timeout: int = 90) -> bytes:
+def to_pdf(docx: bytes, timeout: int = 90, suffix: str = "docx") -> bytes:
     exe = soffice_path()
     if not exe:
         raise PdfUnavailable("Na serwerze nie ma LibreOffice – PDF jest niedostępny, pobierz plik Word.")
     # LibreOffice nie lubi równoległych wywołań na jednym profilu – osobny profil i blokada.
     with _soffice_lock, tempfile.TemporaryDirectory(prefix="apt-pdf-") as tmp:
-        src = Path(tmp) / "dokument.docx"
+        src = Path(tmp) / f"dokument.{suffix}"
         src.write_bytes(docx)
         profile = Path(tmp) / "profile"
         cmd = [

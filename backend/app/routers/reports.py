@@ -3,7 +3,7 @@
 import io
 from collections import Counter, defaultdict
 from datetime import date, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -13,9 +13,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app import crypto
+from app import crypto, templating
 from app.audit import audit
 from app.deps import AuthContext, DbSession, require_roles
 from app.models import Employee, EmployeeStatus, Role
@@ -25,6 +25,8 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 ReportAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))]
 MAX_EXPORT = 20000
+MAX_PDF_ROWS = 3000
+ExportFormat = Annotated[Literal["xlsx", "pdf"], Query(alias="format")]
 TZ = ZoneInfo("Europe/Warsaw")
 
 NAVY = "1F3A73"
@@ -49,9 +51,32 @@ def _sheet_table(ws: Worksheet, headers: list[str], rows: list[list[Any]], start
     last = start_row + max(len(rows), 1)
     ws.auto_filter.ref = f"A{start_row}:{get_column_letter(len(headers))}{last}"
     ws.freeze_panes = ws.cell(row=start_row + 1, column=1)
+    # wydruk / PDF: poziomo, dopasowane do szerokości strony, nagłówek tabeli na każdej stronie
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.print_title_rows = f"{start_row}:{start_row}"
+    ws.page_margins.left = ws.page_margins.right = 0.4
+    ws.oddFooter.left.text = ws.title
+    ws.oddFooter.right.text = "Strona &P z &N"
     for c, h in enumerate(headers, 1):
         width = max([len(str(h))] + [len(_fmt(r[c - 1])) for r in rows[:2000]]) + 2
         ws.column_dimensions[get_column_letter(c)].width = min(max(width, 8), 50)
+
+
+def _title(ws: Worksheet, title: str, user: Any, note: str | None = None) -> int:
+    """Tytuł i podpis nad tabelą (wiersze 1–2/3); zwraca wiersz nagłówka tabeli."""
+    ws["A1"] = title
+    ws["A1"].font = TITLE_FONT
+    ws["A2"] = f"Wygenerowano {datetime.now(TZ):%d.%m.%Y %H:%M} · {user.full_name}"
+    ws["A2"].font = Font(italic=True, color="6B7280")
+    if note:
+        ws["A3"] = note
+        ws["A3"].font = Font(color="6B7280")
+        return 5
+    return 4
 
 
 def _fmt(v: Any) -> str:
@@ -60,9 +85,25 @@ def _fmt(v: Any) -> str:
     return "" if v is None else str(v)
 
 
-def _xlsx(wb: Workbook, name: str) -> Response:
+def _xlsx(wb: Workbook, name: str, fmt: str = "xlsx") -> Response:
     buf = io.BytesIO()
     wb.save(buf)
+    if fmt == "pdf":
+        try:
+            pdf = templating.to_pdf(buf.getvalue(), suffix="xlsx")
+        except templating.PdfUnavailable as exc:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc).replace("plik Word", "Excel")
+            ) from exc
+        pdf_name = name.rsplit(".", 1)[0] + ".pdf"
+        return Response(
+            pdf,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{pdf_name}"',
+                "Cache-Control": "no-store",
+            },
+        )
     return Response(
         buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -84,6 +125,7 @@ def export_employees(
     db: DbSession,
     filters: Filters,
     include_pesel: Annotated[bool, Query()] = False,
+    fmt: ExportFormat = "xlsx",
 ) -> Response:
     user = ctx.user
     personal = full_access(user)
@@ -93,6 +135,11 @@ def export_employees(
     if len(emps) > MAX_EXPORT:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"Za dużo wyników (ponad {MAX_EXPORT}). Zawęź filtry."
+        )
+    if fmt == "pdf" and len(emps) > MAX_PDF_ROWS:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"PDF obejmuje najwyżej {MAX_PDF_ROWS} osób. Zawęź filtry albo pobierz Excel.",
         )
 
     today = date.today()
@@ -129,21 +176,25 @@ def export_employees(
     wb = Workbook()
     ws = wb.active
     ws.title = "Pracownicy"
-    _sheet_table(ws, headers, rows)
+    start = _title(ws, "Lista pracowników", user, f"Osób: {len(rows)}") if fmt == "pdf" else 1
+    _sheet_table(ws, headers, rows, start_row=start)
     if include_pesel:
         ws.oddHeader.center.text = "Zawiera numery PESEL – dane poufne"
 
-    params = {k: v for k, v in request.query_params.multi_items() if k != "include_pesel"}
+    if fmt == "pdf":
+        # w PDF bez kolumny uwag – długi tekst rozpycha tabelę
+        ws.delete_cols(len(headers))
+    params = {k: v for k, v in request.query_params.multi_items() if k not in ("include_pesel", "format")}
     audit(
         db,
         request,
         "employees_exported",
         user=user,
         entity_type="report",
-        details={"count": len(rows), "filters": params, "include_pesel": include_pesel},
+        details={"count": len(rows), "filters": params, "include_pesel": include_pesel, "format": fmt},
     )
     db.commit()
-    return _xlsx(wb, f"pracownicy_{_stamp()}.xlsx")
+    return _xlsx(wb, f"pracownicy_{_stamp()}.xlsx", fmt)
 
 
 # --- zestawienia ------------------------------------------------------------------
@@ -244,7 +295,7 @@ def summary(ctx: ReportAuth, db: DbSession) -> SummaryOut:
 
 
 @router.get("/summary.xlsx")
-def summary_xlsx(ctx: ReportAuth, request: Request, db: DbSession) -> Response:
+def summary_xlsx(ctx: ReportAuth, request: Request, db: DbSession, fmt: ExportFormat = "xlsx") -> Response:
     s = build_summary(db, ctx.user)
     wb = Workbook()
 
@@ -289,6 +340,234 @@ def summary_xlsx(ctx: ReportAuth, request: Request, db: DbSession) -> Response:
         [[m.label, m.hired, m.terminated, m.hired - m.terminated] for m in s.months],
     )
 
-    audit(db, request, "report_exported", user=ctx.user, entity_type="report", details={"report": "summary"})
+    audit(
+        db,
+        request,
+        "report_exported",
+        user=ctx.user,
+        entity_type="report",
+        details={"report": "summary", "format": fmt},
+    )
     db.commit()
-    return _xlsx(wb, f"zestawienie_{_stamp()}.xlsx")
+    return _xlsx(wb, f"zestawienie_{_stamp()}.xlsx", fmt)
+
+
+# --- raport szkoleń ---------------------------------------------------------------
+
+TRAINING_STATUS_LABELS = {
+    "valid": "ważne",
+    "expiring": "kończy się",
+    "expired": "wygasło",
+    "none": "bez daty",
+    "completed": "ukończone",
+    "planned": "zaplanowane",
+    "in_progress": "w trakcie",
+    "overdue": "ponad standard",
+}
+TrainingStatusKey = Literal[
+    "valid", "expiring", "expired", "none", "completed", "planned", "in_progress", "overdue"
+]
+
+
+class TrainingFilters:
+    def __init__(
+        self,
+        type_id: int | None = None,
+        program_id: int | None = None,
+        department_id: int | None = None,
+        mentor_id: int | None = None,
+        status_: Annotated[list[TrainingStatusKey] | None, Query(alias="status")] = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        employees: Literal["active", "all"] = "active",
+    ):
+        self.type_id, self.program_id, self.department_id, self.mentor_id = (
+            type_id,
+            program_id,
+            department_id,
+            mentor_id,
+        )
+        self.status = status_ or []
+        self.date_from, self.date_to, self.employees = date_from, date_to, employees
+
+
+class TrainingRowOut(BaseModel):
+    training_id: int
+    employee_id: int
+    number: str
+    last_name: str
+    first_name: str
+    employee_department: str | None
+    type_name: str
+    name: str | None
+    department: str | None
+    mentor_name: str | None
+    start_date: date | None
+    exam_date: date | None
+    end_date: date | None
+    completed_on: date | None
+    valid_until: date | None
+    standard_days: int | None
+    days: int | None
+    status: str
+    has_scan: bool
+    notes: str | None
+
+
+def build_trainings(db: Any, user: Any, f: TrainingFilters) -> list[TrainingRowOut]:
+    from app.models import Training
+    from app.routers.trainings import days_in_training, training_status
+
+    q = select(Training, Employee).join(Employee, Employee.id == Training.employee_id)
+    if f.employees == "active":
+        q = q.where(Employee.status == EmployeeStatus.active)
+    if f.type_id:
+        q = q.where(Training.type_id == f.type_id)
+    if f.program_id:
+        q = q.where(Training.program_id == f.program_id)
+    if f.mentor_id:
+        q = q.where(Training.mentor_id == f.mentor_id)
+    if f.department_id:
+        # wydział szkolenia (stanowiskowe) albo wydział pracownika
+        q = q.where(
+            (Training.department_id == f.department_id)
+            | ((Training.department_id.is_(None)) & (Employee.department_id == f.department_id))
+        )
+    # zakres dat: data ukończenia, a dla nieukończonych – data rozpoczęcia
+    ref = func.coalesce(Training.completed_on, Training.start_date)
+    if f.date_from:
+        q = q.where(ref >= f.date_from)
+    if f.date_to:
+        q = q.where(ref <= f.date_to)
+    q = apply_scope(q, user).order_by(Employee.last_name, Employee.first_name, ref.desc().nulls_first())
+    today = date.today()
+    out = []
+    for tr, e in db.execute(q.limit(MAX_EXPORT + 1)).unique().all():
+        st = training_status(tr, today)
+        if f.status and st not in f.status:
+            continue
+        m = tr.mentor
+        out.append(
+            TrainingRowOut(
+                training_id=tr.id,
+                employee_id=e.id,
+                number=format_number(e.number),
+                last_name=e.last_name,
+                first_name=e.first_name,
+                employee_department=e.department.name if e.department else None,
+                type_name=tr.type.name,
+                name=tr.name,
+                department=tr.department.name if tr.department else None,
+                mentor_name=f"{m.last_name} {m.first_name}" if m else None,
+                start_date=tr.start_date,
+                exam_date=tr.exam_date,
+                end_date=tr.end_date,
+                completed_on=tr.completed_on,
+                valid_until=tr.valid_until,
+                standard_days=tr.standard_days,
+                days=days_in_training(tr, today),
+                status=st,
+                has_scan=tr.scan_file is not None,
+                notes=tr.notes,
+            )
+        )
+    return out
+
+
+TFilters = Annotated[TrainingFilters, Depends()]
+
+
+class TrainingsReportOut(BaseModel):
+    total: int
+    by_status: dict[str, int]
+    rows: list[TrainingRowOut]
+
+
+@router.get("/trainings", response_model=TrainingsReportOut)
+def trainings_report(
+    ctx: ReportAuth, db: DbSession, filters: TFilters, limit: int = 200
+) -> TrainingsReportOut:
+    rows = build_trainings(db, ctx.user, filters)
+    return TrainingsReportOut(
+        total=len(rows),
+        by_status=dict(Counter(r.status for r in rows)),
+        rows=rows[: max(1, min(limit, 1000))],
+    )
+
+
+@router.get("/trainings.xlsx")
+def trainings_export(
+    ctx: ReportAuth, request: Request, db: DbSession, filters: TFilters, fmt: ExportFormat = "xlsx"
+) -> Response:
+    rows = build_trainings(db, ctx.user, filters)
+    if len(rows) > MAX_EXPORT:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail=f"Za dużo wyników (ponad {MAX_EXPORT}). Zawęź filtry."
+        )
+    if fmt == "pdf" and len(rows) > MAX_PDF_ROWS:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"PDF obejmuje najwyżej {MAX_PDF_ROWS} wpisów. Zawęź filtry albo pobierz Excel.",
+        )
+    headers = [
+        "Nr",
+        "Nazwisko",
+        "Imię",
+        "Wydział pracownika",
+        "Rodzaj",
+        "Szkolenie",
+        "Wydział szkolenia",
+        "Opiekun",
+        "Rozpoczęcie",
+        "Egzamin",
+        "Zakończenie / ukończenie",
+        "Ważne do",
+        "Dni nauki",
+        "Standard (dni)",
+        "Status",
+        "Skan",
+    ]
+    if fmt == "xlsx":
+        headers.append("Uwagi")
+    data = []
+    for r in rows:
+        row: list[Any] = [
+            r.number,
+            r.last_name,
+            r.first_name,
+            r.employee_department,
+            r.type_name,
+            r.name or r.type_name,
+            r.department,
+            r.mentor_name,
+            r.start_date,
+            r.exam_date,
+            r.completed_on,
+            r.valid_until,
+            r.days,
+            r.standard_days,
+            TRAINING_STATUS_LABELS.get(r.status, r.status),
+            "tak" if r.has_scan else "nie",
+        ]
+        if fmt == "xlsx":
+            row.append(r.notes)
+        data.append(row)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Szkolenia"
+    by_status = Counter(TRAINING_STATUS_LABELS.get(r.status, r.status) for r in rows)
+    note = f"Wpisów: {len(rows)}" + (
+        "".join(f" · {k}: {v}" for k, v in by_status.most_common()) if rows else ""
+    )
+    _sheet_table(ws, headers, data, start_row=_title(ws, "Raport szkoleń", ctx.user, note))
+    params = {k: v for k, v in request.query_params.multi_items() if k != "format"}
+    audit(
+        db,
+        request,
+        "report_exported",
+        user=ctx.user,
+        entity_type="report",
+        details={"report": "trainings", "count": len(rows), "filters": params, "format": fmt},
+    )
+    db.commit()
+    return _xlsx(wb, f"szkolenia_{_stamp()}.xlsx", fmt)

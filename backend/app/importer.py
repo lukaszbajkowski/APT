@@ -89,14 +89,14 @@ def norm_header(value: Any) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
-def suggest_mapping(headers: list[str]) -> dict[str, int]:
+def suggest_mapping(headers: list[str], fields: tuple["FieldSpec", ...] | None = None) -> dict[str, int]:
     """Proponuje przypisanie: pole -> indeks kolumny. Każda kolumna co najwyżej raz."""
     normalized = [norm_header(h) for h in headers]
     mapping: dict[str, int] = {}
     used: set[int] = set()
     # 1. dokładne dopasowania, 2. nagłówek zaczynający się od synonimu (np. "Data urodzenia (dd.mm.rrrr)")
     for exact in (True, False):
-        for spec in FIELDS:
+        for spec in fields or FIELDS:
             if spec.key in mapping:
                 continue
             for i, h in enumerate(normalized):

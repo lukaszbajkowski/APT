@@ -149,17 +149,21 @@ function MentorSelect({
   );
 }
 
-function TrainingModal({
+export function TrainingModal({
   employee,
+  employeeIds,
   editing,
   opened,
   onClose,
 }: {
-  employee: Employee;
+  employee?: Employee;
+  employeeIds?: number[]; // seryjnie: to samo szkolenie dla wielu osób
   editing: Training | null;
   opened: boolean;
   onClose: () => void;
 }) {
+  const selfId = employee?.id ?? -1;
+  const batch = !employee && !!employeeIds?.length;
   const qc = useQueryClient();
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
@@ -204,16 +208,20 @@ function TrainingModal({
         values: form.values,
         notes: form.notes || null,
       };
+      if (batch) return api(`/trainings/batch`, { method: "POST", body: { employee_ids: employeeIds, training: body } });
       return editing
         ? api<Training>(`/trainings/${editing.id}`, { method: "PUT", body })
-        : api<Training>(`/employees/${employee.id}/trainings`, { method: "POST", body });
+        : api<Training>(`/employees/${selfId}/trainings`, { method: "POST", body });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["trainings", employee.id] });
+      qc.invalidateQueries({ queryKey: ["trainings"] });
       qc.invalidateQueries({ queryKey: ["trainings-expiring"] });
-    qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
       qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
-      notifications.show({ color: "green", message: editing ? "Zapisano szkolenie." : "Dodano szkolenie." });
+      qc.invalidateQueries({ queryKey: ["trainings-report"] });
+      notifications.show({
+        color: "green",
+        message: batch ? `Dodano szkolenie ${employeeIds!.length} os.` : editing ? "Zapisano szkolenie." : "Dodano szkolenie.",
+      });
       onClose();
     },
     onError: (e) => setError(errorText(e)),
@@ -224,7 +232,7 @@ function TrainingModal({
     .map((t) => ({ value: String(t.id), label: t.name }));
 
   return (
-    <Modal opened={opened} onClose={onClose} title={editing ? "Edycja szkolenia" : "Nowe szkolenie"} size="lg">
+    <Modal opened={opened} onClose={onClose} title={batch ? `Nowe szkolenie dla ${employeeIds!.length} os.` : editing ? "Edycja szkolenia" : "Nowe szkolenie"} size="lg">
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         <Select
@@ -309,7 +317,7 @@ function TrainingModal({
                 searchable
                 data={[
                   ...program.mentors
-                    .filter((m) => m.id !== employee.id && (m.active || String(m.id) === form.mentor_id))
+                    .filter((m) => m.id !== selfId && !employeeIds?.includes(m.id) && (m.active || String(m.id) === form.mentor_id))
                     .map((m) => ({ value: String(m.id), label: m.name })),
                   ...(form.mentor_id && editing?.mentor_name && !program.mentors.some((m) => String(m.id) === form.mentor_id)
                     ? [{ value: form.mentor_id, label: `${editing.mentor_name} (bez uprawnień)` }]
@@ -320,7 +328,7 @@ function TrainingModal({
               />
             ) : (
               <MentorSelect
-                employeeId={employee.id}
+                employeeId={selfId}
                 value={form.mentor_id}
                 initialLabel={editing?.mentor_name ?? null}
                 onChange={(v) => set("mentor_id", v)}
@@ -341,11 +349,7 @@ function TrainingModal({
             <TextInput
               type="date"
               label="Ważne do"
-              description={
-                type.validity_months
-                  ? `Wyliczane: ${type.validity_months} mies. od ${position ? "zakończenia" : "ukończenia"}`
-                  : "Puste = bezterminowe"
-              }
+              placeholder="bezterminowe"
               value={form.valid_until}
               onChange={(e) => {
                 setValidTouched(true);
@@ -353,6 +357,13 @@ function TrainingModal({
               }}
             />
           </SimpleGrid>
+        )}
+        {type && (
+          <Text size="xs" c="dimmed" mt={-8}>
+            {type.validity_months
+              ? `„Ważne do” wylicza się samo: ${type.validity_months} mies. od ${position ? "zakończenia" : "ukończenia"} (można zmienić).`
+              : "Puste „Ważne do” = bezterminowe."}
+          </Text>
         )}
         {type && type.fields.length > 0 && (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">

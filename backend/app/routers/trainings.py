@@ -483,7 +483,7 @@ def _out(db: Session, tr: Training) -> TrainingOut:
     )
 
 
-def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
+def _apply(db: Session, tr: Training, body: TrainingIn, check_mentor: bool = True) -> None:
     t = db.get(TrainingType, body.type_id)
     if t is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie ma takiego rodzaju szkolenia.")
@@ -528,7 +528,8 @@ def _apply(db: Session, tr: Training, body: TrainingIn) -> None:
                 tr.id is not None and tr.mentor_id == body.mentor_id and tr.program_id == body.program_id
             )
             if (
-                program is not None
+                check_mentor
+                and program is not None
                 and not unchanged
                 and body.mentor_id not in {m.id for m in program.mentors}
             ):
@@ -608,6 +609,46 @@ def create_training(
     db.commit()
     db.refresh(tr)
     return _out(db, tr)
+
+
+MAX_BATCH = 200
+
+
+class BatchTrainingIn(BaseModel):
+    employee_ids: list[int] = Field(min_length=1, max_length=MAX_BATCH)
+    training: TrainingIn
+
+
+class BatchTrainingOut(BaseModel):
+    created: int
+
+
+@router.post("/trainings/batch", response_model=BatchTrainingOut, status_code=status.HTTP_201_CREATED)
+def create_batch(body: BatchTrainingIn, ctx: EditAuth, request: Request, db: DbSession) -> BatchTrainingOut:
+    """To samo szkolenie dla wielu osób – wszystko albo nic."""
+    ids = list(dict.fromkeys(body.employee_ids))
+    for eid in ids:
+        e = get_visible(db, ctx.user, eid)
+        tr = Training(employee_id=e.id, created_by_name=ctx.user.full_name)
+        try:
+            _apply(db, tr, body.training)
+        except HTTPException as exc:
+            raise HTTPException(
+                exc.status_code, detail=f"{e.last_name} {e.first_name}: {exc.detail}"
+            ) from exc
+        db.add(tr)
+        db.flush()
+        audit(
+            db,
+            request,
+            "training_created",
+            user=ctx.user,
+            entity_type="employee",
+            entity_id=e.id,
+            details={**_details(e, tr), "batch": len(ids)},
+        )
+    db.commit()
+    return BatchTrainingOut(created=len(ids))
 
 
 @router.put("/trainings/{training_id}", response_model=TrainingOut)

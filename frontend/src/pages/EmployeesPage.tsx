@@ -21,7 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconChevronDown, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
+import { IconCertificate, IconChevronDown, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -30,6 +30,7 @@ import { options, useAgencies, useDepartments, usePositions } from "../dictionar
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
+import { TrainingModal } from "../components/TrainingsCard";
 
 const PAGE_SIZE = 50;
 
@@ -102,6 +103,7 @@ export function EmployeesPage() {
 
   const [exporting, setExporting] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
+  const [trainingOpen, setTrainingOpen] = useState(false);
   async function exportXlsx(withPesel: boolean, format: "xlsx" | "pdf" = "xlsx") {
     setExporting(true);
     try {
@@ -297,6 +299,17 @@ export function EmployeesPage() {
               >
                 Dokument{selected.size ? ` (${selected.size})` : ""}
               </Button>
+              {staff && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconCertificate size={14} />}
+                  disabled={selected.size === 0 || selected.size > 200}
+                  onClick={() => setTrainingOpen(true)}
+                >
+                  Szkolenie{selected.size ? ` (${selected.size})` : ""}
+                </Button>
+              )}
               <Menu position="bottom-end" width={260}>
                 <Menu.Target>
                   <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
@@ -427,6 +440,9 @@ export function EmployeesPage() {
 
       {canPrint && (
         <PrintCardsModal ids={[...selected]} opened={printOpen} onClose={() => setPrintOpen(false)} />
+      )}
+      {trainingOpen && (
+        <TrainingModal employeeIds={[...selected]} editing={null} opened={trainingOpen} onClose={() => setTrainingOpen(false)} />
       )}
       {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
     </Stack>

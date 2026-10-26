@@ -25,7 +25,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconCircleCheck, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconCircleCheck, IconFileImport, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import {
   api,
@@ -486,12 +486,20 @@ export function TrainingsPage() {
   const staff = hasRole("admin", "hr");
   return (
     <Stack>
+      <Group justify="space-between" align="flex-start">
       <div>
         <Title order={2}>Szkolenia</Title>
         <Text c="dimmed" size="sm">
-          Szkolenia wpisuje się w kartotece pracownika. Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
+          Szkolenia wpisuje się w kartotece pracownika, kilku osobom naraz – z listy pracowników (zaznacz osoby → „Szkolenie”).
+          Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
         </Text>
       </div>
+      {staff && (
+        <Button component={Link} to="/szkolenia/import" variant="default" leftSection={<IconFileImport size={16} />}>
+          Import z Excela
+        </Button>
+      )}
+      </Group>
       <Tabs defaultValue="expiring" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="expiring">Kończące się (30 dni)</Tabs.Tab>

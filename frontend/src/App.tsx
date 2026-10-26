@@ -24,6 +24,7 @@ import { ScannerPage } from "./pages/ScannerPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { QualityPage } from "./pages/QualityPage";
 import { TrainingsPage } from "./pages/TrainingsPage";
+import { TrainingImportPage } from "./pages/TrainingImportPage";
 
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { me, loading } = useAuth();
@@ -150,6 +151,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin"]}>
               <UsersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="szkolenia/import"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <TrainingImportPage />
             </RequireAuth>
           }
         />

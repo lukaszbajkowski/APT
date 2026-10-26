@@ -38,6 +38,19 @@ class Placement:
     x1: float
     top: float
     bottom: float
+    # granice komórki tabeli wokół znacznika (najbliższe poziome linie), jeśli są
+    box_top: float | None = None
+    box_bottom: float | None = None
+
+
+def _box(
+    edges: list[dict], x0: float, x1: float, top: float, bottom: float
+) -> tuple[float | None, float | None]:
+    above = [e["top"] for e in edges if e["x0"] <= x0 + 1 and e["x1"] >= x0 - 1 and e["top"] <= top + 0.5]
+    below = [e["top"] for e in edges if e["x0"] <= x0 + 1 and e["x1"] >= x0 - 1 and e["top"] >= bottom - 0.5]
+    t = max(above) if above and top - max(above) < 60 else None
+    b = min(below) if below and min(below) - bottom < 60 else None
+    return t, b
 
 
 @dataclass
@@ -61,6 +74,7 @@ def find_markers(pdf: bytes) -> dict[str, list[Placement]]:
     with pdfplumber.open(io.BytesIO(pdf)) as doc:
         for pi, page in enumerate(doc.pages):
             chars = page.chars
+            edges = [e for e in page.edges if e.get("orientation") == "h"]
             # znak w PDF może mieć kilka liter (ligatury „fi”) – mapujemy pozycję w tekście na znak
             text, owner = "", []
             for ci, c in enumerate(chars):
@@ -70,7 +84,10 @@ def find_markers(pdf: bytes) -> dict[str, list[Placement]]:
                 i = text.find(m)
                 while i >= 0:
                     a, b = chars[owner[i]], chars[owner[i + len(m) - 1]]
-                    out.setdefault(m, []).append(Placement(pi, a["x0"], b["x1"], a["top"], a["bottom"]))
+                    bt, bb = _box(edges, a["x0"], b["x1"], a["top"], a["bottom"])
+                    out.setdefault(m, []).append(
+                        Placement(pi, a["x0"], b["x1"], a["top"], a["bottom"], bt, bb)
+                    )
                     i = text.find(m, i + len(m))
     return out
 
@@ -201,7 +218,12 @@ def stamp(original_pdf: bytes, sigs: list[AppliedSignature], doc_title: str, doc
                     elif s.image_png:
                         x = max(pl.x0, date_end.get((s.role, round(pl.top)), 0))
                         x = min(x, pw - SIG_W - 10)
-                        c.drawImage(ImageReader(io.BytesIO(s.image_png)), x, base - 4, SIG_W, SIG_H,
+                        y, h = base - 4, SIG_H
+                        if pl.box_top is not None and pl.box_bottom is not None:
+                            # podpis mieści się w komórce tabeli (nie wchodzi na nagłówek / sąsiednie wiersze)
+                            h = min(SIG_H, max(pl.box_bottom - pl.box_top - 3, 6 * mm))
+                            y = ph - (pl.box_top + pl.box_bottom) / 2 - h / 2
+                        c.drawImage(ImageReader(io.BytesIO(s.image_png)), x, y, SIG_W, h,
                                     mask="auto", preserveAspectRatio=True, anchor="sw")  # fmt: skip
 
             page.merge_page(_overlay(pw, ph, draw).pages[0])

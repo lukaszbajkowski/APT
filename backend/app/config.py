@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     mail_from: str = ""  # np. "Identyfikacja APT <powiadomienia@aptid.pl>"
     # Adres aplikacji do linków w e-mailach, np. https://aptid.pl
     public_url: str = "http://localhost"
+    # SMS przez SMSAPI.pl (opcjonalnie): token API i nazwa nadawcy zarejestrowana w SMSAPI
+    smsapi_token: str = ""
+    sms_sender: str = ""
+    # ważność linku do podpisu dokumentu (godziny)
+    sign_link_hours: int = 72
 
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key

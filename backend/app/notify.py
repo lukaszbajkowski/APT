@@ -134,6 +134,23 @@ def trainings_email(user: User, items: list[str], expired: int, overdue: int, ex
     )
 
 
+def sign_request_email(person: str, document: str, url: str, expires: datetime) -> Email:
+    when = expires.astimezone(ZoneInfo("Europe/Warsaw")).strftime("%d.%m.%Y, %H:%M")
+    return Email(
+        subject=f"Prośba o podpis: {document}",
+        title="Dokument do podpisu",
+        preheader=f"Podpisz dokument „{document}” na swoim telefonie lub komputerze.",
+        greeting=f"Dzień dobry {person},",
+        paragraphs=[
+            f"prosimy o podpisanie dokumentu „{document}”. Kliknij przycisk, przeczytaj dokument "
+            "i podpisz się palcem na ekranie telefonu (albo myszką na komputerze)."
+        ],
+        button=("Otwórz i podpisz", url),
+        notice=f"Link jest osobisty i ważny do {when}. Nie przekazuj go innym osobom.",
+        footer_note="Jeśli nie spodziewasz się tej wiadomości – zignoruj ją.",
+    )
+
+
 def test_email() -> Email:
     return Email(
         subject="Test – Identyfikacja pracowników APT",

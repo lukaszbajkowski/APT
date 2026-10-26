@@ -345,6 +345,41 @@ class GeneratedDocument(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # podpis: role z miejscem na podpis w PDF (np. ["pracownika", "firmy"]) i stan
+    signature_roles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # wszyscy podpisali
+    has_signed_pdf: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class DocumentSignature(Base):
+    """Prośba o podpis i sam podpis. Pliki: documents/<employee_id>/<document_id>_sig_<id>.(png|pdf|xml)."""
+
+    __tablename__ = "document_signatures"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(10), default="pending", nullable=False
+    )  # pending|signed|cancelled
+    token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    channel: Mapped[str] = mapped_column(String(10), default="link", nullable=False)  # email|sms|link|skan
+    sent_to: Mapped[str | None] = mapped_column(String(254))
+    signer_name: Mapped[str | None] = mapped_column(String(200))
+    method: Mapped[str | None] = mapped_column(String(10))  # ekran|zaufany|skan
+    file_name: Mapped[str | None] = mapped_column(String(200))
+    original_name: Mapped[str | None] = mapped_column(String(255))
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    ip: Mapped[str | None] = mapped_column(INET)
+    user_agent: Mapped[str | None] = mapped_column(String(400))
+    requested_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PasswordToken(Base):

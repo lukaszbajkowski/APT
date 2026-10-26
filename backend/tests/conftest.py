@@ -71,6 +71,7 @@ def _clean_db() -> Iterator[None]:
                 "templates, photos, "
                 "employees, positions, agencies, departments, trainings, training_program_mentors, "
                 "training_programs, training_types, assignments, employment_periods, checklist_items, "
+                "document_signatures, "
                 "planned_changes, "
                 "position_requirements "
                 "RESTART IDENTITY CASCADE"

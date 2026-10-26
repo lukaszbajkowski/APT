@@ -53,7 +53,36 @@ BUILTINS: dict[str, str] = {
     "szkolenie_opiekun": "Szkolenie: opiekun (imię i nazwisko)",
     "szkolenie_czas_dni": "Szkolenie: czas nauki wg standardu (dni)",
     "szkolenie_uwagi": "Szkolenie: uwagi",
+    # podpis elektroniczny – miejsce na podpis złożony na ekranie i datę podpisu
+    "podpis_pracownika": "Podpis pracownika (podpis na ekranie)",
+    "data_podpisu_pracownika": "Data podpisu pracownika",
+    "podpis_firmy": "Podpis przedstawiciela firmy (podpis na ekranie)",
+    "data_podpisu_firmy": "Data podpisu przedstawiciela firmy",
 }
+
+# role podpisujących: klucz w znaczniku -> nazwa
+SIGN_ROLES: dict[str, str] = {"pracownika": "Pracownik", "firmy": "Przedstawiciel firmy"}
+
+
+def sign_marker(kind: str, role: str) -> str:
+    """Niewidoczny (biały, mały) tekst w PDF, po którym odnajdujemy miejsce podpisu / daty."""
+    return f"ZZ{kind}{role.upper()}ZZ"
+
+
+def signature_values() -> dict[str, Any]:
+    from docxtpl import RichText
+
+    out: dict[str, Any] = {}
+    for role in SIGN_ROLES:
+        out[f"podpis_{role}"] = RichText(sign_marker("SIG", role), color="FFFFFF", size=6)
+        out[f"data_podpisu_{role}"] = RichText(sign_marker("DATE", role), color="FFFFFF", size=6)
+    return out
+
+
+def signature_roles(variables: list[str]) -> list[str]:
+    return [r for r in SIGN_ROLES if f"podpis_{r}" in variables]
+
+
 # Zmienne z danymi wrażliwymi – szablonów z nimi nie może używać Kierownik.
 SENSITIVE = {"pesel", "data_urodzenia"}
 
@@ -84,28 +113,32 @@ def training_values(tr: Any | None) -> dict[str, str]:
 
 def builtin_values(
     e: Any, pesel: str | None, today: date | None = None, training: Any = None
-) -> dict[str, str]:
+) -> dict[str, Any]:
     today = today or date.today()
     d = _d
 
     sex = e.sex.value if e.sex else None
-    return {
-        "imie": e.first_name,
-        "nazwisko": e.last_name,
-        "nazwisko_imie": f"{e.last_name} {e.first_name}",
-        "imie_nazwisko": f"{e.first_name} {e.last_name}",
-        "numer": f"{e.number:06d}",
-        "pesel": pesel or "",
-        "data_urodzenia": d(e.birth_date),
-        "plec": {"K": "kobieta", "M": "mężczyzna"}.get(sex or "", ""),
-        "plec_kod": sex or "",
-        "obywatelstwo": e.country.name if e.country else "",
-        "apt": e.agency.name if e.agency else "",
-        "wydzial": e.department.name if e.department else "",
-        "stanowisko": e.position.name if e.position else "",
-        "data_zatrudnienia": d(e.hire_date),
-        "data_dzisiaj": d(today),
-    } | training_values(training)
+    return (
+        {
+            "imie": e.first_name,
+            "nazwisko": e.last_name,
+            "nazwisko_imie": f"{e.last_name} {e.first_name}",
+            "imie_nazwisko": f"{e.first_name} {e.last_name}",
+            "numer": f"{e.number:06d}",
+            "pesel": pesel or "",
+            "data_urodzenia": d(e.birth_date),
+            "plec": {"K": "kobieta", "M": "mężczyzna"}.get(sex or "", ""),
+            "plec_kod": sex or "",
+            "obywatelstwo": e.country.name if e.country else "",
+            "apt": e.agency.name if e.agency else "",
+            "wydzial": e.department.name if e.department else "",
+            "stanowisko": e.position.name if e.position else "",
+            "data_zatrudnienia": d(e.hire_date),
+            "data_dzisiaj": d(today),
+        }
+        | training_values(training)
+        | signature_values()
+    )
 
 
 # ---------- definicje pól formularza ----------
@@ -360,8 +393,18 @@ def form_values(fields: list[FieldDef], raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+class _SignableTemplate(DocxTemplate):
+    """Znaczniki podpisu wstawiamy jako RichText (biały tekst) – wymaga to w Wordzie zapisu {{r ...}},
+    więc autor szablonu pisze zwykłe {{ podpis_pracownika }}, a my zamieniamy to przed renderowaniem."""
+
+    _SIGN_TAG = re.compile(r"\{\{\s*((?:podpis|data_podpisu)_(?:" + "|".join(SIGN_ROLES) + r"))\s*\}\}")
+
+    def patch_xml(self, src_xml: str) -> str:
+        return super().patch_xml(self._SIGN_TAG.sub(r"{{r \1 }}", src_xml))
+
+
 def render_docx(template: bytes, context: dict[str, Any]) -> bytes:
-    tpl = DocxTemplate(io.BytesIO(template))
+    tpl = _SignableTemplate(io.BytesIO(template))
     try:
         tpl.render(context, autoescape=True)
     except TemplateSyntaxError as exc:

@@ -105,6 +105,10 @@ class DocumentOut(BaseModel):
     download: list[str] = Field(default_factory=list)
     masked: bool = False
     pdf_error: str | None = None
+    signature_roles: list[str] = Field(default_factory=list)
+    signed_at: datetime | None = None
+    has_signed_pdf: bool = False
+    signature_pending: bool = False
 
 
 # ---------- pliki ----------
@@ -405,7 +409,21 @@ def list_documents(employee_id: int, ctx: DocAuth, db: DbSession) -> list[Docume
         )
     )
     templates = {t.id: t for t in db.scalars(select(DocumentTemplate))}
-    return [_doc_out(d, templates.get(d.template_id or 0), ctx.user) for d in docs]
+    from app.models import DocumentSignature
+
+    pending = set(
+        db.scalars(
+            select(DocumentSignature.document_id).where(
+                DocumentSignature.document_id.in_([d.id for d in docs]),
+                DocumentSignature.status == "pending",
+                DocumentSignature.expires_at > func.now(),
+            )
+        )
+    )
+    out = [_doc_out(d, templates.get(d.template_id or 0), ctx.user) for d in docs]
+    for o in out:
+        o.signature_pending = o.id in pending
+    return out
 
 
 class _Generated:
@@ -481,6 +499,7 @@ def _create_document(
         created_by_name=user.full_name,
         contains_sensitive=t.sensitive and not masked,
     )
+    doc.signature_roles = templating.signature_roles(t.variables)
     _doc_path(doc, "docx").write_bytes(docx)
     pdf_error, pdf = None, None
     # PDF powstaje zawsze, gdy się da – służy do podglądu online.

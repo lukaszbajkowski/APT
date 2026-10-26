@@ -16,6 +16,7 @@ from app.routers import (
     quality,
     reports,
     retention,
+    signatures,
     training_import,
     trainings,
     users,
@@ -58,6 +59,7 @@ app.include_router(quality.router)
 app.include_router(trainings.router)
 app.include_router(competence.router)
 app.include_router(lifecycle.router)
+app.include_router(signatures.router)
 app.include_router(training_import.router)
 
 

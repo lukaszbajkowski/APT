@@ -148,6 +148,10 @@ export interface GeneratedDoc {
   download: ("pdf" | "docx")[];
   masked: boolean;
   pdf_error: string | null;
+  signature_roles: string[];
+  signed_at: string | null;
+  has_signed_pdf: boolean;
+  signature_pending: boolean;
 }
 
 export interface Dashboard {
@@ -394,6 +398,10 @@ export const ACTION_LABELS: Record<string, string> = {
   mfa_recovery_regenerated: "Nowe kody zapasowe",
   training_created: "Dodanie szkolenia",
   employee_rehired: "Ponowne zatrudnienie",
+  signature_requested: "Wysłanie dokumentu do podpisu",
+  signature_cancelled: "Anulowanie prośby o podpis",
+  signature_scan_uploaded: "Dołączenie skanu podpisanego dokumentu",
+  document_signed: "Podpisanie dokumentu",
   planned_change_created: "Zaplanowanie zmiany przydziału",
   planned_change_applied: "Wprowadzenie zaplanowanej zmiany",
   planned_change_cancelled: "Anulowanie zaplanowanej zmiany",

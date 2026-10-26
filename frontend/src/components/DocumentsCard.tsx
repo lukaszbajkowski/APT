@@ -23,6 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { SignButton, SignatureBadge } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
@@ -231,9 +232,12 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   <Group gap={6} wrap="nowrap">
                     <IconFileText size={18} color="var(--mantine-color-gray-6)" />
                     <div>
-                      <Text size="sm" fw={500}>
-                        {d.template_name}
-                      </Text>
+                      <Group gap={6}>
+                        <Text size="sm" fw={500}>
+                          {d.template_name}
+                        </Text>
+                        <SignatureBadge doc={d} />
+                      </Group>
                       <Text size="xs" c="dimmed">
                         {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
                         {d.masked && " · bez PESEL i daty urodzenia"}
@@ -242,7 +246,10 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   </Group>
                 </Table.Td>
                 <Table.Td align="right">
-                  <DocActions doc={d} />
+                  <Group gap={6} justify="flex-end" wrap="nowrap">
+                    <SignButton doc={d} employee={employee} />
+                    <DocActions doc={d} />
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}

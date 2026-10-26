@@ -63,3 +63,29 @@ def test_backup_status_for_admin(client, make_user):
     other = TestClient(app)
     login(other, "kadry")
     assert other.get("/api/dashboard").json()["backup"] is None
+
+
+def test_upcoming_events(admin_client):
+    from datetime import date, timedelta
+
+    from tests.test_trainings import _emp, _types
+
+    c = admin_client
+    today = date.today()
+    st = _types(c)["Szkolenie stanowiskowe"]["id"]
+    e = _emp(c, hire_date=(today + timedelta(days=3)).isoformat())
+    body = {
+        "type_id": st,
+        "name": "Prasa",
+        "start_date": (today - timedelta(days=5)).isoformat(),
+        "exam_date": (today + timedelta(days=2)).isoformat(),
+        "standard_days": 10,
+    }
+    c.post(f"/api/employees/{e['id']}/trainings", json=body)
+    ev = c.get("/api/dashboard/upcoming").json()
+    assert [(x["kind"], x["date"]) for x in ev] == [
+        ("exam", (today + timedelta(days=2)).isoformat()),
+        ("hire", (today + timedelta(days=3)).isoformat()),
+        ("standard_end", (today + timedelta(days=5)).isoformat()),
+    ]
+    assert ev[0]["title"] == "Egzamin: Prasa" and ev[0]["employee"] == "Nowak Ola"

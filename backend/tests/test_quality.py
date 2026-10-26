@@ -14,7 +14,7 @@ def test_quality_admin(admin_client):
     q = c.get("/api/quality").json()
     assert q["active_total"] == 2
     counts = {x["key"]: x["count"] for x in q["checks"]}
-    assert counts == {"pesel": 1, "sex": 1, "photo": 2, "department": 1, "position": 2}
+    assert counts == {"pesel": 1, "sex": 1, "photo": 2, "department": 1, "position": 2, "trainings": 0}
     by_name = {r["last_name"]: r["missing"] for r in q["rows"]}
     assert by_name["Nowak"] == ["photo", "position"]
     assert by_name["Kowal"] == ["pesel", "sex", "photo", "department", "position"]
@@ -34,7 +34,7 @@ def test_quality_manager_scope_and_reminders(client, make_user, monkeypatch):
     m = TestClient(app)
     login(m, "kier")
     q = m.get("/api/quality").json()
-    assert [x["key"] for x in q["checks"]] == ["sex", "photo", "department", "position"]
+    assert [x["key"] for x in q["checks"]] == ["sex", "photo", "department", "position", "trainings"]
     assert [r["last_name"] for r in q["rows"]] == ["Nowak"]
 
     make_user("podglad", Role.viewer)

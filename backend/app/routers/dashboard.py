@@ -1,6 +1,6 @@
 """Strona startowa: liczniki i ostatnio dodani – w zakresie widoczności użytkownika."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -84,3 +84,60 @@ def dashboard(ctx: Auth, db: DbSession) -> DashboardOut:
         retention_due=count_due(db) if user.role == Role.admin else None,
         backup=read_backup_status() if user.role == Role.admin else None,
     )
+
+
+# --- nadchodzące zdarzenia ---------------------------------------------------------
+
+
+class UpcomingEvent(BaseModel):
+    date: date
+    kind: str  # exam | start | standard_end | valid_until | hire
+    title: str
+    employee_id: int
+    employee: str
+
+
+UPCOMING_DAYS = 14
+
+
+@router.get("/upcoming", response_model=list[UpcomingEvent])
+def upcoming(ctx: Auth, db: DbSession, days: int = UPCOMING_DAYS) -> list[UpcomingEvent]:
+    """Egzaminy, starty i końce standardu szkoleń, końce ważności, pierwsze dni pracy – najbliższe dni."""
+    from app.models import Training
+
+    today = date.today()
+    end = today + timedelta(days=max(1, min(days, 60)))
+    out: list[UpcomingEvent] = []
+
+    def add(d: date | None, kind: str, title: str, e: Employee) -> None:
+        if d is not None and today <= d <= end:
+            out.append(
+                UpcomingEvent(
+                    date=d, kind=kind, title=title, employee_id=e.id, employee=f"{e.last_name} {e.first_name}"
+                )
+            )
+
+    q = (
+        select(Training, Employee)
+        .join(Employee, Employee.id == Training.employee_id)
+        .where(Employee.status == EmployeeStatus.active)
+    )
+    for tr, e in db.execute(apply_scope(q, ctx.user)).unique().all():
+        label = tr.name or tr.type.name
+        finished = (tr.end_date is not None and tr.end_date <= today) or tr.completed_on is not None
+        add(tr.exam_date, "exam", f"Egzamin: {label}", e)
+        add(tr.start_date, "start", f"Początek szkolenia: {label}", e)
+        if tr.start_date and tr.standard_days is not None and not finished:
+            add(
+                tr.start_date + timedelta(days=tr.standard_days),
+                "standard_end",
+                f"Koniec standardu: {label}",
+                e,
+            )
+        add(tr.valid_until, "valid_until", f"Kończy się ważność: {label}", e)
+    hires = select(Employee).where(
+        Employee.status == EmployeeStatus.active, Employee.hire_date >= today, Employee.hire_date <= end
+    )
+    for e in db.scalars(apply_scope(hires, ctx.user)).unique():
+        add(e.hire_date, "hire", "Pierwszy dzień pracy", e)
+    return sorted(out, key=lambda x: (x.date, x.kind, x.employee))[:100]

@@ -48,6 +48,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
+import { EmployeeRequirements } from "./Competence";
 
 interface Form {
   type_id: string | null;
@@ -218,6 +219,8 @@ export function TrainingModal({
       qc.invalidateQueries({ queryKey: ["trainings-expiring"] });
       qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
       qc.invalidateQueries({ queryKey: ["trainings-report"] });
+      qc.invalidateQueries({ queryKey: ["employee-requirements"] });
+      qc.invalidateQueries({ queryKey: ["training-matrix"] });
       notifications.show({
         color: "green",
         message: batch ? `Dodano szkolenie ${employeeIds!.length} os.` : editing ? "Zapisano szkolenie." : "Dodano szkolenie.",
@@ -423,6 +426,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     types.data?.find((x) => x.id === typeId)?.fields.find((f) => f.key === key)?.label ?? key;
 
   const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["employee-requirements", employee.id] });
     qc.invalidateQueries({ queryKey: ["trainings", employee.id] });
     qc.invalidateQueries({ queryKey: ["trainings-expiring"] });
     qc.invalidateQueries({ queryKey: ["trainings-in-progress"] });
@@ -475,6 +479,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
           </Button>
         )}
       </Group>
+      <EmployeeRequirements employeeId={employee.id} />
       {list.isLoading && <Loader size="sm" />}
       {list.data && list.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
       <Stack gap="xs">

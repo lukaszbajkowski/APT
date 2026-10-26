@@ -455,3 +455,28 @@ class Training(TimestampMixin, Base):
     type: Mapped[TrainingType] = relationship(lazy="joined")
     department: Mapped[Department | None] = relationship(lazy="joined")
     mentor: Mapped[Employee | None] = relationship(foreign_keys=[mentor_id], lazy="joined")
+
+
+class PositionRequirement(Base):
+    """Szkolenie wymagane na stanowisku: rodzaj, opcjonalnie konkretna pozycja katalogu."""
+
+    __tablename__ = "position_requirements"
+    __table_args__ = (
+        UniqueConstraint(
+            "position_id",
+            "type_id",
+            "program_id",
+            name="uq_position_requirements",
+            postgresql_nulls_not_distinct=True,
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    position_id: Mapped[int] = mapped_column(
+        ForeignKey("positions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    type_id: Mapped[int] = mapped_column(ForeignKey("training_types.id", ondelete="CASCADE"), nullable=False)
+    program_id: Mapped[int | None] = mapped_column(ForeignKey("training_programs.id", ondelete="CASCADE"))
+
+    type: Mapped[TrainingType] = relationship(lazy="joined")
+    program: Mapped[TrainingProgram | None] = relationship(lazy="joined")

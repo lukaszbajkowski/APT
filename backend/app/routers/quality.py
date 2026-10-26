@@ -21,6 +21,7 @@ CHECKS: dict[str, str] = {
     "photo": "Brak zdjęcia",
     "department": "Brak wydziału",
     "position": "Brak stanowiska",
+    "trainings": "Brak wymaganych szkoleń",
 }
 
 
@@ -47,9 +48,18 @@ def collect(db: Session, user: User) -> tuple[list[str], list[tuple[Employee, li
     checks = visible_checks(user)
     q = apply_scope(select(Employee).where(Employee.status == EmployeeStatus.active), user)
     q = q.order_by(Employee.last_name, Employee.first_name)
+    emps = list(db.scalars(q).unique())
+    from app import competence as comp
+
+    reqs = comp.requirements_by_position(db) if "trainings" in checks else {}
+    trs = comp.trainings_by_employee(db, [e.id for e in emps if e.position_id in reqs])
     rows = []
-    for e in db.scalars(q).unique():
+    for e in emps:
         m = missing(e, checks)
+        if e.position_id in reqs and any(
+            x["state"] in comp.PROBLEM for x in comp.employee_requirements(e, trs[e.id], reqs)
+        ):
+            m.append("trainings")
         if m:
             rows.append((e, m))
     return checks, rows

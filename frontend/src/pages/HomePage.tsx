@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
+  IconCalendarEvent,
   IconAlertTriangle,
   IconCamera,
   IconCircleCheck,
@@ -21,6 +22,92 @@ import {
 import { api, errorText, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
+
+interface UpcomingEvent {
+  date: string;
+  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire";
+  title: string;
+  employee_id: number;
+  employee: string;
+}
+
+const EVENT_COLOR: Record<UpcomingEvent["kind"], string> = {
+  exam: "violet",
+  start: "blue",
+  standard_end: "orange",
+  valid_until: "red",
+  hire: "teal",
+};
+const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
+  exam: "egzamin",
+  start: "start",
+  standard_end: "standard",
+  valid_until: "ważność",
+  hire: "nowa osoba",
+};
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return "dziś";
+  if (diff === 1) return "jutro";
+  return d.toLocaleDateString("pl-PL", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function UpcomingCard() {
+  const q = useQuery({ queryKey: ["dashboard-upcoming"], queryFn: () => api<UpcomingEvent[]>("/dashboard/upcoming") });
+  const events = q.data ?? [];
+  const [all, setAll] = useState(false);
+  const shown = all ? events : events.slice(0, 8);
+  return (
+    <Card withBorder padding="lg">
+      <Group justify="space-between" mb="sm">
+        <Group gap="xs">
+          <IconCalendarEvent size={20} />
+          <Title order={4}>Najbliższe 14 dni</Title>
+        </Group>
+        <Button component={Link} to="/szkolenia" variant="subtle" size="xs">
+          Szkolenia
+        </Button>
+      </Group>
+      {q.isLoading ? (
+        <Loader size="sm" />
+      ) : events.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          Brak zaplanowanych egzaminów, końców ważności ani nowych osób.
+        </Text>
+      ) : (
+        <Stack gap={6}>
+          {shown.map((e, i) => (
+            <Group key={i} gap="sm" wrap="nowrap">
+              <Text size="sm" fw={600} w={92} style={{ flexShrink: 0 }}>
+                {dayLabel(e.date)}
+              </Text>
+              <Badge color={EVENT_COLOR[e.kind]} variant="light" size="sm" w={92} style={{ flexShrink: 0 }}>
+                {EVENT_LABEL[e.kind]}
+              </Badge>
+              <Text size="sm" style={{ minWidth: 0 }} truncate>
+                <Text component={Link} to={`/pracownicy/${e.employee_id}`} fw={500} className="brand-link" span>
+                  {e.employee}
+                </Text>{" "}
+                <Text span c="dimmed">
+                  · {e.title}
+                </Text>
+              </Text>
+            </Group>
+          ))}
+          {events.length > 8 && (
+            <Button variant="subtle" size="xs" w="fit-content" onClick={() => setAll((a) => !a)}>
+              {all ? "Pokaż mniej" : `Pokaż wszystkie (${events.length})`}
+            </Button>
+          )}
+        </Stack>
+      )}
+    </Card>
+  );
+}
 
 function Stat({
   label,
@@ -203,6 +290,8 @@ export function HomePage() {
               to="/pracownicy?status=terminated"
             />
           </SimpleGrid>
+
+          <UpcomingCard />
 
           <Grid>
             <Grid.Col span={{ base: 12, md: 8 }}>

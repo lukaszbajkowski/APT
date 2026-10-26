@@ -44,6 +44,7 @@ import {
 import { useAuth } from "../auth";
 import { ProgramMentorsButton } from "../components/MentorPrograms";
 import { TrainingsReport } from "../components/TrainingsReport";
+import { CompetenceMatrix, PositionRequirements } from "../components/Competence";
 
 function Expiring() {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -520,7 +521,9 @@ export function TrainingsPage() {
         <Tabs.List mb="md">
           <Tabs.Tab value="expiring">Kończące się (30 dni)</Tabs.Tab>
           <Tabs.Tab value="progress">W trakcie</Tabs.Tab>
+          <Tabs.Tab value="matrix">Matryca</Tabs.Tab>
           <Tabs.Tab value="report">Raport</Tabs.Tab>
+          <Tabs.Tab value="requirements">Wymagania stanowisk</Tabs.Tab>
           {staff && <Tabs.Tab value="types">Rodzaje szkoleń</Tabs.Tab>}
         </Tabs.List>
         <Tabs.Panel value="expiring">
@@ -528,6 +531,12 @@ export function TrainingsPage() {
         </Tabs.Panel>
         <Tabs.Panel value="progress">
           <InProgress />
+        </Tabs.Panel>
+        <Tabs.Panel value="matrix">
+          <CompetenceMatrix />
+        </Tabs.Panel>
+        <Tabs.Panel value="requirements">
+          <PositionRequirements />
         </Tabs.Panel>
         <Tabs.Panel value="report">
           <TrainingsReport />

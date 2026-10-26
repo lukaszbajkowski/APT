@@ -32,6 +32,7 @@ const SHORT: Record<string, string> = {
   photo: "zdjęcie",
   department: "wydział",
   position: "stanowisko",
+  trainings: "wymagane szkolenia",
 };
 
 export function QualityPage() {

@@ -102,6 +102,7 @@ class DocumentOut(BaseModel):
     # Wyliczane dla bieżącego użytkownika:
     accessible: bool = True
     can_view: bool = False
+    can_delete: bool = False
     download: list[str] = Field(default_factory=list)
     masked: bool = False
     pdf_error: str | None = None
@@ -382,7 +383,21 @@ def _doc_out(doc: GeneratedDocument, t: DocumentTemplate | None, user: User) -> 
     out.accessible = not (user.role == Role.manager and doc.contains_sensitive)
     out.can_view = out.accessible and (doc.has_pdf or doc.signed_at is not None)
     out.download = _allowed_formats(t, doc) if out.accessible else []
+    out.can_delete = can_delete(doc, user)
     return out
+
+
+def can_delete(doc: GeneratedDocument, user: User) -> bool:
+    """Kadry i admin – każdy dokument; kierownik – tylko własny, jeszcze niepodpisany."""
+    if user.role in (Role.admin, Role.hr):
+        return True
+    return (
+        user.role == Role.manager
+        and doc.created_by == user.id
+        and not doc.contains_sensitive
+        and doc.signed_at is None
+        and not doc.has_signed_pdf
+    )
 
 
 def _get_doc(db: Session, user: User, document_id: uuid.UUID) -> tuple[GeneratedDocument, Any, Any]:
@@ -705,3 +720,54 @@ def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: Db
         media_type=media,
         headers={"Content-Disposition": f'inline; filename="{name}"', "Cache-Control": "no-store"},
     )
+
+
+class DeleteIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.post("/documents/{document_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: uuid.UUID, body: DeleteIn, ctx: DocAuth, request: Request, db: DbSession
+) -> Response:
+    """Usunięcie dokumentu (np. wygenerowanego przez pomyłkę) razem z plikami i podpisami."""
+    from app.models import DocumentSignature
+
+    doc, e, _ = _get_doc(db, ctx.user, document_id)
+    if not can_delete(doc, ctx.user):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail="Możesz usunąć tylko własny dokument, który nie został jeszcze podpisany.",
+        )
+    signed = doc.signed_at is not None or doc.has_signed_pdf
+    n_sig = len(
+        list(
+            db.scalars(
+                select(DocumentSignature.id).where(
+                    DocumentSignature.document_id == doc.id, DocumentSignature.status == "signed"
+                )
+            )
+        )
+    )
+    files = list(_dir(f"documents/{doc.employee_id}").glob(f"{doc.id}*"))
+    audit(
+        db,
+        request,
+        "document_deleted",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "template": doc.template_name,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            "signed": signed,
+            "signatures": n_sig,
+            "reason": body.reason.strip(),
+        },
+    )
+    db.delete(doc)
+    db.commit()
+    for f in files:
+        f.unlink(missing_ok=True)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

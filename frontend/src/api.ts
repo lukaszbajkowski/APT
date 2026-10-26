@@ -145,6 +145,7 @@ export interface GeneratedDoc {
   contains_sensitive: boolean;
   accessible: boolean;
   can_view: boolean;
+  can_delete?: boolean;
   download: ("pdf" | "docx")[];
   masked: boolean;
   pdf_error: string | null;
@@ -386,6 +387,7 @@ export const ACTION_LABELS: Record<string, string> = {
   document_generated: "Wygenerowanie dokumentu",
   document_downloaded: "Pobranie dokumentu",
   document_viewed: "Podgląd dokumentu",
+  document_deleted: "Usunięcie dokumentu",
   employee_purged: "Trwałe usunięcie danych pracownika (retencja)",
   retention_purge: "Usunięcie danych po okresie przechowywania",
   retention_hold_set: "Wstrzymanie usunięcia danych",

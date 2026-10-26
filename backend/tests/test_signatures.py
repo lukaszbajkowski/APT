@@ -189,3 +189,48 @@ def test_trusted_scan_lockout_and_cancel(admin_client, outboxes):
     # skan papierowego dokumentu = podpisany
     r = c.post(f"/api/documents/{doc['id']}/signatures/scan", files={"file": ("skan.pdf", b"%PDF-1.4 skan")})
     assert r.json()["scan"] and r.json()["signed_at"]
+
+
+def test_delete_document(admin_client, make_user, outboxes):
+    from pathlib import Path
+
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import app
+    from app.models import Role
+
+    c = admin_client
+    e, doc = _doc(c)
+    r = c.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika", "channel": "link"})
+    token = r.json()["link"].rsplit("/", 1)[1]
+    pub = TestClient(app)
+    view = pub.post(f"/api/sign/{token}/verify", json={"birth_date": str(BORN)}).json()["view"]
+    pub.post(f"/api/sign/{token}", json={"image": _sig_png(), "view": view, "consent": True})
+    folder = Path(get_settings().data_dir) / "documents" / str(e["id"])
+    assert len(list(folder.glob(f"{doc['id']}*"))) >= 3  # docx, pdf, podpisany, obraz podpisu
+
+    # kierownik: tylko własny, niepodpisany
+    from app.models import GeneratedDocument, User
+    from app.routers.documents import can_delete
+
+    mgr = make_user("kier", Role.manager)
+    with SessionLocal() as db:
+        d = db.get(GeneratedDocument, doc["id"])
+        u = db.get(User, mgr.id)
+        assert not can_delete(d, u)  # cudzy i podpisany
+        d.created_by = u.id
+        assert not can_delete(d, u)  # własny, ale podpisany
+        d.has_signed_pdf, d.signed_at = False, None
+        assert can_delete(d, u)
+    listed = c.get(f"/api/employees/{e['id']}/documents").json()
+    assert listed[0]["can_delete"] is True
+    assert c.post(f"/api/documents/{doc['id']}/delete", json={"reason": ""}).status_code == 422
+    r = c.post(f"/api/documents/{doc['id']}/delete", json={"reason": "zła osoba"})
+    assert r.status_code == 204, r.text
+    assert c.get(f"/api/employees/{e['id']}/documents").json() == []
+    assert list(folder.glob(f"{doc['id']}*")) == []
+    with SessionLocal() as db:
+        log = db.scalars(select(AuditLog).where(AuditLog.action == "document_deleted")).one()
+        assert log.details["reason"] == "zła osoba" and log.details["signed"] is True
+        assert log.details["signatures"] == 1

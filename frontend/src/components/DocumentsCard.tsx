@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Card,
+  ActionIcon,
   Checkbox,
   Group,
   Loader,
@@ -18,12 +19,13 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus } from "@tabler/icons-react";
+import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { SignButton, SignatureBadge } from "./Signatures";
+import { SignButton, SignatureBadge, SignaturesModal } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
@@ -131,6 +133,64 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
   );
 }
 
+function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employee }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const signed = !!doc.signed_at || doc.has_signed_pdf;
+  const del = useMutation({
+    mutationFn: () => api(`/documents/${doc.id}/delete`, { method: "POST", body: { reason: reason.trim() } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", employee.id] });
+      qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
+      notifications.show({ color: "green", message: "Dokument usunięty." });
+      setOpen(false);
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  if (!doc.can_delete) return null;
+  return (
+    <>
+      <Tooltip label="Usuń dokument">
+        <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" onClick={() => { setReason(""); setOpen(true); }}>
+          <IconTrash size={15} />
+        </ActionIcon>
+      </Tooltip>
+      <Modal opened={open} onClose={() => setOpen(false)} title="Usuń dokument" size="md">
+        <Stack>
+          <Text size="sm">
+            <b>{doc.template_name}</b> z {formatDateTime(doc.created_at)} zostanie trwale usunięty razem z plikami
+            {signed ? ", podpisami i podpisaną wersją" : ""}. Tej operacji nie można cofnąć.
+          </Text>
+          {signed && (
+            <Alert color="red" variant="light">
+              Ten dokument jest już podpisany. Usuwaj go tylko wtedy, gdy podpis był pomyłką – podpisanej wersji nie da się odzyskać.
+            </Alert>
+          )}
+          <Textarea
+            label="Powód usunięcia"
+            description="Zapisywany w dzienniku zdarzeń."
+            placeholder="np. wygenerowany dla złej osoby, błędne dane w formularzu"
+            autosize
+            minRows={2}
+            value={reason}
+            onChange={(e) => setReason(e.currentTarget.value)}
+            data-autofocus
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOpen(false)}>
+              Anuluj
+            </Button>
+            <Button color="red" leftSection={<IconTrash size={14} />} loading={del.isPending} disabled={reason.trim().length < 3} onClick={() => del.mutate()}>
+              Usuń
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
 function download(doc: GeneratedDoc, format: "pdf" | "docx") {
   const a = document.createElement("a");
   a.href = `/api/documents/${doc.id}/download?format=${format}`;
@@ -158,6 +218,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [values, setValues] = useState<Values>({});
   const [pesel, setPesel] = useState("");
   const [done, setDone] = useState<GeneratedDoc | null>(null);
+  const [signDoc, setSignDoc] = useState<GeneratedDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);
@@ -249,6 +310,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   <Group gap={6} justify="flex-end" wrap="nowrap">
                     <SignButton doc={d} employee={employee} />
                     <DocActions doc={d} />
+                    <DeleteDocument doc={d} employee={employee} />
                   </Group>
                 </Table.Td>
               </Table.Tr>
@@ -270,6 +332,25 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 </Text>
               </div>
             </Group>
+            {done.signature_roles?.length > 0 && done.accessible && (
+              <Alert color="blue" variant="light" icon={<IconSignature />}>
+                <Group justify="space-between" wrap="nowrap" gap="sm">
+                  <Text size="sm">
+                    Dokument wymaga podpisu ({done.signature_roles.map((r) => (r === "pracownika" ? "pracownik" : "przedstawiciel firmy")).join(", ")}).
+                  </Text>
+                  <Button
+                    size="xs"
+                    leftSection={<IconSignature size={14} />}
+                    onClick={() => {
+                      setSignDoc(done);
+                      setOpen(false);
+                    }}
+                  >
+                    Przejdź do podpisu
+                  </Button>
+                </Group>
+              </Alert>
+            )}
             <Group justify="space-between">
               <Button variant="subtle" onClick={() => setDone(null)}>
                 Kolejny dokument
@@ -350,6 +431,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
         </form>
         )}
       </Modal>
+      {signDoc && <SignaturesModal doc={signDoc} employee={employee} opened onClose={() => setSignDoc(null)} />}
     </Card>
   );
 }

@@ -485,7 +485,7 @@ export function TrainingsPage() {
       <div>
         <Title order={2}>Szkolenia</Title>
         <Text c="dimmed" size="sm">
-          Szkolenia wpisuje się w kartotece pracownika. Przypomnienie e-mail o kończących się wychodzi w poniedziałki.
+          Szkolenia wpisuje się w kartotece pracownika. Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
         </Text>
       </div>
       <Tabs defaultValue="expiring" keepMounted={false}>

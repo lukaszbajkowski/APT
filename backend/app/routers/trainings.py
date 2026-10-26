@@ -715,6 +715,10 @@ class InProgressOut(BaseModel):
 
 @router.get("/trainings/in-progress", response_model=list[InProgressOut])
 def list_in_progress(ctx: ListAuth, db: DbSession) -> list[InProgressOut]:
+    return in_progress(db, ctx.user)
+
+
+def in_progress(db: Session, user: User) -> list[InProgressOut]:
     """Szkolenia stanowiskowe rozpoczęte (lub zaplanowane), jeszcze nie zakończone – aktywni pracownicy."""
     today = date.today()
     q = (
@@ -728,7 +732,7 @@ def list_in_progress(ctx: ListAuth, db: DbSession) -> list[InProgressOut]:
         )
     )
     out = []
-    for tr, e in db.execute(apply_scope(q, ctx.user)).unique().all():
+    for tr, e in db.execute(apply_scope(q, user)).unique().all():
         st = training_status(tr, today)
         if st not in ("planned", "in_progress", "overdue"):
             continue

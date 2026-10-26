@@ -141,12 +141,14 @@ def quality_reminders() -> int:
 
 
 def training_reminders() -> int:
-    """Przypomnienia o szkoleniach wygasających w ciągu 30 dni: admin, HR, kierownicy (swój zakres)."""
+    """Przypomnienia: szkolenia stanowiskowe ponad standard i ważność kończąca się w 30 dni.
+
+    Dostają admin, HR i kierownicy (swój zakres)."""
     from sqlalchemy import select
 
     from app import mailer, notify
     from app.models import Role, User
-    from app.routers.trainings import expiring
+    from app.routers.trainings import expiring, in_progress
 
     if not mailer.enabled():
         print("E-maile wyłączone – pomijam przypomnienia o szkoleniach.")
@@ -163,22 +165,30 @@ def training_reminders() -> int:
                 print(f"- {u.username}: pominięty (brak adresu e-mail)")
                 continue
             rows = expiring(db, u)
-            if not rows:
-                print(f"- {u.username}: nic nie wygasa – nie wysyłam")
+            late = [r for r in in_progress(db, u) if r.status == "overdue"]
+            if not rows and not late:
+                print(f"- {u.username}: nic nie wymaga uwagi – nie wysyłam")
                 continue
             items = [
+                f"Ponad standard: {r.last_name} {r.first_name} – {r.name or r.type_name}: "
+                f"dzień {r.days} z {r.standard_days} (od {r.start_date:%d.%m.%Y})"
+                for r in late
+            ] + [
                 f"{r.last_name} {r.first_name} – {r.name or r.type_name}: "
                 + ("wygasło " if r.status == "expired" else "ważne do ")
                 + r.valid_until.strftime("%d.%m.%Y")
-                for r in rows[:50]
+                for r in rows
             ]
-            if len(rows) > 50:
-                items.append(f"… i {len(rows) - 50} więcej w aplikacji")
+            total = len(items)
+            if total > 50:
+                items = items[:50] + [f"… i {total - 50} więcej w aplikacji"]
             expired = sum(r.status == "expired" for r in rows)
             try:
-                mailer.send_now(u.email, notify.trainings_email(u, items, expired))
+                mailer.send_now(u.email, notify.trainings_email(u, items, expired, len(late), len(rows)))
                 sent += 1
-                print(f"- {u.username}: wysłano na {u.email} ({len(rows)} szkoleń)")
+                print(
+                    f"- {u.username}: wysłano na {u.email} ({len(late)} ponad standard, {len(rows)} ważność)"
+                )
             except Exception as e:  # noqa: BLE001
                 print(f"- {u.username}: błąd wysyłki do {u.email}: {e}", file=sys.stderr)
     print(f"Przypomnienia o szkoleniach wysłane: {sent}.")

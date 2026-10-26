@@ -113,20 +113,24 @@ def quality_email(user: User, counts: list[tuple[str, int]], people: int) -> Ema
     )
 
 
-def trainings_email(user: User, items: list[str], expired: int) -> Email:
+def trainings_email(user: User, items: list[str], expired: int, overdue: int, expiring: int) -> Email:
+    parts = []
+    if overdue:
+        parts.append(f"{overdue} szkoleń stanowiskowych trwa dłużej niż standard")
+    if expiring:
+        parts.append(
+            f"{expiring} ważności kończy się w ciągu 30 dni"
+            + (f" (w tym {expired} już wygasło)" if expired else "")
+        )
     return Email(
-        subject=f"Identyfikacja APT – kończące się szkolenia ({len(items)})",
-        title="Kończące się szkolenia i uprawnienia",
-        preheader=f"{len(items)} szkoleń wygasa w ciągu 30 dni lub już wygasło.",
-        paragraphs=[
-            f"Dzień dobry {user.full_name},",
-            "w Twoim zakresie ważność tych szkoleń i uprawnień kończy się w ciągu 30 dni"
-            + (f" (w tym {expired} już wygasło):" if expired else ":"),
-        ],
+        subject=f"Identyfikacja APT – szkolenia wymagające uwagi ({overdue + expiring})",
+        title="Szkolenia wymagające uwagi",
+        preheader="; ".join(parts),
+        paragraphs=[f"Dzień dobry {user.full_name},", "w Twoim zakresie: " + "; ".join(parts) + "."],
         items=items,
         button=("Zobacz szkolenia", mailer.link("/szkolenia")),
-        tone="danger" if expired else "warning",
-        footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wygasa.",
+        tone="danger" if expired or overdue else "warning",
+        footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wymaga uwagi.",
     )
 
 

@@ -187,6 +187,21 @@ def test_expiring_latest_only_and_reminders(client, make_user, monkeypatch):
     assert {to for to, _ in sent} == {"kadry@example.com", "kier@example.com"}
     assert "Nowak Ola – Uprawnienia SEP (elektryczne): ważne do" in sent[0][1].items[0]
 
+    # szkolenie stanowiskowe ponad standard trafia na początek listy
+    pos = _types(client)["Szkolenie stanowiskowe"]["id"]
+    late = {
+        "type_id": pos,
+        "name": "Spawacz",
+        "start_date": (today - timedelta(days=9)).isoformat(),
+        "standard_days": 5,
+    }
+    assert client.post(f"/api/employees/{a['id']}/trainings", json=late).status_code == 201
+    sent.clear()
+    cli.training_reminders()
+    msg = dict(sent)["kadry@example.com"]
+    assert msg.items[0].startswith("Ponad standard: Nowak Ola – Spawacz: dzień 9 z 5")
+    assert "(2)" in msg.subject and "1 szkoleń stanowiskowych" in msg.paragraphs[1]
+
 
 def test_delete_program_keeps_training(admin_client):
     c = admin_client

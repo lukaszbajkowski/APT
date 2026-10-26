@@ -382,9 +382,17 @@ def _doc_out(doc: GeneratedDocument, t: DocumentTemplate | None, user: User) -> 
     out = DocumentOut.model_validate(doc)
     out.accessible = not (user.role == Role.manager and doc.contains_sensitive)
     out.can_view = out.accessible and (doc.has_pdf or doc.signed_at is not None)
-    out.download = _allowed_formats(t, doc) if out.accessible else []
+    out.download = _allowed_formats(t, doc) if out.accessible and user.role != Role.manager else []
     out.can_delete = can_delete(doc, user)
     return out
+
+
+def forbid_download(user: User) -> None:
+    """Kierownik ogląda dokumenty tylko w podglądzie – bez pobierania plików."""
+    if user.role == Role.manager:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="Kierownik nie może pobierać dokumentów – użyj podglądu."
+        )
 
 
 def can_delete(doc: GeneratedDocument, user: User) -> bool:
@@ -581,6 +589,7 @@ class BatchIn(BaseModel):
 
 @router.post("/documents/batch")
 def generate_batch(body: BatchIn, ctx: DocAuth, request: Request, db: DbSession) -> Response:
+    forbid_download(ctx.user)
     """Ten sam dokument dla kilku osób naraz – paczka ZIP (każda osoba może mieć własne wartości pól)."""
     import io
     import zipfile
@@ -655,6 +664,7 @@ def download_document(
     db: DbSession,
     format: Literal["pdf", "docx"] = "pdf",
 ) -> Response:
+    forbid_download(ctx.user)
     doc, e, t = _get_doc(db, ctx.user, document_id)
     if format not in _allowed_formats(t, doc) and not (format == "pdf" and doc.signed_at):
         raise HTTPException(

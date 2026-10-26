@@ -35,6 +35,12 @@ MAX_UPLOAD = 15 * 1024 * 1024
 VIEW_SECONDS = 3600
 
 
+def forbid_download(user: Any) -> None:
+    from app.routers.documents import forbid_download as f
+
+    f(user)
+
+
 # ---------- pliki ----------
 
 
@@ -124,6 +130,7 @@ class SignaturesOut(BaseModel):
     scan: bool
     scan_id: int | None = None
     can_remove: bool = False
+    can_download: bool = False
     sms_enabled: bool
     email_enabled: bool
 
@@ -158,6 +165,7 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
         scan=any(s.role == "skan" and s.status == "signed" for s in sigs),
         scan_id=next((s.id for s in sigs if s.role == "skan" and s.status == "signed"), None),
         can_remove=user is not None and user.role in (Role.admin, Role.hr),
+        can_download=user is not None and user.role != Role.manager,
         sms_enabled=sms.enabled(),
         email_enabled=mailer.enabled() or mailer.outbox is not None,
     )
@@ -444,6 +452,8 @@ def download_signed(
     document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession, inline: bool = False
 ) -> Response:
     """Podpisany dokument: PDF z podpisami z ekranu albo skan papierowego dokumentu."""
+    if not inline:
+        forbid_download(ctx.user)
     doc, e = _get(db, ctx, document_id)
     base = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}_podpisany")
     found = signed_file(db, doc)
@@ -467,6 +477,7 @@ def download_signed(
 @router.get("/signatures/{signature_id}/file")
 def download_signature_file(signature_id: int, ctx: DocAuth, db: DbSession) -> Response:
     """Plik dołączony przy podpisie zaufanym (PDF / XML z podpisem)."""
+    forbid_download(ctx.user)
     sig = db.get(DocumentSignature, signature_id)
     if sig is None or sig.method != "zaufany" or not sig.file_name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku.")

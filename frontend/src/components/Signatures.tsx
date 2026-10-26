@@ -56,6 +56,7 @@ interface SignaturesState {
   scan: boolean;
   scan_id: number | null;
   can_remove: boolean;
+  can_download: boolean;
   sms_enabled: boolean;
   email_enabled: boolean;
 }
@@ -313,7 +314,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                 <Group justify="space-between" wrap="nowrap" align="flex-start" gap="xs">
                 <Text size="sm">
                   {r.signer_name} · {formatDateTime(r.signed_at)} · {METHOD[r.method ?? ""] ?? r.method}
-                  {r.method === "zaufany" && r.request_id && (
+                  {r.method === "zaufany" && r.request_id && st.can_download && (
                     <>
                       {" · "}
                       <Anchor href={`/api/signatures/${r.request_id}/file`} size="sm">
@@ -352,7 +353,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
             </FileButton>
             {st.can_remove && st.scan_id && <RemoveSignature id={st.scan_id} what="skan" docId={doc.id} onDone={refresh} />}
             <Box style={{ flex: 1 }} />
-            {(st.has_signed_pdf || st.scan) && (
+            {(st.has_signed_pdf || st.scan) && st.can_download && (
               <Button size="xs" component="a" href={`/api/documents/${doc.id}/signed`} leftSection={<IconFileCertificate size={14} />}>
                 Pobierz podpisany
               </Button>

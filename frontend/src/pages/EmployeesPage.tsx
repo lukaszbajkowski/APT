@@ -290,15 +290,17 @@ export function EmployeesPage() {
               >
                 Drukuj karty{selected.size ? ` (${selected.size})` : ""}
               </Button>
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<IconFileText size={14} />}
-                disabled={selected.size === 0}
-                onClick={() => setDocsOpen(true)}
-              >
-                Dokument{selected.size ? ` (${selected.size})` : ""}
-              </Button>
+              {staff && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconFileText size={14} />}
+                  disabled={selected.size === 0}
+                  onClick={() => setDocsOpen(true)}
+                >
+                  Dokument{selected.size ? ` (${selected.size})` : ""}
+                </Button>
+              )}
               {staff && (
                 <Button
                   size="xs"

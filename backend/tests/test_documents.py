@@ -226,7 +226,9 @@ def test_manager_gets_sensitive_template_without_sensitive_values(admin, make_us
     doc = r.json()
     assert doc["masked"] is True
     assert doc["contains_sensitive"] is False
-    data = m.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"}).content
+    # kierownik nie pobiera plików (tylko podgląd); treść sprawdzamy jako admin
+    assert m.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"}).status_code == 403
+    data = admin.get(f"/api/documents/{doc['id']}/download", params={"format": "docx"}).content
     assert doc_text(data) == "K Jan PESEL: UR:"
 
     # Ten sam szablon u Kadr/Administratora – z PESEL; kierownik nie ma do niego dostępu.
@@ -242,6 +244,7 @@ def test_manager_gets_sensitive_template_without_sensitive_values(admin, make_us
     assert listed[full["id"]]["accessible"] is False
     assert listed[full["id"]]["download"] == []
     assert listed[doc["id"]]["accessible"] is True
+    assert listed[doc["id"]]["download"] == []
 
 
 def test_allow_manager_switch(admin, make_user):

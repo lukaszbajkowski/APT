@@ -25,6 +25,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { DocumentViewer } from "./DocumentViewer";
 import { SignButton, SignatureBadge, SignaturesModal } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
@@ -100,11 +101,8 @@ export function FieldInput({ field, value, onChange }: { field: TemplateField; v
   }
 }
 
-function viewOnline(doc: GeneratedDoc) {
-  window.open(`/api/documents/${doc.id}/view`, "_blank", "noopener");
-}
-
 function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "compact-xs" | "sm" }) {
+  const [viewing, setViewing] = useState(false);
   if (!doc.accessible) {
     return (
       <Badge variant="light" color="gray" leftSection={<IconLock size={12} />}>
@@ -115,10 +113,11 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
   return (
     <Group gap={4} justify="flex-end" wrap="nowrap">
       {doc.can_view && (
-        <Button size={size} variant="light" leftSection={<IconEye size={14} />} onClick={() => viewOnline(doc)}>
+        <Button size={size} variant="light" leftSection={<IconEye size={14} />} onClick={() => setViewing(true)}>
           Podgląd
         </Button>
       )}
+      {viewing && <DocumentViewer docId={doc.id} opened onClose={() => setViewing(false)} />}
       {doc.download.includes("pdf") && (
         <Button size={size} variant="default" leftSection={<IconFileTypePdf size={14} />} onClick={() => download(doc, "pdf")}>
           PDF

@@ -145,6 +145,11 @@ def test_sign_on_screen_flow(admin_client, outboxes):
     view = c.get(f"/api/documents/{doc['id']}/view")
     assert "podpisany" in view.headers["content-disposition"]
     assert "Potwierdzenie podpisów" in PdfReader(io.BytesIO(view.content)).pages[-1].extract_text()
+    pv = c.get(f"/api/documents/{doc['id']}/preview").json()
+    assert pv["signed"] and pv["pages"] == 2
+    png = c.get(f"/api/documents/{doc['id']}/preview/1")
+    assert png.headers["content-type"] == "image/png" and png.content[:4] == b"\x89PNG"
+    assert c.get(f"/api/documents/{doc['id']}/preview/5").status_code == 404
     dl = c.get(f"/api/documents/{doc['id']}/download?format=pdf")
     assert "podpisany" in dl.headers["content-disposition"]
     assert "Potwierdzenie podpisów" in PdfReader(io.BytesIO(dl.content)).pages[-1].extract_text()

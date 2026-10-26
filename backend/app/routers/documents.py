@@ -703,28 +703,29 @@ def download_document(
     )
 
 
-@router.get("/documents/{document_id}/view")
-def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> Response:
-    """Podgląd online (PDF w przeglądarce). Każde otwarcie trafia do dziennika.
-
-    Gdy dokument jest podpisany, pokazujemy wersję podpisaną (PDF z podpisami albo skan papieru).
-    """
+def _view_source(db: Session, doc: GeneratedDocument) -> tuple[Path, str, bool]:
+    """Plik do podglądu: wersja podpisana (PDF z podpisami / plik z gov.pl / skan) albo oryginalny PDF."""
     from app.routers.signatures import signed_file
 
-    doc, e, _ = _get_doc(db, ctx.user, document_id)
-    path, ext, media = _doc_path(doc, "pdf"), "pdf", "application/pdf"
     signed = signed_file(db, doc) if (doc.has_signed_pdf or doc.signed_at) else None
     if signed:
-        path, ext, media = signed
-    elif not doc.has_pdf or not path.exists():
+        return signed[0], signed[1], True
+    path = _doc_path(doc, "pdf")
+    if not doc.has_pdf or not path.exists():
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny – dokument nie ma wersji PDF."
         )
+    return path, "pdf", False
+
+
+def _audit_view(
+    db: Session, request: Request, user: User, doc: GeneratedDocument, e: Any, signed: bool
+) -> None:
     audit(
         db,
         request,
         "document_viewed",
-        user=ctx.user,
+        user=user,
         entity_type="employee",
         entity_id=e.id,
         details={
@@ -734,6 +735,47 @@ def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: Db
         },
     )
     db.commit()
+
+
+class PreviewOut(BaseModel):
+    pages: int
+    signed: bool
+    title: str
+
+
+@router.get("/documents/{document_id}/preview", response_model=PreviewOut)
+def preview_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> PreviewOut:
+    """Podgląd w aplikacji: liczba stron (strony pobiera się jako obrazy ze znakiem wodnym)."""
+    from app import preview
+
+    doc, e, _ = _get_doc(db, ctx.user, document_id)
+    path, ext, signed = _view_source(db, doc)
+    pages = preview.page_count(path.read_bytes(), ext)
+    _audit_view(db, request, ctx.user, doc, e, signed)
+    return PreviewOut(pages=pages, signed=signed, title=f"{doc.template_name} – {e.last_name} {e.first_name}")
+
+
+@router.get("/documents/{document_id}/preview/{page}")
+def preview_page(document_id: uuid.UUID, page: int, ctx: DocAuth, db: DbSession) -> Response:
+    from app import preview
+
+    doc, _, _ = _get_doc(db, ctx.user, document_id)
+    path, ext, _ = _view_source(db, doc)
+    try:
+        png = preview.render_page(path.read_bytes(), ext, page, ctx.user.full_name or ctx.user.username)
+    except IndexError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.") from exc
+    return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
+
+
+@router.get("/documents/{document_id}/view")
+def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> Response:
+    """Plik PDF w przeglądarce – tylko kadry i admin (kierownik ma podgląd w aplikacji)."""
+    forbid_download(ctx.user)
+    doc, e, _ = _get_doc(db, ctx.user, document_id)
+    path, ext, signed = _view_source(db, doc)
+    _audit_view(db, request, ctx.user, doc, e, signed)
+    media = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}[ext]
     suffix = "_podpisany" if signed else ""
     name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}{suffix}") + f".{ext}"
     return Response(

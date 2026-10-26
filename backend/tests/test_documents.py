@@ -245,6 +245,8 @@ def test_manager_gets_sensitive_template_without_sensitive_values(admin, make_us
     assert listed[full["id"]]["download"] == []
     assert listed[doc["id"]]["accessible"] is True
     assert listed[doc["id"]]["download"] == []
+    # kierownik: podgląd w aplikacji (obrazy), bez pliku PDF w przeglądarce
+    assert m.get(f"/api/documents/{doc['id']}/view").status_code == 403
 
 
 def test_allow_manager_switch(admin, make_user):

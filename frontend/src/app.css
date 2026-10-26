@@ -33,3 +33,10 @@
 
 /* znaczniki w kodzie zawijają się zamiast przewijać na boki */
 .mantine-Code-root { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* podgląd dokumentu: nic nie drukujemy */
+@media print {
+  body.doc-viewer-open * {
+    visibility: hidden !important;
+  }
+}

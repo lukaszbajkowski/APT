@@ -50,6 +50,11 @@ class MeOut(BaseModel):
     mfa_pending: bool = False
     mfa_setup_required: bool = False
     recovery_codes_left: int = 0
+    # symulacja uprawnień przez administratora
+    real_role: str | None = None
+    sim_role: str | None = None
+    sim_agency_id: int | None = None
+    sim_department_id: int | None = None
 
 
 class ScopesIn(BaseModel):

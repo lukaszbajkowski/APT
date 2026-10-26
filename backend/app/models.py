@@ -167,6 +167,10 @@ class UserSession(Base):
     mfa_pending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     ip: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(String(400))
+    # symulacja uprawnień (tylko administrator): rola i zakres kierownika
+    sim_role: Mapped[str | None] = mapped_column(String(20))
+    sim_agency_id: Mapped[int | None] = mapped_column(Integer)
+    sim_department_id: Mapped[int | None] = mapped_column(Integer)
 
     user: Mapped[User] = relationship(lazy="joined")
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppShell,
@@ -37,11 +38,13 @@ import {
 } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { MFA_PATH, ROLE_LABELS } from "../api";
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const { me, logout, hasRole } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -84,7 +87,7 @@ export function AppLayout() {
               </Text>
             </Link>
           </Group>
-          <Menu position="bottom-end" width={260} closeOnItemClick>
+          <Menu position="bottom-end" width={260} closeOnItemClick opened={menuOpen} onChange={setMenuOpen}>
             <Menu.Target>
               <UnstyledButton aria-label="Konto użytkownika">
                 <Group gap="xs">
@@ -97,6 +100,7 @@ export function AppLayout() {
                     </Text>
                     <Text size="xs" c="dimmed">
                       {me ? ROLE_LABELS[me.user.role] : ""}
+                      {me?.sim_role ? " (symulacja)" : ""}
                     </Text>
                   </Box>
                   <IconChevronDown size={14} />
@@ -104,6 +108,7 @@ export function AppLayout() {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
+              <SimulationMenu onDone={() => setMenuOpen(false)} />
               <Menu.Label>Motyw</Menu.Label>
               <Box px="xs" pb="xs">
                 <SegmentedControl
@@ -178,6 +183,7 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        <SimulationBanner />
         <Outlet />
       </AppShell.Main>
     </AppShell>

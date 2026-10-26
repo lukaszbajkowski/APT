@@ -2,7 +2,7 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -21,6 +21,43 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class _SimScope:
+    def __init__(self, agency_id: int | None, department_id: int | None) -> None:
+        self.agency_id, self.department_id = agency_id, department_id
+
+
+class SimulatedUser:
+    """Administrator oglądający aplikację z uprawnieniami innej roli.
+
+    Wszystko poza rolą i zakresem pochodzi z prawdziwego konta (id, nazwa – więc dziennik zdarzeń
+    zapisuje działania administratora). Zmiany atrybutów trafiają do prawdziwego obiektu.
+    """
+
+    def __init__(self, real: User, role: Role, scopes: list[_SimScope]) -> None:
+        object.__setattr__(self, "_real", real)
+        object.__setattr__(self, "role", role)
+        object.__setattr__(self, "scopes", scopes)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(object.__getattribute__(self, "_real"), name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        setattr(object.__getattribute__(self, "_real"), name, value)
+
+
+def simulated(user: User, sess: UserSession) -> Any:
+    if user.role != Role.admin or not sess.sim_role:
+        return user
+    try:
+        role = Role(sess.sim_role)
+    except ValueError:
+        return user
+    scopes = []
+    if role == Role.manager and (sess.sim_agency_id or sess.sim_department_id):
+        scopes = [_SimScope(sess.sim_agency_id, sess.sim_department_id)]
+    return SimulatedUser(user, role, scopes)
 
 
 @dataclass
@@ -71,7 +108,7 @@ def _load_session(request: Request, db: Session) -> AuthContext:
         sess.last_seen_at = now
         db.commit()
 
-    return AuthContext(user=sess.user, session=sess)
+    return AuthContext(user=simulated(sess.user, sess), session=sess)
 
 
 def get_auth_mfa_pending(request: Request, db: DbSession) -> AuthContext:

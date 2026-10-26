@@ -9,8 +9,8 @@ from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.crypto import decrypt_secret, encrypt_secret
-from app.deps import AuthMfaPending, AuthMfaSetup, AuthPwChange, DbSession, utcnow
-from app.models import PasswordToken, User, UserSession
+from app.deps import Auth, AuthMfaPending, AuthMfaSetup, AuthPwChange, DbSession, simulated, utcnow
+from app.models import PasswordToken, Role, User, UserSession
 from app.schemas import ChangePasswordIn, LoginIn, MeOut, UserOut
 from app.security import (
     hash_password,
@@ -38,7 +38,17 @@ def _me(user: User, sess: UserSession) -> MeOut:
         mfa_pending=sess.mfa_pending,
         mfa_setup_required=user.mfa_required and not user.mfa_enabled,
         recovery_codes_left=user.recovery_codes_left,
+        real_role=sess.user.role.value,
+        sim_role=sess.sim_role if sess.user.role == Role.admin else None,
+        sim_agency_id=sess.sim_agency_id,
+        sim_department_id=sess.sim_department_id,
     )
+
+
+class SimulateIn(BaseModel):
+    role: Role | None = None  # None = koniec symulacji
+    agency_id: int | None = None
+    department_id: int | None = None
 
 
 def _register_failure(db: Session, user: User, request: Request, action: str, **details: object) -> bool:
@@ -425,3 +435,31 @@ def password_reset_confirm(body: ResetConfirmIn, request: Request, db: DbSession
     audit(db, request, "password_set_by_link", user=user, details={"purpose": t.purpose})
     db.commit()
     notify.security_notice(user, "ustawiono nowe hasło przez link z e-maila")
+
+
+@router.post("/simulate", response_model=MeOut)
+def simulate(body: SimulateIn, ctx: Auth, request: Request, db: DbSession) -> MeOut:
+    """Administrator ogląda aplikację z uprawnieniami innej roli (do czasu wyłączenia / wylogowania)."""
+    sess = ctx.session
+    if sess.user.role != Role.admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="Symulacja uprawnień jest dostępna tylko dla administratora."
+        )
+    role = None if body.role in (None, Role.admin) else body.role
+    sess.sim_role = role.value if role else None
+    sess.sim_agency_id = body.agency_id if role == Role.manager else None
+    sess.sim_department_id = body.department_id if role == Role.manager and not body.agency_id else None
+    audit(
+        db,
+        request,
+        "role_simulation",
+        user=sess.user,
+        details={
+            "role": sess.sim_role,
+            "agency_id": sess.sim_agency_id,
+            "department_id": sess.sim_department_id,
+        },
+    )
+    db.commit()
+    db.refresh(sess)
+    return _me(simulated(sess.user, sess), sess)

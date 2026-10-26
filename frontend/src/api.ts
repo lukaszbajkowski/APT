@@ -31,6 +31,10 @@ export interface Me {
   mfa_pending: boolean;
   mfa_setup_required: boolean;
   recovery_codes_left: number;
+  real_role?: Role | null;
+  sim_role?: Role | null;
+  sim_agency_id?: number | null;
+  sim_department_id?: number | null;
 }
 
 export interface DictionaryItem {

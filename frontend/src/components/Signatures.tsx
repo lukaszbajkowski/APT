@@ -17,6 +17,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Textarea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -30,6 +31,7 @@ import {
   IconMessage,
   IconQrcode,
   IconSignature,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react";
 
@@ -52,6 +54,8 @@ interface SignaturesState {
   signed_at: string | null;
   has_signed_pdf: boolean;
   scan: boolean;
+  scan_id: number | null;
+  can_remove: boolean;
   sms_enabled: boolean;
   email_enabled: boolean;
 }
@@ -188,6 +192,52 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
   );
 }
 
+function RemoveSignature({ id, what, docId, onDone }: { id: number; what: string; docId: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const del = useMutation({
+    mutationFn: () => api(`/signatures/${id}/remove`, { method: "POST", body: { reason: reason.trim() } }),
+    onSuccess: () => {
+      setOpen(false);
+      onDone();
+      notifications.show({ color: "green", message: `Usunięto ${what}.` });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  return (
+    <>
+      <Button size="compact-xs" variant="subtle" color="red" leftSection={<IconTrash size={12} />} onClick={() => { setReason(""); setOpen(true); }}>
+        Usuń {what}
+      </Button>
+      <Modal opened={open} onClose={() => setOpen(false)} title={`Usuń ${what}`} size="md" zIndex={400} key={docId}>
+        <Stack>
+          <Text size="sm">
+            Plik zostanie trwale usunięty, a dokument wróci do stanu „do podpisu” – można go podpisać ponownie. Pozostałe podpisy zostają.
+          </Text>
+          <Textarea
+            label="Powód"
+            description="Zapisywany w dzienniku zdarzeń."
+            placeholder="np. podpisała niewłaściwa osoba, zły plik"
+            autosize
+            minRows={2}
+            value={reason}
+            onChange={(e) => setReason(e.currentTarget.value)}
+            data-autofocus
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOpen(false)}>
+              Anuluj
+            </Button>
+            <Button color="red" leftSection={<IconTrash size={14} />} loading={del.isPending} disabled={reason.trim().length < 3} onClick={() => del.mutate()}>
+              Usuń
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
 export function SignaturesModal({ doc, employee, opened, onClose }: { doc: GeneratedDoc; employee: Employee; opened: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const q = useQuery({
@@ -260,6 +310,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                 )}
               </Group>
               {r.status === "signed" ? (
+                <Group justify="space-between" wrap="nowrap" align="flex-start" gap="xs">
                 <Text size="sm">
                   {r.signer_name} · {formatDateTime(r.signed_at)} · {METHOD[r.method ?? ""] ?? r.method}
                   {r.method === "zaufany" && r.request_id && (
@@ -271,6 +322,8 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                     </>
                   )}
                 </Text>
+                {st.can_remove && r.request_id && <RemoveSignature id={r.request_id} what="podpis" docId={doc.id} onDone={refresh} />}
+                </Group>
               ) : (
                 <>
                   {r.status === "pending" && (
@@ -297,6 +350,8 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                 </Button>
               )}
             </FileButton>
+            {st.can_remove && st.scan_id && <RemoveSignature id={st.scan_id} what="skan" docId={doc.id} onDone={refresh} />}
+            <Box style={{ flex: 1 }} />
             {(st.has_signed_pdf || st.scan) && (
               <Button size="xs" component="a" href={`/api/documents/${doc.id}/signed`} leftSection={<IconFileCertificate size={14} />}>
                 Pobierz podpisany

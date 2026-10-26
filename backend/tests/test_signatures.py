@@ -148,8 +148,22 @@ def test_sign_on_screen_flow(admin_client, outboxes):
     dl = c.get(f"/api/documents/{doc['id']}/download?format=pdf")
     assert "podpisany" in dl.headers["content-disposition"]
     assert "Potwierdzenie podpisów" in PdfReader(io.BytesIO(dl.content)).pages[-1].extract_text()
+    # usunięcie podpisu firmy: dokument znów czeka na podpis, podpis pracownika zostaje
+    firm = next(
+        r for r in c.get(f"/api/documents/{doc['id']}/signatures").json()["roles"] if r["role"] == "firmy"
+    )
+    assert c.post(f"/api/signatures/{firm['request_id']}/remove", json={"reason": "x"}).status_code == 422
+    st = c.post(f"/api/signatures/{firm['request_id']}/remove", json={"reason": "zła osoba"}).json()
+    assert st["signed_at"] is None and st["has_signed_pdf"]
+    assert [r["status"] for r in st["roles"]] == ["signed", "none"]
+    text = PdfReader(io.BytesIO(c.get(f"/api/documents/{doc['id']}/signed").content)).pages[-1].extract_text()
+    assert "Ola Nowak" in text and "Jan Kierownik" not in text
+    emp = st["roles"][0]["request_id"]
+    st = c.post(f"/api/signatures/{emp}/remove", json={"reason": "zła osoba"}).json()
+    assert not st["has_signed_pdf"] and c.get(f"/api/documents/{doc['id']}/signed").status_code == 404
     with SessionLocal() as db:
         actions = [a.action for a in db.scalars(select(AuditLog).order_by(AuditLog.id))]
+        assert actions.count("signature_removed") == 2
         assert actions.count("document_signed") == 2 and "signature_requested" in actions
 
 

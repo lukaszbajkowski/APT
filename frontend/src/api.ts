@@ -388,6 +388,7 @@ export const ACTION_LABELS: Record<string, string> = {
   document_downloaded: "Pobranie dokumentu",
   document_viewed: "Podgląd dokumentu",
   document_deleted: "Usunięcie dokumentu",
+  signature_removed: "Usunięcie podpisu",
   employee_purged: "Trwałe usunięcie danych pracownika (retencja)",
   retention_purge: "Usunięcie danych po okresie przechowywania",
   retention_hold_set: "Wstrzymanie usunięcia danych",

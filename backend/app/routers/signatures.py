@@ -122,11 +122,13 @@ class SignaturesOut(BaseModel):
     signed_at: datetime | None
     has_signed_pdf: bool
     scan: bool
+    scan_id: int | None = None
+    can_remove: bool = False
     sms_enabled: bool
     email_enabled: bool
 
 
-def _state(db: Session, doc: GeneratedDocument) -> SignaturesOut:
+def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesOut:
     now = datetime.now(UTC)
     sigs = _sigs(db, doc)
     roles = []
@@ -154,6 +156,8 @@ def _state(db: Session, doc: GeneratedDocument) -> SignaturesOut:
         signed_at=doc.signed_at,
         has_signed_pdf=doc.has_signed_pdf,
         scan=any(s.role == "skan" and s.status == "signed" for s in sigs),
+        scan_id=next((s.id for s in sigs if s.role == "skan" and s.status == "signed"), None),
+        can_remove=user is not None and user.role in (Role.admin, Role.hr),
         sms_enabled=sms.enabled(),
         email_enabled=mailer.enabled() or mailer.outbox is not None,
     )
@@ -169,7 +173,7 @@ def _get(db: Session, ctx: AuthContext, document_id: uuid.UUID) -> tuple[Generat
 @router.get("/documents/{document_id}/signatures", response_model=SignaturesOut)
 def get_signatures(document_id: uuid.UUID, ctx: DocAuth, db: DbSession) -> SignaturesOut:
     doc, _ = _get(db, ctx, document_id)
-    return _state(db, doc)
+    return _state(db, doc, ctx.user)
 
 
 class RequestIn(BaseModel):
@@ -287,6 +291,55 @@ def cancel_request(signature_id: int, ctx: DocAuth, request: Request, db: DbSess
     db.commit()
 
 
+class RemoveIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.post("/signatures/{signature_id}/remove", response_model=SignaturesOut)
+def remove_signature(
+    signature_id: int, body: RemoveIn, ctx: DocAuth, request: Request, db: DbSession
+) -> SignaturesOut:
+    """Usunięcie złożonego podpisu albo skanu (np. podpis złej osoby). Dokument wraca do podpisu."""
+    if ctx.user.role not in (Role.admin, Role.hr):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="Podpis może usunąć tylko administrator lub kadry."
+        )
+    sig = db.get(DocumentSignature, signature_id)
+    if sig is None or sig.status != "signed":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiego podpisu.")
+    doc, e = _get(db, ctx, sig.document_id)
+    old_file = _dir(doc) / sig.file_name if sig.file_name else None
+    sig.status, sig.token_hash = "removed", None
+    db.flush()
+    signed_pdf = _dir(doc) / f"{doc.id}_signed.pdf"
+    signed_pdf.unlink(missing_ok=True)
+    doc.has_signed_pdf, doc.signed_at = False, None
+    _rebuild(db, doc)
+    _finish_if_complete(db, doc)
+    audit(
+        db,
+        request,
+        "signature_removed",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "document": doc.template_name,
+            "role": sig.role,
+            "method": sig.method,
+            "signer": sig.signer_name,
+            "signed_at": sig.signed_at.isoformat() if sig.signed_at else None,
+            "reason": body.reason.strip(),
+        },
+    )
+    db.commit()
+    if old_file:
+        old_file.unlink(missing_ok=True)
+    db.refresh(doc)
+    return _state(db, doc, ctx.user)
+
+
 ALLOWED_SCAN = {
     b"%PDF": ("pdf", "application/pdf"),
     b"\xff\xd8\xff": ("jpg", "image/jpeg"),
@@ -342,7 +395,7 @@ async def upload_scan(
         details={"number": format_number(e.number), "document": doc.template_name},
     )
     db.commit()
-    return _state(db, doc)
+    return _state(db, doc, ctx.user)
 
 
 def _file_response(data: bytes, name: str, media: str, inline: bool = False) -> Response:

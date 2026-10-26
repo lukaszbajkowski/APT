@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
+  Menu,
   Alert,
   Anchor,
   Badge,
@@ -25,7 +26,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconCircleCheck, IconFileImport, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
 
 import {
   api,
@@ -495,9 +496,24 @@ export function TrainingsPage() {
         </Text>
       </div>
       {staff && (
-        <Button component={Link} to="/szkolenia/import" variant="default" leftSection={<IconFileImport size={16} />}>
-          Import z Excela
-        </Button>
+        <Menu position="bottom-end" width={290}>
+            <Menu.Target>
+              <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
+                Dodaj szkolenie
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item component={Link} to="/pracownicy" leftSection={<IconPencil size={16} />}>
+                Wpisz ręcznie (w kartotece pracownika)
+              </Menu.Item>
+              <Menu.Item component={Link} to="/pracownicy" leftSection={<IconUsers size={16} />}>
+                Dla kilku osób (zaznacz na liście pracowników)
+              </Menu.Item>
+              <Menu.Item component={Link} to="/szkolenia/import" leftSection={<IconFileSpreadsheet size={16} />}>
+                Importuj z arkusza (Excel, Numbers, CSV)
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
       )}
       </Group>
       <Tabs defaultValue="expiring" keepMounted={false}>

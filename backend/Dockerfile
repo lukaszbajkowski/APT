@@ -5,10 +5,10 @@ ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# LibreOffice do konwersji dokumentów Word -> PDF oraz czcionki zgodne metrycznie z Calibri/Arial
+# LibreOffice do konwersji Word -> PDF (dokumenty) i Excel -> PDF (raporty) oraz czcionki zgodne z Calibri/Arial
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        libreoffice-writer-nogui fonts-crosextra-carlito fonts-liberation fonts-dejavu-core \
+        libreoffice-writer-nogui libreoffice-calc-nogui fonts-crosextra-carlito fonts-liberation fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

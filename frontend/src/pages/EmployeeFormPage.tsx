@@ -180,9 +180,15 @@ export function EmployeeFormPage() {
     onSuccess: (e) => {
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.setQueryData(["employee", String(e.id)], e);
+      qc.invalidateQueries({ queryKey: ["planned-changes", e.id] });
+      qc.invalidateQueries({ queryKey: ["employee-timeline", e.id] });
       notifications.show({
         color: "green",
-        message: editing ? "Zapisano zmiany." : `Dodano pracownika nr ${e.number_display}.`,
+        message: !editing
+          ? `Dodano pracownika nr ${e.number_display}.`
+          : assignmentChanged && effectiveDate > todayIso
+            ? `Zapisano. Zmiana przydziału zaplanowana na ${new Date(effectiveDate + "T00:00:00").toLocaleDateString("pl-PL")}.`
+            : "Zapisano zmiany.",
       });
       navigate(`/pracownicy/${e.id}`, { replace: true });
     },
@@ -419,14 +425,14 @@ export function EmployeeFormPage() {
                   type="date"
                   label="Zmiana APT / wydziału / stanowiska obowiązuje od"
                   value={effectiveDate}
-                  max={todayIso}
                   min={current?.hire_date ?? undefined}
                   onChange={(e) => setEffectiveDate(e.currentTarget.value)}
                   w={300}
                 />
-                <Text size="xs" c="dimmed" mb={8} style={{ flex: 1, minWidth: 200 }}>
-                  Poprzedni przydział kończy się dzień wcześniej
-                  {effectiveDate ? ` (${dayBefore(effectiveDate)})` : ""}. Zapisze się w „Przebiegu zatrudnienia”.
+                <Text size="xs" c={effectiveDate > todayIso ? "blue" : "dimmed"} mb={8} style={{ flex: 1, minWidth: 200 }}>
+                  {effectiveDate > todayIso
+                    ? `Zaplanowana zmiana: do ${dayBefore(effectiveDate)} obowiązuje obecny przydział, a nowy aplikacja wprowadzi sama w dniu ${new Date(effectiveDate + "T00:00:00").toLocaleDateString("pl-PL")}. Pozostałe zmiany w formularzu zapiszą się od razu.`
+                    : `Poprzedni przydział kończy się dzień wcześniej${effectiveDate ? ` (${dayBefore(effectiveDate)})` : ""}. Zapisze się w „Przebiegu zatrudnienia”.`}
                 </Text>
               </Group>
             </Paper>

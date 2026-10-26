@@ -15,6 +15,7 @@ from app.models import (
     Department,
     Employee,
     GeneratedDocument,
+    PlannedChange,
     Position,
     Training,
 )
@@ -48,14 +49,25 @@ def check_effective_date(db: Session, e: Employee, effective: date) -> None:
     """Data zmiany przydziału: nie w przyszłości, nie przed zatrudnieniem ani przed poprzednią zmianą."""
     from fastapi import HTTPException, status
 
-    if effective > date.today():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Data zmiany nie może być z przyszłości.")
     if e.hire_date and effective < e.hire_date:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail=f"Data zmiany jest wcześniejsza niż data zatrudnienia ({e.hire_date:%d.%m.%Y}).",
         )
     last = db.scalar(select(func.max(Assignment.valid_from)).where(Assignment.employee_id == e.id))
+    pending = db.scalar(
+        select(func.max(PlannedChange.effective_date)).where(
+            PlannedChange.employee_id == e.id,
+            PlannedChange.applied_at.is_(None),
+            PlannedChange.cancelled_at.is_(None),
+        )
+    )
+    if pending and effective <= pending:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Jest już zaplanowana zmiana na {pending:%d.%m.%Y} – nowa musi być późniejsza "
+            "albo anuluj tamtą.",
+        )
     if last and effective < last:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -202,3 +214,73 @@ def item_state(db: Session, it: ChecklistItem, e: Employee, today: date | None =
 
 
 OPEN_STATES = {"open", "overdue"}
+
+
+# ---------- zaplanowane zmiany ----------
+
+
+def plan_change(
+    db: Session, e: Employee, effective: date, data: dict[str, Any], user_name: str | None
+) -> PlannedChange:
+    pc = PlannedChange(employee_id=e.id, effective_date=effective, changes=data, created_by_name=user_name)
+    db.add(pc)
+    return pc
+
+
+def apply_change(db: Session, pc: PlannedChange) -> bool:
+    """Wprowadza zaplanowaną zmianę (pomija osoby z archiwum – zmiana zostaje anulowana)."""
+    e = db.get(Employee, pc.employee_id)
+    now = datetime.now(UTC)
+    if e is None or e.status.value != "active":
+        pc.cancelled_at = now
+        return False
+    for field, value in pc.changes.items():
+        if field in ASSIGNMENT_FIELDS:
+            setattr(e, field, value)
+    db.flush()
+    db.refresh(e)
+    record_assignment(db, e, pc.effective_date, "zaplanowana zmiana", pc.created_by_name)
+    sync_checklist(db, e, "onboarding")
+    pc.applied_at = now
+    return True
+
+
+def apply_due_changes(db: Session, today: date | None = None) -> int:
+    from app.audit import audit
+
+    today = today or date.today()
+    due = db.scalars(
+        select(PlannedChange)
+        .where(
+            PlannedChange.effective_date <= today,
+            PlannedChange.applied_at.is_(None),
+            PlannedChange.cancelled_at.is_(None),
+        )
+        .order_by(PlannedChange.effective_date, PlannedChange.id)
+    )
+    n = 0
+    for pc in list(due):
+        if apply_change(db, pc):
+            n += 1
+            details = {"effective_date": pc.effective_date.isoformat(), "changes": pc.changes}
+            audit(
+                db,
+                None,
+                "planned_change_applied",
+                entity_type="employee",
+                entity_id=pc.employee_id,
+                details=details,
+            )
+    db.commit()
+    return n
+
+
+def cancel_pending(db: Session, e: Employee) -> None:
+    for pc in db.scalars(
+        select(PlannedChange).where(
+            PlannedChange.employee_id == e.id,
+            PlannedChange.applied_at.is_(None),
+            PlannedChange.cancelled_at.is_(None),
+        )
+    ):
+        pc.cancelled_at = datetime.now(UTC)

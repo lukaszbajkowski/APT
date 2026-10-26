@@ -70,6 +70,60 @@ function dayBefore(iso: string): string {
 const place = (x: { agency: string | null; department: string | null; position: string | null }) =>
   [x.department, x.position, x.agency].filter(Boolean).join(" · ") || "—";
 
+interface Planned {
+  id: number;
+  effective_date: string;
+  agency: string | null;
+  department: string | null;
+  position: string | null;
+  created_by_name: string | null;
+}
+
+function PlannedList({ employee }: { employee: Employee }) {
+  const qc = useQueryClient();
+  const { hasRole } = useAuth();
+  const q = useQuery({
+    queryKey: ["planned-changes", employee.id],
+    queryFn: () => api<Planned[]>(`/employees/${employee.id}/planned-changes`),
+  });
+  const cancel = useMutation({
+    mutationFn: (pid: number) => api(`/planned-changes/${pid}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["planned-changes", employee.id] });
+      qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
+      notifications.show({ color: "green", message: "Anulowano zaplanowaną zmianę." });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  if (!q.data?.length) return null;
+  return (
+    <Stack gap={6} mb="md">
+      {q.data.map((p) => (
+        <Paper key={p.id} withBorder p="xs" radius="md" bg="var(--mantine-color-blue-light)">
+          <Group justify="space-between" wrap="nowrap">
+            <div>
+              <Text size="sm" fw={500}>
+                Zaplanowane od {formatDate(p.effective_date)}:{" "}
+                {[p.department && `wydział ${p.department}`, p.position && `stanowisko ${p.position}`, p.agency && `APT ${p.agency}`]
+                  .filter(Boolean)
+                  .join(", ")}
+              </Text>
+              <Text size="xs" c="dimmed">
+                Wprowadzi się samo w tym dniu{p.created_by_name ? ` · zaplanował(a) ${p.created_by_name}` : ""}
+              </Text>
+            </div>
+            {hasRole("admin", "hr", "manager") && (
+              <Button size="xs" variant="default" color="red" onClick={() => cancel.mutate(p.id)} loading={cancel.isPending}>
+                Anuluj
+              </Button>
+            )}
+          </Group>
+        </Paper>
+      ))}
+    </Stack>
+  );
+}
+
 export function TimelineCard({ employee }: { employee: Employee }) {
   const q = useQuery({
     queryKey: ["employee-timeline", employee.id],
@@ -82,6 +136,7 @@ export function TimelineCard({ employee }: { employee: Employee }) {
       <Title order={5} mb="md">
         Przebieg zatrudnienia
       </Title>
+      <PlannedList employee={employee} />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
         <div>
           <Text size="sm" fw={600} mb="xs">

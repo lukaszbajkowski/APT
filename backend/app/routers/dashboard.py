@@ -91,7 +91,7 @@ def dashboard(ctx: Auth, db: DbSession) -> DashboardOut:
 
 class UpcomingEvent(BaseModel):
     date: date
-    kind: str  # exam | start | standard_end | valid_until | hire | task | task_overdue
+    kind: str  # exam | start | standard_end | valid_until | hire | transfer | task | task_overdue
     title: str
     employee_id: int
     employee: str
@@ -140,6 +140,16 @@ def upcoming(ctx: Auth, db: DbSession, days: int = UPCOMING_DAYS) -> list[Upcomi
     )
     for e in db.scalars(apply_scope(hires, ctx.user)).unique():
         add(e.hire_date, "hire", "Pierwszy dzień pracy", e)
+    from app.routers.lifecycle import pending_q, planned_out
+
+    for pc in db.scalars(pending_q()):
+        if pc.effective_date > end:
+            break
+        e = db.scalar(apply_scope(select(Employee).where(Employee.id == pc.employee_id), ctx.user))
+        if e is not None:
+            p = planned_out(db, pc)
+            what = " · ".join(x for x in (p.department, p.position, p.agency) if x)
+            add(pc.effective_date, "transfer", f"Przeniesienie: {what}", e)
     if ctx.user.role != Role.viewer:
         from app.routers.lifecycle import open_tasks
 

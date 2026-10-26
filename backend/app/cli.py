@@ -223,6 +223,12 @@ def notify_daily() -> int:
                 f"Dane {due} os. mają za sobą okres przechowywania – usuń je w zakładce Retencja danych."
             )
         admins = notify.admins_with_email(db)
+    from app import lifecycle
+
+    with SessionLocal() as db:
+        applied = lifecycle.apply_due_changes(db)
+    if applied:
+        print(f"Wprowadzono zaplanowane zmiany: {applied}.")
     if datetime.now(ZoneInfo("Europe/Warsaw")).weekday() == 0:
         quality_reminders()
         training_reminders()

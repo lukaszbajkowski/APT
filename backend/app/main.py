@@ -29,6 +29,20 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+
+@app.on_event("startup")
+def _apply_planned_changes() -> None:
+    """Zaległe zaplanowane zmiany (np. gdy serwer był wyłączony w nocy, gdy działa zadanie dzienne)."""
+    from app import lifecycle
+    from app.db import SessionLocal
+
+    try:
+        with SessionLocal() as db:
+            lifecycle.apply_due_changes(db)
+    except Exception:  # noqa: BLE001 – start aplikacji nie może zależeć od tego kroku (np. przed migracją)
+        pass
+
+
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(dictionaries.router)

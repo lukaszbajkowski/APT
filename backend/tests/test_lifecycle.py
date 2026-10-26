@@ -192,12 +192,6 @@ def test_assignment_effective_date(admin_client):
     e = _emp(c, department_id=mont, hire_date="2026-01-01")
     today = date.today()
     future = (today + timedelta(days=3)).isoformat()
-    assert (
-        c.patch(
-            f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": future}
-        ).status_code
-        == 400
-    )
     r = c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2025-12-01"})
     assert r.status_code == 400 and "zatrudnienia" in r.json()["detail"]
     r = c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2026-03-01"})
@@ -214,3 +208,62 @@ def test_assignment_effective_date(admin_client):
     assert (
         c.patch(f"/api/employees/{e['id']}", json={"notes": "x", "effective_date": future}).status_code == 200
     )
+
+
+def test_planned_change(admin_client):
+    from app import lifecycle
+
+    c = admin_client
+    mont, mag, pos = _deps()
+    e = _emp(c, department_id=mont, hire_date="2026-01-01")
+    today = date.today()
+    later = today + timedelta(days=5)
+    r = c.patch(
+        f"/api/employees/{e['id']}",
+        json={
+            "department_id": mag,
+            "position_id": None,
+            "notes": "od razu",
+            "effective_date": later.isoformat(),
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert (
+        body["department"]["name"] == "Montaż" and body["notes"] == "od razu"
+    )  # przydział jeszcze bez zmian
+    planned = c.get(f"/api/employees/{e['id']}/planned-changes").json()
+    assert [(p["effective_date"], p["department"], p["fields"]) for p in planned] == [
+        (later.isoformat(), "Magazyn", ["department_id"])
+    ]
+    # kolejna zmiana nie może być wcześniejsza niż zaplanowana
+    early = (today + timedelta(days=2)).isoformat()
+    assert (
+        c.patch(f"/api/employees/{e['id']}", json={"position_id": pos, "effective_date": early}).status_code
+        == 400
+    )
+    ev = [x for x in c.get("/api/dashboard/upcoming").json() if x["kind"] == "transfer"]
+    assert ev and ev[0]["title"] == "Przeniesienie: Magazyn"
+
+    # dzień przed – nic; w dniu zmiany – wprowadzona
+    with SessionLocal() as db:
+        assert lifecycle.apply_due_changes(db, later - timedelta(days=1)) == 0
+        assert lifecycle.apply_due_changes(db, later) == 1
+    assert c.get(f"/api/employees/{e['id']}").json()["department"]["name"] == "Magazyn"
+    tl = c.get(f"/api/employees/{e['id']}/timeline").json()["assignments"]
+    assert (tl[0]["valid_from"], tl[0]["reason"]) == (later.isoformat(), "zaplanowana zmiana")
+    assert c.get(f"/api/employees/{e['id']}/planned-changes").json() == []
+
+    # anulowanie i anulowanie przy zwolnieniu
+    c.patch(
+        f"/api/employees/{e['id']}",
+        json={"department_id": mont, "effective_date": (later + timedelta(days=1)).isoformat()},
+    )
+    pid = c.get(f"/api/employees/{e['id']}/planned-changes").json()[0]["id"]
+    assert c.delete(f"/api/planned-changes/{pid}").status_code == 204
+    c.patch(
+        f"/api/employees/{e['id']}",
+        json={"department_id": mont, "effective_date": (later + timedelta(days=2)).isoformat()},
+    )
+    c.post(f"/api/employees/{e['id']}/terminate", json={"termination_date": today.isoformat()})
+    assert c.get(f"/api/employees/{e['id']}/planned-changes").json() == []

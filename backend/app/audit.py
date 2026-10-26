@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.models import AuditLog, User
 
 
-def client_ip(request: Request) -> str | None:
+def client_ip(request: Request | None) -> str | None:
+    if request is None:  # zadania automatyczne (cli)
+        return None
     # Za Caddy uvicorn działa z --proxy-headers, więc request.client to już adres klienta.
     host = request.client.host if request.client else None
     if not host:
@@ -18,14 +20,16 @@ def client_ip(request: Request) -> str | None:
         return None
 
 
-def user_agent(request: Request) -> str | None:
+def user_agent(request: Request | None) -> str | None:
+    if request is None:
+        return None
     ua = request.headers.get("user-agent")
     return ua[:400] if ua else None
 
 
 def audit(
     db: Session,
-    request: Request,
+    request: Request | None,
     action: str,
     *,
     user: User | None = None,

@@ -601,10 +601,33 @@ def update_employee(
     data = _validate(db, e, values, creating=False)
     pesel_hash = _check_duplicates(db, e, data, body.confirm_duplicate)
     effective = body.effective_date or date.today()
-    if lifecycle.ASSIGNMENT_FIELDS & data.keys():
+    planned = None
+    assignment = {k: v for k, v in data.items() if k in lifecycle.ASSIGNMENT_FIELDS}
+    if assignment:
         lifecycle.check_effective_date(db, e, effective)
+        if effective > date.today():
+            # zmiana przydziału w przyszłości – zapisujemy plan, reszta pól zmienia się od razu
+            for k in assignment:
+                data.pop(k)
+            assignment = {k: v for k, v in assignment.items() if getattr(e, k) != v}
+            if assignment:
+                planned = lifecycle.plan_change(db, e, effective, assignment, user.full_name)
     changes = _assign(e, data, pesel_hash)
     lifecycle.after_update(db, e, changes, user.full_name, effective)
+    if planned is not None:
+        audit(
+            db,
+            request,
+            "planned_change_created",
+            user=user,
+            entity_type="employee",
+            entity_id=e.id,
+            details={
+                "number": format_number(e.number),
+                "effective_date": effective.isoformat(),
+                "changes": {k: _plain(v) for k, v in planned.changes.items()},
+            },
+        )
     if changes:
         audit(
             db,
@@ -640,6 +663,7 @@ def terminate(
     e.status = EmployeeStatus.terminated
     e.termination_date = body.termination_date
     lifecycle.create_checklist(db, e, "offboarding", body.termination_date)
+    lifecycle.cancel_pending(db, e)
     audit(
         db,
         request,

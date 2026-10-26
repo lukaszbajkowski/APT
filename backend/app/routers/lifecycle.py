@@ -21,6 +21,7 @@ from app.models import (
     Employee,
     EmployeeStatus,
     EmploymentPeriod,
+    PlannedChange,
     Position,
     Role,
     TrainingType,
@@ -109,6 +110,68 @@ def timeline(employee_id: int, ctx: AnyAuth, db: DbSession) -> TimelineOut:
             for a in rows
         ],
     )
+
+
+# ---------- zaplanowane zmiany ----------
+
+
+class PlannedOut(BaseModel):
+    id: int
+    effective_date: date
+    agency: str | None = None
+    department: str | None = None
+    position: str | None = None
+    fields: list[str]
+    created_by_name: str | None
+
+
+def planned_out(db: Session, pc: PlannedChange) -> PlannedOut:
+    ch = pc.changes
+    name = lambda model, k: db.get(model, ch[k]).name if ch.get(k) and db.get(model, ch[k]) else "—"  # noqa: E731
+    return PlannedOut(
+        id=pc.id,
+        effective_date=pc.effective_date,
+        agency=name(Agency, "agency_id") if "agency_id" in ch else None,
+        department=name(Department, "department_id") if "department_id" in ch else None,
+        position=name(Position, "position_id") if "position_id" in ch else None,
+        fields=sorted(ch),
+        created_by_name=pc.created_by_name,
+    )
+
+
+def pending_q(employee_id: int | None = None):  # noqa: ANN201
+    q = select(PlannedChange).where(PlannedChange.applied_at.is_(None), PlannedChange.cancelled_at.is_(None))
+    if employee_id is not None:
+        q = q.where(PlannedChange.employee_id == employee_id)
+    return q.order_by(PlannedChange.effective_date, PlannedChange.id)
+
+
+@router.get("/employees/{employee_id}/planned-changes", response_model=list[PlannedOut])
+def list_planned(employee_id: int, ctx: AnyAuth, db: DbSession) -> list[PlannedOut]:
+    e = get_visible(db, ctx.user, employee_id)
+    return [planned_out(db, pc) for pc in db.scalars(pending_q(e.id))]
+
+
+@router.delete("/planned-changes/{change_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_planned(change_id: int, ctx: WorkAuth, request: Request, db: DbSession) -> None:
+    pc = db.get(PlannedChange, change_id)
+    if pc is None or pc.applied_at or pc.cancelled_at:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej zaplanowanej zmiany.")
+    e = get_visible(db, ctx.user, pc.employee_id)
+    if ctx.user.role == Role.manager and set(pc.changes) - {"position_id"}:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Tę zmianę może anulować dział HR.")
+    pc.cancelled_at = datetime.now(UTC)
+    details = {"number": format_number(e.number), "effective_date": pc.effective_date.isoformat()}
+    audit(
+        db,
+        request,
+        "planned_change_cancelled",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details=details,
+    )
+    db.commit()
 
 
 # ---------- ponowne zatrudnienie ----------

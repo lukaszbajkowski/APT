@@ -562,3 +562,22 @@ class ChecklistItem(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class PlannedChange(Base):
+    """Zaplanowana zmiana APT / wydziału / stanowiska – wprowadzana automatycznie w dniu effective_date."""
+
+    __tablename__ = "planned_changes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    effective_date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
+    changes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # {"department_id": 3, ...}
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

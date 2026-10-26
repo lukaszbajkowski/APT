@@ -25,7 +25,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 
 interface UpcomingEvent {
   date: string;
-  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "task" | "task_overdue";
+  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "transfer" | "task" | "task_overdue";
   title: string;
   employee_id: number;
   employee: string;
@@ -37,6 +37,7 @@ const EVENT_COLOR: Record<UpcomingEvent["kind"], string> = {
   standard_end: "orange",
   valid_until: "red",
   hire: "teal",
+  transfer: "indigo",
   task: "gray",
   task_overdue: "red",
 };
@@ -46,6 +47,7 @@ const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   standard_end: "standard",
   valid_until: "ważność",
   hire: "nowa osoba",
+  transfer: "przeniesienie",
   task: "zadanie",
   task_overdue: "zaległe",
 };

@@ -61,6 +61,12 @@ interface AssignmentRow {
   changed_by: string | null;
 }
 
+function dayBefore(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 const place = (x: { agency: string | null; department: string | null; position: string | null }) =>
   [x.department, x.position, x.agency].filter(Boolean).join(" · ") || "—";
 
@@ -112,7 +118,15 @@ export function TimelineCard({ employee }: { employee: Employee }) {
           ) : (
             <Timeline bulletSize={14} lineWidth={2} active={0}>
               {assignments.map((a, i) => (
-                <Timeline.Item key={i} title={<Text size="sm" fw={500}>od {formatDate(a.valid_from)}</Text>}>
+                <Timeline.Item
+                  key={i}
+                  title={
+                    <Text size="sm" fw={500}>
+                      od {formatDate(a.valid_from)}
+                      {i > 0 ? ` do ${dayBefore(assignments[i - 1].valid_from)}` : ""}
+                    </Text>
+                  }
+                >
                   <Text size="sm">{place(a)}</Text>
                   <Text size="xs" c="dimmed">
                     {[a.reason, a.changed_by].filter(Boolean).join(" · ")}

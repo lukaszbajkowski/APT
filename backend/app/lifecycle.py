@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -44,10 +44,31 @@ def record_assignment(
     return a
 
 
-def after_update(db: Session, e: Employee, changes: dict[str, Any], user_name: str | None) -> None:
+def check_effective_date(db: Session, e: Employee, effective: date) -> None:
+    """Data zmiany przydziału: nie w przyszłości, nie przed zatrudnieniem ani przed poprzednią zmianą."""
+    from fastapi import HTTPException, status
+
+    if effective > date.today():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Data zmiany nie może być z przyszłości.")
+    if e.hire_date and effective < e.hire_date:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Data zmiany jest wcześniejsza niż data zatrudnienia ({e.hire_date:%d.%m.%Y}).",
+        )
+    last = db.scalar(select(func.max(Assignment.valid_from)).where(Assignment.employee_id == e.id))
+    if last and effective < last:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Data zmiany jest wcześniejsza niż poprzednia zmiana ({last:%d.%m.%Y}).",
+        )
+
+
+def after_update(
+    db: Session, e: Employee, changes: dict[str, Any], user_name: str | None, effective: date | None = None
+) -> None:
     if ASSIGNMENT_FIELDS & changes.keys():
         db.flush()
-        record_assignment(db, e, date.today(), "zmiana", user_name)
+        record_assignment(db, e, effective or date.today(), "zmiana", user_name)
     if {"agency_id", "department_id", "hire_date"} & changes.keys():
         sync_checklist(db, e, "onboarding")
 

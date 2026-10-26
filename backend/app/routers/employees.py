@@ -127,6 +127,8 @@ class EmployeePatch(BaseModel):
     hire_date: date | None = None
     notes: str | None = Field(default=None, max_length=2000)
     confirm_duplicate: bool = False
+    # od kiedy obowiązuje zmiana APT / wydziału / stanowiska (domyślnie dziś)
+    effective_date: date | None = None
 
     @field_validator("first_name", "last_name", "pesel", mode="before")
     @classmethod
@@ -590,7 +592,7 @@ def update_employee(
     if user.role == Role.viewer:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
     e = get_visible(db, user, employee_id)
-    fields = body.model_fields_set - {"confirm_duplicate"}
+    fields = body.model_fields_set - {"confirm_duplicate", "effective_date"}
     if user.role == Role.manager and not fields <= MANAGER_EDITABLE:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, detail="Kierownik może zmieniać tylko stanowisko i uwagi."
@@ -598,8 +600,11 @@ def update_employee(
     values = {f: getattr(body, f) for f in fields}
     data = _validate(db, e, values, creating=False)
     pesel_hash = _check_duplicates(db, e, data, body.confirm_duplicate)
+    effective = body.effective_date or date.today()
+    if lifecycle.ASSIGNMENT_FIELDS & data.keys():
+        lifecycle.check_effective_date(db, e, effective)
     changes = _assign(e, data, pesel_hash)
-    lifecycle.after_update(db, e, changes, user.full_name)
+    lifecycle.after_update(db, e, changes, user.full_name, effective)
     if changes:
         audit(
             db,
@@ -608,7 +613,15 @@ def update_employee(
             user=user,
             entity_type="employee",
             entity_id=e.id,
-            details={"number": format_number(e.number), "changes": changes},
+            details={
+                "number": format_number(e.number),
+                "changes": changes,
+                **(
+                    {"effective_date": effective.isoformat()}
+                    if lifecycle.ASSIGNMENT_FIELDS & changes.keys()
+                    else {}
+                ),
+            },
         )
     db.commit()
     db.refresh(e)

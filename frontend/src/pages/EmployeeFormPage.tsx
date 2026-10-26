@@ -14,6 +14,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Paper,
   TextInput,
   Textarea,
   Title,
@@ -75,6 +76,12 @@ function fromEmployee(e: Employee): FormState {
 
 const num = (v: string | null) => (v ? Number(v) : null);
 const str = (v: string) => (v.trim() ? v.trim() : null);
+
+function dayBefore(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("pl-PL");
+}
 
 function payload(f: FormState): Record<string, unknown> {
   return {
@@ -141,6 +148,15 @@ export function EmployeeFormPage() {
     }
   }, [peselCheck, editing, id, form.pesel]);
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [effectiveDate, setEffectiveDate] = useState(todayIso);
+  const assignmentChanged =
+    editing &&
+    !!original &&
+    (form.agency_id !== original.agency_id ||
+      form.department_id !== original.department_id ||
+      form.position_id !== original.position_id);
+
   const save = useMutation({
     mutationFn: async (confirmDuplicate: boolean) => {
       const body = payload(form);
@@ -156,6 +172,7 @@ export function EmployeeFormPage() {
       if (form.pesel.trim()) body.pesel = form.pesel.trim();
       else if (form.clear_pesel) body.pesel = "";
       if (confirmDuplicate) body.confirm_duplicate = true;
+      if (assignmentChanged && effectiveDate) body.effective_date = effectiveDate;
       return editing
         ? api<Employee>(`/employees/${id}`, { method: "PATCH", body })
         : api<Employee>("/employees", { method: "POST", body });
@@ -395,6 +412,25 @@ export function EmployeeFormPage() {
               onChange={(v) => set("position_id", v)}
             />
           </SimpleGrid>
+          {assignmentChanged && (
+            <Paper withBorder p="sm" mt="md" radius="md" bg="var(--mantine-color-blue-light)">
+              <Group align="flex-end" gap="md" wrap="wrap">
+                <TextInput
+                  type="date"
+                  label="Zmiana APT / wydziału / stanowiska obowiązuje od"
+                  value={effectiveDate}
+                  max={todayIso}
+                  min={current?.hire_date ?? undefined}
+                  onChange={(e) => setEffectiveDate(e.currentTarget.value)}
+                  w={300}
+                />
+                <Text size="xs" c="dimmed" mb={8} style={{ flex: 1, minWidth: 200 }}>
+                  Poprzedni przydział kończy się dzień wcześniej
+                  {effectiveDate ? ` (${dayBefore(effectiveDate)})` : ""}. Zapisze się w „Przebiegu zatrudnienia”.
+                </Text>
+              </Group>
+            </Paper>
+          )}
           <Textarea
             mt="md"
             label="Uwagi"

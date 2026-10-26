@@ -184,3 +184,33 @@ def test_checklist_scope_sync_and_apply(admin_client):
     new_due = (today + timedelta(days=20)).isoformat()
     r = c.patch(f"/api/checklist-items/{lb['Umowa agencji']['id']}", json={"due_date": new_due})
     assert r.json()["due_date"] == new_due
+
+
+def test_assignment_effective_date(admin_client):
+    c = admin_client
+    mont, mag, _ = _deps()
+    e = _emp(c, department_id=mont, hire_date="2026-01-01")
+    today = date.today()
+    future = (today + timedelta(days=3)).isoformat()
+    assert (
+        c.patch(
+            f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": future}
+        ).status_code
+        == 400
+    )
+    r = c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2025-12-01"})
+    assert r.status_code == 400 and "zatrudnienia" in r.json()["detail"]
+    r = c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2026-03-01"})
+    assert r.status_code == 200
+    tl = c.get(f"/api/employees/{e['id']}/timeline").json()["assignments"]
+    assert [(a["valid_from"], a["department"]) for a in tl] == [
+        ("2026-03-01", "Magazyn"),
+        ("2026-01-01", "Montaż"),
+    ]
+    # wcześniej niż poprzednia zmiana – odrzucone
+    r = c.patch(f"/api/employees/{e['id']}", json={"department_id": mont, "effective_date": "2026-02-01"})
+    assert r.status_code == 400 and "poprzednia" in r.json()["detail"]
+    # data ignorowana, gdy nie zmienia się przydział
+    assert (
+        c.patch(f"/api/employees/{e['id']}", json={"notes": "x", "effective_date": future}).status_code == 200
+    )

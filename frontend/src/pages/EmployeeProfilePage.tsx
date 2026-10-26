@@ -125,6 +125,8 @@ function PeselValue({ employee }: { employee: Employee }) {
   );
 }
 
+const HISTORY_SHORT = 5;
+
 export function EmployeeProfilePage() {
   const { id } = useParams();
   const qc = useQueryClient();
@@ -139,6 +141,7 @@ export function EmployeeProfilePage() {
     enabled: staff,
   });
 
+  const [historyAll, setHistoryAll] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
@@ -347,7 +350,7 @@ export function EmployeeProfilePage() {
           {history.data && history.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
           {history.data && history.data.length > 0 && (
             <Timeline bulletSize={12} lineWidth={2}>
-              {history.data.map((h) => (
+              {(historyAll ? history.data : history.data.slice(0, HISTORY_SHORT)).map((h) => (
                 <Timeline.Item key={h.id} title={ACTION_LABELS[h.action] ?? h.action}>
                   <Text size="xs" c="dimmed">
                     {formatDateTime(h.ts)} · {h.username ?? "—"}
@@ -356,6 +359,11 @@ export function EmployeeProfilePage() {
                 </Timeline.Item>
               ))}
             </Timeline>
+          )}
+          {history.data && history.data.length > HISTORY_SHORT && (
+            <Button variant="subtle" size="xs" mt="sm" onClick={() => setHistoryAll((v) => !v)}>
+              {historyAll ? "Zwiń" : `Pokaż wszystkie (${history.data.length})`}
+            </Button>
           )}
         </Card>
       )}

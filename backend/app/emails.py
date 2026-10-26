@@ -43,6 +43,7 @@ class Email:
     tone: Tone = "info"
     footer_note: str | None = None
     preheader: str | None = None  # podgląd w skrzynce (pod tematem)
+    attachments: list[tuple[str, bytes, str]] = field(default_factory=list)  # (nazwa, dane, typ MIME)
 
     # --- wersja tekstowa ---------------------------------------------------------
 

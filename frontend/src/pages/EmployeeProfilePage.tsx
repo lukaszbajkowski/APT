@@ -46,6 +46,7 @@ import {
   type Employee,
 } from "../api";
 import { useAuth } from "../auth";
+import { MedicalExamsCard } from "../components/MedicalExams";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
@@ -133,6 +134,8 @@ export function EmployeeProfilePage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const canEdit = hasRole("admin", "hr", "manager");
+  const isAgency = hasRole("agency");
+  const canPhoto = staff || isAgency;
 
   const employee = useQuery({ queryKey: ["employee", id], queryFn: () => api<Employee>(`/employees/${id}`) });
   const history = useQuery({
@@ -206,12 +209,12 @@ export function EmployeeProfilePage() {
         <Group align="flex-start" gap="xl" wrap="wrap">
           <Stack gap="xs" align="center">
             <EmployeePhoto employee={e} width={150} />
-            {staff && (
+            {canPhoto && (
               <Group gap={4}>
                 <Button size="compact-sm" variant="light" leftSection={<IconCamera size={14} />} onClick={() => setPhotoOpen(true)}>
                   {e.has_photo ? "Zmień" : "Dodaj zdjęcie"}
                 </Button>
-                {e.has_photo && (
+                {e.has_photo && staff && (
                   <Button
                     size="compact-sm"
                     variant="subtle"
@@ -335,11 +338,13 @@ export function EmployeeProfilePage() {
 
       {canEdit && <ChecklistsCard employee={e} />}
 
-      <TrainingsCard employee={e} />
+      {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
 
-      <MentorProgramsCard employee={e} />
+      {!isAgency && <TrainingsCard employee={e} />}
 
-      <TimelineCard employee={e} />
+      {!isAgency && <MentorProgramsCard employee={e} />}
+
+      {!isAgency && <TimelineCard employee={e} />}
 
       {staff && (
         <Card withBorder padding="lg">
@@ -368,7 +373,7 @@ export function EmployeeProfilePage() {
         </Card>
       )}
 
-      {staff && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
+      {canPhoto && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
       {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
 
       <Modal opened={terminateOpen} onClose={() => setTerminateOpen(false)} title="Przeniesienie do archiwum">

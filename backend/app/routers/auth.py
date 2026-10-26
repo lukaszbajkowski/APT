@@ -447,7 +447,9 @@ def simulate(body: SimulateIn, ctx: Auth, request: Request, db: DbSession) -> Me
         )
     role = None if body.role in (None, Role.admin) else body.role
     sess.sim_role = role.value if role else None
-    sess.sim_agency_id = body.agency_id if role == Role.manager else None
+    if role == Role.agency and not body.agency_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wybierz APT, której konto chcesz symulować.")
+    sess.sim_agency_id = body.agency_id if role in (Role.manager, Role.agency) else None
     sess.sim_department_id = body.department_id if role == Role.manager and not body.agency_id else None
     audit(
         db,

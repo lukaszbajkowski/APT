@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Box, Button, Group, Menu, Select, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -29,7 +30,12 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
   const { me } = useAuth();
   const simulate = useSimulate(onDone);
   const isManager = me?.sim_role === "manager";
-  const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies"), enabled: isManager });
+  const [pickAgency, setPickAgency] = useState(false);
+  const agencies = useQuery({
+    queryKey: ["agencies"],
+    queryFn: () => api<DictionaryItem[]>("/agencies"),
+    enabled: isManager || pickAgency || me?.sim_role === "agency",
+  });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments"), enabled: isManager });
   if (me?.real_role !== "admin") return null;
   const scope = me.sim_agency_id ? `a:${me.sim_agency_id}` : me.sim_department_id ? `d:${me.sim_department_id}` : null;
@@ -40,15 +46,35 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
         <Select
           size="xs"
           leftSection={<IconUserCog size={14} />}
-          value={me.sim_role ?? "admin"}
-          onChange={(v) => v && simulate(v === "admin" ? null : (v as Role))}
+          value={pickAgency ? "agency" : (me.sim_role ?? "admin")}
+          onChange={(v) => {
+            if (!v) return;
+            if (v === "agency") return setPickAgency(true); // najpierw wybór APT
+            setPickAgency(false);
+            simulate(v === "admin" ? null : (v as Role));
+          }}
           allowDeselect={false}
           comboboxProps={{ withinPortal: false }}
-          data={(["admin", "hr", "manager", "viewer"] as Role[]).map((r) => ({
+          data={(["admin", "hr", "manager", "viewer", "agency"] as Role[]).map((r) => ({
             value: r,
             label: r === "admin" ? "Administrator (bez symulacji)" : ROLE_LABELS[r],
           }))}
         />
+        {(pickAgency || me.sim_role === "agency") && (
+          <Select
+            mt={6}
+            size="xs"
+            placeholder="Wybierz APT agencji"
+            value={me.sim_role === "agency" && me.sim_agency_id ? String(me.sim_agency_id) : null}
+            comboboxProps={{ withinPortal: false }}
+            onChange={(v) => {
+              if (!v) return;
+              setPickAgency(false);
+              simulate("agency", Number(v));
+            }}
+            data={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+          />
+        )}
         {isManager && (
           <Select
             mt={6}
@@ -76,6 +102,12 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
 export function SimulationBanner() {
   const { me } = useAuth();
   const simulate = useSimulate();
+  const agencies = useQuery({
+    queryKey: ["agencies"],
+    queryFn: () => api<DictionaryItem[]>("/agencies"),
+    enabled: me?.sim_role === "agency",
+  });
+  const agencyName = agencies.data?.find((a) => a.id === me?.sim_agency_id)?.name;
   if (me?.real_role !== "admin" || !me.sim_role) return null;
   return (
     <Alert color="orange" variant="filled" radius={0} py={6} mb="md" style={{ position: "sticky", top: 0, zIndex: 50 }}>
@@ -83,6 +115,7 @@ export function SimulationBanner() {
         <Text size="sm" fw={500}>
           Symulujesz uprawnienia: {ROLE_LABELS[me.sim_role as Role]}
           {me.sim_role === "manager" && !me.sim_agency_id && !me.sim_department_id && " (bez zakresu – nie widzi pracowników)"}
+          {me.sim_role === "agency" && agencyName && ` – ${agencyName}`}
           . Działania zapisują się w dzienniku jako Twoje.
         </Text>
         <Button size="compact-xs" variant="white" color="orange" onClick={() => simulate(null)}>

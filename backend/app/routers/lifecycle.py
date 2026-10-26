@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import lifecycle
 from app.audit import audit
-from app.deps import AuthContext, DbSession, get_auth, require_roles
+from app.deps import AuthContext, DbSession, require_roles
 from app.models import (
     Agency,
     Assignment,
@@ -30,7 +30,8 @@ from app.models import (
 from app.routers.employees import EmployeeOut, apply_scope, format_number, get_visible, to_out
 
 router = APIRouter(prefix="/api", tags=["lifecycle"])
-AnyAuth = Annotated[AuthContext, Depends(get_auth)]
+# każdy poza kontem agencji
+AnyAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager, Role.viewer))]
 StaffAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr))]
 WorkAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))]
 Kind = Literal["onboarding", "offboarding"]

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app import templating
 from app.audit import audit
 from app.config import get_settings
-from app.deps import AuthContext, DbSession, get_auth, require_roles
+from app.deps import AuthContext, DbSession, require_roles
 from app.models import (
     Department,
     DocumentTemplate,
@@ -34,7 +34,8 @@ from app.templating import FieldDef, TemplateError
 
 router = APIRouter(prefix="/api", tags=["trainings"])
 
-AnyAuth = Annotated[AuthContext, Depends(get_auth)]
+# każdy poza kontem agencji
+AnyAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager, Role.viewer))]
 EditAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr))]
 ListAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))]
 

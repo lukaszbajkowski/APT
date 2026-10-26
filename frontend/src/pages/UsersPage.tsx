@@ -36,9 +36,10 @@ interface FormState {
   role: Role;
   agency_ids: string[];
   department_ids: string[];
+  agency_id: string | null;
 }
 
-const EMPTY_FORM: FormState = { username: "", full_name: "", email: "", role: "viewer", agency_ids: [], department_ids: [] };
+const EMPTY_FORM: FormState = { username: "", full_name: "", email: "", role: "viewer", agency_ids: [], department_ids: [], agency_id: null };
 
 function isLocked(u: User) {
   return !!u.locked_until && new Date(u.locked_until) > new Date();
@@ -83,6 +84,7 @@ export function UsersPage() {
       role: u.role,
       agency_ids: u.scopes.filter((s) => s.agency_id !== null).map((s) => String(s.agency_id)),
       department_ids: u.scopes.filter((s) => s.department_id !== null).map((s) => String(s.department_id)),
+      agency_id: u.agency_id ? String(u.agency_id) : null,
     });
     setFormError(null);
     setEditing(u);
@@ -98,7 +100,7 @@ export function UsersPage() {
       if (editing === "new") {
         const res = await api<{ user: User; temporary_password: string; invite_sent: boolean }>("/users", {
           method: "POST",
-          body: { username: form.username, full_name: form.full_name, email: form.email || null, role: form.role, scopes },
+          body: { username: form.username, full_name: form.full_name, email: form.email || null, role: form.role, scopes, agency_id: form.agency_id ? Number(form.agency_id) : null },
         });
         setTempPassword({
           username: res.user.username,
@@ -107,7 +109,12 @@ export function UsersPage() {
         });
         setTempOpen(true);
       } else if (editing) {
-        const body: Record<string, unknown> = { full_name: form.full_name, email: form.email.trim(), scopes };
+        const body: Record<string, unknown> = {
+          full_name: form.full_name,
+          email: form.email.trim(),
+          scopes,
+          agency_id: form.agency_id ? Number(form.agency_id) : null,
+        };
         if (form.role !== editing.role) body.role = form.role;
         await api<User>(`/users/${editing.id}`, { method: "PATCH", body });
         notifications.show({ color: "green", message: "Zapisano zmiany." });
@@ -226,7 +233,9 @@ export function UsersPage() {
                   </Table.Td>
                   <Table.Td>{ROLE_LABELS[u.role]}</Table.Td>
                   <Table.Td>
-                    {u.role === "manager" ? (
+                    {u.role === "agency" ? (
+                      <Text size="sm">{u.agency_id ? agencyName(u.agency_id) : "—"}</Text>
+                    ) : u.role === "manager" ? (
                       u.scopes.length ? (
                         <Text size="sm">
                           {u.scopes
@@ -354,6 +363,17 @@ export function UsersPage() {
               value={form.role}
               onChange={(v) => v && setForm({ ...form, role: v as Role })}
             />
+            {form.role === "agency" && (
+              <Select
+                label="APT"
+                description="Konto agencji widzi tylko osoby z tej APT (bez PESEL), może wgrywać zdjęcia i badania lekarskie oraz zgłaszać nowe osoby do zatwierdzenia przez kadry."
+                required
+                searchable
+                data={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+                value={form.agency_id}
+                onChange={(v) => setForm({ ...form, agency_id: v })}
+              />
+            )}
             {form.role === "manager" && (
               <>
                 <MultiSelect

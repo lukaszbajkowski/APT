@@ -30,16 +30,18 @@ def _strip(v: Any) -> Any:
 class OrgUnitIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     code: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=500)  # tylko APT: adresy do zestawień
 
-    _s = field_validator("name", "code", mode="before")(classmethod(lambda cls, v: _strip(v)))
+    _s = field_validator("name", "code", "email", mode="before")(classmethod(lambda cls, v: _strip(v)))
 
 
 class OrgUnitPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     code: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
 
-    _s = field_validator("name", "code", mode="before")(classmethod(lambda cls, v: _strip(v)))
+    _s = field_validator("name", "code", "email", mode="before")(classmethod(lambda cls, v: _strip(v)))
 
 
 class PositionOut(BaseModel):
@@ -128,6 +130,19 @@ def _apply(obj: Any, body: BaseModel) -> dict[str, Any]:
     return changes
 
 
+def _emails(raw: str | None) -> str | None:
+    """Lista adresów (przecinek / średnik / spacja) → „a@x.pl, b@y.pl”; błędny adres = 400."""
+    if not raw:
+        return None
+    import re
+
+    parts = [p for p in re.split(r"[,;\s]+", raw) if p]
+    bad = [p for p in parts if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", p)]
+    if bad:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Nieprawidłowy adres e-mail: {bad[0]}")
+    return ", ".join(parts) or None
+
+
 def _org_unit_routes(model: type, path: str, entity: str, what: str) -> None:
     @router.get(f"/{path}", response_model=list[DictionaryItemOut], name=f"list_{path}")
     def list_items(ctx: Auth, db: DbSession, active_only: bool = False) -> list[Any]:
@@ -144,6 +159,8 @@ def _org_unit_routes(model: type, path: str, entity: str, what: str) -> None:
     )
     def create_item(body: OrgUnitIn, ctx: StaffAuth, request: Request, db: DbSession) -> Any:
         obj = model(name=body.name, code=body.code, is_active=True)
+        if hasattr(model, "email"):
+            obj.email = _emails(body.email)
         db.add(obj)
         try:
             db.flush()
@@ -167,6 +184,11 @@ def _org_unit_routes(model: type, path: str, entity: str, what: str) -> None:
     @router.patch(f"/{path}/{{item_id}}", response_model=DictionaryItemOut, name=f"update_{path}")
     def update_item(item_id: int, body: OrgUnitPatch, ctx: StaffAuth, request: Request, db: DbSession) -> Any:
         obj = _get(db, model, item_id, what)
+        if "email" in body.model_fields_set:
+            if not hasattr(model, "email"):
+                body.model_fields_set.discard("email")
+            else:
+                body.email = _emails(body.email)
         changes = _apply(obj, body)
         if changes:
             audit(

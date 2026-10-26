@@ -100,6 +100,17 @@ def get_user(user_id: int, ctx: AdminAuth, db: DbSession) -> User:
     return _get_user(db, user_id)
 
 
+def _agency_for(db: Session, role: Role, agency_id: int | None) -> int | None:
+    """Konto agencji musi wskazywać APT; inne role – bez APT."""
+    if role != Role.agency:
+        return None
+    from app.models import Agency
+
+    if agency_id is None or db.get(Agency, agency_id) is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wybierz APT, której dotyczy konto agencji.")
+    return agency_id
+
+
 @router.post("", response_model=UserCreatedOut, status_code=status.HTTP_201_CREATED)
 def create_user(body: UserCreateIn, ctx: AdminAuth, request: Request, db: DbSession) -> UserCreatedOut:
     if db.scalar(select(User.id).where(User.username == body.username)) is not None:
@@ -113,6 +124,7 @@ def create_user(body: UserCreateIn, ctx: AdminAuth, request: Request, db: DbSess
         full_name=body.full_name,
         email=body.email,
         role=body.role,
+        agency_id=_agency_for(db, body.role, body.agency_id),
         password_hash=hash_password(temporary_password),
         is_active=True,
         must_change_password=True,
@@ -186,6 +198,13 @@ def update_user(user_id: int, body: UserUpdateIn, ctx: AdminAuth, request: Reque
     if body.full_name is not None and body.full_name.strip() != user.full_name:
         changes["full_name"] = {"from": user.full_name, "to": body.full_name.strip()}
         user.full_name = body.full_name.strip()
+
+    new_agency = _agency_for(
+        db, user.role, body.agency_id if "agency_id" in body.model_fields_set else user.agency_id
+    )
+    if new_agency != user.agency_id:
+        changes["agency_id"] = {"from": user.agency_id, "to": new_agency}
+        user.agency_id = new_agency
 
     before_scopes = _scopes_snapshot(user)
     if body.scopes is not None:

@@ -30,6 +30,7 @@ interface Item {
   code?: string | null;
   iso_code?: string | null;
   department_id?: number | null;
+  email?: string | null;
 }
 
 type Kind = "agencies" | "departments" | "positions" | "countries";
@@ -48,6 +49,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
   const [editing, setEditing] = useState<Item | "new" | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [active, setActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +61,13 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
     if (item === "new") {
       setName("");
       setCode("");
+      setEmail("");
       setDepartmentId(null);
       setActive(true);
     } else {
       setName(item.name);
       setCode((cfg.codeKey ? item[cfg.codeKey] : "") ?? "");
+      setEmail(item.email ?? "");
       setDepartmentId(item.department_id ? String(item.department_id) : null);
       setActive(item.is_active);
     }
@@ -73,6 +77,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
     mutationFn: () => {
       const body: Record<string, unknown> = { name };
       if (cfg.codeKey) body[cfg.codeKey] = code.trim() ? code.trim().toUpperCase() : null;
+      if (kind === "agencies") body.email = email.trim() || null;
       if (kind === "positions") body.department_id = departmentId ? Number(departmentId) : null;
       if (editing === "new") return api(`/${kind}`, { method: "POST", body });
       return api(`/${kind}/${(editing as Item).id}`, { method: "PATCH", body: { ...body, is_active: active } });
@@ -110,6 +115,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
               <Table.Th>Nazwa</Table.Th>
               {cfg.codeKey && <Table.Th>{cfg.codeKey === "iso_code" ? "Kod ISO" : "Skrót"}</Table.Th>}
               {kind === "positions" && <Table.Th>Wydział</Table.Th>}
+              {kind === "agencies" && <Table.Th>E-mail do zestawień</Table.Th>}
               <Table.Th>Status</Table.Th>
               <Table.Th w={48} />
             </Table.Tr>
@@ -120,6 +126,13 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
                 <Table.Td>{i.name}</Table.Td>
                 {cfg.codeKey && <Table.Td>{i[cfg.codeKey] ?? "—"}</Table.Td>}
                 {kind === "positions" && <Table.Td>{deptName(i.department_id)}</Table.Td>}
+                {kind === "agencies" && (
+                  <Table.Td>
+                    <Text size="sm" c={i.email ? undefined : "dimmed"} style={{ wordBreak: "break-all" }}>
+                      {i.email ?? "—"}
+                    </Text>
+                  </Table.Td>
+                )}
                 <Table.Td>
                   {i.is_active ? <Badge color="green" variant="light">aktywne</Badge> : <Badge color="gray">wyłączone</Badge>}
                 </Table.Td>
@@ -155,6 +168,15 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
                 maxLength={cfg.codeKey === "iso_code" ? 2 : 32}
                 value={code}
                 onChange={(e) => setCode(e.currentTarget.value)}
+              />
+            )}
+            {kind === "agencies" && (
+              <TextInput
+                label="E-mail do zestawień"
+                description="Na ten adres 1. dnia miesiąca trafia zestawienie osób za poprzedni miesiąc. Kilka adresów – oddziel przecinkiem."
+                placeholder="kadry@agencja.pl"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
               />
             )}
             {kind === "positions" && (

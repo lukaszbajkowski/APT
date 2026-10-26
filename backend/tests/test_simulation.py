@@ -36,3 +36,17 @@ def test_simulation_only_for_admin(client, make_user):
     make_user("kadry", Role.hr)
     login(client, "kadry")
     assert client.post("/api/auth/simulate", json={"role": "viewer"}).status_code == 403
+
+
+def test_admin_simulates_agency(admin_client):
+    c = admin_client
+    a = c.post("/api/agencies", json={"name": "APT Sim"}).json()
+    c.post("/api/employees", json={"first_name": "Jan", "last_name": "Wewnątrz", "agency_id": a["id"]})
+    c.post("/api/employees", json={"first_name": "Ola", "last_name": "Poza"})
+    assert c.post("/api/auth/simulate", json={"role": "agency"}).status_code == 400  # trzeba wybrać APT
+    me = c.post("/api/auth/simulate", json={"role": "agency", "agency_id": a["id"]}).json()
+    assert me["user"]["role"] == "agency" and me["sim_agency_id"] == a["id"]
+    assert [x["last_name"] for x in c.get("/api/employees").json()["items"]] == ["Wewnątrz"]
+    assert c.get("/api/agency-report", params={"month": "2026-09"}).json()["agency"] == "APT Sim"
+    c.post("/api/auth/simulate", json={"role": None})
+    assert len(c.get("/api/employees").json()["items"]) == 2

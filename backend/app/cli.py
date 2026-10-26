@@ -103,6 +103,17 @@ def send_test_mail(to: str) -> int:
     return 0
 
 
+def agency_reports() -> int:
+    """Zestawienia za poprzedni miesiąc dla agencji (każda APT raz na miesiąc)."""
+    from app import agency_report
+    from app.db import SessionLocal
+
+    with SessionLocal() as db:
+        n = agency_report.send_monthly(db)
+    print(f"Zestawienia dla agencji: wysłane {n}.")
+    return 0
+
+
 def quality_reminders() -> int:
     """Przypomnienia o brakach w danych: admin i HR (wszyscy pracownicy), kierownicy (swój zakres)."""
     from sqlalchemy import select
@@ -229,9 +240,12 @@ def notify_daily() -> int:
         applied = lifecycle.apply_due_changes(db)
     if applied:
         print(f"Wprowadzono zaplanowane zmiany: {applied}.")
-    if datetime.now(ZoneInfo("Europe/Warsaw")).weekday() == 0:
+    local = datetime.now(ZoneInfo("Europe/Warsaw"))
+    if local.weekday() == 0:
         quality_reminders()
         training_reminders()
+    if local.day == 1:
+        agency_reports()
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
@@ -259,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
+    sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
 
@@ -274,6 +289,8 @@ def main(argv: list[str] | None = None) -> int:
         return quality_reminders()
     if args.command == "notify-trainings":
         return training_reminders()
+    if args.command == "agency-reports":
+        return agency_reports()
     if args.command == "generate-key":
         from app.crypto import generate_key
 

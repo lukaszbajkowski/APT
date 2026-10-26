@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import competence as comp
 from app.audit import audit
-from app.deps import AuthContext, DbSession, get_auth, require_roles
+from app.deps import AuthContext, DbSession, require_roles
 from app.models import (
     Department,
     Employee,
@@ -25,7 +25,8 @@ from app.models import (
 from app.routers.employees import apply_scope, format_number, get_visible
 
 router = APIRouter(prefix="/api", tags=["competence"])
-AnyAuth = Annotated[AuthContext, Depends(get_auth)]
+# każdy poza kontem agencji
+AnyAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager, Role.viewer))]
 EditAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr))]
 ListAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))]
 

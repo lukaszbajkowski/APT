@@ -117,6 +117,34 @@ def upcoming(ctx: Auth, db: DbSession, days: int = UPCOMING_DAYS) -> list[Upcomi
                 )
             )
 
+    from app.models import MedicalExam
+
+    mq = (
+        select(MedicalExam, Employee)
+        .join(Employee, Employee.id == MedicalExam.employee_id)
+        .where(Employee.status == EmployeeStatus.active, MedicalExam.valid_until.is_not(None))
+        .order_by(MedicalExam.exam_date.desc())
+    )
+    seen: set[int] = set()
+    for x, e in db.execute(apply_scope(mq, ctx.user)).unique().all():
+        if e.id in seen:  # liczy się tylko najnowsze badanie
+            continue
+        seen.add(e.id)
+        if x.valid_until < today:
+            out.append(
+                UpcomingEvent(
+                    date=today,
+                    kind="medical_expired",
+                    title="Badania lekarskie nieważne",
+                    employee_id=e.id,
+                    employee=f"{e.last_name} {e.first_name}",
+                )  # fmt: skip
+            )
+        else:
+            add(x.valid_until, "medical", "Kończą się badania lekarskie", e)
+    if ctx.user.role == Role.agency:  # agencja: tylko badania
+        return sorted(out, key=lambda x: (x.date, x.kind, x.employee))[:100]
+
     q = (
         select(Training, Employee)
         .join(Employee, Employee.id == Training.employee_id)

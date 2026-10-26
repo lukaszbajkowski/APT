@@ -33,6 +33,7 @@ class Role(str, enum.Enum):
     hr = "hr"  # Kadry: pełna kartoteka, dokumenty, karty
     manager = "manager"  # Kierownik: tylko przypisane APT / wydziały
     viewer = "viewer"  # Podgląd: tylko odczyt, bez pełnego PESEL
+    agency = "agency"  # Agencja pracy: tylko swoi ludzie – zdjęcia, badania, zgłoszenia nowych osób
 
 
 ROLE_LABELS = {
@@ -61,6 +62,8 @@ class Agency(TimestampMixin, Base):
     code: Mapped[str | None] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # adres(y) do comiesięcznego zestawienia osób (kilka – po przecinku)
+    email: Mapped[str | None] = mapped_column(String(500))
 
 
 class Department(TimestampMixin, Base):
@@ -87,6 +90,8 @@ class User(TimestampMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # konto agencji pracy: której APT dotyczy
+    agency_id: Mapped[int | None] = mapped_column(ForeignKey("agencies.id", ondelete="SET NULL"))
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -620,3 +625,52 @@ class PlannedChange(Base):
     )
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class MedicalExam(Base):
+    """Badanie lekarskie (medycyna pracy). Plik: medical/<employee_id>/<id>.<ext>."""
+
+    __tablename__ = "medical_exams"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # wstepne | okresowe | kontrolne
+    exam_date: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_until: Mapped[date | None] = mapped_column(Date, index=True)
+    file_name: Mapped[str | None] = mapped_column(String(200))
+    original_name: Mapped[str | None] = mapped_column(String(255))
+    notes: Mapped[str | None] = mapped_column(String(500))
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class EmployeeRequest(Base):
+    """Zgłoszenie nowej osoby przez agencję – kadry zatwierdzają (powstaje pracownik) albo odrzucają."""
+
+    __tablename__ = "employee_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agency_id: Mapped[int] = mapped_column(ForeignKey("agencies.id"), index=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    pesel_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
+    country_id: Mapped[int | None] = mapped_column(ForeignKey("countries.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
+    position_id: Mapped[int | None] = mapped_column(ForeignKey("positions.id"))
+    hire_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(String(1000))
+    status: Mapped[str] = mapped_column(String(10), default="pending", nullable=False, index=True)
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    decided_by_name: Mapped[str | None] = mapped_column(String(200))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reject_reason: Mapped[str | None] = mapped_column(String(500))
+    employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id", ondelete="SET NULL"))
+
+    agency: Mapped[Agency] = relationship(lazy="joined")

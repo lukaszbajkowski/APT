@@ -1,7 +1,7 @@
 // Cienka warstwa nad fetch: ciasteczko sesji idzie automatycznie,
 // token CSRF dodajemy do każdego żądania zmieniającego dane.
 
-export type Role = "admin" | "hr" | "manager" | "viewer";
+export type Role = "admin" | "hr" | "manager" | "viewer" | "agency";
 
 export interface Scope {
   agency_id: number | null;
@@ -20,6 +20,7 @@ export interface User {
   last_login_at: string | null;
   created_at: string;
   scopes: Scope[];
+  agency_id?: number | null;
   mfa_enabled: boolean;
   mfa_required: boolean;
 }
@@ -42,6 +43,7 @@ export interface DictionaryItem {
   code: string | null;
   name: string;
   is_active: boolean;
+  email?: string | null;
 }
 
 export interface PositionItem {
@@ -347,6 +349,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   hr: "Kadry",
   manager: "Kierownik",
   viewer: "Podgląd",
+  agency: "Agencja pracy",
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -362,6 +365,15 @@ export const ACTION_LABELS: Record<string, string> = {
   user_updated: "Zmiana użytkownika",
   user_unlocked: "Odblokowanie konta",
   employee_created: "Dodanie pracownika",
+  agency_report_sent: "Wysłanie zestawienia do agencji",
+  agency_report_downloaded: "Pobranie zestawienia dla agencji",
+  medical_exam_added: "Dodanie badania lekarskiego",
+  medical_exam_viewed: "Podgląd badania lekarskiego",
+  medical_exam_deleted: "Usunięcie badania lekarskiego",
+  employee_request_created: "Zgłoszenie nowej osoby (agencja)",
+  employee_request_approved: "Zatwierdzenie zgłoszenia agencji",
+  employee_request_rejected: "Odrzucenie zgłoszenia agencji",
+  role_simulation: "Symulacja uprawnień",
   employee_updated: "Zmiana danych pracownika",
   employee_terminated: "Przeniesienie do archiwum",
   employee_restored: "Przywrócenie z archiwum",
@@ -580,4 +592,40 @@ export interface InProgressTraining {
   standard_days: number | null;
   days: number;
   status: TrainingStatus;
+}
+
+export interface MedicalExam {
+  id: number;
+  kind: "wstepne" | "okresowe" | "kontrolne";
+  kind_label: string;
+  exam_date: string;
+  valid_until: string | null;
+  state: "valid" | "expiring" | "expired" | "none";
+  has_file: boolean;
+  original_name: string | null;
+  notes: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  can_delete: boolean;
+}
+
+export interface EmployeeRequest {
+  id: number;
+  agency: { id: number; name: string };
+  first_name: string;
+  last_name: string;
+  pesel: string | null;
+  birth_date: string | null;
+  country_id: number | null;
+  department_id: number | null;
+  position_id: number | null;
+  hire_date: string | null;
+  notes: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_by_name: string | null;
+  created_at: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  reject_reason: string | null;
+  employee_id: number | null;
 }

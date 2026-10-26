@@ -35,10 +35,11 @@ class SimulatedUser:
     zapisuje działania administratora). Zmiany atrybutów trafiają do prawdziwego obiektu.
     """
 
-    def __init__(self, real: User, role: Role, scopes: list[_SimScope]) -> None:
+    def __init__(self, real: User, role: Role, scopes: list[_SimScope], agency_id: int | None = None) -> None:
         object.__setattr__(self, "_real", real)
         object.__setattr__(self, "role", role)
         object.__setattr__(self, "scopes", scopes)
+        object.__setattr__(self, "agency_id", agency_id)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(object.__getattribute__(self, "_real"), name)
@@ -57,7 +58,7 @@ def simulated(user: User, sess: UserSession) -> Any:
     scopes = []
     if role == Role.manager and (sess.sim_agency_id or sess.sim_department_id):
         scopes = [_SimScope(sess.sim_agency_id, sess.sim_department_id)]
-    return SimulatedUser(user, role, scopes)
+    return SimulatedUser(user, role, scopes, sess.sim_agency_id if role == Role.agency else None)
 
 
 @dataclass

@@ -1,3 +1,5 @@
+import { AgencyReportPage } from "./pages/AgencyReportPage";
+import { EmployeeRequestsPage } from "./pages/EmployeeRequestsPage";
 import type { ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Center, Loader } from "@mantine/core";
@@ -91,6 +93,22 @@ export function App() {
           }
         />
         <Route path="pracownicy/:id" element={<EmployeeProfilePage />} />
+        <Route
+          path="zgloszenia"
+          element={
+            <RequireAuth roles={["admin", "hr", "agency"]}>
+              <EmployeeRequestsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="zestawienia"
+          element={
+            <RequireAuth roles={["admin", "hr", "agency"]}>
+              <AgencyReportPage />
+            </RequireAuth>
+          }
+        />
         <Route path="skaner" element={<ScannerPage />} />
         <Route
           path="raporty"

@@ -33,6 +33,9 @@ def _build(to: str, mail: Email) -> EmailMessage:
     msg["Message-ID"] = make_msgid(domain=addr.split("@")[-1] if "@" in addr else None)
     msg.set_content(mail.text())
     msg.add_alternative(mail.html(), subtype="html")
+    for name, data, mime in mail.attachments:
+        main, _, sub = mime.partition("/")
+        msg.add_attachment(data, maintype=main, subtype=sub or "octet-stream", filename=name)
     return msg
 
 

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app import crypto, lifecycle, photos, retention
 from app.audit import audit
 from app.config import get_settings
-from app.deps import Auth, DbSession, StaffAuth
+from app.deps import Auth, AuthContext, DbSession, StaffAuth, require_roles
 from app.models import (
     Agency,
     AuditLog,
@@ -208,7 +208,7 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
         hire_date=e.hire_date,
         termination_date=e.termination_date,
         status=e.status,
-        notes=e.notes,
+        notes=e.notes if user.role != Role.agency else None,  # uwagi wewnętrzne – nie dla agencji
         has_photo=e.photo is not None,
         photo_version=str(e.photo.id) if e.photo else None,
         personal_data_visible=personal,
@@ -218,7 +218,9 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
 
 
 def scope_condition(user: User) -> Any:
-    """Warunek SQL ograniczający kierownika do jego APT / wydziałów."""
+    """Warunek SQL ograniczający kierownika do jego APT / wydziałów, a agencję – do jej ludzi."""
+    if user.role == Role.agency:
+        return Employee.agency_id == user.agency_id if user.agency_id else false()
     if user.role != Role.manager:
         return None
     agency_ids = [s.agency_id for s in user.scopes if s.agency_id is not None]
@@ -589,7 +591,7 @@ def update_employee(
     employee_id: int, body: EmployeePatch, ctx: Auth, request: Request, db: DbSession
 ) -> EmployeeOut:
     user = ctx.user
-    if user.role == Role.viewer:
+    if user.role in (Role.viewer, Role.agency):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
     e = get_visible(db, user, employee_id)
     fields = body.model_fields_set - {"confirm_duplicate", "effective_date"}
@@ -756,10 +758,13 @@ def get_photo(employee_id: int, ctx: Auth, db: DbSession) -> FileResponse:
     )
 
 
+PhotoAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.agency))]
+
+
 @router.put("/{employee_id}/photo", response_model=EmployeeOut)
 async def upload_photo(
     employee_id: int,
-    ctx: StaffAuth,
+    ctx: PhotoAuth,
     request: Request,
     db: DbSession,
     file: Annotated[UploadFile, File()],

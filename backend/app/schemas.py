@@ -39,6 +39,7 @@ class UserOut(BaseModel):
     last_login_at: datetime | None
     created_at: datetime
     scopes: list[ScopeOut]
+    agency_id: int | None = None  # konto agencji pracy
     mfa_enabled: bool
     mfa_required: bool
 
@@ -83,6 +84,7 @@ class UserCreateIn(BaseModel):
     send_invite: bool = True
     role: Role
     scopes: ScopesIn = Field(default_factory=ScopesIn)
+    agency_id: int | None = None  # wymagane dla roli „agency”
 
     @field_validator("username", mode="before")
     @classmethod
@@ -106,6 +108,7 @@ class UserUpdateIn(BaseModel):
     role: Role | None = None
     is_active: bool | None = None
     scopes: ScopesIn | None = None
+    agency_id: int | None = None
 
     @field_validator("email", mode="before")
     @classmethod
@@ -131,6 +134,7 @@ class DictionaryItemOut(BaseModel):
     code: str | None
     name: str
     is_active: bool
+    email: str | None = None  # tylko APT
 
 
 class AuditOut(BaseModel):

@@ -3,6 +3,8 @@ from sqlalchemy import text
 
 from app.deps import DbSession
 from app.routers import (
+    agency_portal,
+    agency_reports,
     audit_log,
     auth,
     cards,
@@ -61,6 +63,8 @@ app.include_router(competence.router)
 app.include_router(lifecycle.router)
 app.include_router(signatures.router)
 app.include_router(training_import.router)
+app.include_router(agency_reports.router)
+app.include_router(agency_portal.router)
 
 
 @app.get("/api/health", tags=["system"])

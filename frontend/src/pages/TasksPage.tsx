@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Checkbox, Group, Loader, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Checkbox, Group, Loader, SegmentedControl, Stack, Table, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCircleCheck } from "@tabler/icons-react";
 
 import { api, errorText, formatDate } from "../api";
 import { useAuth } from "../auth";
-import { RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
+import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -17,6 +17,36 @@ interface Task extends ChecklistItem {
 }
 
 export function TasksPage() {
+  const { hasRole } = useAuth();
+  const staff = hasRole("admin", "hr");
+  return (
+    <Stack maw={1300}>
+      <div>
+        <Title order={2}>Zadania</Title>
+        <Text c="dimmed" size="sm">
+          Checklisty wdrożenia i odejścia. Odhaczasz tutaj albo w kartotece pracownika. Pozycje z ⚡ odhaczą się same (np. po wydruku
+          karty lub wpisaniu szkolenia).
+        </Text>
+      </div>
+      <Tabs defaultValue="open" keepMounted={false}>
+        <Tabs.List mb="md">
+          <Tabs.Tab value="open">Otwarte zadania</Tabs.Tab>
+          {staff && <Tabs.Tab value="settings">Ustawienia checklist</Tabs.Tab>}
+        </Tabs.List>
+        <Tabs.Panel value="open">
+          <OpenTasks />
+        </Tabs.Panel>
+        {staff && (
+          <Tabs.Panel value="settings">
+            <ChecklistTemplates />
+          </Tabs.Panel>
+        )}
+      </Tabs>
+    </Stack>
+  );
+}
+
+function OpenTasks() {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const [mine, setMine] = useState(hasRole("manager") ? "mine" : "all");
@@ -38,13 +68,6 @@ export function TasksPage() {
 
   return (
     <Stack maw={1100}>
-      <div>
-        <Title order={2}>Zadania</Title>
-        <Text c="dimmed" size="sm">
-          Otwarte pozycje z checklist wdrożenia i odejścia. Odhaczasz tutaj albo w kartotece pracownika. Pozycje z ⚡ odhaczą się
-          same (np. po wydruku karty lub wpisaniu szkolenia).
-        </Text>
-      </div>
       <Group justify="space-between">
         <SegmentedControl
           value={mine}

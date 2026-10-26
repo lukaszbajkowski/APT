@@ -48,34 +48,82 @@ def after_update(db: Session, e: Employee, changes: dict[str, Any], user_name: s
     if ASSIGNMENT_FIELDS & changes.keys():
         db.flush()
         record_assignment(db, e, date.today(), "zmiana", user_name)
+    if {"agency_id", "department_id", "hire_date"} & changes.keys():
+        sync_checklist(db, e, "onboarding")
 
 
 # ---------- checklisty ----------
+
+
+def applies(t: ChecklistTemplateItem, e: Employee) -> bool:
+    """Czy pozycja szablonu dotyczy osoby (APT i wydział; pusta lista = wszyscy)."""
+    return (not t.agency_ids or e.agency_id in t.agency_ids) and (
+        not t.department_ids or e.department_id in t.department_ids
+    )
+
+
+def _templates_for(db: Session, kind: str, e: Employee) -> list[ChecklistTemplateItem]:
+    tpl = db.scalars(
+        select(ChecklistTemplateItem)
+        .where(ChecklistTemplateItem.kind == kind, ChecklistTemplateItem.is_active)
+        .order_by(ChecklistTemplateItem.sort, ChecklistTemplateItem.id)
+    )
+    return [t for t in tpl if applies(t, e)]
+
+
+def _from_template(e: Employee, kind: str, t: ChecklistTemplateItem, base: date) -> ChecklistItem:
+    return ChecklistItem(
+        employee_id=e.id,
+        kind=kind,
+        template_item_id=t.id,
+        label=t.label,
+        responsible=t.responsible,
+        due_date=base + timedelta(days=t.due_days),
+        auto=t.auto,
+        sort=t.sort,
+    )
 
 
 def create_checklist(db: Session, e: Employee, kind: str, base: date | None) -> list[ChecklistItem]:
     """Nowa checklista z aktywnego szablonu (poprzednia tego rodzaju jest zastępowana)."""
     db.execute(delete(ChecklistItem).where(ChecklistItem.employee_id == e.id, ChecklistItem.kind == kind))
     base = base or date.today()
-    items = []
-    tpl = db.scalars(
-        select(ChecklistTemplateItem)
-        .where(ChecklistTemplateItem.kind == kind, ChecklistTemplateItem.is_active)
-        .order_by(ChecklistTemplateItem.sort, ChecklistTemplateItem.id)
-    )
-    for t in tpl:
-        it = ChecklistItem(
-            employee_id=e.id,
-            kind=kind,
-            label=t.label,
-            responsible=t.responsible,
-            due_date=base + timedelta(days=t.due_days),
-            auto=t.auto,
-            sort=t.sort,
-        )
-        db.add(it)
-        items.append(it)
+    items = [_from_template(e, kind, t, base) for t in _templates_for(db, kind, e)]
+    db.add_all(items)
     return items
+
+
+def sync_checklist(db: Session, e: Employee, kind: str) -> tuple[int, int]:
+    """Dopasowuje istniejącą checklistę do szablonu i przydziału osoby.
+
+    Dodaje brakujące pozycje, usuwa nietknięte pozycje, które przestały dotyczyć osoby,
+    aktualizuje nazwę / odpowiedzialnego / termin pozycji nieodhaczonych. Zwraca (dodane, usunięte).
+    """
+    items = list(
+        db.scalars(select(ChecklistItem).where(ChecklistItem.employee_id == e.id, ChecklistItem.kind == kind))
+    )
+    if not items:
+        return 0, 0
+    base = (e.hire_date if kind == "onboarding" else e.termination_date) or min(
+        (i.created_at.date() for i in items if i.created_at), default=date.today()
+    )
+    wanted = {t.id: t for t in _templates_for(db, kind, e)}
+    have = {i.template_item_id: i for i in items if i.template_item_id}
+    added = removed = 0
+    for i in items:
+        untouched = i.done_at is None and not i.skipped and not i.note
+        if i.template_item_id and i.template_item_id not in wanted and untouched:
+            db.delete(i)
+            removed += 1
+        elif i.template_item_id in wanted and i.done_at is None:
+            t = wanted[i.template_item_id]
+            i.label, i.responsible, i.auto, i.sort = t.label, t.responsible, t.auto, t.sort
+            i.due_date = base + timedelta(days=t.due_days)
+    for tid, t in wanted.items():
+        if tid not in have:
+            db.add(_from_template(e, kind, t, base))
+            added += 1
+    return added, removed
 
 
 ONBOARDING_BACKDATE_DAYS = 14

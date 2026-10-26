@@ -532,6 +532,9 @@ class ChecklistTemplateItem(TimestampMixin, Base):
     auto: Mapped[str | None] = mapped_column(String(40))
     sort: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # zakres: puste = wszyscy; inaczej tylko osoby z tych APT / wydziałów
+    agency_ids: Mapped[list[int]] = mapped_column(JSONB, default=list, nullable=False)
+    department_ids: Mapped[list[int]] = mapped_column(JSONB, default=list, nullable=False)
 
 
 class ChecklistItem(Base):
@@ -544,6 +547,9 @@ class ChecklistItem(Base):
         ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
     )
     kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    template_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("checklist_template_items.id", ondelete="SET NULL")
+    )
     label: Mapped[str] = mapped_column(String(200), nullable=False)
     responsible: Mapped[str] = mapped_column(String(10), default="hr", nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date)

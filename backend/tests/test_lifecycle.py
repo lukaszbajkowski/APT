@@ -131,3 +131,56 @@ def test_checklist_templates(admin_client):
     ]
     with SessionLocal() as db:
         assert db.scalar(select(Position)) is None
+
+
+def test_checklist_scope_sync_and_apply(admin_client):
+    from app.models import Agency
+
+    c = admin_client
+    mont, mag, _ = _deps()
+    with SessionLocal() as db:
+        ag = Agency(name="WorkForce")
+        db.add(ag)
+        db.commit()
+        ag_id = ag.id
+    tpl = c.get("/api/checklist-templates").json()["onboarding"]
+    items = [{**t} for t in tpl[:2]]  # dwie wspólne pozycje (z id – zachowane powiązania)
+    items.append(
+        {"label": "Odzież ochronna", "responsible": "manager", "due_days": 1, "department_ids": [mont]}
+    )
+    items.append({"label": "Umowa agencji", "responsible": "hr", "due_days": 3, "agency_ids": [ag_id]})
+    r = c.put("/api/checklist-templates/onboarding", json={"items": items})
+    assert r.status_code == 200, r.text
+    saved = r.json()["onboarding"]
+    assert [t["id"] for t in saved[:2]] == [t["id"] for t in tpl[:2]]  # id zachowane
+    bad = c.put("/api/checklist-templates/onboarding", json={"items": [{"label": "X", "agency_ids": [9999]}]})
+    assert bad.status_code == 400
+
+    today = date.today()
+    a = _emp(c, department_id=mont, hire_date=today.isoformat())
+    b = _emp(c, "Jan", "Kowal", department_id=mag, agency_id=ag_id, hire_date=today.isoformat())
+    la = [i["label"] for i in c.get(f"/api/employees/{a['id']}/checklists").json()["onboarding"]]
+    lb = [i["label"] for i in c.get(f"/api/employees/{b['id']}/checklists").json()["onboarding"]]
+    assert "Odzież ochronna" in la and "Umowa agencji" not in la
+    assert "Odzież ochronna" not in lb and "Umowa agencji" in lb
+
+    # przeniesienie do Montażu dodaje pozycję wydziału
+    c.patch(f"/api/employees/{b['id']}", json={"department_id": mont})
+    lb = {i["label"]: i for i in c.get(f"/api/employees/{b['id']}/checklists").json()["onboarding"]}
+    assert lb["Odzież ochronna"]["due_date"] == (today + timedelta(days=1)).isoformat()
+
+    # zmiana terminu w szablonie + zastosowanie do trwających
+    items = c.get("/api/checklist-templates").json()["onboarding"]
+    for t in items:
+        if t["label"] == "Umowa agencji":
+            t["due_days"] = 10
+    c.put("/api/checklist-templates/onboarding", json={"items": items})
+    res = c.post("/api/checklist-templates/onboarding/apply").json()
+    assert res["people"] == 2
+    lb = {i["label"]: i for i in c.get(f"/api/employees/{b['id']}/checklists").json()["onboarding"]}
+    assert lb["Umowa agencji"]["due_date"] == (today + timedelta(days=10)).isoformat()
+
+    # termin u jednej osoby
+    new_due = (today + timedelta(days=20)).isoformat()
+    r = c.patch(f"/api/checklist-items/{lb['Umowa agencji']['id']}", json={"due_date": new_due})
+    assert r.json()["due_date"] == new_due

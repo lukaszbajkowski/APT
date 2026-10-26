@@ -13,6 +13,7 @@ from app.models import (
     ChecklistItem,
     ChecklistTemplateItem,
     Department,
+    DocumentSignature,
     Employee,
     GeneratedDocument,
     PlannedChange,
@@ -169,7 +170,7 @@ def maybe_onboarding(db: Session, e: Employee) -> None:
 
 
 def auto_done(db: Session, it: ChecklistItem, e: Employee) -> bool:
-    """Czy pozycja jest spełniona automatycznie (zdjęcie, wydruk karty, szkolenie, dokument)."""
+    """Czy pozycja jest spełniona automatycznie (zdjęcie, karta, szkolenie, dokument, podpis dokumentu)."""
     if not it.auto:
         return False
     since = (it.created_at or datetime.now(UTC)) - timedelta(days=60)
@@ -194,6 +195,19 @@ def auto_done(db: Session, it: ChecklistItem, e: Employee) -> bool:
             GeneratedDocument.employee_id == e.id,
             GeneratedDocument.template_id == int(ref),
             GeneratedDocument.created_at >= since,
+        )
+        return db.scalar(q.limit(1)) is not None
+    if kind == "signed":
+        # pracownik podpisał (na ekranie / podpisem zaufanym) albo dołączono skan podpisanego papieru
+        q = (
+            select(DocumentSignature.id)
+            .join(GeneratedDocument, GeneratedDocument.id == DocumentSignature.document_id)
+            .where(
+                GeneratedDocument.employee_id == e.id,
+                GeneratedDocument.template_id == int(ref),
+                DocumentSignature.status == "signed",
+                DocumentSignature.role.in_(("pracownika", "skan")),
+            )
         )
         return db.scalar(q.limit(1)) is not None
     return False

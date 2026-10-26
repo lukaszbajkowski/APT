@@ -117,6 +117,20 @@ def test_sign_on_screen_flow(admin_client, outboxes):
 
     st = c.get(f"/api/documents/{doc['id']}/signatures").json()
     assert st["roles"][0]["status"] == "signed" and st["roles"][0]["signer_name"] == "Ola Nowak"
+    # checklista: „podpisany przez pracownika” odhacza się automatycznie
+    from app import lifecycle
+    from app.models import ChecklistItem, Employee
+
+    opts = [o["value"] for o in c.get("/api/checklist-templates").json()["auto_options"]]
+    assert f"signed:{doc['template_id']}" in opts
+    with SessionLocal() as db:
+        emp = db.get(Employee, e["id"])
+        it = ChecklistItem(
+            employee_id=emp.id, kind="onboarding", label="Deklaracja", auto=f"signed:{doc['template_id']}"
+        )
+        assert lifecycle.auto_done(db, it, emp)
+        it.auto = "signed:999999"
+        assert not lifecycle.auto_done(db, it, emp)
     assert st["has_signed_pdf"] and st["signed_at"] is None  # brakuje podpisu firmy
     signed = c.get(f"/api/documents/{doc['id']}/signed")
     pdf = PdfReader(io.BytesIO(signed.content))

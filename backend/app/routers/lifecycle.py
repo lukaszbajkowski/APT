@@ -496,6 +496,11 @@ def _templates(db: Session) -> TemplatesOut:
             AutoOption(value=f"document:{t.id}", label=f"Dokument: {t.name}")
             for t in db.scalars(select(DocumentTemplate).order_by(DocumentTemplate.name))
         ],
+        *[
+            AutoOption(value=f"signed:{t.id}", label=f"Podpisany przez pracownika: {t.name}")
+            for t in db.scalars(select(DocumentTemplate).order_by(DocumentTemplate.name))
+            if "podpis_pracownika" in (t.variables or [])
+        ],
     ]
     return out
 

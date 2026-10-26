@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Box, Center, Group, Loader, Modal, Stack, Text } from "@mantine/core";
+import { Alert, Badge, Box, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
@@ -112,7 +112,8 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
           </Stack>
         )}
         {hidden && (
-          <Center style={{ position: "fixed", inset: 0, zIndex: 10, cursor: "pointer" }} onClick={() => setHidden(false)}>
+          <Portal>
+          <Center style={{ position: "fixed", inset: 0, zIndex: 1000, cursor: "pointer" }} onClick={() => setHidden(false)}>
             <Stack align="center" gap={6} bg="white" p="lg" style={{ borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,.15)" }}>
               <IconEyeOff size={36} color="var(--mantine-color-gray-6)" />
               <Text fw={600}>Podgląd ukryty</Text>
@@ -121,6 +122,7 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
               </Text>
             </Stack>
           </Center>
+          </Portal>
         )}
         <Group justify="center" gap={6} pb="md">
           <IconShieldLock size={14} color="var(--mantine-color-gray-6)" />

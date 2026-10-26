@@ -354,6 +354,24 @@ def _file_response(data: bytes, name: str, media: str, inline: bool = False) -> 
     )
 
 
+SCAN_MEDIA = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}
+
+
+def signed_file(db: Session, doc: GeneratedDocument) -> tuple[Path, str, str] | None:
+    """Podpisana wersja dokumentu (ścieżka, rozszerzenie, typ): PDF z podpisami albo skan papieru."""
+    if doc.has_signed_pdf:
+        path = _dir(doc) / f"{doc.id}_signed.pdf"
+        if path.exists():
+            return path, "pdf", "application/pdf"
+    scan = next((s for s in _sigs(db, doc) if s.role == "skan" and s.status == "signed"), None)
+    if scan and scan.file_name:
+        ext = scan.file_name.rsplit(".", 1)[-1]
+        path = _dir(doc) / scan.file_name
+        if ext in SCAN_MEDIA and path.exists():
+            return path, ext, SCAN_MEDIA[ext]
+    return None
+
+
 @router.get("/documents/{document_id}/signed")
 def download_signed(
     document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession, inline: bool = False
@@ -361,19 +379,11 @@ def download_signed(
     """Podpisany dokument: PDF z podpisami z ekranu albo skan papierowego dokumentu."""
     doc, e = _get(db, ctx, document_id)
     base = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}_podpisany")
-    scan = next((s for s in _sigs(db, doc) if s.role == "skan" and s.status == "signed"), None)
-    if doc.has_signed_pdf:
-        data, name, media = (
-            (_dir(doc) / f"{doc.id}_signed.pdf").read_bytes(),
-            base + ".pdf",
-            "application/pdf",
-        )
-    elif scan and scan.file_name:
-        ext = scan.file_name.rsplit(".", 1)[-1]
-        media = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png"}[ext]
-        data, name = (_dir(doc) / scan.file_name).read_bytes(), f"{base}.{ext}"
-    else:
+    found = signed_file(db, doc)
+    if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Dokument nie jest jeszcze podpisany.")
+    path, ext, media = found
+    data, name = path.read_bytes(), f"{base}.{ext}"
     audit(
         db,
         request,

@@ -380,7 +380,7 @@ def _allowed_formats(t: DocumentTemplate | None, doc: GeneratedDocument) -> list
 def _doc_out(doc: GeneratedDocument, t: DocumentTemplate | None, user: User) -> DocumentOut:
     out = DocumentOut.model_validate(doc)
     out.accessible = not (user.role == Role.manager and doc.contains_sensitive)
-    out.can_view = out.accessible and doc.has_pdf
+    out.can_view = out.accessible and (doc.has_pdf or doc.signed_at is not None)
     out.download = _allowed_formats(t, doc) if out.accessible else []
     return out
 
@@ -669,10 +669,18 @@ def download_document(
 
 @router.get("/documents/{document_id}/view")
 def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> Response:
-    """Podgląd online (PDF w przeglądarce). Każde otwarcie trafia do dziennika."""
+    """Podgląd online (PDF w przeglądarce). Każde otwarcie trafia do dziennika.
+
+    Gdy dokument jest podpisany, pokazujemy wersję podpisaną (PDF z podpisami albo skan papieru).
+    """
+    from app.routers.signatures import signed_file
+
     doc, e, _ = _get_doc(db, ctx.user, document_id)
-    path = _doc_path(doc, "pdf")
-    if not doc.has_pdf or not path.exists():
+    path, ext, media = _doc_path(doc, "pdf"), "pdf", "application/pdf"
+    signed = signed_file(db, doc) if (doc.has_signed_pdf or doc.signed_at) else None
+    if signed:
+        path, ext, media = signed
+    elif not doc.has_pdf or not path.exists():
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny – dokument nie ma wersji PDF."
         )
@@ -683,12 +691,17 @@ def view_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: Db
         user=ctx.user,
         entity_type="employee",
         entity_id=e.id,
-        details={"number": format_number(e.number), "template": doc.template_name},
+        details={
+            "number": format_number(e.number),
+            "template": doc.template_name,
+            **({"version": "podpisany"} if signed else {}),
+        },
     )
     db.commit()
-    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}") + ".pdf"
+    suffix = "_podpisany" if signed else ""
+    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}{suffix}") + f".{ext}"
     return Response(
         path.read_bytes(),
-        media_type="application/pdf",
+        media_type=media,
         headers={"Content-Disposition": f'inline; filename="{name}"', "Cache-Control": "no-store"},
     )

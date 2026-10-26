@@ -138,32 +138,68 @@ def _overlay(width: float, height: float, draw) -> PdfReader:  # noqa: ANN001
     return PdfReader(io.BytesIO(buf.getvalue()))
 
 
+def wrap(text: str, font: str, size: float, width: float) -> list[str]:
+    """Dzieli tekst na linie mieszczące się w szerokości; za długie słowa tnie po znakach."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    lines: list[str] = []
+    for para in (text or "").splitlines() or [""]:
+        line = ""
+        for word in para.split(" "):
+            cand = f"{line} {word}" if line else word
+            if stringWidth(cand, font, size) <= width:
+                line = cand
+                continue
+            if line:
+                lines.append(line)
+            line = ""
+            for ch in word:
+                if stringWidth(line + ch, font, size) > width and line:
+                    lines.append(line)
+                    line = ""
+                line += ch
+        lines.append(line)
+    return lines
+
+
 def _certificate(original_hash: str, doc_title: str, doc_id: str, sigs: list[AppliedSignature]) -> PdfReader:
     regular, bold = _fonts()
+    w, h = A4
+    left, right, top, bottom = 20 * mm, 20 * mm, 25 * mm, 22 * mm
 
     def draw(c: canvas.Canvas) -> None:
-        w, h = A4
-        y = h - 25 * mm
-        c.setFont(bold, 14)
-        c.drawString(20 * mm, y, "Potwierdzenie podpisów elektronicznych")
-        y -= 9 * mm
-        c.setFont(regular, 9.5)
-        for line in (
-            f"Dokument: {doc_title}",
-            f"Identyfikator: {doc_id}",
-            "Skrót SHA-256 dokumentu przed podpisem:",
-        ):
-            c.drawString(20 * mm, y, line)
-            y -= 5.5 * mm
-        c.setFont("Courier", 8.5)
-        c.drawString(20 * mm, y + 1 * mm, original_hash)
-        y -= 5 * mm
-        y -= 4 * mm
+        y = h - top
+
+        def need(space: float) -> None:
+            nonlocal y
+            if y - space < bottom:
+                footer()
+                c.showPage()
+                y = h - top
+
+        def text(t: str, font: str, size: float, indent: float = 0, gap: float = 1.45) -> None:
+            nonlocal y
+            for line in wrap(t, font, size, w - left - right - indent):
+                need(size * gap)
+                c.setFont(font, size)
+                c.drawString(left + indent, y, line)
+                y -= size * gap
+
+        def footer() -> None:
+            c.setFont(regular, 8)
+            c.drawString(
+                left, 12 * mm, "Wygenerowano automatycznie w aplikacji Identyfikacja pracowników APT."
+            )
+
+        text("Potwierdzenie podpisów elektronicznych", bold, 14, gap=1.8)
+        text(f"Dokument: {doc_title}", regular, 9.5)
+        text(f"Identyfikator: {doc_id}", regular, 9.5)
+        text("Skrót SHA-256 dokumentu przed podpisem:", regular, 9.5)
+        text(original_hash, "Courier", 8.5, gap=1.6)
+        y -= 3 * mm
         for s in sigs:
-            c.setFont(bold, 11)
-            c.drawString(20 * mm, y, f"{SIGN_ROLES.get(s.role, s.role)}: {s.signer_name}")
-            y -= 5.5 * mm
-            c.setFont(regular, 9.5)
+            need(30 * mm)  # nagłówek osoby nie zostaje sam na dole strony
+            text(f"{SIGN_ROLES.get(s.role, s.role)}: {s.signer_name}", bold, 11, gap=1.6)
             method = {
                 "ekran": "podpis złożony na ekranie (zwykły podpis elektroniczny)",
                 "zaufany": "podpis zaufany / kwalifikowany – plik dołączony osobno",
@@ -173,21 +209,18 @@ def _certificate(original_hash: str, doc_title: str, doc_id: str, sigs: list[App
                 f"Data i godzina: {s.signed_at.astimezone(TZ):%d.%m.%Y %H:%M:%S} (czas polski)",
                 f"Sposób: {method}",
                 f"Adres IP: {s.ip or '—'}",
-                f"Urządzenie: {(s.user_agent or '—')[:110]}",
+                f"Urządzenie: {(s.user_agent or '—')[:500]}",
             ):
-                c.drawString(24 * mm, y, line)
-                y -= 5 * mm
+                text(line, regular, 9.5, indent=4 * mm, gap=1.4)
             if s.image_png:
-                c.drawImage(ImageReader(io.BytesIO(s.image_png)), 24 * mm, y - SIG_H, SIG_W, SIG_H,
+                need(SIG_H + 2 * mm)
+                c.drawImage(ImageReader(io.BytesIO(s.image_png)), left + 4 * mm, y - SIG_H, SIG_W, SIG_H,
                             mask="auto", preserveAspectRatio=True, anchor="sw")  # fmt: skip
                 y -= SIG_H + 2 * mm
             y -= 5 * mm
-        c.setFont(regular, 8)
-        c.drawString(
-            20 * mm, 15 * mm, "Wygenerowano automatycznie w aplikacji Identyfikacja pracowników APT."
-        )
+        footer()
 
-    return _overlay(*A4, draw)
+    return _overlay(w, h, draw)
 
 
 def stamp(original_pdf: bytes, sigs: list[AppliedSignature], doc_title: str, doc_id: str) -> bytes:
@@ -228,7 +261,8 @@ def stamp(original_pdf: bytes, sigs: list[AppliedSignature], doc_title: str, doc
 
             page.merge_page(_overlay(pw, ph, draw).pages[0])
         writer.add_page(page)
-    writer.add_page(_certificate(sha256(original_pdf), doc_title, doc_id, sigs).pages[0])
+    for cert in _certificate(sha256(original_pdf), doc_title, doc_id, sigs).pages:
+        writer.add_page(cert)
     writer.add_metadata({"/Title": doc_title, "/Producer": "Identyfikacja pracowników APT"})
     out = io.BytesIO()
     writer.write(out)

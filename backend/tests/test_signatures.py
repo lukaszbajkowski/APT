@@ -309,3 +309,20 @@ def test_trusted_xades_xml(admin_client, outboxes):
         "title": "Deklaracja z podpisem – Nowak Ola",
     }
     assert c.get(f"/api/documents/{doc['id']}/view").content == original
+
+
+def test_preview_draws_form_fields():
+    """Widoczny podpis z gov.pl to pole formularza – podgląd musi je rysować."""
+    from reportlab.pdfgen import canvas
+
+    from app import preview
+
+    buf = io.BytesIO()
+    cv = canvas.Canvas(buf)
+    cv.drawString(50, 800, "Dokument")
+    cv.acroForm.textfield(name="podpis", value="PODPIS", x=50, y=600, width=300, height=40, fontSize=20)
+    cv.save()
+    img = Image.open(io.BytesIO(preview.render_page(buf.getvalue(), "pdf", 0, "Test")))
+    s = preview.SCALE
+    box = img.convert("L").crop((int(60 * s), int((842 - 635) * s), int(340 * s), int((842 - 605) * s)))
+    assert min(box.getextrema()) < 80  # tekst pola jest narysowany

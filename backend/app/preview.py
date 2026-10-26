@@ -36,6 +36,7 @@ def _page_image(data: bytes, ext: str, page: int) -> Image.Image:
 
     doc = pdfium.PdfDocument(data)
     try:
+        doc.init_forms()  # pola formularza, w tym widoczny podpis z gov.pl / podpisu kwalifikowanego
         if page < 0 or page >= len(doc):
             raise IndexError(page)
         return doc[page].render(scale=SCALE).to_pil().convert("RGB")

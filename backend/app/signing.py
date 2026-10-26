@@ -298,6 +298,7 @@ def render_pages(pdf: bytes, scale: float = 1.6) -> list[bytes]:
     import pypdfium2 as pdfium
 
     doc = pdfium.PdfDocument(pdf)
+    doc.init_forms()  # rysuj też pola formularza (np. widoczny podpis)
     out = []
     for i in range(len(doc)):
         img = doc[i].render(scale=scale).to_pil()

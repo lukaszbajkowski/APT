@@ -16,6 +16,15 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 | 5. Dokumenty | szablony .docx, pola formularza | ✅ |
 | 6. Wdrożenie | VPS, HTTPS, kopie zapasowe, 2FA | ✅ |
 
+## Dokumentacja
+
+1. [Wymagania produktowe (PRD)](docs/01-product-requirements.md)
+2. [Dokument techniczny (TRD)](docs/02-technical-requirements.md)
+3. [Przepływy aplikacji](docs/03-app-flow.md)
+4. [Design brief](docs/04-design-brief.md)
+5. [Schemat backendu i bazy](docs/05-backend-schema.md)
+6. [Plan wdrożenia](docs/06-implementation-plan.md)
+
 ## Architektura
 
 ```

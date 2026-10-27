@@ -220,6 +220,35 @@ def test_strict_mode_requires_original_as_prefix(admin_client, monkeypatch, outb
     assert _upload(c, doc2, signed2).status_code == 200
 
 
+def _forge_rsa(digest: bytes, null_params: bool):
+    """Podpis RSA PKCS#1 v1.5 z DigestInfo z NULL albo bez NULL (jak robi gov.pl)."""
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    nums = key.private_numbers()
+    oid = bytes.fromhex("0609608648016503040201")
+    di = (
+        bytes.fromhex("3031300d") + oid + bytes.fromhex("05000420") + digest
+        if null_params
+        else bytes.fromhex("302f300b") + oid + bytes.fromhex("0420") + digest
+    )
+    k = 256
+    em = b"\x00\x01" + b"\xff" * (k - len(di) - 3) + b"\x00" + di
+    sig = pow(int.from_bytes(em, "big"), nums.d, nums.public_numbers.n).to_bytes(k, "big")
+    return nums.public_numbers.n, nums.public_numbers.e, sig
+
+
+def test_lenient_rsa_accepts_digestinfo_without_null_but_not_wrong_hash():
+    digest = hashlib.sha256(b"dokument").digest()
+    for null_params in (True, False):
+        n, e, sig = _forge_rsa(digest, null_params)
+        assert qualified.lenient_pkcs1_ok(n, e, sig, digest, "sha256") is True
+        # inny skrót, zmieniony podpis albo nieznany algorytm → odrzucone
+        assert qualified.lenient_pkcs1_ok(n, e, sig, hashlib.sha256(b"inny").digest(), "sha256") is False
+        assert qualified.lenient_pkcs1_ok(n, e, sig[:-1] + bytes([sig[-1] ^ 1]), digest, "sha256") is False
+        assert qualified.lenient_pkcs1_ok(n, e, sig, digest, "md5") is False
+
+
 # ---------- potwierdzenie blokadą urządzenia (WebAuthn) ----------
 
 

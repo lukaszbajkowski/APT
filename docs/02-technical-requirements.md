@@ -75,7 +75,8 @@ na stronie potwierdzenia. Dowodzi odblokowania urządzenia, nie tożsamości; be
 (zakładka „Podpis zaufany lub kwalifikowany”) pyHanko sprawdza integralność i poprawność podpisu oraz brak zmian po
 podpisaniu; porównujemy też treść z dokumentem. Poziomy: `qualified` (certyfikat z QcCompliance i łańcuch do urzędu z
 unijnej listy zaufania EU LOTL → lista krajowa, domyślnie PL, `APT_TRUST_COUNTRIES`), `valid`, `unverified`, `invalid`
-(odrzucany). Lista zaufania odświeżana w poniedziałki (`notify-daily`, `app.cli refresh-trustlist`). Nie sprawdzamy
+(odrzucany). Lista zaufania odświeżana w poniedziałki (`notify-daily`, `app.cli refresh-trustlist`). Podpisy RSA z DigestInfo bez parametrów NULL (tak podpisuje gov.pl;
+biblioteka kryptograficzna to odrzuca) sprawdzamy własnym, równie rygorystycznym porównaniem bloku PKCS#1 (`lenient_pkcs1_ok`). Nie sprawdzamy
 CRL/OCSP ani podpisu XML samej listy; XAdES (XML) nie jest weryfikowany.
 
 **Hartowanie procesu podpisu (`app/hardening.py`, `signatures.py`).**

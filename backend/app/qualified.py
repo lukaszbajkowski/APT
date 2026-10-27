@@ -6,6 +6,7 @@ z unijnej listy zaufania (kwalifikowany dostawca usług zaufania). Nie sprawdzam
 (CRL / OCSP). Podpisów XML (XAdES) nie weryfikujemy – wynik „niezweryfikowany”.
 """
 
+import hashlib
 import io
 import re
 from dataclasses import asdict, dataclass, field
@@ -87,6 +88,69 @@ def starts_with_original(signed_pdf: bytes, *originals: bytes) -> bool:
     return any(o and signed_pdf.startswith(o) for o in originals)
 
 
+_DIGEST_INFO = {  # prefiksy DigestInfo (PKCS#1) dla popularnych skrótów
+    "sha256": bytes.fromhex("3031300d060960864801650304020105000420"),
+    "sha384": bytes.fromhex("3041300d060960864801650304020205000430"),
+    "sha512": bytes.fromhex("3051300d060960864801650304020305000440"),
+}
+
+
+def lenient_pkcs1_ok(n: int, e: int, signature: bytes, digest: bytes, hash_name: str) -> bool:
+    """Podpis RSA PKCS#1 v1.5, także gdy DigestInfo nie ma parametrów NULL (tak podpisuje m.in. gov.pl).
+
+    Ścisłe biblioteki to odrzucają, choć podpis jest poprawny (RFC 8017 zaleca akceptować obie postacie).
+    Porównujemy cały blok 00 01 FF… 00 || DigestInfo || skrót, więc nie obniża to bezpieczeństwa.
+    """
+    prefix = _DIGEST_INFO.get(hash_name)
+    if prefix is None:
+        return False
+    k = (n.bit_length() + 7) // 8
+    if len(signature) != k or int.from_bytes(signature, "big") >= n:
+        return False
+    em = pow(int.from_bytes(signature, "big"), e, n).to_bytes(k, "big")
+    with_null = prefix + digest
+    # postać bez NULL: usuwamy „05 00” i zmniejszamy długości (SEQUENCE zewnętrzna i AlgorithmIdentifier)
+    without = (
+        bytes([prefix[0], prefix[1] - 2, prefix[2], prefix[3] - 2]) + prefix[4:-4] + prefix[-2:] + digest
+    )
+    for di in (with_null, without):
+        pad = k - len(di) - 3
+        if pad >= 8 and em == b"\x00\x01" + b"\xff" * pad + b"\x00" + di:
+            return True
+    return False
+
+
+def _lenient_signature_ok(emb) -> bool:  # noqa: ANN001
+    """Fallback, gdy pyHanko uznał skrót za zgodny, ale odrzucił podpis RSA z powodu kodowania DigestInfo."""
+    from asn1crypto import cms
+
+    try:
+        sd = emb.pkcs7_content
+        sd = cms.ContentInfo.load(sd.dump() if hasattr(sd, "dump") else bytes(sd))["content"]
+        si = sd["signer_infos"][0]
+        if (
+            not str(si["signature_algorithm"]["algorithm"].native).endswith("_rsa")
+            or si["signed_attrs"].native is None
+        ):
+            return False
+        sid = si["sid"].chosen
+        cert = next(
+            c.chosen
+            for c in sd["certificates"]
+            if c.name == "certificate"
+            and c.chosen.serial_number == sid["serial_number"].native
+            and c.chosen.issuer == sid["issuer"]
+        )
+        hash_name = si["digest_algorithm"]["algorithm"].native
+        digest = hashlib.new(hash_name, b"\x31" + si["signed_attrs"].dump()[1:]).digest()
+        pub = cert.public_key.native["public_key"]
+        return lenient_pkcs1_ok(
+            pub["modulus"], pub["public_exponent"], si["signature"].native, digest, hash_name
+        )
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
     """Weryfikuje pierwszy podpis w PDF. roots – urzędy z listy zaufania (DER) albo None."""
     from asn1crypto import x509 as ax509
@@ -118,7 +182,8 @@ def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
         res.qc_marked, res.sscd = qc_flags(cert.dump())
     if st.signer_reported_dt:
         res.signed_at = st.signer_reported_dt.isoformat()
-    if not st.intact or not st.valid:
+    sig_ok = st.valid or (st.intact and _lenient_signature_ok(emb))
+    if not st.intact or not sig_ok:
         res.level = "invalid"
         res.notes.append("Podpis jest uszkodzony albo dokument zmieniono po podpisaniu.")
         cov = getattr(st.coverage, "name", st.coverage)

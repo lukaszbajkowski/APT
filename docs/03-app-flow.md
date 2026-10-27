@@ -59,9 +59,9 @@ flowchart TD
   B --> C[Word + PDF z miejscem na podpis]
   C --> D{Wymaga podpisu?}
   D -->|tak| E[Przejdź do podpisu]
-  E --> F1[Link e-mail / SMS] --> G1[Strona /podpis/token: rysunek podpisu]
+  E --> F1[Link e-mail / SMS] --> G1[Strona /podpis/token: rysunek podpisu + opcjonalnie Face ID / odcisk / PIN]
   E --> F2[Skan] --> G2[Wgranie podpisanego pliku]
-  E --> F3[Podpis zaufany] --> G3[Wgranie PDF/XAdES]
+  E --> F3[Podpis zaufany lub kwalifikowany] --> G3[Wgranie PDF/XAdES + weryfikacja podpisu]
   G1 --> H[PDF z podpisem + strona potwierdzenia]
   G2 --> H
   G3 --> H

@@ -1,6 +1,6 @@
 # 5. Schemat backendu i bazy danych
 
-Źródło prawdy: `backend/app/models.py` i migracje `backend/alembic/versions/0001`–`0021`. Baza: PostgreSQL 16.
+Źródło prawdy: `backend/app/models.py` i migracje `backend/alembic/versions/0001`–`0022`. Baza: PostgreSQL 16.
 
 ## Diagram relacji
 

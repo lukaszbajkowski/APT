@@ -18,6 +18,7 @@ i działają na produkcji po `aptid-aktualizuj`. Migracje do `0020_agencje`.
 | 9. Podpisy | ekran, skan, zaufany, podgląd w aplikacji, usuwanie | 0018 | ✅ |
 | 10. Symulacja ról | administrator testuje uprawnienia | 0019 | ✅ |
 | 11. Agencje pracy | zestawienia miesięczne, konto agencji, badania, zgłoszenia | 0020 | ✅ |
+| 12. Podpisy – zabezpieczenia | potwierdzenie blokadą urządzenia (WebAuthn), weryfikacja podpisu kwalifikowanego | 0022 | ✅ |
 
 ## Zasady pracy nad kodem
 

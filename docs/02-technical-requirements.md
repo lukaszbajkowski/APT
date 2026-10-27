@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0021
+backend/alembic/    migracje 0001–0022
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
@@ -64,6 +64,19 @@ staje się polami formularza. PDF przez LibreOffice.
 **Podpisy.** Miejsce podpisu to znacznik `ZZ…ZZ` w PDF. Link (hash tokenu w bazie, ważność, limit prób) lub skan lub
 podpis zaufany. Wynik: `{id}_signed.pdf` z dołączoną stroną potwierdzenia. `signed_file()` wybiera plik w kolejności:
 zaufany PDF/XML → `_signed.pdf` → skan. `pypdfium2` z `init_forms()` rysuje pola formularza i podpisy gov.pl.
+
+**Potwierdzenie blokadą urządzenia (WebAuthn, `app/device.py`).** Kadry mogą przy prośbie o podpis zaznaczyć „Wymagaj
+potwierdzenia blokadą telefonu”. Strona podpisu prosi wtedy przeglądarkę o utworzenie poświadczenia z
+`userVerification: required` (Face ID, odcisk palca albo PIN telefonu); serwer sprawdza flagę „user verified”,
+wyzwanie jest jednorazowe i związane z tym jednym podpisem. Ślad: id poświadczenia, czas i wpis w dzienniku oraz
+na stronie potwierdzenia. Dowodzi odblokowania urządzenia, nie tożsamości; bez poświadczenia producenta (attestation).
+
+**Weryfikacja podpisu kwalifikowanego (`app/qualified.py`, `app/trustlist.py`).** Przy wgraniu PDF z podpisem
+(zakładka „Podpis zaufany lub kwalifikowany”) pyHanko sprawdza integralność i poprawność podpisu oraz brak zmian po
+podpisaniu; porównujemy też treść z dokumentem. Poziomy: `qualified` (certyfikat z QcCompliance i łańcuch do urzędu z
+unijnej listy zaufania EU LOTL → lista krajowa, domyślnie PL, `APT_TRUST_COUNTRIES`), `valid`, `unverified`, `invalid`
+(odrzucany). Lista zaufania odświeżana w poniedziałki (`notify-daily`, `app.cli refresh-trustlist`). Nie sprawdzamy
+CRL/OCSP ani podpisu XML samej listy; XAdES (XML) nie jest weryfikowany.
 
 **Podgląd w aplikacji.** Strony renderowane po stronie serwera do obrazów ze znakiem wodnym (imię, czas); brak pobierania
 dla kierownika; zrzutów ekranu nie da się zablokować w przeglądarce całkowicie.

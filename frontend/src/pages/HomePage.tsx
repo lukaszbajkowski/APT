@@ -118,6 +118,7 @@ function UpcomingCard() {
           {events.length > 8 && (
             <ActionButton
               w="fit-content"
+              mt="md"
               icon={all ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
               onClick={() => setAll((a) => !a)}
             >

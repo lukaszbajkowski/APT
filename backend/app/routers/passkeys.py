@@ -43,9 +43,9 @@ from app.models import (
     WebauthnChallenge,
     WebauthnCredential,
 )
-from app.routers.auth import MFA_PENDING_MINUTES, _me, _register_failure
+from app.routers.auth import MFA_PENDING_MINUTES, _check_totp, _me, _register_failure
 from app.schemas import MeOut
-from app.security import hash_password, new_token, password_problems, token_hash
+from app.security import hash_password, new_token, password_problems, token_hash, verify_password
 
 router = APIRouter(prefix="/api", tags=["passkeys"])
 
@@ -273,9 +273,31 @@ def list_passkeys(ctx: Auth, db: DbSession) -> list[PasskeyOut]:
     ]
 
 
+class PasskeyOptionsIn(BaseModel):
+    password: str | None = Field(default=None, max_length=256)
+    code: str | None = Field(default=None, max_length=20)
+
+
 @router.post("/passkeys/options", response_model=LoginOptionsOut)
-def passkey_options(ctx: Auth, request: Request, db: DbSession) -> LoginOptionsOut:
-    out = _registration_options(db, request, ctx.user)
+def passkey_options(
+    ctx: Auth, request: Request, db: DbSession, body: PasskeyOptionsIn | None = None
+) -> LoginOptionsOut:
+    user = ctx.user
+    if user.role != Role.employee:
+        # konta z szerokimi uprawnieniami: ponowne potwierdzenie hasłem i kodem tuż przed dodaniem klucza
+        body = body or PasskeyOptionsIn()
+        if not verify_password(user.password_hash, body.password or ""):
+            _register_failure(db, user, request, "passkey_reauth_failed", step="password")
+            db.commit()
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Podaj poprawne obecne hasło.")
+        if user.mfa_enabled:
+            step = _check_totp(user, body.code or "")
+            if step is None:
+                _register_failure(db, user, request, "passkey_reauth_failed", step="code")
+                db.commit()
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy kod z aplikacji.")
+            user.totp_last_step = step
+    out = _registration_options(db, request, user)
     db.commit()
     return LoginOptionsOut(**out)
 
@@ -290,6 +312,7 @@ class PasskeyAddIn(BaseModel):
 def add_passkey(body: PasskeyAddIn, ctx: Auth, request: Request, db: DbSession) -> dict:
     _register_credential(db, request, ctx.user, body.challenge_id, body.credential, body.name)
     db.commit()
+    notify.security_notice(ctx.user, "dodano klucz dostępu do logowania")
     return {"ok": True}
 
 

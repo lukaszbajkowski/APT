@@ -288,3 +288,21 @@ def test_users_screen_cannot_create_employee(admin_client):
     )
     assert r.status_code in (400, 422)
     assert User  # import używany
+
+
+def test_admin_must_reconfirm_before_adding_passkey(admin_client):
+    r = admin_client.post("/api/passkeys/options", json={})
+    assert r.status_code == 400
+    r = admin_client.post("/api/passkeys/options", json={"password": "zle"})
+    assert r.status_code == 400
+    r = admin_client.post("/api/passkeys/options", json={"password": PASSWORD})
+    assert r.status_code == 200
+    # po dodaniu klucza wysyłamy powiadomienie e-mail
+    mailer.outbox = []
+    opts = r.json()
+    auth = FakeAuthenticator()
+    r = admin_client.post(
+        "/api/passkeys",
+        json={"challenge_id": opts["challenge_id"], "credential": auth.create(opts["options"])},
+    )
+    assert r.status_code == 201

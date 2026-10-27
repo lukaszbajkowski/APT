@@ -150,17 +150,26 @@ export function MyAccountPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [pw, setPw] = useState("");
+  const [code, setCode] = useState("");
+  const { me } = useAuth();
+  const reauth = !hasRole("employee");
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), enabled: hasRole("employee") });
   const keys = useQuery({ queryKey: ["passkeys"], queryFn: () => api<Passkey[]>("/passkeys") });
 
   const add = useMutation({
     mutationFn: async () => {
-      const o = await api<Options>("/passkeys/options", { method: "POST" });
+      const o = await api<Options>("/passkeys/options", {
+        method: "POST",
+        body: reauth ? { password: pw, code: code || null } : {},
+      });
       const credential = await createPasskey(o.options);
       await api("/passkeys", { method: "POST", body: { challenge_id: o.challenge_id, credential } });
     },
     onSuccess: () => {
       setError(null);
+      setPw("");
+      setCode("");
       qc.invalidateQueries({ queryKey: ["passkeys"] });
     },
     onError: (e) => setError(passkeyErrorText(e) ?? errorText(e)),
@@ -207,7 +216,7 @@ export function MyAccountPage() {
           <Button
             leftSection={<IconFingerprint size={18} />}
             loading={add.isPending}
-            disabled={!passkeysSupported()}
+            disabled={!passkeysSupported() || (reauth && !pw)}
             onClick={() => add.mutate()}
           >
             Dodaj klucz
@@ -216,6 +225,15 @@ export function MyAccountPage() {
         <Text size="sm" c="dimmed" mb="sm">
           Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia. Dodaj klucz na każdym swoim telefonie lub komputerze.
         </Text>
+        {reauth && (
+          <Stack gap="xs" mb="sm">
+            <Text size="sm">Przed dodaniem klucza potwierdź tożsamość:</Text>
+            <PasswordInput label="Obecne hasło" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+            {me?.user.mfa_enabled && (
+              <TextInput label="Kod z aplikacji" inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
+            )}
+          </Stack>
+        )}
         <Stack gap="xs">
           {keys.data?.map((k) => (
             <Group key={k.id} justify="space-between" wrap="nowrap">

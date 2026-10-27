@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0022
+backend/alembic/    migracje 0001–0023
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
@@ -84,6 +84,9 @@ CRL/OCSP ani podpisu XML samej listy; XAdES (XML) nie jest weryfikowany.
   dopisywania) trafia wpis `document_sealed` ze skrótami SHA-256 (oryginał, obraz podpisu, wgrany plik, plik końcowy).
   Okno „Podpis” porównuje bieżący plik z ostatnią pieczęcią i ostrzega, gdy plik zmieniono poza aplikacją.
 - Blokada wiersza (`SELECT … FOR UPDATE`) tuż przed zapisem podpisu: jeden podpis na jeden link, także przy równoległych żądaniach.
+- Tryb ścisły szablonu (`templates.strict_pdf`, migracja 0023, opcja przy edycji szablonu): wgrany podpisany PDF musi
+  zaczynać się od pobranego dokumentu bajt w bajt (podpis dopisany na końcu); inaczej odrzucenie. Domyślnie wyłączony,
+  bo narzędzia, które przepisują cały plik, dawałyby odrzucenia legalnych podpisów.
 - Limit żądań na IP dla `/api/sign/*`: `APT_SIGN_RATE_GET` (300/min) i `APT_SIGN_RATE_POST` (40/min), 0 = bez limitu;
   licznik w pamięci procesu (jeden proces API).
 

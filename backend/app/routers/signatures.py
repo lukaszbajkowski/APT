@@ -24,7 +24,7 @@ from app import device, mailer, notify, qualified, signing, sms, templating, tru
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
-from app.models import AuditLog, DocumentSignature, Employee, GeneratedDocument, Role
+from app.models import AuditLog, DocumentSignature, DocumentTemplate, Employee, GeneratedDocument, Role
 from app.routers.employees import format_number
 from app.security import new_token, token_hash
 
@@ -871,7 +871,18 @@ async def sign_trusted(
             detail="Podpis w pliku jest nieprawidłowy. " + " ".join(result.notes),
         )
     shown = data if data[:4] == b"%PDF" else signing.embedded_pdf(data)
-    if (
+    tpl = db.get(DocumentTemplate, doc.template_id) if doc.template_id else None
+    if tpl is not None and tpl.strict_pdf:
+        # tryb ścisły: oryginał (ten sam co do bajta) musi być początkiem podpisanego pliku
+        if shown is None or not qualified.starts_with_original(shown, original_pdf(doc), current_pdf(doc)):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Ten szablon wymaga, by podpis został dopisany do pobranego pliku bez żadnych zmian. "
+                    "Pobierz dokument z aplikacji, podpisz go i wgraj ponownie, bez zapisu w innym programie."
+                ),
+            )
+    elif (
         shown is not None
         and await run_in_threadpool(qualified.same_content, current_pdf(doc), shown) is False
     ):

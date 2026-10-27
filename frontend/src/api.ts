@@ -127,6 +127,7 @@ export interface DocTemplate {
   fields: TemplateField[];
   sensitive: boolean;
   allow_manager: boolean;
+  strict_pdf: boolean;
   download_formats: DownloadFormats;
   is_active: boolean;
   updated_at: string;

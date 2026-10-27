@@ -47,6 +47,7 @@ export function TemplateEditPage() {
   const [language, setLanguage] = useState("pl");
   const [active, setActive] = useState(true);
   const [allowManager, setAllowManager] = useState(true);
+  const [strictPdf, setStrictPdf] = useState(false);
   const [formats, setFormats] = useState<DownloadFormats>("both");
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +60,7 @@ export function TemplateEditPage() {
       setLanguage(t.language);
       setActive(t.is_active);
       setAllowManager(t.allow_manager);
+      setStrictPdf(t.strict_pdf);
       setFormats(t.download_formats);
     }
   }, [template.data]);
@@ -72,7 +74,7 @@ export function TemplateEditPage() {
     mutationFn: () =>
       api<DocTemplate>(`/templates/${id}`, {
         method: "PATCH",
-        body: { name, description: description || null, language, is_active: active, allow_manager: allowManager, download_formats: formats, fields },
+        body: { name, description: description || null, language, is_active: active, allow_manager: allowManager, strict_pdf: strictPdf, download_formats: formats, fields },
       }),
     onSuccess: (t) => {
       refresh(t);
@@ -158,6 +160,12 @@ export function TemplateEditPage() {
                   }
                   checked={allowManager}
                   onChange={(e) => setAllowManager(e.currentTarget.checked)}
+                />
+                <Switch
+                  label="Ścisła kontrola podpisanego pliku (podpis zaufany i kwalifikowany)"
+                  description="Wgrany plik musi zawierać pobrany dokument bez zmian, z podpisem dopisanym na końcu. Pliki zapisane ponownie w innym programie będą odrzucane. Włączaj tylko dla dokumentów, które tego wymagają."
+                  checked={strictPdf}
+                  onChange={(e) => setStrictPdf(e.currentTarget.checked)}
                 />
                 <div>
                   <Text size="sm" fw={500} mb={4}>

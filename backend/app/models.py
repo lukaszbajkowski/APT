@@ -332,6 +332,8 @@ class DocumentTemplate(TimestampMixin, Base):
     # Formaty do pobrania: "pdf", "docx" albo "both". Podgląd online jest zawsze w PDF.
     download_formats: Mapped[str] = mapped_column(String(8), default="both", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Tryb ścisły: wgrany podpisany PDF musi zaczynać się od oryginału (bajt w bajt).
+    strict_pdf: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class GeneratedDocument(Base):

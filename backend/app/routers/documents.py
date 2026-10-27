@@ -61,6 +61,7 @@ class TemplateOut(BaseModel):
     sensitive: bool
     allow_manager: bool
     download_formats: DownloadFormats
+    strict_pdf: bool
     is_active: bool
     updated_at: datetime
 
@@ -72,6 +73,7 @@ class TemplatePatch(BaseModel):
     is_active: bool | None = None
     allow_manager: bool | None = None
     download_formats: DownloadFormats | None = None
+    strict_pdf: bool | None = None
     fields: list[FieldDef] | None = None
 
 
@@ -153,6 +155,7 @@ def _out(t: DocumentTemplate) -> TemplateOut:
         sensitive=t.sensitive,
         allow_manager=t.allow_manager,
         download_formats=t.download_formats,  # type: ignore[arg-type]
+        strict_pdf=t.strict_pdf,
         is_active=t.is_active,
         updated_at=t.updated_at,
     )
@@ -275,6 +278,9 @@ def update_template(
     if body.download_formats is not None and body.download_formats != t.download_formats:
         t.download_formats = body.download_formats
         changes.append("download_formats")
+    if body.strict_pdf is not None and body.strict_pdf != t.strict_pdf:
+        t.strict_pdf = body.strict_pdf
+        changes.append("strict_pdf")
     if body.fields is not None:
         allowed = set(t.variables) - set(templating.BUILTINS)
         keys = [f.key for f in body.fields]

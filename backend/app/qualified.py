@@ -82,6 +82,11 @@ def same_content(reference_pdf: bytes, signed_pdf: bytes, tolerance: float = 0.1
     return len(ref - got) <= tolerance * len(ref)
 
 
+def starts_with_original(signed_pdf: bytes, *originals: bytes) -> bool:
+    """Tryb ścisły: podpisany plik zaczyna się od któregoś z oryginałów (bajt w bajt)."""
+    return any(o and signed_pdf.startswith(o) for o in originals)
+
+
 def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
     """Weryfikuje pierwszy podpis w PDF. roots – urzędy z listy zaufania (DER) albo None."""
     from asn1crypto import x509 as ax509

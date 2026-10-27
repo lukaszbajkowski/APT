@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
 from pyhanko_certvalidator.registry import SimpleCertificateStore
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
 
 from app import qualified, trustlist
 from app.config import get_settings
@@ -190,6 +190,34 @@ def test_tampered_or_foreign_document_rejected(admin_client, monkeypatch, outbox
     signed_foreign, _ = _sign_pdf(foreign)
     r = _upload(c, doc, signed_foreign)
     assert r.status_code == 400 and "inną treść" in r.json()["detail"]
+
+
+def test_strict_mode_requires_original_as_prefix(admin_client, monkeypatch, outboxes):  # noqa: F811
+    c = admin_client
+    emp, doc = _doc(c)
+    c.patch(f"/api/templates/{doc['template_id']}", json={"strict_pdf": True})
+    assert c.get(f"/api/templates/{doc['template_id']}").json()["strict_pdf"] is True
+    original = c.get(f"/api/documents/{doc['id']}/download?format=pdf").content
+    # podpis dopisany na końcu (aktualizacja przyrostowa) → przechodzi
+    signed, ca_der = _sign_pdf(original)
+    monkeypatch.setattr(trustlist, "load_roots", lambda allow_fetch=True: [ca_der])
+    assert signed.startswith(original)
+    assert _upload(c, doc, signed).status_code == 200
+    # ten sam plik przepisany przez inny program (te same słowa, inne bajty) → odrzucony w trybie ścisłym
+    doc2 = _again(c, emp, doc)
+    original2 = c.get(f"/api/documents/{doc2['id']}/download?format=pdf").content
+    rewritten = PdfWriter(clone_from=PdfReader(io.BytesIO(original2)))
+    rewritten.add_metadata({"/Producer": "inny program"})
+    buf = io.BytesIO()
+    rewritten.write(buf)
+    assert not buf.getvalue().startswith(original2)
+    signed2, ca2 = _sign_pdf(buf.getvalue())
+    monkeypatch.setattr(trustlist, "load_roots", lambda allow_fetch=True: [ca2])
+    r = _upload(c, doc2, signed2)
+    assert r.status_code == 400 and "bez żadnych zmian" in r.json()["detail"]
+    # po wyłączeniu trybu ścisłego ten sam plik jest akceptowany (porównanie słów)
+    c.patch(f"/api/templates/{doc['template_id']}", json={"strict_pdf": False})
+    assert _upload(c, doc2, signed2).status_code == 200
 
 
 # ---------- potwierdzenie blokadą urządzenia (WebAuthn) ----------

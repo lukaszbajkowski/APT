@@ -102,71 +102,105 @@ function useSystemColorScheme() {
   }, []);
 }
 
-/** Pole do podpisu palcem / rysikiem / myszką. Przezroczyste tło, linia w kolorze tuszu. */
+const PAD_W = 600; // jednostki logiczne pola podpisu (proporcje 2:1) – niezależne od rozmiaru ekranu
+const PAD_H = 300;
+const INK_LINE = 4.5;
+type Pt = { x: number; y: number };
+
+function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Pt[][], scale: number, color: string) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = INK_LINE * scale;
+  for (const st of strokes) {
+    if (st.length === 1) {
+      ctx.beginPath();
+      ctx.arc(st[0].x * scale, st[0].y * scale, (INK_LINE / 2) * scale, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(st[0].x * scale, st[0].y * scale);
+    for (const p of st.slice(1)) ctx.lineTo(p.x * scale, p.y * scale);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Pole do podpisu palcem / rysikiem / myszką. Pociągnięcia pamiętamy w jednostkach logicznych, więc po obrocie
+ * telefonu lub zmianie rozmiaru okna podpis jest przerysowywany, a nie czyszczony. Na ekranie tusz jest dobrany do
+ * motywu (jasny na ciemnym tle), a zapisywany obraz zawsze ma granatowy tusz na przezroczystym tle.
+ */
 function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const strokes = useRef<Pt[][]>([]);
   const drawing = useRef(false);
-  const last = useRef<{ x: number; y: number } | null>(null);
-  const dirty = useRef(false);
+  const [empty, setEmpty] = useState(true);
+
+  const isDark = () => document.documentElement.getAttribute("data-mantine-color-scheme") === "dark";
+
+  const render = () => {
+    const c = canvas.current;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    if (!r.width) return;
+    const ratio = window.devicePixelRatio || 1;
+    c.width = Math.round(r.width * ratio);
+    c.height = Math.round(r.height * ratio);
+    const ctx = c.getContext("2d")!;
+    drawStrokes(ctx, strokes.current, (r.width / PAD_W) * ratio, isDark() ? "#dbe4ff" : "#0b1f66");
+  };
 
   useEffect(() => {
+    render();
     const c = canvas.current!;
-    const resize = () => {
-      const r = c.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      c.width = Math.round(r.width * ratio);
-      c.height = Math.round(r.height * ratio);
-      const ctx = c.getContext("2d")!;
-      ctx.scale(ratio, ratio);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "#0b1f66";
-      ctx.lineWidth = 2.6;
-      dirty.current = false;
-      onChange(null);
+    const ro = new ResizeObserver(render); // obrót telefonu, zmiana rozmiaru okna
+    ro.observe(c);
+    const mo = new MutationObserver(render); // zmiana motywu
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-mantine-color-scheme"] });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
     };
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pos = (e: React.PointerEvent) => {
+  const exportPng = () => {
+    const out = document.createElement("canvas");
+    out.width = PAD_W * 2;
+    out.height = PAD_H * 2;
+    drawStrokes(out.getContext("2d")!, strokes.current, 2, "#0b1f66");
+    return out.toDataURL("image/png");
+  };
+
+  const pos = (e: React.PointerEvent): Pt => {
     const r = canvas.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    return { x: ((e.clientX - r.left) / r.width) * PAD_W, y: ((e.clientY - r.top) / r.height) * PAD_H };
   };
   const down = (e: React.PointerEvent) => {
     e.preventDefault();
     canvas.current!.setPointerCapture(e.pointerId);
     drawing.current = true;
-    last.current = pos(e);
-    const ctx = canvas.current!.getContext("2d")!;
-    ctx.beginPath();
-    ctx.arc(last.current.x, last.current.y, 1.2, 0, Math.PI * 2);
-    ctx.fillStyle = "#0b1f66";
-    ctx.fill();
+    strokes.current.push([pos(e)]);
+    render();
   };
   const move = (e: React.PointerEvent) => {
-    if (!drawing.current || !last.current) return;
-    const p = pos(e);
-    const ctx = canvas.current!.getContext("2d")!;
-    ctx.beginPath();
-    ctx.moveTo(last.current.x, last.current.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    last.current = p;
-    dirty.current = true;
+    if (!drawing.current) return;
+    const st = strokes.current[strokes.current.length - 1];
+    st.push(pos(e));
+    render();
   };
   const up = () => {
     if (!drawing.current) return;
     drawing.current = false;
-    last.current = null;
-    if (dirty.current) onChange(canvas.current!.toDataURL("image/png"));
+    setEmpty(false);
+    onChange(exportPng());
   };
   const clear = () => {
-    const c = canvas.current!;
-    c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
-    dirty.current = false;
+    strokes.current = [];
+    setEmpty(true);
+    render();
     onChange(null);
   };
 
@@ -175,10 +209,12 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
       <Box
         style={{
           position: "relative",
-          border: "2px dashed var(--mantine-color-gray-4)",
+          border: "2px dashed var(--mantine-color-default-border)",
           borderRadius: 12,
-          background: "#fff",
-          height: 200,
+          background: "var(--mantine-color-body)",
+          aspectRatio: `${PAD_W} / ${PAD_H}`,
+          width: "100%",
+          maxWidth: PAD_W,
           touchAction: "none",
         }}
       >
@@ -192,9 +228,11 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
           onPointerLeave={up}
           onPointerCancel={up}
         />
-        <Text size="xs" c="gray.5" style={{ position: "absolute", left: 14, bottom: 10, pointerEvents: "none" }}>
-          Podpisz się tutaj palcem lub myszką
-        </Text>
+        {empty && (
+          <Text size="xs" c="dimmed" style={{ position: "absolute", left: 14, bottom: 10, pointerEvents: "none" }}>
+            Podpisz się tutaj palcem lub myszką
+          </Text>
+        )}
       </Box>
       <Group justify="flex-end">
         <Button size="md" variant="subtle" color="gray" leftSection={<IconEraser size={16} />} onClick={clear}>

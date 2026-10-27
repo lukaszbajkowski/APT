@@ -175,6 +175,7 @@ export function InvitePage() {
 /** Zapasowe logowanie (hasło + kod z aplikacji) – tylko dla pracownika z kluczem dostępu. */
 function BackupLoginCard() {
   const { me, setMe } = useAuth();
+  const navigate = useNavigate();
   const enabled = !!me?.has_password;
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -209,6 +210,8 @@ function BackupLoginCard() {
       setPw("");
       setPw2("");
       setMe(result);
+      // po ustawieniu hasła od razu dokończ konfigurację kodu z aplikacji
+      if (!enabled && !result.user.mfa_enabled) navigate(MFA_PATH);
     } catch (e) {
       setError(passkeyErrorText(e) ?? errorText(e));
     } finally {

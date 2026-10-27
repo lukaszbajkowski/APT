@@ -357,7 +357,7 @@ export function MfaPage() {
               <Title order={3}>Logowanie dwuetapowe</Title>
               {me.user.mfa_required && (
                 <Badge variant="light" color="orange">
-                  wymagane dla Twojej roli
+                  {me.user.role === "employee" ? "wymagane przy logowaniu hasłem" : "wymagane dla Twojej roli"}
                 </Badge>
               )}
             </Group>

@@ -185,6 +185,8 @@ class UserSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # hasło poprawne, czeka na kod z aplikacji (logowanie dwuetapowe)
     mfa_pending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # sposób zalogowania: password | passkey (klucz dostępu zastępuje drugi składnik)
+    auth_method: Mapped[str] = mapped_column(String(10), default="password", nullable=False)
     ip: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(String(400))
     # symulacja uprawnień (tylko administrator): rola i zakres kierownika

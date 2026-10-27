@@ -141,10 +141,17 @@ def get_auth_allow_mfa_setup(request: Request, db: DbSession) -> AuthContext:
     return ctx
 
 
+def mfa_setup_pending(user: User, sess: UserSession) -> bool:
+    """Czy trzeba skonfigurować kod z aplikacji. Pracownik zalogowany kluczem jest zwolniony."""
+    if not user.mfa_required or user.mfa_enabled:
+        return False
+    return not (user.role == Role.employee and sess.auth_method == "passkey")
+
+
 def get_auth(request: Request, db: DbSession) -> AuthContext:
     """W pełni zalogowany użytkownik: aktualne hasło i (jeśli wymagane) włączone 2FA."""
     ctx = get_auth_allow_mfa_setup(request, db)
-    if ctx.user.mfa_required and not ctx.user.mfa_enabled:
+    if mfa_setup_pending(ctx.user, ctx.session):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail={

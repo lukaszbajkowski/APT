@@ -144,7 +144,9 @@ def _register_credential(
     return cred
 
 
-def _start_session(db: Session, request: Request, response: Response, user: User, *, pending: bool) -> MeOut:
+def _start_session(
+    db: Session, request: Request, response: Response, user: User, *, pending: bool, method: str = "passkey"
+) -> MeOut:
     settings = get_settings()
     now = utcnow()
     if not pending:
@@ -164,6 +166,7 @@ def _start_session(db: Session, request: Request, response: Response, user: User
         ip=client_ip(request),
         user_agent=user_agent(request),
         mfa_pending=pending,
+        auth_method=method,
     )
     db.add(sess)
     db.flush()
@@ -726,7 +729,7 @@ def invite_password(body: InvitePasswordIn, request: Request, response: Response
     user.password_hash = hash_password(body.password)
     user.password_changed_at = utcnow()
     t.used_at = utcnow()
-    me = _start_session(db, request, response, user, pending=False)
+    me = _start_session(db, request, response, user, pending=False, method="password")
     audit(db, request, "employee_account_activated", user=user, details={"method": "password"})
     db.commit()
     return me

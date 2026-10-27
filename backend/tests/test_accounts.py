@@ -385,3 +385,27 @@ def test_backup_login_needs_fresh_passkey(hr, emp):
         json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
     )
     assert off.status_code == 200 and off.json()["has_password"] is False
+
+
+def test_passkey_session_not_forced_to_totp(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    token = _invite(hr, emp)
+    phone = TestClient(app)
+    auth = FakeAuthenticator()
+    r = _activate(phone, token, auth)
+    phone.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+    o = phone.post("/api/me/backup/options").json()
+    phone.post(
+        "/api/me/backup/password",
+        json={"password": PASSWORD, "challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
+    )
+    get_settings().mfa_enforce = True
+    try:
+        # zalogowany kluczem: dostęp do własnych danych bez wymuszania kodu
+        assert phone.get("/api/me/employee").status_code == 200
+        assert phone.get("/api/auth/me").json()["mfa_setup_required"] is False
+    finally:
+        get_settings().mfa_enforce = False

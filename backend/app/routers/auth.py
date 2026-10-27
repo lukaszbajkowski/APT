@@ -9,7 +9,16 @@ from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.crypto import decrypt_secret, encrypt_secret
-from app.deps import Auth, AuthMfaPending, AuthMfaSetup, AuthPwChange, DbSession, simulated, utcnow
+from app.deps import (
+    Auth,
+    AuthMfaPending,
+    AuthMfaSetup,
+    AuthPwChange,
+    DbSession,
+    mfa_setup_pending,
+    simulated,
+    utcnow,
+)
 from app.models import PasswordToken, Role, User, UserSession
 from app.schemas import ChangePasswordIn, LoginIn, MeOut, UserOut
 from app.security import (
@@ -36,7 +45,7 @@ def _me(user: User, sess: UserSession) -> MeOut:
         csrf_token=sess.csrf_token,
         session_idle_minutes=get_settings().session_idle_minutes,
         mfa_pending=sess.mfa_pending,
-        mfa_setup_required=user.mfa_required and not user.mfa_enabled,
+        mfa_setup_required=mfa_setup_pending(user, sess),
         recovery_codes_left=user.recovery_codes_left,
         has_password=user.has_password,
         real_role=sess.user.role.value,

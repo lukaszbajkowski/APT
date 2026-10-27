@@ -67,12 +67,12 @@ def test_manager_scope_no_pesel(client, make_user):
     _setup(client)
     mgr = make_user("kier", Role.manager)
     with SessionLocal() as db:
-        db.add(UserScope(user_id=mgr.id, agency_id=2))
+        db.add(UserScope(user_id=mgr.id, department_id=1))
         db.commit()
     m = TestClient(app)
     login(m, "kier")
     rows = _rows(m.get("/api/reports/employees.xlsx"))
-    assert [x[1] for x in rows[1:]] == ["Kowal"] and "Wiek" in rows[0] and "Data urodzenia" not in rows[0]
+    assert [x[1] for x in rows[1:]] == ["Nowak"] and "Wiek" in rows[0] and "Data urodzenia" not in rows[0]
     assert m.get("/api/reports/employees.xlsx", params={"include_pesel": "true"}).status_code == 403
     s = m.get("/api/reports/summary").json()
     assert s["active"] == 1 and s["missing_pesel"] is None

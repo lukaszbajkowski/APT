@@ -82,7 +82,7 @@ export function UsersPage() {
       full_name: u.full_name,
       email: u.email ?? "",
       role: u.role,
-      agency_ids: u.scopes.filter((s) => s.agency_id !== null).map((s) => String(s.agency_id)),
+      agency_ids: [],
       department_ids: u.scopes.filter((s) => s.department_id !== null).map((s) => String(s.department_id)),
       agency_id: u.agency_id ? String(u.agency_id) : null,
     });
@@ -239,7 +239,7 @@ export function UsersPage() {
                       u.scopes.length ? (
                         <Text size="sm">
                           {u.scopes
-                            .map((s) => (s.agency_id !== null ? agencyName(s.agency_id) : departmentName(s.department_id)))
+                            .map((s) => departmentName(s.department_id))
                             .join(", ")}
                         </Text>
                       ) : (
@@ -376,14 +376,6 @@ export function UsersPage() {
             )}
             {form.role === "manager" && (
               <>
-                <MultiSelect
-                  label="Widoczne APT"
-                  placeholder={agencies.data?.length ? "Wybierz" : "Brak APT w słowniku (etap 2)"}
-                  data={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
-                  value={form.agency_ids}
-                  onChange={(v) => setForm({ ...form, agency_ids: v })}
-                  searchable
-                />
                 <MultiSelect
                   label="Widoczne wydziały"
                   placeholder={departments.data?.length ? "Wybierz" : "Brak wydziałów w słowniku (etap 2)"}

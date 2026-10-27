@@ -56,8 +56,8 @@ def simulated(user: User, sess: UserSession) -> Any:
     except ValueError:
         return user
     scopes = []
-    if role == Role.manager and (sess.sim_agency_id or sess.sim_department_id):
-        scopes = [_SimScope(sess.sim_agency_id, sess.sim_department_id)]
+    if role == Role.manager and sess.sim_department_id:
+        scopes = [_SimScope(None, sess.sim_department_id)]
     return SimulatedUser(user, role, scopes, sess.sim_agency_id if role == Role.agency else None)
 
 

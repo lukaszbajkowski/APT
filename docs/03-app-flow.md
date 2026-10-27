@@ -98,5 +98,5 @@ jeśli kopia się nie udała lub są dane do usunięcia.
 
 ## 7. Symulacja uprawnień
 
-Administrator: menu konta → wybór roli (i zakresu kierownika / agencji) → cały interfejs i API pokazują tylko to,
+Administrator: menu konta → wybór roli (wydział kierownika albo APT agencji) → cały interfejs i API pokazują tylko to,
 co widziałaby ta rola; baner z możliwością powrotu.

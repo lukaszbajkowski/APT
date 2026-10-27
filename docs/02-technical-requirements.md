@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0020
+backend/alembic/    migracje 0001–0021
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
@@ -44,7 +44,7 @@ docs/               ten katalog
 - CSRF: nagłówek `X-CSRF-Token` przy każdej zmianie.
 - Hasła argon2id; blokada 15 min po 5 błędach; 2FA TOTP z kodami zapasowymi (sekret szyfrowany).
 - Uprawnienia po stronie serwera: `require_roles(...)`, zakres danych `apply_scope` / `get_visible`
-  (kierownik: APT/wydziały z `user_scopes`; agencja: `users.agency_id`).
+  (kierownik: wyłącznie wydziały z `user_scopes`; agencja: jedna APT z `users.agency_id`).
 - Symulacja ról: `SimulatedUser` – prawdziwe konto, rola i zakres z sesji (`sim_*`).
 - Dziennik `audit_log`: wyzwalacz w bazie blokuje UPDATE i DELETE.
 

@@ -34,11 +34,11 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
   const agencies = useQuery({
     queryKey: ["agencies"],
     queryFn: () => api<DictionaryItem[]>("/agencies"),
-    enabled: isManager || pickAgency || me?.sim_role === "agency",
+    enabled: pickAgency || me?.sim_role === "agency",
   });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments"), enabled: isManager });
   if (me?.real_role !== "admin") return null;
-  const scope = me.sim_agency_id ? `a:${me.sim_agency_id}` : me.sim_department_id ? `d:${me.sim_department_id}` : null;
+  const scope = me.sim_department_id ? String(me.sim_department_id) : null;
   return (
     <>
       <Menu.Label>Symuluj uprawnienia</Menu.Label>
@@ -79,17 +79,12 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
           <Select
             mt={6}
             size="xs"
-            placeholder="Zakres kierownika: brak"
+            placeholder="Wydział kierownika: brak"
             value={scope}
             clearable
             comboboxProps={{ withinPortal: false }}
-            onChange={(v) =>
-              simulate("manager", v?.startsWith("a:") ? Number(v.slice(2)) : null, v?.startsWith("d:") ? Number(v.slice(2)) : null)
-            }
-            data={[
-              { group: "APT", items: (agencies.data ?? []).map((a) => ({ value: `a:${a.id}`, label: a.name })) },
-              { group: "Wydział", items: (departments.data ?? []).map((d) => ({ value: `d:${d.id}`, label: d.name })) },
-            ]}
+            onChange={(v) => simulate("manager", null, v ? Number(v) : null)}
+            data={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
           />
         )}
       </Box>

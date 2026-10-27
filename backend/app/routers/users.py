@@ -32,12 +32,10 @@ def _validate_scopes(db: Session, scopes: ScopesIn) -> None:
     agency_ids = set(scopes.agency_ids)
     department_ids = set(scopes.department_ids)
     if agency_ids:
-        found = set(db.scalars(select(Agency.id).where(Agency.id.in_(agency_ids))))
-        if found != agency_ids:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail=f"Nieznane APT: {sorted(agency_ids - found)}",
-            )
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Kierownik ma zakres tylko wydziałowy. APT przypisuje się wyłącznie kontu agencji.",
+        )
     if department_ids:
         found = set(db.scalars(select(Department.id).where(Department.id.in_(department_ids))))
         if found != department_ids:
@@ -52,7 +50,6 @@ def _set_scopes(user: User, scopes: ScopesIn | None) -> None:
     wykonuje INSERT przed DELETE i ponowne dodanie tego samego wpisu złamałoby UNIQUE."""
     wanted: set[tuple[str, int]] = set()
     if user.role == Role.manager and scopes is not None:
-        wanted |= {("agency", i) for i in scopes.agency_ids}
         wanted |= {("department", i) for i in scopes.department_ids}
 
     def key(s: UserScope) -> tuple[str, int]:
@@ -104,7 +101,6 @@ def _agency_for(db: Session, role: Role, agency_id: int | None) -> int | None:
     """Konto agencji musi wskazywać APT; inne role – bez APT."""
     if role != Role.agency:
         return None
-    from app.models import Agency
 
     if agency_id is None or db.get(Agency, agency_id) is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wybierz APT, której dotyczy konto agencji.")

@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.db import SessionLocal
 from app.main import app
-from app.models import Agency, AuditLog, Role, UserScope
+from app.models import Agency, AuditLog, Department, Role, UserScope
 from app.templating import soffice_path
 from tests.conftest import login, make_pesel
 
@@ -202,14 +202,15 @@ def test_form_validation(admin):
 
 def _manager_setup(admin, make_user):
     with SessionLocal() as db:
-        db.add(Agency(name="Agencja A"))
+        db.add_all([Agency(name="Agencja A"), Department(name="Montaż")])
         db.commit()
     e = admin.post(
-        "/api/employees", json={"first_name": "Jan", "last_name": "K", "agency_id": 1, "pesel": PESEL}
+        "/api/employees",
+        json={"first_name": "Jan", "last_name": "K", "agency_id": 1, "department_id": 1, "pesel": PESEL},
     ).json()
     mgr = make_user("kierownik", Role.manager)
     with SessionLocal() as db:
-        db.add(UserScope(user_id=mgr.id, agency_id=1))
+        db.add(UserScope(user_id=mgr.id, department_id=1))
         db.commit()
     m = TestClient(app)
     login(m, "kierownik")

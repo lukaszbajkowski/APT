@@ -238,7 +238,13 @@ def test_terminate_and_restore(hr):
 
 def _employees(hr, dicts):
     a = create(
-        hr, first_name="Jan", last_name="A", agency_id=dicts["a1"], pesel=PESEL_JAN, country_id=2
+        hr,
+        first_name="Jan",
+        last_name="A",
+        agency_id=dicts["a1"],
+        department_id=dicts["d1"],
+        pesel=PESEL_JAN,
+        country_id=2,
     ).json()
     b = create(hr, first_name="Anna", last_name="B", agency_id=dicts["a2"], department_id=dicts["d1"]).json()
     c = create(hr, first_name="Ola", last_name="C", agency_id=dicts["a2"], department_id=dicts["d2"]).json()
@@ -249,12 +255,7 @@ def test_manager_sees_only_scope_and_no_personal_data(hr, make_user, dicts):
     a, b, c = _employees(hr, dicts)
     mgr = make_user("kierownik", Role.manager)
     with SessionLocal() as db:
-        db.add_all(
-            [
-                UserScope(user_id=mgr.id, agency_id=dicts["a1"]),
-                UserScope(user_id=mgr.id, department_id=dicts["d1"]),
-            ]
-        )
+        db.add(UserScope(user_id=mgr.id, department_id=dicts["d1"]))
         db.commit()
 
     m = TestClient(app)
@@ -352,11 +353,11 @@ def test_ids_endpoint_respects_filters_and_scope(hr, make_user, dicts):
     assert hr.get("/api/employees/ids", params={"agency_id": dicts["a2"]}).json() == [b["id"], c["id"]]
     mgr = make_user("kierownik", Role.manager)
     with SessionLocal() as db:
-        db.add(UserScope(user_id=mgr.id, agency_id=dicts["a1"]))
+        db.add(UserScope(user_id=mgr.id, department_id=dicts["d1"]))
         db.commit()
     m = TestClient(app)
     login(m, "kierownik")
-    assert m.get("/api/employees/ids").json() == [a["id"]]
+    assert m.get("/api/employees/ids").json() == [a["id"], b["id"]]
 
 
 def test_lookup_by_card_number(hr, client, make_user):
@@ -373,9 +374,10 @@ def test_lookup_by_card_number(hr, client, make_user):
     # kierownik bez dostępu do tego pracownika
     mgr = make_user("kier", Role.manager)
     with SessionLocal() as db:
-        db.add(Agency(name="Inna"))
+        d = Department(name="Inny")
+        db.add(d)
         db.flush()
-        db.add(UserScope(user_id=mgr.id, agency_id=1))
+        db.add(UserScope(user_id=mgr.id, department_id=d.id))
         db.commit()
     other = TestClient(client.app)
     login(other, "kier")

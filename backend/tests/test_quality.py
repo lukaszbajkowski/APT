@@ -29,7 +29,7 @@ def test_quality_manager_scope_and_reminders(client, make_user, monkeypatch):
     with SessionLocal() as db:
         db.get(User, hr.id).email = "kadry@example.com"
         db.get(User, mgr.id).email = "kier@example.com"
-        db.add(UserScope(user_id=mgr.id, agency_id=1))
+        db.add(UserScope(user_id=mgr.id, department_id=1))
         db.commit()
     m = TestClient(app)
     login(m, "kier")

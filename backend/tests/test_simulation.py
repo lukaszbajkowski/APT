@@ -7,8 +7,8 @@ from tests.conftest import login
 
 def test_admin_simulates_roles(admin_client):
     c = admin_client
-    a = c.post("/api/agencies", json={"name": "APT Sim"}).json()
-    c.post("/api/employees", json={"first_name": "Jan", "last_name": "Wewnątrz", "agency_id": a["id"]})
+    d = c.post("/api/departments", json={"name": "Wydział Sim"}).json()
+    c.post("/api/employees", json={"first_name": "Jan", "last_name": "Wewnątrz", "department_id": d["id"]})
     c.post("/api/employees", json={"first_name": "Ola", "last_name": "Poza"})
     assert c.get("/api/users").status_code == 200
 
@@ -18,8 +18,8 @@ def test_admin_simulates_roles(admin_client):
     assert c.get("/api/auth/me").json()["user"]["role"] == "hr"
     assert c.get("/api/users").status_code == 403
 
-    # kierownik z zakresem APT: widzi tylko swoich
-    c.post("/api/auth/simulate", json={"role": "manager", "agency_id": a["id"]})
+    # kierownik z zakresem wydziału: widzi tylko swoich
+    c.post("/api/auth/simulate", json={"role": "manager", "department_id": d["id"]})
     names = [x["last_name"] for x in c.get("/api/employees").json()["items"]]
     assert names == ["Wewnątrz"]
 

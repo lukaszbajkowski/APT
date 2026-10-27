@@ -12,7 +12,7 @@ Zastępuje arkusze Excela i ręczne dokumenty Word.
 |---|---|---|
 | Administrator | właściciel systemu | wszystko: użytkownicy, szablony, słowniki, dziennik, retencja |
 | Kadry | dział kadr | pełna kartoteka, karty, dokumenty, podpisy, szkolenia, badania, zgłoszenia agencji |
-| Kierownik | przełożony | tylko osoby ze swoich APT / wydziałów; PESEL i dane wrażliwe ukryte; bez pobierania dokumentów |
+| Kierownik | przełożony | tylko osoby ze swoich wydziałów; PESEL i dane wrażliwe ukryte; bez pobierania dokumentów |
 | Podgląd | audyt, ochrona | odczyt, PESEL zamaskowany |
 | Agencja | pracownik APT | tylko własne osoby: lista, kartoteka (bez PESEL i uwag), zdjęcia, badania lekarskie, zgłaszanie nowych osób |
 

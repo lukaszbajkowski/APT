@@ -164,7 +164,7 @@ testowy (przy błędzie przywraca poprzednie ustawienia). Potem:
 ## Interfejs
 
 - Strona startowa (kliknięcie w nazwę aplikacji): liczniki – aktywni, nowi, bez zdjęcia, bez PESEL, karty,
-  archiwum – ostatnio dodani i szybkie akcje. Kierownik widzi tylko swoje APT / wydziały.
+  archiwum – ostatnio dodani i szybkie akcje. Kierownik widzi tylko swoje wydziały.
 - Motyw jasny, ciemny lub systemowy (menu konta); wybór zapamiętuje przeglądarka.
 - Import z arkusza: Pracownicy → Dodaj pracownika → Importuj z arkusza.
 - Skaner kart (menu „Skaner kart”): aparat telefonu odczytuje kod QR z karty i pokazuje zdjęcie, dane
@@ -178,7 +178,7 @@ testowy (przy błędzie przywraca poprzednie ustawienia). Potem:
 |---|---|
 | Administrator | wszystko, w tym użytkownicy, szablony i dziennik zdarzeń |
 | Kadry | pełna kartoteka, karty i dokumenty |
-| Kierownik | tylko przypisane APT / wydziały |
+| Kierownik | tylko przypisane wydziały |
 | Podgląd | tylko odczyt, PESEL zamaskowany |
 
 ## Uruchomienie na własnym komputerze (Docker)

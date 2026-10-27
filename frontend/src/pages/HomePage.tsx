@@ -247,7 +247,7 @@ export function HomePage() {
       <div>
         <Title order={2}>Dzień dobry{firstName ? `, ${firstName}` : ""}</Title>
         <Text c="dimmed" size="sm">
-          {hasRole("manager") ? "Podsumowanie Twoich APT i wydziałów." : "Podsumowanie kartoteki pracowników."}
+          {hasRole("manager") ? "Podsumowanie Twoich wydziałów." : "Podsumowanie kartoteki pracowników."}
         </Text>
       </div>
 

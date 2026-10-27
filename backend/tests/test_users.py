@@ -59,26 +59,28 @@ def test_manager_scopes(admin_client):
             "username": "kierownik",
             "full_name": "Kierownik Zmiany",
             "role": "manager",
-            "scopes": {"agency_ids": [agency_id], "department_ids": [department_id]},
+            "scopes": {"department_ids": [department_id]},
         },
     )
     assert r.status_code == 201, r.text
     user = r.json()["user"]
-    assert len(user["scopes"]) == 2
+    assert user["scopes"] == [{"agency_id": None, "department_id": department_id}]
 
     # Ta sama lista jeszcze raz: bez błędu UNIQUE i bez zmian
-    r = admin_client.patch(
-        f"/api/users/{user['id']}",
-        json={"scopes": {"agency_ids": [agency_id], "department_ids": [department_id]}},
-    )
+    r = admin_client.patch(f"/api/users/{user['id']}", json={"scopes": {"department_ids": [department_id]}})
     assert r.status_code == 200, r.text
-    assert len(r.json()["scopes"]) == 2
+    assert len(r.json()["scopes"]) == 1
+
+    # Kierownik ma zakres tylko wydziałowy – APT jest odrzucane
+    r = admin_client.patch(f"/api/users/{user['id']}", json={"scopes": {"agency_ids": [agency_id]}})
+    assert r.status_code == 400
 
     # Usunięcie wydziału
-    r = admin_client.patch(f"/api/users/{user['id']}", json={"scopes": {"agency_ids": [agency_id]}})
-    assert r.json()["scopes"] == [{"agency_id": agency_id, "department_id": None}]
+    r = admin_client.patch(f"/api/users/{user['id']}", json={"scopes": {"department_ids": []}})
+    assert r.json()["scopes"] == []
 
     # Zmiana roli na inną niż kierownik czyści zakres
+    r = admin_client.patch(f"/api/users/{user['id']}", json={"scopes": {"department_ids": [department_id]}})
     r = admin_client.patch(f"/api/users/{user['id']}", json={"role": "viewer"})
     assert r.json()["scopes"] == []
 

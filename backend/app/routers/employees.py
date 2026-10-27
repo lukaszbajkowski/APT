@@ -2,7 +2,7 @@
 
 Uprawnienia (patrz specyfikacja, sekcja „Role i uprawnienia”):
 - Administrator, Kadry: wszyscy pracownicy, pełna edycja, odczyt PESEL (logowany).
-- Kierownik: tylko pracownicy z przypisanych APT / wydziałów; edycja tylko stanowiska i uwag;
+- Kierownik: tylko pracownicy z przypisanych wydziałów; edycja tylko stanowiska i uwag;
   zamiast daty urodzenia widzi wiek; widzi obywatelstwo; PESEL niedostępny.
 - Podgląd: wszyscy, tylko odczyt, jak kierownik bez edycji.
 """
@@ -218,19 +218,13 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
 
 
 def scope_condition(user: User) -> Any:
-    """Warunek SQL ograniczający kierownika do jego APT / wydziałów, a agencję – do jej ludzi."""
+    """Warunek SQL ograniczający kierownika do jego wydziałów, a agencję – do jej APT."""
     if user.role == Role.agency:
         return Employee.agency_id == user.agency_id if user.agency_id else false()
     if user.role != Role.manager:
         return None
-    agency_ids = [s.agency_id for s in user.scopes if s.agency_id is not None]
     department_ids = [s.department_id for s in user.scopes if s.department_id is not None]
-    parts = []
-    if agency_ids:
-        parts.append(Employee.agency_id.in_(agency_ids))
-    if department_ids:
-        parts.append(Employee.department_id.in_(department_ids))
-    return or_(*parts) if parts else false()
+    return Employee.department_id.in_(department_ids) if department_ids else false()
 
 
 def apply_scope(q: Select, user: User) -> Select:

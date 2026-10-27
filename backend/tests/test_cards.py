@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.cards import CARD_H, CARD_W
 from app.db import SessionLocal
 from app.main import app
-from app.models import Agency, AuditLog, Role, UserScope
+from app.models import Agency, AuditLog, Department, Role, UserScope
 from tests.conftest import login
 
 
@@ -19,15 +19,27 @@ def setup(client, make_user):
     login(client, "kadry")
     with SessionLocal() as db:
         a1, a2 = Agency(name="Agencja A"), Agency(name="Agencja B")
-        db.add_all([a1, a2])
+        d1, d2 = Department(name="Montaż"), Department(name="Magazyn")
+        db.add_all([a1, a2, d1, d2])
         db.commit()
-        ids = {"a1": a1.id, "a2": a2.id}
+        ids = {"a1": a1.id, "a2": a2.id, "d1": d1.id, "d2": d2.id}
     e1 = client.post(
-        "/api/employees", json={"first_name": "Jan", "last_name": "Kowalski", "agency_id": ids["a1"]}
+        "/api/employees",
+        json={
+            "first_name": "Jan",
+            "last_name": "Kowalski",
+            "agency_id": ids["a1"],
+            "department_id": ids["d1"],
+        },
     ).json()
     e2 = client.post(
         "/api/employees",
-        json={"first_name": "Maria", "last_name": "Wiśniewska-Żółkiewska", "agency_id": ids["a2"]},
+        json={
+            "first_name": "Maria",
+            "last_name": "Wiśniewska-Żółkiewska",
+            "agency_id": ids["a2"],
+            "department_id": ids["d2"],
+        },
     ).json()
     buf = io.BytesIO()
     Image.new("RGB", (900, 1200), (180, 120, 90)).save(buf, "JPEG")
@@ -77,7 +89,7 @@ def test_manager_prints_only_own_scope(setup, make_user):
     c, e1, e2, ids = setup
     mgr = make_user("kierownik", Role.manager)
     with SessionLocal() as db:
-        db.add(UserScope(user_id=mgr.id, agency_id=ids["a1"]))
+        db.add(UserScope(user_id=mgr.id, department_id=ids["d1"]))
         db.commit()
     m = TestClient(app)
     login(m, "kierownik")

@@ -9,6 +9,7 @@ os.environ.setdefault("APT_SECRET_KEY", "test-secret")
 os.environ.setdefault("APT_DATA_KEY", "re3IC_kTb6y861Lgk6PnpjvG1Bn7WvZf0iOgw4oHYHE")
 import tempfile  # noqa: E402
 
+os.environ.setdefault("APT_TSA_URL", "")  # testy nie łączą się z usługą czasu
 os.environ["APT_DATA_DIR"] = tempfile.mkdtemp(prefix="apt-test-")
 
 from collections.abc import Callable, Iterator  # noqa: E402

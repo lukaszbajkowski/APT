@@ -20,6 +20,7 @@ i działają na produkcji po `aptid-aktualizuj`. Migracje do `0020_agencje`.
 | 11. Agencje pracy | zestawienia miesięczne, konto agencji, badania, zgłoszenia | 0020 | ✅ |
 | 12. Podpisy – zabezpieczenia | potwierdzenie blokadą urządzenia (WebAuthn), weryfikacja podpisu kwalifikowanego, tryb ścisły szablonu | 0022–0023 | ✅ |
 | 13. Szyfrowanie plików | AES-256-GCM dla dokumentów, podpisów, skanów, badań, zdjęć; migracja przy starcie | – | ✅ |
+| 14. Znacznik czasu | RFC 3161 (FreeTSA) dla podpisanych dokumentów, token w dzienniku | – | ✅ |
 
 ## Zasady pracy nad kodem
 

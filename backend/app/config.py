@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     sign_link_hours: int = 72
     # kraje, których krajowe listy zaufania (kwalifikowani dostawcy podpisu) sprawdzamy – kody po przecinku
     trust_countries: str = "PL"
+    # Zaufany znacznik czasu (RFC 3161). Pusty adres wyłącza funkcję. FreeTSA: darmowy, niekwalifikowany.
+    tsa_url: str = "https://freetsa.org/tsr"
+    tsa_timeout: float = 10.0
     # limit żądań na minutę z jednego adresu IP do publicznych adresów podpisu (0 = bez limitu)
     sign_rate_get: int = 300
     sign_rate_post: int = 40

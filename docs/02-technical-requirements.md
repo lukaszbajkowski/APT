@@ -91,6 +91,12 @@ CRL/OCSP ani podpisu XML samej listy; XAdES (XML) nie jest weryfikowany.
   dopisywania) trafia wpis `document_sealed` ze skrótami SHA-256 (oryginał, obraz podpisu, wgrany plik, plik końcowy).
   Okno „Podpis” porównuje bieżący plik z ostatnią pieczęcią i ostrzega, gdy plik zmieniono poza aplikacją.
 - Blokada wiersza (`SELECT … FOR UPDATE`) tuż przed zapisem podpisu: jeden podpis na jeden link, także przy równoległych żądaniach.
+- Zaufany znacznik czasu (`app/timestamp.py`, RFC 3161): po podpisaniu (i wgraniu skanu) aplikacja w tle wysyła do usługi
+  czasu (domyślnie FreeTSA.org, `APT_TSA_URL`, pusty = wyłączone) wyłącznie skrót SHA-256 podpisanego pliku. Odpowiedź jest
+  sprawdzana (status, zgodność skrótu i nonce, podpis usługi, czas w granicach 10 min od zegara serwera) i trafia jako token do
+  dziennika (`document_timestamped`, tylko do dopisywania). Awaria usługi nie blokuje podpisu; brakujące znaczniki uzupełnia
+  zadanie dzienne (`app.cli stamp-pending`). Zaufanie do urzędu usługi: certyfikat FreeTSA pobierany jednorazowo po HTTPS do
+  `data/tsa-ca.pem`. Token do pobrania w oknie „Podpis” (.tsr). Znacznik darmowy nie jest kwalifikowany w rozumieniu eIDAS.
 - Tryb ścisły szablonu (`templates.strict_pdf`, migracja 0023, opcja przy edycji szablonu): wgrany podpisany PDF musi
   zaczynać się od pobranego dokumentu bajt w bajt (podpis dopisany na końcu); inaczej odrzucenie. Domyślnie wyłączony,
   bo narzędzia, które przepisują cały plik, dawałyby odrzucenia legalnych podpisów.
@@ -113,7 +119,7 @@ dla kierownika; zrzutów ekranu nie da się zablokować w przeglądarce całkowi
 ## Konfiguracja (zmienne środowiskowe)
 
 `APT_DATABASE_URL`, `APT_SECRET_KEY`, `APT_DATA_KEY`, `APT_DATA_DIR`, `APT_COOKIE_SECURE`, `APT_DOMAIN`,
-`APT_RETENTION_YEARS`, ustawienia SMTP (mail-setup.sh), opcjonalnie SMSAPI (token wpisywany ręcznie na serwerze).
+`APT_RETENTION_YEARS`, `APT_TSA_URL`, ustawienia SMTP (mail-setup.sh), opcjonalnie SMSAPI (token wpisywany ręcznie na serwerze).
 
 ## Wdrożenie i operacje
 

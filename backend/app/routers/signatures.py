@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import device, mailer, notify, qualified, signing, sms, storage, templating, trustlist
+from app import timestamp as tsa
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
@@ -198,6 +199,15 @@ class SignaturesOut(BaseModel):
     sms_enabled: bool
     email_enabled: bool
     integrity: str = "unknown"  # ok | mismatch | unknown
+    timestamp: dict[str, Any] | None = None  # zaufany znacznik czasu bieżącego pliku
+    timestamp_enabled: bool = False
+
+
+def _timestamp_info(db: Session, doc: GeneratedDocument) -> dict[str, Any] | None:
+    try:
+        return tsa.status(db, str(doc.id), _signed_hash(db, doc))
+    except (OSError, storage.FileDecryptError):
+        return None
 
 
 def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesOut:
@@ -238,6 +248,8 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
         sms_enabled=sms.enabled(),
         email_enabled=mailer.enabled() or mailer.outbox is not None,
         integrity=_integrity(db, doc),
+        timestamp=_timestamp_info(db, doc),
+        timestamp_enabled=tsa.enabled(),
     )
 
 
@@ -486,6 +498,7 @@ async def upload_scan(
         details={"number": format_number(e.number), "document": doc.template_name},
     )
     db.commit()
+    tsa.schedule(str(doc.id))
     return _state(db, doc, ctx.user)
 
 
@@ -544,6 +557,18 @@ def signed_file(db: Session, doc: GeneratedDocument) -> tuple[Path, str, str] | 
         if ext in SCAN_MEDIA and path.exists():
             return path, ext, SCAN_MEDIA[ext]
     return None
+
+
+@router.get("/documents/{document_id}/timestamp")
+def download_timestamp(document_id: uuid.UUID, ctx: DocAuth, db: DbSession) -> Response:
+    """Token znacznika czasu (RFC 3161, .tsr) bieżącego podpisanego pliku – do niezależnej weryfikacji."""
+    forbid_download(ctx.user)
+    doc, e = _get(db, ctx, document_id)
+    found = tsa.token_for(db, str(doc.id), _signed_hash(db, doc))
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak znacznika czasu dla tego pliku.")
+    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}_znacznik") + ".tsr"
+    return _file_response(found[0], name, "application/timestamp-reply")
 
 
 @router.get("/documents/{document_id}/signed")
@@ -799,6 +824,7 @@ def _complete(
     )
     _seal(db, request, doc, e, "signed", username=name, evidence={"role": sig.role, **(evidence or {})})
     db.commit()
+    tsa.schedule(str(doc.id))
 
 
 @router.post("/sign/{token}")

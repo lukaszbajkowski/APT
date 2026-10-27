@@ -313,3 +313,7 @@ Dokumentacja API: http://localhost:8000/api/docs
   „kwalifikowany” i wystawca z unijnej listy zaufania). Wynik widać w oknie „Podpis” i na stronie potwierdzenia.
   Aplikacja nie sprawdza unieważnienia certyfikatu ani podpisów XML. Listę zaufania odświeża cron w poniedziałki
   (ręcznie: `docker compose exec api python -m app.cli refresh-trustlist`); kraje: `APT_TRUST_COUNTRIES` (domyślnie `PL`).
+- **Zaufany znacznik czasu:** po podpisaniu skrót pliku (nie treść) jest wysyłany do FreeTSA.org (RFC 3161), a sprawdzony
+  token zapisuje się w dzienniku i można go pobrać w oknie „Podpis” (.tsr). To niezależny dowód daty i godziny, ale
+  **niekwalifikowany** (bez domniemania prawnego z eIDAS). Adres: `APT_TSA_URL` (pusty = wyłączone); zaległe znaczniki dodaje
+  zadanie dzienne (ręcznie: `docker compose exec api python -m app.cli stamp-pending`).

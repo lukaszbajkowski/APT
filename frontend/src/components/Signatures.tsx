@@ -65,6 +65,8 @@ interface SignaturesState {
   sms_enabled: boolean;
   email_enabled: boolean;
   integrity: "ok" | "mismatch" | "unknown";
+  timestamp: { gen_time: string; tsa: string | null; tsa_url: string | null; trusted: boolean | null } | null;
+  timestamp_enabled: boolean;
 }
 interface RequestResult {
   id: number;
@@ -304,6 +306,22 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
             <Alert color="teal" icon={<IconCheck />}>
               Dokument podpisany {formatDateTime(st.signed_at)}.
               {st.integrity === "ok" && " Plik zgodny z dziennikiem zdarzeń."}
+              {st.timestamp && (
+                <>
+                  <br />
+                  Zaufany znacznik czasu: {formatDateTime(st.timestamp.gen_time)} ({st.timestamp.tsa ?? "usługa czasu"}
+                  {st.timestamp.trusted === false ? ", urząd niezaufany" : ""}; niekwalifikowany).{" "}
+                  {st.can_download && (
+                    <a href={`/api/documents/${doc.id}/timestamp`}>Pobierz znacznik (.tsr)</a>
+                  )}
+                </>
+              )}
+              {!st.timestamp && st.timestamp_enabled && (
+                <>
+                  <br />
+                  Znacznik czasu: oczekuje – zostanie dodany automatycznie.
+                </>
+              )}
             </Alert>
           )}
           {st.roles.length === 0 && (

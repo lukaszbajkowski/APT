@@ -127,6 +127,18 @@ def refresh_trustlist() -> int:
     return 0
 
 
+def stamp_pending() -> int:
+    """Dodaje zaufane znaczniki czasu do podpisanych dokumentów, które ich jeszcze nie mają."""
+    from app import timestamp
+
+    if not timestamp.enabled():
+        print("Znaczniki czasu wyłączone (APT_TSA_URL jest pusty).")
+        return 0
+    done, failed = timestamp.stamp_pending(limit=100)
+    print(f"Znaczniki czasu: dodano {done}, nieudane {failed}.")
+    return 0
+
+
 def encrypt_files() -> int:
     """Szyfruje pliki z danymi osobowymi na dysku (dokumenty, podpisy, skany, badania, zdjęcia)."""
     from app import storage
@@ -263,6 +275,7 @@ def notify_daily() -> int:
         applied = lifecycle.apply_due_changes(db)
     if applied:
         print(f"Wprowadzono zaplanowane zmiany: {applied}.")
+    stamp_pending()  # uzupełnia znaczniki czasu, których nie udało się dodać od razu
     local = datetime.now(ZoneInfo("Europe/Warsaw"))
     if local.weekday() == 0:
         quality_reminders()
@@ -298,6 +311,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
+    sub.add_parser("stamp-pending", help="Dodaj zaufane znaczniki czasu do podpisanych dokumentów")
     sub.add_parser("encrypt-files", help="Zaszyfruj pliki z danymi osobowymi na dysku (idempotentne)")
     sub.add_parser("refresh-trustlist", help="Pobierz unijną listę zaufania do weryfikacji podpisów")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
@@ -317,6 +331,8 @@ def main(argv: list[str] | None = None) -> int:
         return training_reminders()
     if args.command == "agency-reports":
         return agency_reports()
+    if args.command == "stamp-pending":
+        return stamp_pending()
     if args.command == "encrypt-files":
         return encrypt_files()
     if args.command == "refresh-trustlist":

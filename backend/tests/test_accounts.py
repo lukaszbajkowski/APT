@@ -281,6 +281,25 @@ def test_cannot_remove_last_passkey_without_password(hr, emp):
     assert phone.delete(f"/api/passkeys/{keys[0]['id']}").status_code == 400
 
 
+def test_active_account_cannot_be_invited_or_reactivated(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    token = _invite(hr, emp)
+    other_token = _invite(hr, emp)  # nowe zaproszenie unieważnia poprzednie
+    assert token != other_token
+    phone = TestClient(app)
+    assert _activate(phone, other_token, FakeAuthenticator()).status_code == 200
+    # konto aktywne: nowe zaproszenie zablokowane
+    r = hr.post(f"/api/employees/{emp}/account/invite", json={})
+    assert r.status_code == 409
+    # po resecie dostępu można zaprosić ponownie, a stary klucz przestaje działać
+    assert hr.post(f"/api/employees/{emp}/account/reset").status_code == 200
+    assert hr.get(f"/api/employees/{emp}/account").json()["has_passkey"] is False
+    assert hr.post(f"/api/employees/{emp}/account/invite", json={}).status_code == 200
+
+
 def test_users_screen_cannot_create_employee(admin_client):
     r = admin_client.post(
         "/api/users",

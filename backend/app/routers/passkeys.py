@@ -27,7 +27,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
-from app import mailer, notify
+from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import Auth, DbSession, StaffAuth, utcnow
@@ -418,6 +418,13 @@ def invite_email(e: Employee, link: str) -> Email:
     )
 
 
+def _has_access(db: Session, user: User) -> bool:
+    """Czy konto jest już aktywowane (ma klucz dostępu albo hasło)."""
+    return user.has_password or (
+        db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == user.id)) is not None
+    )
+
+
 @router.post("/employees/{employee_id}/account/invite", response_model=InviteOut)
 def invite_account(
     employee_id: int, body: InviteIn, ctx: StaffAuth, request: Request, db: DbSession
@@ -438,8 +445,14 @@ def invite_account(
         )
         db.add(user)
         db.flush()
-    elif not user.is_active:
-        user.is_active = True
+    else:
+        if not user.is_active:
+            raise HTTPException(status.HTTP_409_CONFLICT, detail="Konto jest wyłączone. Najpierw je włącz.")
+        if _has_access(db, user):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail="Konto jest już aktywne. Jeśli pracownik utracił dostęp, użyj „Zresetuj dostęp”.",
+            )
     now = utcnow()
     db.execute(
         PasswordToken.__table__.update()
@@ -468,6 +481,32 @@ def invite_account(
     )
     db.commit()
     return InviteOut(link=link, sent=bool(sent), account=_account_out(db, e))
+
+
+@router.post("/employees/{employee_id}/account/reset", response_model=AccountOut)
+def reset_account(employee_id: int, ctx: StaffAuth, request: Request, db: DbSession) -> AccountOut:
+    """Utrata telefonu: usuwa klucze, hasło i kody, kończy sesje. Potem można wysłać nowe zaproszenie."""
+    e = _employee_or_404(db, employee_id)
+    user = db.scalar(select(User).where(User.employee_id == e.id))
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Pracownik nie ma konta.")
+    db.execute(WebauthnCredential.__table__.delete().where(WebauthnCredential.user_id == user.id))
+    user.password_hash = NO_PASSWORD
+    totp.clear(user)
+    now = utcnow()
+    db.execute(
+        PasswordToken.__table__.update()
+        .where(PasswordToken.user_id == user.id, PasswordToken.used_at.is_(None))
+        .values(used_at=now)
+    )
+    db.execute(
+        UserSession.__table__.update()
+        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    audit(db, request, "employee_account_reset", user=ctx.user, entity_type="employee", entity_id=e.id)
+    db.commit()
+    return _account_out(db, e)
 
 
 class ActiveIn(BaseModel):
@@ -508,6 +547,8 @@ def _invite(db: Session, token: str) -> tuple[PasswordToken, User, Employee]:
     t = notify.find_token(db, token, utcnow())
     if t is None or t.purpose != INVITE_PURPOSE or t.user.employee_id is None:
         raise HTTPException(status.HTTP_410_GONE, detail="Zaproszenie wygasło albo zostało już wykorzystane.")
+    if _has_access(db, t.user):  # konto już aktywowane – stare zaproszenie nie może go przejąć
+        raise HTTPException(status.HTTP_410_GONE, detail="To konto jest już aktywne.")
     return t, t.user, db.get(Employee, t.user.employee_id)
 
 

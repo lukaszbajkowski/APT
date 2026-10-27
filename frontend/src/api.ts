@@ -420,6 +420,7 @@ export const ACTION_LABELS: Record<string, string> = {
   employee_account_activated: "Aktywacja konta pracownika",
   employee_account_disabled: "Wyłączenie konta pracownika",
   employee_account_enabled: "Włączenie konta pracownika",
+  employee_account_reset: "Reset dostępu konta pracownika",
   mfa_disabled: "Wyłączenie logowania dwuetapowego",
   mfa_reset: "Reset logowania dwuetapowego",
   mfa_failed: "Błędny kod logowania dwuetapowego",

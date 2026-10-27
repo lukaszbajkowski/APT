@@ -39,6 +39,15 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
     },
     onError: (e) => setError(errorText(e)),
   });
+  const reset = useMutation({
+    mutationFn: () => api<Account>(`/employees/${employeeId}/account/reset`, { method: "POST" }),
+    onSuccess: (a) => {
+      setError(null);
+      setResult(null);
+      qc.setQueryData(key, a);
+    },
+    onError: (e) => setError(errorText(e)),
+  });
   const toggle = useMutation({
     mutationFn: (active: boolean) => api<Account>(`/employees/${employeeId}/account/active`, { method: "POST", body: { active } }),
     onSuccess: (a) => {
@@ -49,6 +58,7 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
   });
 
   const a = acc.data;
+  const activated = !!a && (a.has_passkey || a.has_password);
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="xs">
@@ -87,9 +97,22 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
           onChange={(e) => setEmail(e.currentTarget.value)}
         />
         <Group>
-          <Button loading={invite.isPending} disabled={a?.exists && !a.active} onClick={() => invite.mutate()}>
+          <Button loading={invite.isPending} disabled={activated || (a?.exists && !a.active)} onClick={() => invite.mutate()}>
             {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
           </Button>
+          {activated && (
+            <Button
+              variant="light"
+              color="orange"
+              loading={reset.isPending}
+              onClick={() =>
+                window.confirm("Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.") &&
+                reset.mutate()
+              }
+            >
+              Zresetuj dostęp (utrata telefonu)
+            </Button>
+          )}
           {a?.exists && (
             <Button
               variant="light"

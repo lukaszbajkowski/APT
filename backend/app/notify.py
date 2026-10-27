@@ -30,9 +30,15 @@ def create_token(db: Session, user: User, purpose: str, now: datetime) -> str:
     return token
 
 
-def find_token(db: Session, token: str, now: datetime) -> PasswordToken | None:
+def find_token(
+    db: Session, token: str, now: datetime, *, employee_invite: bool = False
+) -> PasswordToken | None:
+    """Jednorazowy link. Zaproszenia pracowników (klucz dostępu) i linki do haseł to osobne światy:
+    jeden rodzaj nigdy nie otwiera drugiego."""
     t = db.scalar(select(PasswordToken).where(PasswordToken.token_hash == token_hash(token)))
     if t is None or t.used_at is not None or t.expires_at <= now or not t.user.is_active:
+        return None
+    if (t.purpose == "empinvite") != employee_invite:
         return None
     return t
 

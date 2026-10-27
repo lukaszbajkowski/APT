@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0025
+backend/alembic/    migracje 0001–0026
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
@@ -71,14 +71,20 @@ staje się polami formularza. PDF przez LibreOffice.
 podpis zaufany. Wynik: `{id}_signed.pdf` z dołączoną stroną potwierdzenia. `signed_file()` wybiera plik w kolejności:
 zaufany PDF/XML → `_signed.pdf` → skan. `pypdfium2` z `init_forms()` rysuje pola formularza i podpisy gov.pl.
 
-**Konta pracowników (`routers/passkeys.py`).** Kadry zapraszają pracownika (login `pr<numer>`, link ważny 7 dni,
-e-mail niezapisywany – link można też przekazać inaczej). Pracownik potwierdza datę urodzenia i rejestruje klucz
-dostępu (WebAuthn, weryfikacja użytkownika wymagana, poświadczenie „discoverable”, licznik użyć sprawdzany), a gdy
-urządzenie nie obsługuje kluczy – ustawia hasło i musi skonfigurować kod z aplikacji. Logowanie kluczem nie wymaga
-loginu; weryfikacja użytkownika na urządzeniu zastępuje drugi składnik. Sesja roli `employee` ma dostęp wyłącznie do
-`/api/auth/`, `/api/passkeys` i `/api/me/` (bramka w `deps._load_session`). Kadry widzą status konta w karcie
-pracownika z kluczem może w „Moje konto” ustawić zapasowe logowanie (hasło + kod z aplikacji, `/api/me/backup/*`; zmianę potwierdza świeżym kluczem dostępu) albo je wyłączyć. Kadry widzą status konta w karcie pracownika (lista wszystkich kont: „Konta pracowników”, `GET /api/employee-accounts`), mogą ponowić zaproszenie i wyłączyć konto (kończy sesje). Konta admina i kadr przed dodaniem klucza muszą
-ponownie podać hasło i kod z aplikacji, a po dodaniu dostają e-mail; hasło z kodem zostaje zapasem.
+**Konta pracowników (`routers/passkeys.py`).** Pracownik loguje się wyłącznie kluczem dostępu (WebAuthn) – bez hasła
+i bez kodu 2FA; klucz z weryfikacją użytkownika (Face ID / odcisk / PIN) sam jest pełnym uwierzytelnieniem.
+Kadry zapraszają pracownika (login `pr<numer>`, link ważny 7 dni, e-mail opcjonalny i niezapisywany – link można
+przekazać inaczej). Pracownik potwierdza datę urodzenia i tworzy klucz (poświadczenie „discoverable”, weryfikacja
+użytkownika wymagana, licznik użyć sprawdzany). Wyzwanie WebAuthn pobierane jest wcześniej, żeby okno klucza
+otwierało się od razu po dotknięciu (wymóg Safari); okno wbudowane w komunikator jest wykrywane z instrukcją
+otwarcia w przeglądarce. Odporność na utratę telefonu: kilka kluczy (na każdym urządzeniu; ostatniego klucza nie
+można usunąć) oraz „Zresetuj dostęp” u kadr (usuwa klucze, kończy sesje, potem nowe zaproszenie, opcjonalny e-mail).
+Aktywnego konta nie można zaprosić ponownie; link zaproszenia i link resetu hasła są rozdzielone
+(`notify.find_token(employee_invite=…)`), logowanie hasłem dla roli `employee` jest zablokowane. Sesja roli
+`employee` ma dostęp wyłącznie do `/api/auth/`, `/api/passkeys` i `/api/me/` (bramka w `deps._load_session`).
+Kadry widzą konta w „Konta pracowników” (`GET /api/employee-accounts`) i w karcie pracownika. Konta admina i kadr
+przed dodaniem klucza muszą ponownie podać hasło i kod z aplikacji, a po dodaniu dostają e-mail; hasło z kodem
+zostaje ich zapasem. Kod 2FA ma wystawcę = domenę aplikacji.
 
 **Potwierdzenie blokadą urządzenia (WebAuthn, `app/device.py`).** Kadry mogą przy prośbie o podpis zaznaczyć „Wymagaj
 potwierdzenia blokadą telefonu”. Strona podpisu prosi wtedy przeglądarkę o utworzenie poświadczenia z

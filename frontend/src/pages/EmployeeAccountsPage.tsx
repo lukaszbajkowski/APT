@@ -13,7 +13,6 @@ interface Row {
   username: string;
   status: "pending" | "active" | "disabled";
   has_passkey: boolean;
-  has_password: boolean;
   invite_pending: boolean;
   last_login_at: string | null;
 }
@@ -97,7 +96,7 @@ export function EmployeeAccountsPage() {
                     )}
                   </Table.Td>
                   <Table.Td>
-                    {[r.has_passkey && "klucz dostępu", r.has_password && "hasło + kod"].filter(Boolean).join(", ") || "—"}
+                    {r.has_passkey ? "klucz dostępu" : "—"}
                   </Table.Td>
                   <Table.Td>{r.last_login_at ? formatDateTime(r.last_login_at) : "—"}</Table.Td>
                 </Table.Tr>

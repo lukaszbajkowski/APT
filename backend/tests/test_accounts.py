@@ -226,27 +226,6 @@ def test_employee_session_limited_to_own_paths(hr, emp):
     assert phone.get("/api/auth/me").status_code == 200
 
 
-def test_password_fallback_requires_totp(hr, emp):
-    from fastapi.testclient import TestClient
-
-    from app.main import app
-
-    token = _invite(hr, emp)
-    get_settings().mfa_enforce = True
-    try:
-        phone = TestClient(app)
-        r = phone.post(
-            "/api/auth/invite/password",
-            json={"token": token, "birth_date": BORN.isoformat(), "password": PASSWORD},
-        )
-        assert r.status_code == 200, r.text
-        assert r.json()["mfa_setup_required"] is True
-        phone.headers["X-CSRF-Token"] = r.json()["csrf_token"]
-        assert phone.get("/api/me/employee").status_code == 403  # najpierw kod z aplikacji
-    finally:
-        get_settings().mfa_enforce = False
-
-
 def test_disable_account_blocks_login_and_sessions(hr, emp):
     from fastapi.testclient import TestClient
 
@@ -348,64 +327,25 @@ def test_accounts_list_forbidden_for_manager(client, make_user):
     assert client.get("/api/employee-accounts").status_code == 403
 
 
-def test_backup_login_needs_fresh_passkey(hr, emp):
+def test_employee_cannot_login_with_password_or_reset_link(hr, emp, client, make_user):
     from fastapi.testclient import TestClient
 
+    from app.db import SessionLocal
     from app.main import app
+    from app.models import User
+    from app.security import hash_password
 
     token = _invite(hr, emp)
-    phone = TestClient(app)
-    auth = FakeAuthenticator()
-    r = _activate(phone, token, auth)
-    phone.headers["X-CSRF-Token"] = r.json()["csrf_token"]
-
-    o = phone.post("/api/me/backup/options").json()
-    # bez prawidłowego potwierdzenia kluczem – odrzucone
-    bad = phone.post(
-        "/api/me/backup/password",
-        json={
-            "password": PASSWORD,
-            "challenge_id": o["challenge_id"],
-            "credential": FakeAuthenticator().get(o["options"]),
-        },
-    )
-    assert bad.status_code == 400
-    o = phone.post("/api/me/backup/options").json()
-    ok = phone.post(
-        "/api/me/backup/password",
-        json={"password": PASSWORD, "challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
-    )
-    assert ok.status_code == 200 and ok.json()["has_password"] is True
-    assert hr.get(f"/api/employees/{emp}/account").json()["has_password"] is True
-
-    # wyłączenie zapasu
-    o = phone.post("/api/me/backup/options").json()
-    off = phone.post(
-        "/api/me/backup/remove",
-        json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
-    )
-    assert off.status_code == 200 and off.json()["has_password"] is False
-
-
-def test_passkey_session_not_forced_to_totp(hr, emp):
-    from fastapi.testclient import TestClient
-
-    from app.main import app
-
-    token = _invite(hr, emp)
-    phone = TestClient(app)
-    auth = FakeAuthenticator()
-    r = _activate(phone, token, auth)
-    phone.headers["X-CSRF-Token"] = r.json()["csrf_token"]
-    o = phone.post("/api/me/backup/options").json()
-    phone.post(
-        "/api/me/backup/password",
-        json={"password": PASSWORD, "challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
-    )
-    get_settings().mfa_enforce = True
-    try:
-        # zalogowany kluczem: dostęp do własnych danych bez wymuszania kodu
-        assert phone.get("/api/me/employee").status_code == 200
-        assert phone.get("/api/auth/me").json()["mfa_setup_required"] is False
-    finally:
-        get_settings().mfa_enforce = False
+    # link zaproszenia nie ustawia hasła (to nie link resetu)
+    c = TestClient(app)
+    r = c.post("/api/auth/password-reset/confirm", json={"token": token, "new_password": PASSWORD})
+    assert r.status_code == 400
+    assert c.get("/api/auth/password-reset/check", params={"token": token}).json()["valid"] is False
+    # nawet gdyby konto miało hasło, hasłem nie zaloguje się
+    with SessionLocal() as db:
+        u = db.query(User).filter(User.employee_id == emp).one()
+        u.password_hash = hash_password(PASSWORD)
+        username = u.username
+        db.commit()
+    r = c.post("/api/auth/login", json={"username": username, "password": PASSWORD})
+    assert r.status_code == 401

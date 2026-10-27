@@ -153,13 +153,15 @@ export function AppLayout() {
                 />
               </Box>
               <Menu.Divider />
-              <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
-                Logowanie dwuetapowe
-              </Menu.Item>
-              {(!hasRole("employee") || me?.has_password) && (
-                <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
-                  Zmień hasło
-                </Menu.Item>
+              {!hasRole("employee") && (
+                <>
+                  <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
+                    Logowanie dwuetapowe
+                  </Menu.Item>
+                  <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
+                    Zmień hasło
+                  </Menu.Item>
+                </>
               )}
               <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate("/moje-konto")}>
                 Klucze dostępu

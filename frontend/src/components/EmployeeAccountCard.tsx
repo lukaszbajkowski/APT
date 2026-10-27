@@ -10,7 +10,6 @@ interface Account {
   username: string | null;
   active: boolean;
   has_passkey: boolean;
-  has_password: boolean;
   last_login_at: string | null;
   invite_pending: boolean;
 }
@@ -58,14 +57,14 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
   });
 
   const a = acc.data;
-  const activated = !!a && (a.has_passkey || a.has_password);
+  const activated = !!a && a.has_passkey;
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="xs">
         <Title order={4}>Konto pracownika</Title>
         {a?.exists && (
-          <Badge color={a.active ? (a.has_passkey || a.has_password ? "green" : "yellow") : "gray"}>
-            {!a.active ? "wyłączone" : a.has_passkey || a.has_password ? "aktywne" : "czeka na aktywację"}
+          <Badge color={a.active ? (a.has_passkey ? "green" : "yellow") : "gray"}>
+            {!a.active ? "wyłączone" : a.has_passkey ? "aktywne" : "czeka na aktywację"}
           </Badge>
         )}
       </Group>
@@ -78,7 +77,6 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
         <Text size="sm" c="dimmed" mb="sm">
           Login: {a.username}
           {a.has_passkey ? " · klucz dostępu" : ""}
-          {a.has_password ? " · hasło + kod z aplikacji" : ""}
           {a.last_login_at ? ` · ostatnie logowanie ${formatDateTime(a.last_login_at)}` : ""}
           {a.invite_pending ? " · zaproszenie wysłane" : ""}
         </Text>

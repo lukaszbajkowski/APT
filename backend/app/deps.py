@@ -142,10 +142,8 @@ def get_auth_allow_mfa_setup(request: Request, db: DbSession) -> AuthContext:
 
 
 def mfa_setup_pending(user: User, sess: UserSession) -> bool:
-    """Czy trzeba skonfigurować kod z aplikacji. Pracownik zalogowany kluczem jest zwolniony."""
-    if not user.mfa_required or user.mfa_enabled:
-        return False
-    return not (user.role == Role.employee and sess.auth_method == "passkey")
+    """Czy trzeba jeszcze skonfigurować kod z aplikacji (admin, kadry)."""
+    return user.mfa_required and not user.mfa_enabled
 
 
 def get_auth(request: Request, db: DbSession) -> AuthContext:

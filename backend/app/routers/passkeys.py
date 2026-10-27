@@ -30,7 +30,7 @@ from webauthn.helpers.structs import (
 from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
-from app.deps import Auth, AuthMfaSetup, DbSession, StaffAuth, utcnow
+from app.deps import Auth, DbSession, StaffAuth, utcnow
 from app.device import _b64, _unb64, rp_and_origin
 from app.emails import Email
 from app.models import (
@@ -45,7 +45,7 @@ from app.models import (
 )
 from app.routers.auth import MFA_PENDING_MINUTES, _check_totp, _me, _register_failure
 from app.schemas import MeOut
-from app.security import hash_password, new_token, password_problems, token_hash, verify_password
+from app.security import new_token, token_hash, verify_password
 
 router = APIRouter(prefix="/api", tags=["passkeys"])
 
@@ -330,10 +330,10 @@ def delete_passkey(passkey_id: int, ctx: Auth, request: Request, db: DbSession) 
             WebauthnCredential.user_id == user.id, WebauthnCredential.id != cred.id
         )
     )
-    if user.role == Role.employee and others is None and not user.has_password:
+    if user.role == Role.employee and others is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail="To jedyny sposób logowania. Dodaj najpierw drugi klucz albo ustaw hasło.",
+            detail="To jedyny klucz tego konta. Dodaj najpierw drugi klucz.",
         )
     db.delete(cred)
     audit(db, request, "passkey_removed", user=user, details={"name": cred.name})
@@ -352,7 +352,6 @@ class AccountOut(BaseModel):
     username: str | None = None
     active: bool = False
     has_passkey: bool = False
-    has_password: bool = False
     last_login_at: str | None = None
     invite_pending: bool = False
 
@@ -376,7 +375,6 @@ def _account_out(db: Session, e: Employee) -> AccountOut:
         active=u.is_active,
         has_passkey=db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == u.id))
         is not None,
-        has_password=u.has_password,
         last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
         invite_pending=pending is not None,
     )
@@ -396,7 +394,6 @@ class AccountRow(BaseModel):
     username: str
     status: str  # pending | active | disabled
     has_passkey: bool
-    has_password: bool
     invite_pending: bool
     last_login_at: str | None
 
@@ -437,7 +434,7 @@ def list_accounts(
         )
     rows: list[AccountRow] = []
     for u, e in db.execute(stmt):
-        activated = u.id in keys or u.has_password
+        activated = u.id in keys
         st = "disabled" if not u.is_active else ("active" if activated else "pending")
         if status_filter and st != status_filter:
             continue
@@ -449,7 +446,6 @@ def list_accounts(
                 username=u.username,
                 status=st,
                 has_passkey=u.id in keys,
-                has_password=u.has_password,
                 invite_pending=u.id in invites,
                 last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
             )
@@ -490,10 +486,8 @@ def invite_email(e: Employee, link: str) -> Email:
 
 
 def _has_access(db: Session, user: User) -> bool:
-    """Czy konto jest już aktywowane (ma klucz dostępu albo hasło)."""
-    return user.has_password or (
-        db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == user.id)) is not None
-    )
+    """Czy konto jest już aktywowane (ma klucz dostępu)."""
+    return db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == user.id)) is not None
 
 
 @router.post("/employees/{employee_id}/account/invite", response_model=InviteOut)
@@ -643,7 +637,7 @@ def set_account_active(
 
 
 def _invite(db: Session, token: str) -> tuple[PasswordToken, User, Employee]:
-    t = notify.find_token(db, token, utcnow())
+    t = notify.find_token(db, token, utcnow(), employee_invite=True)
     if t is None or t.purpose != INVITE_PURPOSE or t.user.employee_id is None:
         raise HTTPException(status.HTTP_410_GONE, detail="Zaproszenie wygasło albo zostało już wykorzystane.")
     if _has_access(db, t.user):  # konto już aktywowane – stare zaproszenie nie może go przejąć
@@ -714,27 +708,6 @@ def invite_passkey(body: InvitePasskeyIn, request: Request, response: Response, 
     return me
 
 
-class InvitePasswordIn(InviteStartIn):
-    password: str = Field(min_length=1, max_length=200)
-
-
-@router.post("/auth/invite/password", response_model=MeOut)
-def invite_password(body: InvitePasswordIn, request: Request, response: Response, db: DbSession) -> MeOut:
-    """Zapas dla urządzeń bez kluczy dostępu: hasło + obowiązkowy kod z aplikacji."""
-    t, user, e = _invite(db, body.token)
-    _check_birth(db, request, user, e, _parse_date(body.birth_date))
-    problems = password_problems(body.password, user.username)
-    if problems:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=" ".join(problems))
-    user.password_hash = hash_password(body.password)
-    user.password_changed_at = utcnow()
-    t.used_at = utcnow()
-    me = _start_session(db, request, response, user, pending=False, method="password")
-    audit(db, request, "employee_account_activated", user=user, details={"method": "password"})
-    db.commit()
-    return me
-
-
 # --- „Moje konto” ----------------------------------------------------------------------
 
 
@@ -744,7 +717,6 @@ class MyEmployeeOut(BaseModel):
     last_name: str
     birth_date: str | None
     has_passkey: bool
-    has_password: bool
 
 
 @router.get("/me/employee", response_model=MyEmployeeOut)
@@ -759,109 +731,4 @@ def my_employee(ctx: Auth, db: DbSession) -> MyEmployeeOut:
         birth_date=e.birth_date.isoformat() if e.birth_date else None,
         has_passkey=db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == ctx.user.id))
         is not None,
-        has_password=ctx.user.has_password,
     )
-
-
-# --- zapasowe logowanie (hasło + kod) dla pracownika z kluczem dostępu ---------------------
-
-
-def _step_up_options(db: Session, request: Request, user: User) -> LoginOptionsOut:
-    rp_id, _ = rp_and_origin(request)
-    creds = [
-        PublicKeyCredentialDescriptor(id=_unb64(c.credential_id))
-        for c in db.scalars(select(WebauthnCredential).where(WebauthnCredential.user_id == user.id))
-    ]
-    if not creds:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Najpierw dodaj klucz dostępu.")
-    challenge = os.urandom(32)
-    opts = generate_authentication_options(
-        rp_id=rp_id,
-        challenge=challenge,
-        timeout=120_000,
-        allow_credentials=creds,
-        user_verification=UserVerificationRequirement.REQUIRED,
-    )
-    cid = _store_challenge(db, challenge, "reauth", user)
-    return LoginOptionsOut(challenge_id=cid, options=json.loads(options_to_json(opts)))
-
-
-def _step_up_verify(db: Session, request: Request, user: User, challenge_id: str, credential: dict) -> None:
-    """Świeże potwierdzenie kluczem dostępu przed zmianą sposobu logowania."""
-    rp_id, origin = rp_and_origin(request)
-    challenge = _take_challenge(db, challenge_id, "reauth", user)
-    cred = db.scalar(
-        select(WebauthnCredential).where(
-            WebauthnCredential.credential_id == str(credential.get("id") or ""),
-            WebauthnCredential.user_id == user.id,
-        )
-    )
-    if cred is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR)
-    try:
-        res = verify_authentication_response(
-            credential=credential,
-            expected_challenge=challenge,
-            expected_rp_id=rp_id,
-            expected_origin=origin,
-            credential_public_key=cred.public_key,
-            credential_current_sign_count=cred.sign_count,
-            require_user_verification=True,
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR) from exc
-    cred.sign_count = res.new_sign_count
-    cred.last_used_at = utcnow()
-
-
-def _employee_only(user: User) -> None:
-    if user.role != Role.employee:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
-
-
-@router.post("/me/backup/options", response_model=LoginOptionsOut)
-def backup_options(ctx: AuthMfaSetup, request: Request, db: DbSession) -> LoginOptionsOut:
-    _employee_only(ctx.user)
-    out = _step_up_options(db, request, ctx.user)
-    db.commit()
-    return out
-
-
-class BackupPasswordIn(BaseModel):
-    password: str = Field(min_length=1, max_length=200)
-    challenge_id: str = Field(max_length=64)
-    credential: dict
-
-
-@router.post("/me/backup/password", response_model=MeOut)
-def backup_set_password(body: BackupPasswordIn, ctx: AuthMfaSetup, request: Request, db: DbSession) -> MeOut:
-    """Ustawia hasło jako zapas. Wymaga świeżego potwierdzenia kluczem; potem obowiązuje kod z aplikacji."""
-    user = ctx.user
-    _employee_only(user)
-    _step_up_verify(db, request, user, body.challenge_id, body.credential)
-    problems = password_problems(body.password, user.username)
-    if problems:
-        db.commit()  # zużyte wyzwanie i licznik klucza zapisujemy
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=" ".join(problems))
-    user.password_hash = hash_password(body.password)
-    user.password_changed_at = utcnow()
-    audit(db, request, "employee_backup_enabled", user=user)
-    db.commit()
-    return _me(user, ctx.session)
-
-
-class BackupRemoveIn(BaseModel):
-    challenge_id: str = Field(max_length=64)
-    credential: dict
-
-
-@router.post("/me/backup/remove", response_model=MeOut)
-def backup_remove(body: BackupRemoveIn, ctx: AuthMfaSetup, request: Request, db: DbSession) -> MeOut:
-    user = ctx.user
-    _employee_only(user)
-    _step_up_verify(db, request, user, body.challenge_id, body.credential)
-    user.password_hash = NO_PASSWORD
-    totp.clear(user)
-    audit(db, request, "employee_backup_disabled", user=user)
-    db.commit()
-    return _me(user, ctx.session)

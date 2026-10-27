@@ -66,7 +66,7 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
   if (!me.user.must_change_password && me.mfa_setup_required && location.pathname !== MFA_PATH) {
     return <Navigate to={MFA_PATH} replace />;
   }
-  if (me.user.role === "employee" && !["/moje-konto", "/zmiana-hasla", MFA_PATH].includes(location.pathname)) {
+  if (me.user.role === "employee" && location.pathname !== "/moje-konto") {
     return <Navigate to="/moje-konto" replace />;
   }
   if (roles && !roles.includes(me.user.role)) return <Navigate to="/" replace />;

@@ -47,7 +47,6 @@ def _me(user: User, sess: UserSession) -> MeOut:
         mfa_pending=sess.mfa_pending,
         mfa_setup_required=mfa_setup_pending(user, sess),
         recovery_codes_left=user.recovery_codes_left,
-        has_password=user.has_password,
         real_role=sess.user.role.value,
         sim_role=sess.sim_role if sess.user.role == Role.admin else None,
         sim_agency_id=sess.sim_agency_id,
@@ -100,7 +99,10 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession) ->
             ),
         )
 
-    password_ok = verify_password(user.password_hash if user else None, body.password)
+    # konta pracowników logują się wyłącznie kluczem dostępu – hasłem nigdy
+    password_ok = verify_password(user.password_hash if user else None, body.password) and not (
+        user is not None and user.role == Role.employee
+    )
 
     if user is None or not password_ok or not user.is_active:
         if user is not None and not password_ok:

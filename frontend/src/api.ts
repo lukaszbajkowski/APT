@@ -32,7 +32,6 @@ export interface Me {
   mfa_pending: boolean;
   mfa_setup_required: boolean;
   recovery_codes_left: number;
-  has_password?: boolean;
   real_role?: Role | null;
   sim_role?: Role | null;
   sim_agency_id?: number | null;

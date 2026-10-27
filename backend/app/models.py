@@ -123,13 +123,7 @@ class User(TimestampMixin, Base):
     def mfa_required(self) -> bool:
         from app.config import get_settings
 
-        if self.role == Role.employee:  # pracownik z hasłem (bez klucza dostępu) musi mieć kod z aplikacji
-            return self.has_password and get_settings().mfa_enforce
         return self.role in MFA_REQUIRED_ROLES and get_settings().mfa_enforce
-
-    @property
-    def has_password(self) -> bool:
-        return not self.password_hash.startswith(NO_PASSWORD)
 
     @property
     def recovery_codes_left(self) -> int:

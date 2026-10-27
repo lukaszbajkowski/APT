@@ -22,6 +22,28 @@ i działają na produkcji po `aptid-aktualizuj`. Migracje do `0020_agencje`.
 | 13. Szyfrowanie plików | AES-256-GCM dla dokumentów, podpisów, skanów, badań, zdjęć; migracja przy starcie | – | ✅ |
 | 14. Znacznik czasu | RFC 3161 (FreeTSA) dla podpisanych dokumentów, token w dzienniku | – | ✅ |
 
+## Plan: konta pracowników (do zatwierdzenia, bez kodu)
+
+Decyzje właściciela: (1) obecna ścieżka bez konta zostaje – konto jest miękkim wymaganiem, nie przymusem; (2) zdjęcie, telefon
+i e-mail pracownik zmienia sam od razu, pozostałe dane jako wniosek zatwierdzany przez kadry; (3) konta zakładają kadry
+przez zaproszenie; (4) logowanie kluczem dostępu (Face ID / odcisk, WebAuthn) z hasłem + TOTP jako zapasem; (5) osoba z kontem
+podpisuje dokumenty **tylko po zalogowaniu** (link do podpisu dla niej nie jest wystawiany), a o nowym dokumencie dostaje
+powiadomienie (e-mail lub SMS) z odsyłaczem do konta.
+
+| Etap | Zakres | Uwagi |
+|---|---|---|
+| A | Rola `employee`, powiązanie konta z kartoteką (`users.employee_id`), zaproszenie od kadr, logowanie kluczem dostępu, zapas hasło + TOTP | widzi wyłącznie własny rekord; migracja 0024, tabela kluczy dostępu |
+| B | „Moje dane”: zdjęcie, telefon, e-mail zapisywane od razu; potwierdzenie własności (e-mail linkiem, telefon kodem SMS); inne dane jako wnioski kadr | wniosek jak `employee_requests`; w historii tylko fakt zmiany pola |
+| C | Ścieżka bez konta: kadry wysyłają link „aktualizacja danych” (jak link do podpisu: ważność, limit prób, data urodzenia) albo wprowadzają dane z dokumentu | ten sam formularz co „Moje dane” |
+| D | Podpis w koncie: lista „Do podpisu”, podpis po ponownym potwierdzeniu kluczem dostępu (zamiast jednorazowego sprawdzenia przy rejestracji), powiadomienia o nowym dokumencie | osoby bez konta nadal podpisują linkiem |
+
+Zasady: telefon i e-mail widzą tylko Administrator i Kadry; kontakt zapisywany szyfrowany (jak PESEL); każda zmiana w dzienniku
+(bez wartości); odzyskanie dostępu przez kadry (nowe zaproszenie). Podstawa prawna, klauzula informacyjna i okres
+przechowywania danych kontaktowych – do ustalenia przez właściciela z IOD lub prawnikiem.
+
+Do potwierdzenia przed etapem D: czy kadry mają mieć wyjątek „wyślij link mimo konta” (np. po utracie telefonu, z wpisem w
+dzienniku); domyślny kanał powiadomień (e-mail, a SMS tylko na życzenie, bo kosztuje); które „inne dane” obejmują wnioski na start.
+
 ## Zasady pracy nad kodem
 
 1. Push na `main`, CI musi być zielone (ruff check, ruff format, pytest, build frontendu).

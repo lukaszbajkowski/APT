@@ -174,7 +174,7 @@ function SetupFlow({ forced }: { forced: boolean }) {
           {error}
         </Alert>
       )}
-      <List type="ordered" spacing="xs" size="sm">
+      <List type="ordered" spacing="xs" size="sm" visibleFrom="sm">
         <List.Item>
           Zainstaluj w telefonie aplikację do kodów, np. <b>Google Authenticator</b> lub <b>Microsoft Authenticator</b>{" "}
           (na iPhonie wystarczą też wbudowane <b>Hasła</b>).
@@ -182,29 +182,52 @@ function SetupFlow({ forced }: { forced: boolean }) {
         <List.Item>Zeskanuj w niej kod QR.</List.Item>
         <List.Item>Wpisz 6-cyfrowy kod, który pokaże aplikacja.</List.Item>
       </List>
+      <List type="ordered" spacing="xs" size="sm" hiddenFrom="sm">
+        <List.Item>Dotknij „Skopiuj klucz” poniżej.</List.Item>
+        <List.Item>
+          Na iPhonie otwórz <b>Hasła</b> → konto <b>aptid.pl</b> → <b>Skonfiguruj kod weryfikacyjny</b> → <b>Wpisz klucz
+          konfiguracji</b> i wklej klucz. (W Google / Microsoft Authenticator: dodaj konto → wpisz klucz ręcznie.)
+        </List.Item>
+        <List.Item>Wpisz 6-cyfrowy kod, który pokaże aplikacja.</List.Item>
+      </List>
       {!setup ? (
         <Group>
           <Button onClick={start} loading={busy} leftSection={<IconShieldLock size={16} />}>
-            Pokaż kod QR
+            <Text component="span" visibleFrom="sm">Pokaż kod QR</Text>
+            <Text component="span" hiddenFrom="sm">Pokaż klucz do aplikacji</Text>
           </Button>
         </Group>
       ) : (
         <form onSubmit={enable}>
           <Stack>
-            <Button
-              component="a"
-              href={setup.otpauth_uri}
-              hiddenFrom="sm"
-              size="md"
-              variant="light"
-            >
-              Dodaj kod do aplikacji na tym telefonie
-            </Button>
-            <Text size="xs" c="dimmed" hiddenFrom="sm">
-              Jednym dotknięciem otworzy się aplikacja z kodami (na iPhonie: Hasła) z gotową nazwą strony. Nic nie
-              wpisujesz ręcznie.
-            </Text>
-            <Group align="flex-start" gap="xl">
+            <Stack gap="xs" hiddenFrom="sm">
+              <Code fz="md" style={{ wordBreak: "break-all", textAlign: "center", padding: 12 }}>
+                {setup.secret}
+              </Code>
+              <CopyButton value={setup.secret.replace(/ /g, "")}>
+                {({ copied, copy }) => (
+                  <Button size="md" onClick={copy}>
+                    {copied ? "Skopiowano" : "Skopiuj klucz"}
+                  </Button>
+                )}
+              </CopyButton>
+              <Button
+                component="a"
+                href={setup.otpauth_uri}
+                variant="light"
+                size="md"
+                h="auto"
+                py="xs"
+                styles={{ label: { whiteSpace: "normal", textAlign: "center" } }}
+              >
+                Spróbuj dodać kod automatycznie
+              </Button>
+              <Text size="xs" c="dimmed">
+                Automatyczne dodanie działa tylko w niektórych aplikacjach. Jeśli otworzy się puste okno dodawania,
+                wróć tu i użyj skopiowanego klucza.
+              </Text>
+            </Stack>
+            <Group align="flex-start" gap="xl" visibleFrom="sm">
               <Box
                 w={200}
                 h={200}

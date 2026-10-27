@@ -7,6 +7,8 @@ import {
   IconCalendarEvent,
   IconAlertTriangle,
   IconCamera,
+  IconCertificate,
+  IconChecklist,
   IconCircleCheck,
   IconClockShield,
   IconFileSpreadsheet,
@@ -63,6 +65,7 @@ function dayLabel(iso: string): string {
 }
 
 function UpcomingCard() {
+  const { hasRole } = useAuth();
   const q = useQuery({ queryKey: ["dashboard-upcoming"], queryFn: () => api<UpcomingEvent[]>("/dashboard/upcoming") });
   const events = q.data ?? [];
   const [all, setAll] = useState(false);
@@ -74,14 +77,14 @@ function UpcomingCard() {
           <IconCalendarEvent size={20} />
           <Title order={4}>Najbliższe 14 dni</Title>
         </Group>
-        <Group gap={0}>
-          <Button component={Link} to="/zadania" variant="subtle" size="xs">
+        {!hasRole("agency") && <Group gap="xs">
+          <Button component={Link} to="/zadania" variant="light" size="sm" leftSection={<IconChecklist size={16} />}>
             Zadania
           </Button>
-          <Button component={Link} to="/szkolenia" variant="subtle" size="xs">
+          <Button component={Link} to="/szkolenia" variant="light" size="sm" leftSection={<IconCertificate size={16} />}>
             Szkolenia
           </Button>
-        </Group>
+        </Group>}
       </Group>
       {q.isLoading ? (
         <Loader size="sm" />
@@ -309,7 +312,7 @@ export function HomePage() {
             <Card withBorder padding="lg" h="100%">
               <Group justify="space-between" mb="sm">
                 <Title order={4}>Ostatnio dodani</Title>
-                <Button component={Link} to="/pracownicy" variant="subtle" size="xs">
+                <Button component={Link} to="/pracownicy" variant="light" size="sm" leftSection={<IconUsers size={16} />}>
                   Wszyscy pracownicy
                 </Button>
               </Group>

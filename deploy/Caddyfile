@@ -17,6 +17,11 @@
 
 	handle {
 		root * /srv
+		# pliki z hashem w nazwie nigdy się nie zmieniają; index.html zawsze sprawdzany na nowo
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}

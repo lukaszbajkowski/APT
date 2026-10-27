@@ -31,7 +31,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
 backend/alembic/    migracje 0001–0020
-backend/tests/      testy pytest (ok. 180)
+backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
 examples/           przykładowe szablony .docx
@@ -98,6 +98,15 @@ Push na `main` uruchamia CI; produkcja aktualizowana ręcznie po zielonym CI.
 
 pytest na prawdziwym PostgreSQL (`apt_test`, tabele czyszczone TRUNCATE), ruff (linia ≤ 110), build TypeScript w CI,
 scenariusze Playwright uruchamiane lokalnie przy zmianach interfejsu.
+
+## Wydajność
+
+- Frontend: strony rzadziej używane ładowane leniwie (`React.lazy`), biblioteki w osobnych pakietach (`react`, `mantine`).
+  Pierwszy pakiet: 987 kB (303 kB gzip) → ok. 680 kB (ok. 208 kB gzip); skaner QR (jsqr, 136 kB) ładuje się dopiero w skanerze.
+- Caddy: kompresja zstd/gzip, pliki `/assets/*` z `Cache-Control: immutable` na rok, `index.html` z `no-cache`.
+- Baza: pula połączeń 10 + 10 w szczycie, odnawiana co 30 min; indeksy na kluczach obcych, statusie i datach ważności.
+- Już wcześniej: paginacja listy pracowników, opóźnienie wyszukiwania 300 ms, zdjęcia z `loading="lazy"` i cache przeglądarki 24 h.
+- Świadomie pominięte: CDN i load balancer (jeden serwer, kilkunastu użytkowników), cache po stronie serwera (dane muszą być zawsze aktualne).
 
 ## Ryzyka techniczne
 

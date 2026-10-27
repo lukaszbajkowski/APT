@@ -1,6 +1,4 @@
-import { AgencyReportPage } from "./pages/AgencyReportPage";
-import { EmployeeRequestsPage } from "./pages/EmployeeRequestsPage";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Center, Loader } from "@mantine/core";
 
@@ -9,26 +7,38 @@ import { MFA_PATH, type Role } from "./api";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage, SetPasswordPage } from "./pages/PasswordResetPages";
-import { SignPage } from "./pages/SignPage";
 import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
-import { EmployeeFormPage } from "./pages/EmployeeFormPage";
-import { EmployeeProfilePage } from "./pages/EmployeeProfilePage";
-import { DictionariesPage } from "./pages/DictionariesPage";
-import { ImportPage } from "./pages/ImportPage";
 import { HomePage } from "./pages/HomePage";
-import { TemplatesPage } from "./pages/TemplatesPage";
-import { TemplateEditPage } from "./pages/TemplateEditPage";
-import { UsersPage } from "./pages/UsersPage";
-import { AuditPage } from "./pages/AuditPage";
-import { RetentionPage } from "./pages/RetentionPage";
-import { ScannerPage } from "./pages/ScannerPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { QualityPage } from "./pages/QualityPage";
-import { TrainingsPage } from "./pages/TrainingsPage";
-import { TasksPage } from "./pages/TasksPage";
-import { TrainingImportPage } from "./pages/TrainingImportPage";
+
+// Rzadziej używane strony ładują się dopiero przy wejściu (mniejszy pierwszy pakiet JS).
+const AgencyReportPage = lazy(() => import("./pages/AgencyReportPage").then((m) => ({ default: m.AgencyReportPage })));
+const EmployeeRequestsPage = lazy(() => import("./pages/EmployeeRequestsPage").then((m) => ({ default: m.EmployeeRequestsPage })));
+const SignPage = lazy(() => import("./pages/SignPage").then((m) => ({ default: m.SignPage })));
+const EmployeeFormPage = lazy(() => import("./pages/EmployeeFormPage").then((m) => ({ default: m.EmployeeFormPage })));
+const EmployeeProfilePage = lazy(() => import("./pages/EmployeeProfilePage").then((m) => ({ default: m.EmployeeProfilePage })));
+const DictionariesPage = lazy(() => import("./pages/DictionariesPage").then((m) => ({ default: m.DictionariesPage })));
+const ImportPage = lazy(() => import("./pages/ImportPage").then((m) => ({ default: m.ImportPage })));
+const TemplatesPage = lazy(() => import("./pages/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
+const TemplateEditPage = lazy(() => import("./pages/TemplateEditPage").then((m) => ({ default: m.TemplateEditPage })));
+const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
+const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
+const RetentionPage = lazy(() => import("./pages/RetentionPage").then((m) => ({ default: m.RetentionPage })));
+const ScannerPage = lazy(() => import("./pages/ScannerPage").then((m) => ({ default: m.ScannerPage })));
+const ReportsPage = lazy(() => import("./pages/ReportsPage").then((m) => ({ default: m.ReportsPage })));
+const QualityPage = lazy(() => import("./pages/QualityPage").then((m) => ({ default: m.QualityPage })));
+const TrainingsPage = lazy(() => import("./pages/TrainingsPage").then((m) => ({ default: m.TrainingsPage })));
+const TasksPage = lazy(() => import("./pages/TasksPage").then((m) => ({ default: m.TasksPage })));
+const TrainingImportPage = lazy(() => import("./pages/TrainingImportPage").then((m) => ({ default: m.TrainingImportPage })));
+
+function PageLoader() {
+  return (
+    <Center h="40vh">
+      <Loader />
+    </Center>
+  );
+}
 
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { me, loading } = useAuth();
@@ -54,6 +64,7 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
 
 export function App() {
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-hasla" element={<ForgotPasswordPage />} />
@@ -226,5 +237,6 @@ export function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

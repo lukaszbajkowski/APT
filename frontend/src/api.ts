@@ -70,6 +70,10 @@ export type EmployeeStatus = "active" | "terminated";
 
 export interface Employee {
   id: number;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  contact_phone_verified?: boolean;
+  contact_email_verified?: boolean;
   number: number;
   number_display: string;
   first_name: string;
@@ -414,6 +418,9 @@ export const ACTION_LABELS: Record<string, string> = {
   employee_restored: "Przywrócenie z archiwum",
   pesel_viewed: "Odczyt PESEL",
   photo_uploaded: "Zmiana zdjęcia",
+  contact_code_sent: "Wysłano kod potwierdzający kontakt",
+  contact_changed: "Zmiana danych kontaktowych",
+  contact_removed: "Usunięcie danych kontaktowych",
   photo_deleted: "Usunięcie zdjęcia",
   agency_created: "Dodanie APT",
   agency_updated: "Zmiana APT",

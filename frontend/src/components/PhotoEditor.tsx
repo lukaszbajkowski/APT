@@ -80,10 +80,14 @@ export function PhotoEditor({
   employee,
   opened,
   onClose,
+  endpoint,
+  onSaved,
 }: {
   employee: Employee;
   opened: boolean;
   onClose: () => void;
+  endpoint?: string; // np. /me/photo dla pracownika edytującego własne zdjęcie
+  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
   const [src, setSrc] = useState<string | null>(null);
@@ -124,9 +128,15 @@ export function PhotoEditor({
       const blob = await cropToBlob(src, area);
       const form = new FormData();
       form.append("file", blob, "zdjecie.jpg");
-      return api<Employee>(`/employees/${employee.id}/photo`, { method: "PUT", form });
+      return api<Employee>(endpoint ?? `/employees/${employee.id}/photo`, { method: "PUT", form });
     },
     onSuccess: (e) => {
+      if (endpoint) {
+        onSaved?.();
+        notifications.show({ color: "green", message: "Zapisano zdjęcie." });
+        onClose();
+        return;
+      }
       qc.setQueryData(["employee", String(e.id)], e);
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(e.id)] });

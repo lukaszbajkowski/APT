@@ -65,7 +65,10 @@ class TimelineOut(BaseModel):
 
 @router.get("/employees/{employee_id}/timeline", response_model=TimelineOut)
 def timeline(employee_id: int, ctx: AnyAuth, db: DbSession) -> TimelineOut:
-    e = get_visible(db, ctx.user, employee_id)
+    return build_timeline(db, get_visible(db, ctx.user, employee_id))
+
+
+def build_timeline(db: Session, e: Employee) -> TimelineOut:
     past = db.scalars(
         select(EmploymentPeriod)
         .where(EmploymentPeriod.employee_id == e.id)

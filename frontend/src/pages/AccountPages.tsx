@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { MyDataCards } from "../components/MyDataCards";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
-import { api, errorText, formatDate, formatDateTime, MFA_PATH, type Me } from "../api";
+import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
@@ -148,15 +149,6 @@ interface Passkey {
   last_used_at: string | null;
 }
 
-interface MyEmployee {
-  number: string;
-  first_name: string;
-  last_name: string;
-  birth_date: string | null;
-  has_passkey: boolean;
-  has_password: boolean;
-}
-
 export function MyAccountPage() {
   const { hasRole } = useAuth();
   const qc = useQueryClient();
@@ -165,7 +157,6 @@ export function MyAccountPage() {
   const [code, setCode] = useState("");
   const { me } = useAuth();
   const reauth = !hasRole("employee");
-  const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), enabled: hasRole("employee") });
   const keys = useQuery({ queryKey: ["passkeys"], queryFn: () => api<Passkey[]>("/passkeys") });
 
   // Safari wymaga otwarcia okna klucza od razu po dotknięciu: wyzwanie pobieramy w osobnym kroku.
@@ -213,23 +204,7 @@ export function MyAccountPage() {
           {error}
         </Alert>
       )}
-      {mine.data && (
-        <Card withBorder padding="lg">
-          <Title order={4} mb="xs">
-            Moje dane
-          </Title>
-          <Text>
-            {mine.data.first_name} {mine.data.last_name}
-          </Text>
-          <Text size="sm" c="dimmed">
-            Numer ewidencyjny: {mine.data.number}
-            {mine.data.birth_date ? ` · urodzony(a) ${formatDate(mine.data.birth_date)}` : ""}
-          </Text>
-          <Text size="sm" c="dimmed" mt="xs">
-            Zmiana zdjęcia i danych kontaktowych pojawi się w kolejnym etapie. Do tego czasu zgłoś zmiany w kadrach.
-          </Text>
-        </Card>
-      )}
+      {hasRole("employee") && <MyDataCards />}
       <Card withBorder padding="lg">
         <Group justify="space-between" mb="sm">
           <Title order={4}>Klucze dostępu</Title>

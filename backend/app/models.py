@@ -276,6 +276,11 @@ class Employee(TimestampMixin, Base):
     pesel_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
     pesel_hash: Mapped[str | None] = mapped_column(String(64))
     pesel_last2: Mapped[str | None] = mapped_column(String(2))
+    # kontakt: szyfrowany, zapisywany dopiero po potwierdzeniu kodem (SMS / e-mail)
+    phone_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
+    phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_enc: Mapped[bytes | None] = mapped_column(LargeBinary)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     country_id: Mapped[int | None] = mapped_column(ForeignKey("countries.id"))
     agency_id: Mapped[int | None] = mapped_column(ForeignKey("agencies.id"), index=True)
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), index=True)
@@ -694,6 +699,26 @@ class EmployeeRequest(Base):
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id", ondelete="SET NULL"))
 
     agency: Mapped[Agency] = relationship(lazy="joined")
+
+
+class ContactVerification(Base):
+    """Kod potwierdzający nowy telefon / e-mail pracownika (jednorazowy, krótko ważny)."""
+
+    __tablename__ = "contact_verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(5), nullable=False)
+    value_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class WebauthnCredential(Base):

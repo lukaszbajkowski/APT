@@ -699,29 +699,3 @@ def invite_passkey(body: InvitePasskeyIn, request: Request, response: Response, 
     audit(db, request, "employee_account_activated", user=user, details={"method": "passkey"})
     db.commit()
     return me
-
-
-# --- „Moje konto” ----------------------------------------------------------------------
-
-
-class MyEmployeeOut(BaseModel):
-    number: str
-    first_name: str
-    last_name: str
-    birth_date: str | None
-    has_passkey: bool
-
-
-@router.get("/me/employee", response_model=MyEmployeeOut)
-def my_employee(ctx: Auth, db: DbSession) -> MyEmployeeOut:
-    if ctx.user.employee_id is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Konto nie jest powiązane z pracownikiem.")
-    e = db.get(Employee, ctx.user.employee_id)
-    return MyEmployeeOut(
-        number=f"{e.number:06d}",
-        first_name=e.first_name,
-        last_name=e.last_name,
-        birth_date=e.birth_date.isoformat() if e.birth_date else None,
-        has_passkey=db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == ctx.user.id))
-        is not None,
-    )

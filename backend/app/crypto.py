@@ -78,6 +78,23 @@ def decrypt_secret(blob: bytes) -> bytes:
     return AESGCM(_totp_key()).decrypt(blob[1:13], blob[13:], b"totp")
 
 
+@lru_cache
+def _contact_key() -> bytes:
+    return _derive(b"apt/contact/enc/v1")
+
+
+def encrypt_contact(value: str) -> bytes:
+    """Telefon / e-mail pracownika: szyfrowanie osobnym kluczem wyprowadzonym z APT_DATA_KEY."""
+    nonce = os.urandom(12)
+    return _VERSION + nonce + AESGCM(_contact_key()).encrypt(nonce, value.encode(), b"contact")
+
+
+def decrypt_contact(blob: bytes) -> str:
+    if not blob or blob[:1] != _VERSION:
+        raise ValueError("Nieznany format zaszyfrowanych danych.")
+    return AESGCM(_contact_key()).decrypt(blob[1:13], blob[13:], b"contact").decode()
+
+
 def blind_index(value: str) -> str:
     _, mac_key = _keys()
     return hmac.new(mac_key, value.encode(), hashlib.sha256).hexdigest()
@@ -86,3 +103,4 @@ def blind_index(value: str) -> str:
 def reset_cache() -> None:
     _keys.cache_clear()
     _totp_key.cache_clear()
+    _contact_key.cache_clear()

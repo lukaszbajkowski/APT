@@ -319,6 +319,11 @@ export function EmployeeProfilePage() {
               ) : (
                 <Field label="Wiek">{e.age !== null ? `${e.age} lat` : "—"}</Field>
               )}
+              {(e.contact_phone || e.contact_email) && (
+                <Field label="Kontakt">
+                  {[e.contact_phone, e.contact_email].filter(Boolean).join(" · ")}
+                </Field>
+              )}
               <Field label="Obywatelstwo">{e.country?.name ?? "—"}</Field>
               <Field label="Płeć">{e.sex === "K" ? "kobieta" : e.sex === "M" ? "mężczyzna" : "—"}</Field>
             </SimpleGrid>

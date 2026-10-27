@@ -77,6 +77,11 @@ class EmployeeOut(BaseModel):
     personal_data_visible: bool
     retention_until: date | None = None
     retention_hold_until: date | None = None
+    # kontakt zebrany przez konto pracownika – tylko Administrator i Kadry
+    contact_phone: str | None = None
+    contact_email: str | None = None
+    contact_phone_verified: bool = False
+    contact_email_verified: bool = False
 
 
 def _clean_str(v: Any) -> Any:
@@ -186,6 +191,23 @@ def age_on(born: date | None, today: date) -> int | None:
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
+def _contact_for(e: Employee, user: User) -> dict[str, Any]:
+    if user.role not in (Role.admin, Role.hr):
+        return {}
+    out: dict[str, Any] = {
+        "contact_phone_verified": e.phone_verified_at is not None,
+        "contact_email_verified": e.email_verified_at is not None,
+    }
+    try:
+        if e.phone_enc:
+            out["contact_phone"] = crypto.decrypt_contact(e.phone_enc)
+        if e.email_enc:
+            out["contact_email"] = crypto.decrypt_contact(e.email_enc)
+    except ValueError:
+        pass
+    return out
+
+
 def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
     today = today or date.today()
     personal = full_access(user)
@@ -213,6 +235,7 @@ def to_out(e: Employee, user: User, today: date | None = None) -> EmployeeOut:
         personal_data_visible=personal,
         retention_until=retention.delete_after(e),
         retention_hold_until=e.retention_hold_until if e.status == EmployeeStatus.terminated else None,
+        **_contact_for(e, user),
     )
 
 
@@ -754,15 +777,10 @@ def get_photo(employee_id: int, ctx: Auth, db: DbSession) -> Response:
 PhotoAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.agency))]
 
 
-@router.put("/{employee_id}/photo", response_model=EmployeeOut)
-async def upload_photo(
-    employee_id: int,
-    ctx: PhotoAuth,
-    request: Request,
-    db: DbSession,
-    file: Annotated[UploadFile, File()],
-) -> EmployeeOut:
-    e = get_visible(db, ctx.user, employee_id)
+async def store_uploaded_photo(
+    db: Session, request: Request, actor: User, e: Employee, file: UploadFile
+) -> None:
+    """Sprawdza, przetwarza i zapisuje zdjęcie pracownika (kadry, agencja albo sam pracownik)."""
     limit = get_settings().photo_max_upload_mb * 1024 * 1024
     raw = await file.read(limit + 1)
     if len(raw) > limit:
@@ -792,7 +810,7 @@ async def upload_photo(
         db,
         request,
         "photo_uploaded",
-        user=ctx.user,
+        user=actor,
         entity_type="employee",
         entity_id=e.id,
         details={"number": format_number(e.number), "size": len(processed.data)},
@@ -801,6 +819,18 @@ async def upload_photo(
     if old_file:
         photos.delete(old_file)
     db.refresh(e)
+
+
+@router.put("/{employee_id}/photo", response_model=EmployeeOut)
+async def upload_photo(
+    employee_id: int,
+    ctx: PhotoAuth,
+    request: Request,
+    db: DbSession,
+    file: Annotated[UploadFile, File()],
+) -> EmployeeOut:
+    e = get_visible(db, ctx.user, employee_id)
+    await store_uploaded_photo(db, request, ctx.user, e, file)
     return to_out(e, ctx.user)
 
 

@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
   IconCalendarEvent,
   IconAlertTriangle,
   IconCamera,
+  IconChevronDown,
+  IconChevronUp,
   IconCertificate,
   IconChecklist,
   IconCircleCheck,
@@ -22,6 +24,7 @@ import {
 } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
+import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 
@@ -78,12 +81,12 @@ function UpcomingCard() {
           <Title order={4}>Najbliższe 14 dni</Title>
         </Group>
         {!hasRole("agency") && <Group gap="xs">
-          <Button component={Link} to="/zadania" variant="light" size="sm" leftSection={<IconChecklist size={16} />}>
+          <ActionButton to="/zadania" icon={<IconChecklist size={16} />}>
             Zadania
-          </Button>
-          <Button component={Link} to="/szkolenia" variant="light" size="sm" leftSection={<IconCertificate size={16} />}>
+          </ActionButton>
+          <ActionButton to="/szkolenia" icon={<IconCertificate size={16} />}>
             Szkolenia
-          </Button>
+          </ActionButton>
         </Group>}
       </Group>
       {q.isLoading ? (
@@ -113,9 +116,13 @@ function UpcomingCard() {
             </Group>
           ))}
           {events.length > 8 && (
-            <Button variant="subtle" size="xs" w="fit-content" onClick={() => setAll((a) => !a)}>
+            <ActionButton
+              w="fit-content"
+              icon={all ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+              onClick={() => setAll((a) => !a)}
+            >
               {all ? "Pokaż mniej" : `Pokaż wszystkie (${events.length})`}
-            </Button>
+            </ActionButton>
           )}
         </Stack>
       )}
@@ -254,9 +261,9 @@ export function HomePage() {
                 <Text size="sm">
                   {data.data.retention_due} os. ma za sobą okres przechowywania danych. Przejrzyj i usuń je trwale.
                 </Text>
-                <Button component={Link} to="/retencja" size="xs" variant="light" color="orange">
+                <ActionButton to="/retencja" color="orange" icon={<IconClockShield size={16} />}>
                   Przejdź do retencji
-                </Button>
+                </ActionButton>
               </Group>
             </Alert>
           )}
@@ -312,9 +319,9 @@ export function HomePage() {
             <Card withBorder padding="lg" h="100%">
               <Group justify="space-between" mb="sm">
                 <Title order={4}>Ostatnio dodani</Title>
-                <Button component={Link} to="/pracownicy" variant="light" size="sm" leftSection={<IconUsers size={16} />}>
+                <ActionButton to="/pracownicy" icon={<IconUsers size={16} />}>
                   Wszyscy pracownicy
-                </Button>
+                </ActionButton>
               </Group>
               {data.data.recent.length === 0 ? (
                 <Text size="sm" c="dimmed">
@@ -356,32 +363,26 @@ export function HomePage() {
                 Szybkie akcje
               </Title>
               <Stack gap="xs">
-                <Button component={Link} to="/pracownicy" variant="light" justify="flex-start" leftSection={<IconSearch size={16} />}>
+                <ActionButton to="/pracownicy" justify="flex-start" icon={<IconSearch size={16} />}>
                   Szukaj pracownika
-                </Button>
-                <Button component={Link} to="/skaner" variant="light" justify="flex-start" leftSection={<IconScan size={16} />}>
+                </ActionButton>
+                <ActionButton to="/skaner" justify="flex-start" icon={<IconScan size={16} />}>
                   Skanuj kartę
-                </Button>
+                </ActionButton>
                 {staff && (
                   <>
-                    <Button component={Link} to="/pracownicy/nowy" variant="light" justify="flex-start" leftSection={<IconUserPlus size={16} />}>
+                    <ActionButton to="/pracownicy/nowy" justify="flex-start" icon={<IconUserPlus size={16} />}>
                       Dodaj pracownika
-                    </Button>
-                    <Button
-                      component={Link}
-                      to="/pracownicy/import"
-                      variant="light"
-                      justify="flex-start"
-                      leftSection={<IconFileSpreadsheet size={16} />}
-                    >
+                    </ActionButton>
+                    <ActionButton to="/pracownicy/import" justify="flex-start" icon={<IconFileSpreadsheet size={16} />}>
                       Importuj z arkusza
-                    </Button>
+                    </ActionButton>
                   </>
                 )}
                 {hasRole("admin", "hr", "manager") && (
-                  <Button component={Link} to="/pracownicy" variant="light" justify="flex-start" leftSection={<IconIdBadge2 size={16} />}>
+                  <ActionButton to="/pracownicy" justify="flex-start" icon={<IconIdBadge2 size={16} />}>
                     Drukuj karty
-                  </Button>
+                  </ActionButton>
                 )}
               </Stack>
             </Card>

@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     sign_link_hours: int = 72
     # kraje, których krajowe listy zaufania (kwalifikowani dostawcy podpisu) sprawdzamy – kody po przecinku
     trust_countries: str = "PL"
+    # limit żądań na minutę z jednego adresu IP do publicznych adresów podpisu (0 = bez limitu)
+    sign_rate_get: int = 300
+    sign_rate_post: int = 40
 
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key

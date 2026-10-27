@@ -78,6 +78,15 @@ unijnej listy zaufania EU LOTL → lista krajowa, domyślnie PL, `APT_TRUST_COUN
 (odrzucany). Lista zaufania odświeżana w poniedziałki (`notify-daily`, `app.cli refresh-trustlist`). Nie sprawdzamy
 CRL/OCSP ani podpisu XML samej listy; XAdES (XML) nie jest weryfikowany.
 
+**Hartowanie procesu podpisu (`app/hardening.py`, `signatures.py`).**
+- Tokeny linków i klucze podglądu są maskowane w logach serwera (filtr na `uvicorn.access`).
+- Pieczęć integralności: przy każdej zmianie podpisanego pliku (podpis, skan, usunięcie) do dziennika (tylko do
+  dopisywania) trafia wpis `document_sealed` ze skrótami SHA-256 (oryginał, obraz podpisu, wgrany plik, plik końcowy).
+  Okno „Podpis” porównuje bieżący plik z ostatnią pieczęcią i ostrzega, gdy plik zmieniono poza aplikacją.
+- Blokada wiersza (`SELECT … FOR UPDATE`) tuż przed zapisem podpisu: jeden podpis na jeden link, także przy równoległych żądaniach.
+- Limit żądań na IP dla `/api/sign/*`: `APT_SIGN_RATE_GET` (300/min) i `APT_SIGN_RATE_POST` (40/min), 0 = bez limitu;
+  licznik w pamięci procesu (jeden proces API).
+
 **Podgląd w aplikacji.** Strony renderowane po stronie serwera do obrazów ze znakiem wodnym (imię, czas); brak pobierania
 dla kierownika; zrzutów ekranu nie da się zablokować w przeglądarce całkowicie.
 

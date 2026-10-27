@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconCopy,
   IconDeviceMobile,
@@ -63,6 +64,7 @@ interface SignaturesState {
   can_download: boolean;
   sms_enabled: boolean;
   email_enabled: boolean;
+  integrity: "ok" | "mismatch" | "unknown";
 }
 interface RequestResult {
   id: number;
@@ -292,9 +294,16 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
         <Loader />
       ) : (
         <Stack>
+          {st.integrity === "mismatch" && (
+            <Alert color="red" icon={<IconAlertTriangle />} title="Plik różni się od zapisanego przy podpisie">
+              Skrót pliku podpisanego dokumentu nie zgadza się z wpisem w dzienniku zdarzeń z chwili podpisu. Plik mógł zostać
+              zmieniony poza aplikacją. Nie przekazuj go dalej i zgłoś to administratorowi.
+            </Alert>
+          )}
           {st.signed_at && (
             <Alert color="teal" icon={<IconCheck />}>
               Dokument podpisany {formatDateTime(st.signed_at)}.
+              {st.integrity === "ok" && " Plik zgodny z dziennikiem zdarzeń."}
             </Alert>
           )}
           {st.roles.length === 0 && (

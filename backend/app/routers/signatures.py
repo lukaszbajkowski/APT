@@ -24,7 +24,7 @@ from app import device, mailer, notify, qualified, signing, sms, templating, tru
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
-from app.models import DocumentSignature, Employee, GeneratedDocument, Role
+from app.models import AuditLog, DocumentSignature, Employee, GeneratedDocument, Role
 from app.routers.employees import format_number
 from app.security import new_token, token_hash
 
@@ -110,6 +110,63 @@ def _finish_if_complete(db: Session, doc: GeneratedDocument) -> None:
         doc.signed_at = doc.signed_at or datetime.now(UTC)
 
 
+# ---------- pieczęć integralności ----------
+# W chwili każdej zmiany podpisanego pliku w dzienniku (tylko do dopisywania) zapisujemy skrót SHA-256 pliku.
+# Późniejsza zmiana pliku na dysku bez nowego wpisu w dzienniku jest wykrywana i pokazywana kadrom.
+
+
+def _signed_hash(db: Session, doc: GeneratedDocument) -> str | None:
+    found = signed_file(db, doc)
+    return signing.sha256(found[0].read_bytes()) if found else None
+
+
+def _seal(
+    db: Session,
+    request: Request | None,
+    doc: GeneratedDocument,
+    e: Employee,
+    why: str,
+    *,
+    user: Any = None,
+    username: str | None = None,
+    evidence: dict[str, Any] | None = None,
+) -> None:
+    audit(
+        db,
+        request,
+        "document_sealed",
+        user=user,
+        username=username,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "document_id": str(doc.id),
+            "document": doc.template_name,
+            "why": why,
+            "original_sha256": signing.sha256(original_pdf(doc)),
+            "signed_sha256": _signed_hash(db, doc),
+            **(evidence or {}),
+        },
+    )
+
+
+def _integrity(db: Session, doc: GeneratedDocument) -> str:
+    """ok – plik zgodny z dziennikiem | mismatch – plik zmieniony poza aplikacją | unknown – brak pieczęci."""
+    last = db.scalar(
+        select(AuditLog)
+        .where(AuditLog.action == "document_sealed", AuditLog.details["document_id"].astext == str(doc.id))
+        .order_by(AuditLog.id.desc())
+        .limit(1)
+    )
+    if last is None:
+        return "unknown"
+    try:
+        current = _signed_hash(db, doc)
+    except OSError:
+        return "mismatch"
+    return "ok" if current == (last.details or {}).get("signed_sha256") else "mismatch"
+
+
 # ---------- dla kadr ----------
 
 
@@ -140,6 +197,7 @@ class SignaturesOut(BaseModel):
     can_download: bool = False
     sms_enabled: bool
     email_enabled: bool
+    integrity: str = "unknown"  # ok | mismatch | unknown
 
 
 def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesOut:
@@ -179,6 +237,7 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
         can_download=user is not None and user.role != Role.manager,
         sms_enabled=sms.enabled(),
         email_enabled=mailer.enabled() or mailer.outbox is not None,
+        integrity=_integrity(db, doc),
     )
 
 
@@ -339,6 +398,8 @@ def remove_signature(
     doc.has_signed_pdf, doc.signed_at = False, None
     _rebuild(db, doc)
     _finish_if_complete(db, doc)
+    db.flush()
+    _seal(db, request, doc, e, "removed", user=ctx.user)
     audit(
         db,
         request,
@@ -413,6 +474,8 @@ async def upload_scan(
     sig.file_name = f"{doc.id}_sig_{sig.id}.{kind[0]}"
     (_dir(doc) / sig.file_name).write_bytes(data)
     _finish_if_complete(db, doc)
+    db.flush()
+    _seal(db, request, doc, e, "scan", user=ctx.user, evidence={"scan_sha256": signing.sha256(data)})
     audit(
         db,
         request,
@@ -705,6 +768,7 @@ def _complete(
     e: Employee,
     method: str,
     name: str,
+    evidence: dict[str, Any] | None = None,
 ) -> None:
     sig.status = "signed"
     sig.method = method
@@ -730,8 +794,10 @@ def _complete(
             "method": method,
             "device_verified": sig.device_verified_at is not None,
             "check": (sig.check_result or {}).get("level"),
+            **(evidence or {}),
         },
     )
+    _seal(db, request, doc, e, "signed", username=name, evidence={"role": sig.role, **(evidence or {})})
     db.commit()
 
 
@@ -758,11 +824,17 @@ def sign(token: str, body: SignIn, request: Request, db: DbSession) -> dict[str,
                 detail="Ten podpis wymaga potwierdzenia blokadą urządzenia (Face ID, odcisk palca lub PIN).",
             )
         rp_id, origin = device.rp_and_origin(request)
-        sig.device_credential = device.verify(body.device, challenge, rp_id, origin)
-        sig.device_verified_at = datetime.now(UTC)
+        credential_id = device.verify(body.device, challenge, rp_id, origin)
+    else:
+        credential_id = None
+    # blokada wiersza: dwa równoległe żądania z tym samym linkiem nie mogą oba złożyć podpisu
+    db.refresh(sig, with_for_update=True)
+    _open(sig)
+    if credential_id:
+        sig.device_credential, sig.device_verified_at = credential_id, datetime.now(UTC)
     sig.file_name = f"{doc.id}_sig_{sig.id}.png"
     (_dir(doc) / sig.file_name).write_bytes(png)
-    _complete(db, request, sig, doc, e, "ekran", name)
+    _complete(db, request, sig, doc, e, "ekran", name, {"signature_png_sha256": signing.sha256(png)})
     return {"ok": True}
 
 
@@ -807,10 +879,13 @@ async def sign_trusted(
             status.HTTP_400_BAD_REQUEST,
             detail="Podpisany plik ma inną treść niż ten dokument. Podpisz dokładnie pobrany plik.",
         )
+    # blokada wiersza (po wszystkich oczekiwaniach async) – jeden podpis na jeden link
+    db.refresh(sig, with_for_update=True)
+    _open(sig)
     sig.check_result = result.as_dict()
     ext = "pdf" if data[:4] == b"%PDF" else "xml"
     sig.file_name = f"{doc.id}_sig_{sig.id}.{ext}"
     sig.original_name = fname[:255]
     (_dir(doc) / sig.file_name).write_bytes(data)
-    _complete(db, request, sig, doc, e, "zaufany", name)
+    _complete(db, request, sig, doc, e, "zaufany", name, {"uploaded_file_sha256": signing.sha256(data)})
     return {"ok": True, "check": sig.check_result}

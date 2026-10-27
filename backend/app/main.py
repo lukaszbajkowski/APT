@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app import hardening
 from app.deps import DbSession
 from app.routers import (
     agency_portal,
@@ -31,6 +32,10 @@ app = FastAPI(
     redoc_url=None,
     openapi_url="/api/openapi.json",
 )
+
+
+hardening.install_log_filter()
+app.middleware("http")(hardening.sign_rate_limit)
 
 
 @app.on_event("startup")

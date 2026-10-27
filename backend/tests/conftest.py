@@ -62,6 +62,13 @@ def _migrate() -> None:
 
 
 @pytest.fixture(autouse=True)
+def _reset_rate_limit() -> None:
+    from app import hardening
+
+    hardening.limiter.reset()
+
+
+@pytest.fixture(autouse=True)
 def _clean_db() -> Iterator[None]:
     yield
     with engine.begin() as conn:

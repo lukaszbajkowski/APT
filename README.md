@@ -301,6 +301,9 @@ Dokumentacja API: http://localhost:8000/api/docs
 
 ## Podpisy elektroniczne – zabezpieczenia
 
+- **Ślad integralności:** każdy podpis zapisuje w dzienniku skróty SHA-256 plików; okno „Podpis” ostrzega, gdy plik został
+  zmieniony poza aplikacją. Tokeny linków nie trafiają do logów, a publiczne adresy podpisu mają limit żądań na IP
+  (`APT_SIGN_RATE_GET`, `APT_SIGN_RATE_POST`).
 - **Potwierdzenie blokadą telefonu:** przy prośbie o podpis można wymagać Face ID, odcisku palca albo PIN-u telefonu
   (WebAuthn). Działa w Safari (iOS 16+) i Chrome na Androidzie, wymaga HTTPS i ustawionej blokady ekranu. Gdy telefon
   tego nie obsługuje, osoba wgrywa plik z podpisem zaufanym / kwalifikowanym albo kadry wysyłają nowy link bez wymogu.

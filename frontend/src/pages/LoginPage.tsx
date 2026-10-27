@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
@@ -7,6 +7,11 @@ import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-
 import { useAuth } from "../auth";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+
+interface PasskeyChallenge {
+  challenge_id: string;
+  options: Record<string, unknown>;
+}
 
 function nextPath(me: Me, from: string) {
   if (me.user.must_change_password) return "/zmiana-hasla";
@@ -128,13 +133,31 @@ export function LoginPage() {
     staleTime: Infinity,
   });
 
+  // Wyzwanie pobieramy z wyprzedzeniem: Safari (iPhone) wymaga, by okno klucza otworzyło się od razu po dotknięciu.
+  const pre = useRef<PasskeyChallenge | null>(null);
+  const loadChallenge = useCallback(() => {
+    pre.current = null;
+    api<PasskeyChallenge>("/auth/passkey/options", { method: "POST" })
+      .then((o) => {
+        pre.current = o;
+      })
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    if (!passkeysSupported()) return;
+    loadChallenge();
+    const t = window.setInterval(loadChallenge, 4 * 60 * 1000); // wyzwanie ważne 5 min
+    return () => window.clearInterval(t);
+  }, [loadChallenge]);
+
   if (me && !me.mfa_pending) return <Navigate to={nextPath(me, from)} replace />;
 
   async function passkeyLogin() {
     setError(null);
     setBusy(true);
     try {
-      const o = await api<{ challenge_id: string; options: Record<string, unknown> }>("/auth/passkey/options", { method: "POST" });
+      const o = pre.current ?? (await api<PasskeyChallenge>("/auth/passkey/options", { method: "POST" }));
+      pre.current = null;
       const credential = await getPasskey(o.options);
       const result = await api<Me>("/auth/passkey/login", { method: "POST", body: { challenge_id: o.challenge_id, credential } });
       setMe(result);
@@ -143,6 +166,7 @@ export function LoginPage() {
       setError(passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."));
     } finally {
       setBusy(false);
+      loadChallenge();
     }
   }
 

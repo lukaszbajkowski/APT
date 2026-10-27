@@ -45,13 +45,27 @@ export function InvitePage() {
     }
   }
 
+  // Safari (iPhone) wymaga, by okno klucza otworzyło się od razu po dotknięciu przycisku – bez pytania serwera
+  // w międzyczasie. Dlatego wyzwanie pobieramy wcześniej („Dalej”), a „Utwórz klucz” od razu otwiera okno.
+  const [prepared, setPrepared] = useState<Options | null>(null);
+  const prepare = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      setPrepared(await api<Options>("/auth/invite/options", { method: "POST", body: { token, birth_date: birth || null } }));
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
   const withPasskey = () =>
     run(async () => {
-      const o = await api<Options>("/auth/invite/options", { method: "POST", body: { token, birth_date: birth || null } });
-      const credential = await createPasskey(o.options);
+      if (!prepared) throw new Error("Brak wyzwania.");
+      const credential = await createPasskey(prepared.options);
       return api<Me>("/auth/invite/passkey", {
         method: "POST",
-        body: { token, birth_date: birth || null, challenge_id: o.challenge_id, credential },
+        body: { token, birth_date: birth || null, challenge_id: prepared.challenge_id, credential },
       });
     });
   const withPassword = () =>
@@ -94,9 +108,15 @@ export function InvitePage() {
               )}
               {!fallback ? (
                 <>
-                  <Button size="md" leftSection={<IconFingerprint size={20} />} loading={busy} disabled={!ready} onClick={withPasskey}>
-                    Utwórz klucz dostępu
-                  </Button>
+                  {!prepared ? (
+                    <Button size="md" loading={busy} disabled={!ready} onClick={prepare}>
+                      Dalej
+                    </Button>
+                  ) : (
+                    <Button size="md" leftSection={<IconFingerprint size={20} />} loading={busy} onClick={withPasskey}>
+                      Utwórz klucz dostępu
+                    </Button>
+                  )}
                   <Anchor component="button" type="button" size="sm" onClick={() => setFallback(true)}>
                     Nie działa? Ustaw hasło (z kodem z aplikacji)
                   </Anchor>
@@ -157,15 +177,24 @@ export function MyAccountPage() {
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), enabled: hasRole("employee") });
   const keys = useQuery({ queryKey: ["passkeys"], queryFn: () => api<Passkey[]>("/passkeys") });
 
+  // Safari wymaga otwarcia okna klucza od razu po dotknięciu: wyzwanie pobieramy w osobnym kroku.
+  const [prepared, setPrepared] = useState<Options | null>(null);
+  const prepare = useMutation({
+    mutationFn: () =>
+      api<Options>("/passkeys/options", { method: "POST", body: reauth ? { password: pw, code: code || null } : {} }),
+    onSuccess: (o) => {
+      setError(null);
+      setPrepared(o);
+    },
+    onError: (e) => setError(errorText(e)),
+  });
   const add = useMutation({
     mutationFn: async () => {
-      const o = await api<Options>("/passkeys/options", {
-        method: "POST",
-        body: reauth ? { password: pw, code: code || null } : {},
-      });
-      const credential = await createPasskey(o.options);
-      await api("/passkeys", { method: "POST", body: { challenge_id: o.challenge_id, credential } });
+      if (!prepared) throw new Error("Brak wyzwania.");
+      const credential = await createPasskey(prepared.options);
+      await api("/passkeys", { method: "POST", body: { challenge_id: prepared.challenge_id, credential } });
     },
+    onSettled: () => setPrepared(null),
     onSuccess: () => {
       setError(null);
       setPw("");
@@ -215,11 +244,11 @@ export function MyAccountPage() {
           <Title order={4}>Klucze dostępu</Title>
           <Button
             leftSection={<IconFingerprint size={18} />}
-            loading={add.isPending}
-            disabled={!passkeysSupported() || (reauth && !pw)}
-            onClick={() => add.mutate()}
+            loading={add.isPending || prepare.isPending}
+            disabled={!passkeysSupported() || (!prepared && reauth && !pw)}
+            onClick={() => (prepared ? add.mutate() : prepare.mutate())}
           >
-            Dodaj klucz
+            {prepared ? "Utwórz klucz na tym urządzeniu" : "Dodaj klucz"}
           </Button>
         </Group>
         <Text size="sm" c="dimmed" mb="sm">

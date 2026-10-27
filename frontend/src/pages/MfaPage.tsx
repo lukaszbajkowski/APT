@@ -191,6 +191,19 @@ function SetupFlow({ forced }: { forced: boolean }) {
       ) : (
         <form onSubmit={enable}>
           <Stack>
+            <Button
+              component="a"
+              href={setup.otpauth_uri}
+              hiddenFrom="sm"
+              size="md"
+              variant="light"
+            >
+              Dodaj kod do aplikacji na tym telefonie
+            </Button>
+            <Text size="xs" c="dimmed" hiddenFrom="sm">
+              Jednym dotknięciem otworzy się aplikacja z kodami (na iPhonie: Hasła) z gotową nazwą strony. Nic nie
+              wpisujesz ręcznie.
+            </Text>
             <Group align="flex-start" gap="xl">
               <Box
                 w={200}

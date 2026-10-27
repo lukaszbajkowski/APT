@@ -33,9 +33,20 @@ def secret_display(secret: bytes) -> str:
     return " ".join(s[i : i + 4] for i in range(0, len(s), 4))
 
 
+def issuer() -> str:
+    """Wystawca kodu = domena aplikacji (np. aptid.pl): telefon sam kojarzy kod ze stroną."""
+    from urllib.parse import urlparse
+
+    from app.config import get_settings
+
+    host = urlparse(get_settings().public_url).hostname
+    return host if host and host != "localhost" else ISSUER
+
+
 def provisioning_uri(secret: bytes, username: str) -> str:
-    label = quote(f"{ISSUER}:{username}")
-    params = urlencode({"secret": secret_b32(secret), "issuer": ISSUER, "digits": DIGITS, "period": STEP})
+    name = issuer()
+    label = quote(f"{name}:{username}")
+    params = urlencode({"secret": secret_b32(secret), "issuer": name, "digits": DIGITS, "period": STEP})
     return f"otpauth://totp/{label}?{params}"
 
 

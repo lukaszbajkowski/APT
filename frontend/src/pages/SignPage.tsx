@@ -336,7 +336,7 @@ export function SignPage() {
                 {info.data.person ? ` · ${info.data.person}` : ""} · podpisuje: {info.data.role_label.toLowerCase()}
               </Text>
             </div>
-            {error && (
+            {error && !view && (
               <Alert color="red" ref={errorBox} title="Nie udało się">
                 {error}
               </Alert>
@@ -430,6 +430,11 @@ export function SignPage() {
                       </Stack>
                     </Tabs.Panel>
                   </Tabs>
+                  {error && (
+                    <Alert color="red" title="Nie udało się" mt="md" ref={errorBox}>
+                      {error}
+                    </Alert>
+                  )}
                 </Card>
               </>
             )}

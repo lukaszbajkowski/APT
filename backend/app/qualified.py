@@ -121,6 +121,10 @@ def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
     if not st.intact or not st.valid:
         res.level = "invalid"
         res.notes.append("Podpis jest uszkodzony albo dokument zmieniono po podpisaniu.")
+        cov = getattr(st.coverage, "name", st.coverage)
+        res.notes.append(
+            f"Szczegóły techniczne: skrót zgodny={st.intact}, podpis poprawny={st.valid}, zakres={cov}."
+        )
         return res
     mod = st.modification_level
     if mod is not None and mod not in (

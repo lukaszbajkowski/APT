@@ -220,6 +220,7 @@ export function SignPage() {
   const [done, setDone] = useState(false);
   const [check, setCheck] = useState<Check | null>(null);
   // czy telefon potrafi potwierdzić blokadą ekranu (null – jeszcze sprawdzamy)
+  const errorBox = useRef<HTMLDivElement>(null);
   const [deviceOk, setDeviceOk] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -230,6 +231,11 @@ export function SignPage() {
       .then(setDeviceOk)
       .catch(() => setDeviceOk(false));
   }, [info.data?.device_check]);
+
+  // błąd pokazujemy na górze – po jego pojawieniu przewijamy tam, żeby był widoczny także na telefonie
+  useEffect(() => {
+    if (error) errorBox.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
 
   async function verify(e?: FormEvent) {
     e?.preventDefault();
@@ -330,7 +336,11 @@ export function SignPage() {
                 {info.data.person ? ` · ${info.data.person}` : ""} · podpisuje: {info.data.role_label.toLowerCase()}
               </Text>
             </div>
-            {error && <Alert color="red">{error}</Alert>}
+            {error && (
+              <Alert color="red" ref={errorBox} title="Nie udało się">
+                {error}
+              </Alert>
+            )}
 
             {!view && info.data.needs_birth_date && (
               <Card withBorder padding="md" radius="md" component="form" onSubmit={verify}>

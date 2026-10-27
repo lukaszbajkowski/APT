@@ -143,6 +143,13 @@ def test_scan_and_permissions(client, make_user):
     )
     r = client.post(f"/api/trainings/{tr['id']}/scan", files={"file": ("zaśw.pdf", PDF)})
     assert r.json()["has_scan"] and r.json()["scan_name"] == "zaśw.pdf"
+    # na dysku skan jest zaszyfrowany, a przez API wraca jawny
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    on_disk = list((Path(get_settings().data_dir) / "trainings" / str(e["id"])).iterdir())
+    assert on_disk and all(p.read_bytes().startswith(b"APTF") and PDF not in p.read_bytes() for p in on_disk)
     g = client.get(f"/api/trainings/{tr['id']}/scan")
     assert g.content == PDF and g.headers["content-type"] == "application/pdf"
 

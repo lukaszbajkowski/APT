@@ -85,7 +85,13 @@ def test_integrity_seal_detects_changed_file(admin_client, outboxes):  # noqa: F
 
     # ktoś zmienia gotowy plik poza aplikacją
     path = Path(get_settings().data_dir) / "documents" / str(emp["id"]) / f"{doc['id']}_signed.pdf"
-    path.write_bytes(path.read_bytes() + b"\n% zmiana")
+    original = path.read_bytes()
+    assert original.startswith(b"APTF")  # plik na dysku jest zaszyfrowany
+    path.write_bytes(original + b"\n% zmiana")  # uszkodzony szyfrogram
+    assert c.get(f"/api/documents/{doc['id']}/signatures").json()["integrity"] == "mismatch"
+    path.write_bytes(original)
+    assert c.get(f"/api/documents/{doc['id']}/signatures").json()["integrity"] == "ok"
+    path.write_bytes(b"%PDF-1.4 jawny, podstawiony plik")  # podmiana na jawny plik bez klucza
     assert c.get(f"/api/documents/{doc['id']}/signatures").json()["integrity"] == "mismatch"
 
     # usunięcie podpisu = nowa pieczęć (stan po usunięciu jest zgodny z dziennikiem)

@@ -127,6 +127,16 @@ def refresh_trustlist() -> int:
     return 0
 
 
+def encrypt_files() -> int:
+    """Szyfruje pliki z danymi osobowymi na dysku (dokumenty, podpisy, skany, badania, zdjęcia)."""
+    from app import storage
+
+    rep = storage.encrypt_tree()
+    if rep.encrypted or rep.failed:
+        print(f"Szyfrowanie plików: nowych {rep.encrypted}, wcześniej {rep.already}, błędów {rep.failed}.")
+    return 0
+
+
 def quality_reminders() -> int:
     """Przypomnienia o brakach w danych: admin i HR (wszyscy pracownicy), kierownicy (swój zakres)."""
     from sqlalchemy import select
@@ -288,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
+    sub.add_parser("encrypt-files", help="Zaszyfruj pliki z danymi osobowymi na dysku (idempotentne)")
     sub.add_parser("refresh-trustlist", help="Pobierz unijną listę zaufania do weryfikacji podpisów")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
@@ -306,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
         return training_reminders()
     if args.command == "agency-reports":
         return agency_reports()
+    if args.command == "encrypt-files":
+        return encrypt_files()
     if args.command == "refresh-trustlist":
         return refresh_trustlist()
     if args.command == "generate-key":

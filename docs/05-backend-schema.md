@@ -95,6 +95,7 @@ erDiagram
 ## Pliki na dysku (`APT_DATA_DIR`)
 
 `photos/`, `templates/`, `documents/<employee_id>/`, `trainings/<employee_id>/`, `medical/<employee_id>/`.
+Pliki w `photos/`, `documents/`, `trainings/` i `medical/` są zaszyfrowane (AES-256-GCM, klucz z `APT_DATA_KEY`); szablony jawne.
 Kopie zapasowe obejmują bazę (`baza.dump`) i pliki (`pliki.tar.gz`).
 
 ## Moduły API (FastAPI, prefiks `/api`)

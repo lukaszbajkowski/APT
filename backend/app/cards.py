@@ -21,6 +21,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
+from app import storage
+
 CARD_W = 85.6 * mm
 CARD_H = 54.0 * mm
 CORNER = 3.18 * mm
@@ -95,7 +97,7 @@ def _photo(c: Canvas, x: float, y: float, w: float, h: float, path: Path | None)
     drawn = False
     if path is not None and path.exists():
         try:
-            c.drawImage(ImageReader(str(path)), x, y, w, h, preserveAspectRatio=False)
+            c.drawImage(ImageReader(io.BytesIO(storage.read(path))), x, y, w, h, preserveAspectRatio=False)
             drawn = True
         except OSError:
             drawn = False

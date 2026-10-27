@@ -5,13 +5,13 @@ pomniejszenie do maks. 600×800 i zapis jako JPEG do ok. 200 KB.
 """
 
 import io
-import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from app import storage
 from app.config import get_settings
 
 TARGET_W, TARGET_H = 600, 800
@@ -80,9 +80,7 @@ def _fit_small(img: Image.Image) -> Image.Image:
 def save(employee_id: int, photo: ProcessedPhoto) -> str:
     name = f"{employee_id}_{uuid.uuid4().hex}.jpg"
     path = photos_dir() / name
-    tmp = path.with_suffix(".tmp")
-    tmp.write_bytes(photo.data)
-    os.replace(tmp, path)
+    storage.write(path, photo.data)
     return name
 
 

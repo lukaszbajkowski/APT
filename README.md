@@ -64,8 +64,10 @@ przeglądarka ──HTTPS──> Caddy ──┬── /api/*  ──> FastAPI (
 - Zdjęcia: plik lub kamera, kadrowanie 3:4, serwer zapisuje JPEG 600×800 do ok. 200 KB bez metadanych.
 - Zwolnienie przenosi do archiwum (z datą), rekord zostaje; można go przywrócić.
 - Historia zmian w profilu – dla danych osobowych zapisywana jest tylko informacja, że pole się zmieniło.
+- Pliki z danymi osobowymi na dysku (dokumenty, podpisy, skany, badania lekarskie, zdjęcia) są szyfrowane
+  AES-256-GCM tym samym kluczem głównym. Stare pliki szyfrują się same przy pierwszym starcie po aktualizacji.
 - **Kopia klucza `APT_DATA_KEY` musi być przechowywana bezpiecznie poza serwerem** – bez niego
-  zaszyfrowanych numerów PESEL nie da się odczytać.
+  zaszyfrowanych numerów PESEL ani plików (dokumenty, skany, zdjęcia) nie da się odczytać, także z kopii zapasowej.
 
 ## Import z Excela / CSV (etap 3)
 

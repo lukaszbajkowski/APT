@@ -11,12 +11,11 @@ from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import Select, String, and_, cast, delete, false, func, or_, select
 from sqlalchemy.orm import Session
 
-from app import crypto, lifecycle, photos, retention
+from app import crypto, lifecycle, photos, retention, storage
 from app.audit import audit
 from app.config import get_settings
 from app.deps import Auth, AuthContext, DbSession, StaffAuth, require_roles
@@ -738,15 +737,15 @@ def history(employee_id: int, ctx: StaffAuth, db: DbSession) -> list[AuditOut]:
 
 
 @router.get("/{employee_id}/photo")
-def get_photo(employee_id: int, ctx: Auth, db: DbSession) -> FileResponse:
+def get_photo(employee_id: int, ctx: Auth, db: DbSession) -> Response:
     e = get_visible(db, ctx.user, employee_id)
     if e.photo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak zdjęcia.")
     path = photos.path_for(e.photo.file_name)
     if not path.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku zdjęcia.")
-    return FileResponse(
-        path,
+    return Response(
+        storage.read(path),
         media_type=e.photo.content_type,
         headers={"Cache-Control": "private, max-age=86400", "ETag": str(e.photo.id)},
     )

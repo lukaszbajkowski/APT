@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import templating
+from app import storage, templating
 from app.audit import audit
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
@@ -718,7 +718,7 @@ async def upload_scan(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Dozwolone pliki: PDF, JPG, PNG.")
     _drop_scan(tr)
     name = f"{tr.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    (_scan_dir(tr.employee_id) / name).write_bytes(data)
+    storage.write(_scan_dir(tr.employee_id) / name, data)
     tr.scan_file = name
     tr.scan_name = (file.filename or f"zaswiadczenie.{ext}")[:255]
     tr.scan_type = {v: k for k, v in SCAN_TYPES.items()}[ext]
@@ -765,7 +765,7 @@ def get_scan(training_id: int, ctx: AnyAuth, db: DbSession, download: bool = Fal
     fname = templating.safe_filename(tr.scan_name or tr.scan_file)
     disp = "attachment" if download else "inline"
     return Response(
-        path.read_bytes(),
+        storage.read(path),
         media_type=tr.scan_type or "application/octet-stream",
         headers={
             "Content-Disposition": f"{disp}; filename*=UTF-8''{fname}",

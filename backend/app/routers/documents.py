@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import crypto, templating
+from app import crypto, storage, templating
 from app.audit import audit
 from app.config import get_settings
 from app.deps import AdminAuth, AuthContext, DbSession, require_roles
@@ -529,12 +529,12 @@ def _create_document(
         contains_sensitive=t.sensitive and not masked,
     )
     doc.signature_roles = templating.signature_roles(t.variables)
-    _doc_path(doc, "docx").write_bytes(docx)
+    storage.write(_doc_path(doc, "docx"), docx)
     pdf_error, pdf = None, None
     # PDF powstaje zawsze, gdy się da – służy do podglądu online.
     try:
         pdf = templating.to_pdf(docx)
-        _doc_path(doc, "pdf").write_bytes(pdf)
+        storage.write(_doc_path(doc, "pdf"), pdf)
         doc.has_pdf = True
     except templating.PdfUnavailable as exc:
         pdf_error = str(exc)
@@ -703,7 +703,7 @@ def download_document(
     suffix = "_podpisany" if signed else ""
     name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}{suffix}") + f".{ext}"
     return Response(
-        path.read_bytes(),
+        storage.read(path),
         media_type=media,
         headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
     )
@@ -719,17 +719,17 @@ def _view_source(db: Session, doc: GeneratedDocument) -> tuple[bytes, str, bool,
 
     signed = signed_file(db, doc) if (doc.has_signed_pdf or doc.signed_at) else None
     if signed and signed[1] == "xml":
-        inner = signing.embedded_pdf(signed[0].read_bytes())
+        inner = signing.embedded_pdf(storage.read(signed[0]))
         if inner:
             return inner, "pdf", True, True
         stamped = _doc_path(doc, "pdf").with_name(f"{doc.id}_signed.pdf")
         if stamped.exists():
-            return stamped.read_bytes(), "pdf", True, False
+            return storage.read(stamped), "pdf", True, False
         signed = None
     if signed:
         path, ext, _ = signed
         return (
-            path.read_bytes(),
+            storage.read(path),
             ext,
             True,
             path.name != f"{doc.id}_signed.pdf" and ext == "pdf" and "_sig_" in path.name,
@@ -739,7 +739,7 @@ def _view_source(db: Session, doc: GeneratedDocument) -> tuple[bytes, str, bool,
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny – dokument nie ma wersji PDF."
         )
-    return path.read_bytes(), "pdf", False, False
+    return storage.read(path), "pdf", False, False
 
 
 def _audit_view(

@@ -212,6 +212,12 @@ def test_agency_account_access(admin_client, make_user):
     ex = r.json()
     assert ex["state"] == "expiring" and ex["has_file"] and ex["can_delete"]
     assert ac.get(f"/api/medical-exams/{ex['id']}/file").content == b"%PDF-1.4 badanie"
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    med = list((Path(get_settings().data_dir) / "medical" / str(mine["id"])).iterdir())
+    assert med and all(p.read_bytes().startswith(b"APTF") for p in med)
     assert c.get(f"/api/employees/{mine['id']}/medical-exams").json()[0]["id"] == ex["id"]
     up = ac.get("/api/dashboard/upcoming").json()
     assert [u["kind"] for u in up] == ["medical"]

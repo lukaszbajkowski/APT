@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import device, mailer, notify, qualified, signing, sms, templating, trustlist
+from app import device, mailer, notify, qualified, signing, sms, storage, templating, trustlist
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
@@ -57,12 +57,12 @@ def original_pdf(doc: GeneratedDocument) -> bytes:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail="Dokument nie ma wersji PDF – podpis niemożliwy."
         )
-    return path.read_bytes()
+    return storage.read(path)
 
 
 def current_pdf(doc: GeneratedDocument) -> bytes:
     signed = _dir(doc) / f"{doc.id}_signed.pdf"
-    return signed.read_bytes() if doc.has_signed_pdf and signed.exists() else original_pdf(doc)
+    return storage.read(signed) if doc.has_signed_pdf and signed.exists() else original_pdf(doc)
 
 
 def _sigs(db: Session, doc: GeneratedDocument) -> list[DocumentSignature]:
@@ -83,7 +83,7 @@ def _rebuild(db: Session, doc: GeneratedDocument) -> None:
             continue
         png = None
         if s.method == "ekran" and s.file_name:
-            png = (_dir(doc) / s.file_name).read_bytes()
+            png = storage.read(_dir(doc) / s.file_name)
         applied.append(
             signing.AppliedSignature(
                 role=s.role,
@@ -100,7 +100,7 @@ def _rebuild(db: Session, doc: GeneratedDocument) -> None:
     if not applied:
         return
     pdf = signing.stamp(original_pdf(doc), applied, doc.template_name, str(doc.id))
-    (_dir(doc) / f"{doc.id}_signed.pdf").write_bytes(pdf)
+    storage.write(_dir(doc) / f"{doc.id}_signed.pdf", pdf)
     doc.has_signed_pdf = True
 
 
@@ -117,7 +117,7 @@ def _finish_if_complete(db: Session, doc: GeneratedDocument) -> None:
 
 def _signed_hash(db: Session, doc: GeneratedDocument) -> str | None:
     found = signed_file(db, doc)
-    return signing.sha256(found[0].read_bytes()) if found else None
+    return signing.sha256(storage.read(found[0])) if found else None
 
 
 def _seal(
@@ -162,7 +162,7 @@ def _integrity(db: Session, doc: GeneratedDocument) -> str:
         return "unknown"
     try:
         current = _signed_hash(db, doc)
-    except OSError:
+    except (OSError, storage.FileDecryptError):
         return "mismatch"
     return "ok" if current == (last.details or {}).get("signed_sha256") else "mismatch"
 
@@ -472,7 +472,7 @@ async def upload_scan(
     db.add(sig)
     db.flush()
     sig.file_name = f"{doc.id}_sig_{sig.id}.{kind[0]}"
-    (_dir(doc) / sig.file_name).write_bytes(data)
+    storage.write(_dir(doc) / sig.file_name, data)
     _finish_if_complete(db, doc)
     db.flush()
     _seal(db, request, doc, e, "scan", user=ctx.user, evidence={"scan_sha256": signing.sha256(data)})
@@ -511,7 +511,7 @@ def preview_extra(db: Session, doc: GeneratedDocument) -> bytes | None:
 
     from pypdf import PdfReader, PdfWriter
 
-    reader = PdfReader(io.BytesIO(path.read_bytes()))
+    reader = PdfReader(io.BytesIO(storage.read(path)))
     writer = PdfWriter()
     writer.add_page(reader.pages[-1])
     out = io.BytesIO()
@@ -559,7 +559,7 @@ def download_signed(
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Dokument nie jest jeszcze podpisany.")
     path, ext, media = found
-    data, name = path.read_bytes(), f"{base}.{ext}"
+    data, name = storage.read(path), f"{base}.{ext}"
     audit(
         db,
         request,
@@ -583,7 +583,7 @@ def download_signature_file(signature_id: int, ctx: DocAuth, db: DbSession) -> R
     doc, _ = _get(db, ctx, sig.document_id)
     ext = sig.file_name.rsplit(".", 1)[-1]
     return _file_response(
-        (_dir(doc) / sig.file_name).read_bytes(),
+        storage.read(_dir(doc) / sig.file_name),
         templating.safe_filename(sig.original_name or sig.file_name),
         "application/pdf" if ext == "pdf" else "application/xml",
     )
@@ -833,7 +833,7 @@ def sign(token: str, body: SignIn, request: Request, db: DbSession) -> dict[str,
     if credential_id:
         sig.device_credential, sig.device_verified_at = credential_id, datetime.now(UTC)
     sig.file_name = f"{doc.id}_sig_{sig.id}.png"
-    (_dir(doc) / sig.file_name).write_bytes(png)
+    storage.write(_dir(doc) / sig.file_name, png)
     _complete(db, request, sig, doc, e, "ekran", name, {"signature_png_sha256": signing.sha256(png)})
     return {"ok": True}
 
@@ -897,6 +897,6 @@ async def sign_trusted(
     ext = "pdf" if data[:4] == b"%PDF" else "xml"
     sig.file_name = f"{doc.id}_sig_{sig.id}.{ext}"
     sig.original_name = fname[:255]
-    (_dir(doc) / sig.file_name).write_bytes(data)
+    storage.write(_dir(doc) / sig.file_name, data)
     _complete(db, request, sig, doc, e, "zaufany", name, {"uploaded_file_sha256": signing.sha256(data)})
     return {"ok": True, "check": sig.check_result}

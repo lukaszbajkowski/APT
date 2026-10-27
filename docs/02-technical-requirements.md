@@ -53,6 +53,12 @@ docs/               ten katalog
 - PESEL: AES-256-GCM kluczem `APT_DATA_KEY` (poza bazą), `pesel_hash` (HMAC) do wykrywania duplikatów, `pesel_last2`.
 - Odczyt pełnego PESEL tylko Administrator i Kadry, każdy zapisany w dzienniku.
 - Zdjęcia: JPEG 600×800 bez metadanych. Pliki na dysku, w bazie tylko opis.
+- Pliki z danymi osobowymi na dysku (`photos/`, `documents/`, `trainings/`, `medical/`: dokumenty, podpisy, skany, badania, zdjęcia)
+  są szyfrowane AES-256-GCM (`app/storage.py`, format `APTF` + nonce + szyfrogram z tagiem, losowy nonce na plik, zapis atomowy).
+  Klucz wyprowadzany z `APT_DATA_KEY` (HKDF, osobny kontekst niż PESEL i TOTP). Stare jawne pliki są odczytywane bez zmian i
+  szyfrowane przy starcie aplikacji (`python -m app.cli encrypt-files`, idempotentne). Szablony .docx (bez danych osobowych)
+  i lista zaufania zostają jawne. Skróty w dzienniku (pieczęć integralności) liczone są z treści jawnej, więc dawne pieczęcie
+  nadal się zgadzają; plik, którego nie da się odszyfrować, jest zgłaszany jako zmieniony.
 - Zakończone pracownicy: retencja 10 lat od końca roku zwolnienia, trwałe usunięcie ręczne.
 - Kopie: dzienne 14 dni lokalnie + szyfrowane GPG zdalnie (FTPS/SFTP) 30 dni.
 
@@ -136,7 +142,8 @@ scenariusze Playwright uruchamiane lokalnie przy zmianach interfejsu.
 
 ## Ryzyka techniczne
 
-- Utrata `APT_DATA_KEY` = utrata PESEL; klucz i hasło kopii muszą być w menedżerze haseł.
+- Utrata `APT_DATA_KEY` = utrata PESEL **i wszystkich zaszyfrowanych plików** (dokumenty, skany, zdjęcia); klucz i hasło kopii muszą być w menedżerze haseł, poza serwerem.
+- Przy przetwarzaniu (podgląd, PDF z Worda przez LibreOffice) treść jawna istnieje chwilowo w pamięci i w katalogu tymczasowym; szyfrowanie chroni dane „w spoczynku” (dysk, kopie), nie przed osobą z dostępem do działającego serwera.
 - Pojedynczy serwer: brak redundancji; ratunkiem są kopie zdalne.
 - LibreOffice może inaczej złamać układ niż Word; szablony weryfikować w PDF.
 - Podpis zaufany nie jest weryfikowany kryptograficznie, tylko przechowywany.

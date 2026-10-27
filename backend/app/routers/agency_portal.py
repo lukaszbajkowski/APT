@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
-from app import crypto
+from app import crypto, storage
 from app.audit import audit
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, StaffAuth, require_roles
@@ -135,7 +135,7 @@ async def add_exam(
     db.flush()
     if data and kind_file:
         x.file_name = f"{x.id}.{kind_file[0]}"
-        (_dir(e.id) / x.file_name).write_bytes(data)
+        storage.write(_dir(e.id) / x.file_name, data)
     audit(
         db,
         request,
@@ -181,7 +181,7 @@ def exam_file(exam_id: int, ctx: ExamView, request: Request, db: DbSession) -> R
     )
     db.commit()
     return Response(
-        (_dir(e.id) / x.file_name).read_bytes(),
+        storage.read(_dir(e.id) / x.file_name),
         media_type=media,
         headers={
             "Content-Disposition": f'inline; filename="badanie_{x.id}.{ext}"',

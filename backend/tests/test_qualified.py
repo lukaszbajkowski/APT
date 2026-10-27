@@ -249,6 +249,33 @@ def test_lenient_rsa_accepts_digestinfo_without_null_but_not_wrong_hash():
         assert qualified.lenient_pkcs1_ok(n, e, sig, digest, "md5") is False
 
 
+def test_chain_trusted_with_intermediate_ca_as_anchor():
+    """Na unijnej liście bywa urząd pośredni (nie samopodpisany) – ma być zaufany, obcy urząd nie."""
+    now = datetime.now(UTC)
+    keys = [ec.generate_private_key(ec.SECP256R1()) for _ in range(4)]
+
+    def make(subject, issuer, pub, signer, ca):
+        b = (
+            x509.CertificateBuilder()
+            .subject_name(_name(subject))
+            .issuer_name(_name(issuer))
+            .public_key(pub)
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=300))
+            .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
+        )
+        return b.sign(signer, hashes.SHA256())
+
+    der = lambda c: c.public_bytes(serialization.Encoding.DER)  # noqa: E731
+    inter = make("Urząd pośredni", "Korzeń", keys[1].public_key(), keys[0], True)
+    other = make("Obcy urząd", "Obcy urząd", keys[3].public_key(), keys[3], True)
+    leaf = make("Podpisujący", "Urząd pośredni", keys[2].public_key(), keys[1], False)
+    a_leaf = ax509.Certificate.load(der(leaf))
+    assert qualified._chain_trusted(a_leaf, [der(other), der(inter)], now) is True
+    assert qualified._chain_trusted(a_leaf, [der(other)], now) is False
+
+
 # ---------- potwierdzenie blokadą urządzenia (WebAuthn) ----------
 
 

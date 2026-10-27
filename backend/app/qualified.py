@@ -151,6 +151,26 @@ def _lenient_signature_ok(emb) -> bool:  # noqa: ANN001
         return False
 
 
+def _chain_trusted(cert, roots: list[bytes], at) -> bool:  # noqa: ANN001
+    """Czy certyfikat podpisującego łączy się łańcuchem z urzędem z listy zaufania (na moment podpisu)."""
+    import asyncio
+
+    from asn1crypto import x509 as ax509
+    from pyhanko_certvalidator import CertificateValidator, ValidationContext
+
+    try:
+        vc = ValidationContext(
+            trust_roots=[ax509.Certificate.load(c) for c in roots],
+            allow_fetching=False,
+            revocation_mode="soft-fail",
+            moment=at,
+        )
+        asyncio.run(CertificateValidator(cert, validation_context=vc).async_validate_usage(set()))
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
     """Weryfikuje pierwszy podpis w PDF. roots – urzędy z listy zaufania (DER) albo None."""
     from asn1crypto import x509 as ax509
@@ -200,7 +220,11 @@ def verify_pdf(data: bytes, roots: list[bytes] | None) -> Result:
         res.level = "invalid"
         res.notes.append("Dokument zmieniono po złożeniu podpisu.")
         return res
-    res.trusted = bool(st.trusted) if roots else None
+    if roots and not st.valid:
+        # podpis uznany przez nasze sprawdzenie (nie przez pyHanko) – zaufanie do łańcucha liczymy osobno
+        res.trusted = _chain_trusted(cert, roots, st.signer_reported_dt)
+    else:
+        res.trusted = bool(st.trusted) if roots else None
     if roots is None:
         res.notes.append("Nie sprawdzono łańcucha certyfikatów (brak unijnej listy zaufania).")
     if res.qc_marked and res.trusted:

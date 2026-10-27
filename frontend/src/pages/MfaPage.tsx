@@ -211,21 +211,32 @@ function SetupFlow({ forced }: { forced: boolean }) {
                   </Button>
                 )}
               </CopyButton>
-              <Button
-                component="a"
-                href={setup.otpauth_uri}
-                variant="light"
-                size="md"
-                h="auto"
-                py="xs"
-                styles={{ label: { whiteSpace: "normal", textAlign: "center" } }}
-              >
-                Spróbuj dodać kod automatycznie
-              </Button>
-              <Text size="xs" c="dimmed">
-                Automatyczne dodanie działa tylko w niektórych aplikacjach. Jeśli otworzy się puste okno dodawania,
-                wróć tu i użyj skopiowanego klucza.
-              </Text>
+              {!IS_IOS && (
+                <>
+                  <Button
+                    component="a"
+                    href={setup.otpauth_uri}
+                    variant="light"
+                    size="md"
+                    h="auto"
+                    py="xs"
+                    styles={{ label: { whiteSpace: "normal", textAlign: "center" } }}
+                  >
+                    Otwórz w aplikacji z kodami
+                  </Button>
+                  <Text size="xs" c="dimmed">
+                    Otworzy się zainstalowana aplikacja do kodów (np. Google Authenticator). Jeśli nic się nie stanie,
+                    użyj skopiowanego klucza.
+                  </Text>
+                </>
+              )}
+              {IS_IOS && (
+                <Text size="xs" c="dimmed">
+                  Na iPhonie dodaj kod ręcznie w Hasłach. Kod można dopisać tylko do wpisu z hasłem – wpis z kluczem
+                  dostępu go nie przyjmie. Jeśli wpisu z hasłem do aptid.pl nie ma, użyj „+” i utwórz go, a potem
+                  dodaj klucz konfiguracji.
+                </Text>
+              )}
             </Stack>
             <Group align="flex-start" gap="xl" visibleFrom="sm">
               <Box
@@ -364,6 +375,8 @@ function EnabledPanel() {
     </Stack>
   );
 }
+
+const IS_IOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent);
 
 export function MfaPage() {
   const { me, logout } = useAuth();

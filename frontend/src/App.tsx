@@ -23,6 +23,7 @@ const DictionariesPage = lazy(() => import("./pages/DictionariesPage").then((m) 
 const ImportPage = lazy(() => import("./pages/ImportPage").then((m) => ({ default: m.ImportPage })));
 const TemplatesPage = lazy(() => import("./pages/TemplatesPage").then((m) => ({ default: m.TemplatesPage })));
 const TemplateEditPage = lazy(() => import("./pages/TemplateEditPage").then((m) => ({ default: m.TemplateEditPage })));
+const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").then((m) => ({ default: m.EmployeeAccountsPage })));
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const RetentionPage = lazy(() => import("./pages/RetentionPage").then((m) => ({ default: m.RetentionPage })));
@@ -129,6 +130,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr", "agency"]}>
               <AgencyReportPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="konta-pracownikow"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <EmployeeAccountsPage />
             </RequireAuth>
           }
         />

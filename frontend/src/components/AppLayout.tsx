@@ -64,6 +64,7 @@ export function AppLayout() {
     { to: "/zgloszenia", label: "Zgłoszenia agencji", icon: IconUserPlus, show: hasRole("admin", "hr") },
     { to: "/zgloszenia", label: "Zgłoszenia osób", icon: IconUserPlus, show: hasRole("agency") },
     { to: "/zestawienia", label: "Zestawienie dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency") },
+    { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconFingerprint, show: hasRole("admin", "hr") },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },

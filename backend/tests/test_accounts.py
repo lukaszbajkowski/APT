@@ -327,3 +327,22 @@ def test_admin_must_reconfirm_before_adding_passkey(admin_client):
         json={"challenge_id": opts["challenge_id"], "credential": auth.create(opts["options"])},
     )
     assert r.status_code == 201
+
+
+def test_accounts_list_for_staff(hr, emp):
+    assert hr.get("/api/employee-accounts").json() == []
+    _invite(hr, emp)
+    rows = hr.get("/api/employee-accounts").json()
+    assert len(rows) == 1 and rows[0]["status"] == "pending" and rows[0]["invite_pending"] is True
+    assert rows[0]["name"] == "Nowak Anna"
+    assert hr.get("/api/employee-accounts", params={"q": "nowak"}).json()
+    assert hr.get("/api/employee-accounts", params={"q": "xyz"}).json() == []
+    assert hr.get("/api/employee-accounts", params={"status_filter": "active"}).json() == []
+    hr.post(f"/api/employees/{emp}/account/active", json={"active": False})
+    assert hr.get("/api/employee-accounts", params={"status_filter": "disabled"}).json()
+
+
+def test_accounts_list_forbidden_for_manager(client, make_user):
+    make_user("kier2", Role.manager)
+    login(client, "kier2")
+    assert client.get("/api/employee-accounts").status_code == 403

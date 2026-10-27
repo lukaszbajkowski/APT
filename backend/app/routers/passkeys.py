@@ -386,6 +386,74 @@ def _employee_or_404(db: Session, employee_id: int) -> Employee:
     return e
 
 
+class AccountRow(BaseModel):
+    employee_id: int
+    number: str
+    name: str
+    username: str
+    status: str  # pending | active | disabled
+    has_passkey: bool
+    has_password: bool
+    invite_pending: bool
+    last_login_at: str | None
+
+
+@router.get("/employee-accounts", response_model=list[AccountRow])
+def list_accounts(
+    ctx: StaffAuth, db: DbSession, q: str | None = None, status_filter: str | None = None
+) -> list[AccountRow]:
+    """Lista kont pracowników dla kadr: status, sposób logowania, ostatnie logowanie."""
+    from sqlalchemy import func
+
+    now = utcnow()
+    keys = {
+        uid for (uid,) in db.execute(select(WebauthnCredential.user_id).group_by(WebauthnCredential.user_id))
+    }
+    invites = {
+        uid
+        for (uid,) in db.execute(
+            select(PasswordToken.user_id).where(
+                PasswordToken.purpose == INVITE_PURPOSE,
+                PasswordToken.used_at.is_(None),
+                PasswordToken.expires_at > now,
+            )
+        )
+    }
+    stmt = (
+        select(User, Employee)
+        .join(Employee, Employee.id == User.employee_id)
+        .where(User.role == Role.employee)
+        .order_by(Employee.last_name, Employee.first_name)
+    )
+    if q and q.strip():
+        like = f"%{q.strip().lower()}%"
+        stmt = stmt.where(
+            func.lower(Employee.last_name + " " + Employee.first_name).like(like)
+            | func.lower(Employee.first_name + " " + Employee.last_name).like(like)
+            | func.lower(User.username).like(like)
+        )
+    rows: list[AccountRow] = []
+    for u, e in db.execute(stmt):
+        activated = u.id in keys or u.has_password
+        st = "disabled" if not u.is_active else ("active" if activated else "pending")
+        if status_filter and st != status_filter:
+            continue
+        rows.append(
+            AccountRow(
+                employee_id=e.id,
+                number=f"{e.number:06d}",
+                name=f"{e.last_name} {e.first_name}",
+                username=u.username,
+                status=st,
+                has_passkey=u.id in keys,
+                has_password=u.has_password,
+                invite_pending=u.id in invites,
+                last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
+            )
+        )
+    return rows
+
+
 @router.get("/employees/{employee_id}/account", response_model=AccountOut)
 def get_account(employee_id: int, ctx: StaffAuth, db: DbSession) -> AccountOut:
     return _account_out(db, _employee_or_404(db, employee_id))

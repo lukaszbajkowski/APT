@@ -389,6 +389,13 @@ class DocumentSignature(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # potwierdzenie blokadą urządzenia (Face ID / odcisk palca / PIN) przez WebAuthn
+    device_check: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    device_challenge: Mapped[str | None] = mapped_column(String(64))
+    device_credential: Mapped[str | None] = mapped_column(String(300))
+    device_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # wynik weryfikacji pliku podpisanego zaufanym / kwalifikowanym (status, podpisujący, wystawca, uwagi)
+    check_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class PasswordToken(Base):

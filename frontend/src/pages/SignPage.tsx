@@ -21,7 +21,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconCircleCheck, IconDownload, IconEraser, IconFileUpload, IconSignature } from "@tabler/icons-react";
+import { IconCircleCheck, IconDownload, IconEraser, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 
@@ -33,6 +33,57 @@ interface Info {
   needs_birth_date: boolean;
   needs_name: boolean;
   expires_at: string | null;
+  device_check: boolean;
+}
+
+interface Check {
+  level: "qualified" | "valid" | "unverified" | "invalid";
+  label: string;
+  notes: string[];
+}
+
+const b64u = (b: ArrayBuffer) =>
+  btoa(String.fromCharCode(...new Uint8Array(b)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+const unb64u = (s: string) => {
+  const p = s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4);
+  return Uint8Array.from(atob(p), (c) => c.charCodeAt(0)).buffer;
+};
+
+/** Prosi telefon o potwierdzenie blokadą ekranu (Face ID / odcisk palca / PIN) – WebAuthn z wymuszoną weryfikacją. */
+async function confirmWithDevice(token: string, view: string | null): Promise<Record<string, unknown>> {
+  if (!window.PublicKeyCredential) throw new Error("Ta przeglądarka nie obsługuje potwierdzenia blokadą urządzenia.");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const o = await api<any>(`/sign/${token}/device/options`, { method: "POST", body: { view } });
+  const publicKey = {
+    ...o,
+    challenge: unb64u(o.challenge),
+    user: { ...o.user, id: unb64u(o.user.id) },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    excludeCredentials: (o.excludeCredentials ?? []).map((c: any) => ({ ...c, id: unb64u(c.id) })),
+  } as PublicKeyCredentialCreationOptions;
+  let cred: PublicKeyCredential | null;
+  try {
+    cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+  } catch {
+    throw new Error("Potwierdzenie blokadą urządzenia zostało anulowane albo się nie powiodło. Spróbuj jeszcze raz.");
+  }
+  if (!cred) throw new Error("Nie udało się potwierdzić blokadą urządzenia.");
+  const r = cred.response as AuthenticatorAttestationResponse;
+  return {
+    id: cred.id,
+    rawId: b64u(cred.rawId),
+    type: cred.type,
+    response: {
+      clientDataJSON: b64u(r.clientDataJSON),
+      attestationObject: b64u(r.attestationObject),
+      transports: r.getTransports?.() ?? [],
+    },
+    clientExtensionResults: cred.getClientExtensionResults(),
+    authenticatorAttachment: cred.authenticatorAttachment,
+  };
 }
 
 /** Pole do podpisu palcem / rysikiem / myszką. Przezroczyste tło, linia w kolorze tuszu. */
@@ -150,6 +201,18 @@ export function SignPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [check, setCheck] = useState<Check | null>(null);
+  // czy telefon potrafi potwierdzić blokadą ekranu (null – jeszcze sprawdzamy)
+  const [deviceOk, setDeviceOk] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!info.data?.device_check) return;
+    const pk = window.PublicKeyCredential;
+    if (!pk?.isUserVerifyingPlatformAuthenticatorAvailable) return setDeviceOk(false);
+    pk.isUserVerifyingPlatformAuthenticatorAvailable()
+      .then(setDeviceOk)
+      .catch(() => setDeviceOk(false));
+  }, [info.data?.device_check]);
 
   async function verify(e?: FormEvent) {
     e?.preventDefault();
@@ -179,7 +242,8 @@ export function SignPage() {
     setError(null);
     setBusy(true);
     try {
-      await api(`/sign/${token}`, { method: "POST", body: { image, view, consent, signer_name: name || null } });
+      const device = info.data?.device_check ? await confirmWithDevice(token, view) : null;
+      await api(`/sign/${token}`, { method: "POST", body: { image, view, consent, signer_name: name || null, device } });
       setDone(true);
       window.scrollTo({ top: 0 });
     } catch (err) {
@@ -197,7 +261,8 @@ export function SignPage() {
       f.append("file", file);
       if (view) f.append("view", view);
       if (name) f.append("signer_name", name);
-      await api(`/sign/${token}/trusted`, { method: "POST", form: f });
+      const r = await api<{ check?: Check }>(`/sign/${token}/trusted`, { method: "POST", form: f });
+      setCheck(r.check ?? null);
       setDone(true);
       window.scrollTo({ top: 0 });
     } catch (err) {
@@ -230,6 +295,11 @@ export function SignPage() {
                 <Text c="dimmed" ta="center">
                   Podpisany dokument trafił do działu kadr. Możesz zamknąć tę stronę.
                 </Text>
+                {check && (
+                  <Text size="sm" ta="center" c={check.level === "qualified" ? "teal.7" : "dimmed"}>
+                    Sprawdzenie podpisu w pliku: {check.label}.
+                  </Text>
+                )}
               </Stack>
             </Center>
           </Card>
@@ -281,17 +351,24 @@ export function SignPage() {
                       <Tabs.Tab value="screen" leftSection={<IconSignature size={16} />}>
                         Podpis na ekranie
                       </Tabs.Tab>
-                      <Tabs.Tab value="trusted">Podpis zaufany (gov.pl)</Tabs.Tab>
+                      <Tabs.Tab value="trusted">Podpis zaufany lub kwalifikowany</Tabs.Tab>
                     </Tabs.List>
                     <Tabs.Panel value="screen">
                       <Stack>
+                        {info.data.device_check && (
+                          <Alert color={deviceOk === false ? "red" : "blue"} icon={<IconFingerprint size={18} />}>
+                            {deviceOk === false
+                              ? "Ten telefon nie obsługuje potwierdzenia blokadą ekranu (Face ID, odcisk palca lub PIN). Ustaw blokadę ekranu w telefonie albo poproś dział kadr o nowy link bez tego wymogu. Możesz też wgrać plik z podpisem zaufanym lub kwalifikowanym (zakładka obok)."
+                              : "Po kliknięciu „Podpisz dokument” telefon poprosi o potwierdzenie: twarzą, odciskiem palca albo kodem odblokowania."}
+                          </Alert>
+                        )}
                         <SignaturePad onChange={setImage} />
                         <Checkbox
                           checked={consent}
                           onChange={(e) => setConsent(e.currentTarget.checked)}
                           label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go."
                         />
-                        <Button size="md" onClick={sign} loading={busy} disabled={!image || !consent || (info.data.needs_name && !name.trim())}>
+                        <Button size="md" onClick={sign} loading={busy} disabled={!image || !consent || (info.data.needs_name && !name.trim()) || (info.data.device_check && deviceOk === false)}>
                           Podpisz dokument
                         </Button>
                         <Text size="xs" c="dimmed">
@@ -308,7 +385,8 @@ export function SignPage() {
                             <Anchor href="https://moj.gov.pl/nforms/signer/upload?xFormsAppName=SIGNER" target="_blank" rel="noreferrer">
                               podpisywanie dokumentu na gov.pl
                             </Anchor>
-                            , dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem).
+                            , dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym
+                            certyfikatem kwalifikowanym (np. w aplikacji swojego dostawcy podpisu).
                           </List.Item>
                           <List.Item>Pobierz podpisany plik i wgraj go poniżej.</List.Item>
                         </List>

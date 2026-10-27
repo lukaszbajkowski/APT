@@ -71,7 +71,7 @@ erDiagram
 |---|---|---|
 | `templates` | name (unik.), version, file_name, variables, fields (JSONB), sensitive, allow_manager, download_formats, is_active | pliki `templates/<id>_v<wersja>.docx` |
 | `documents` | id (UUID), employee_id, template_id, template_name, template_version, has_pdf, contains_sensitive, signature_roles (JSONB), signed_at, has_signed_pdf, created_by_name | pliki `documents/<employee_id>/<id>.*` |
-| `document_signatures` | document_id, role, status (`pending/signed/cancelled`), token_hash (unik.), expires_at, channel (`email/sms/link/skan`), sent_to, signer_name, method (`ekran/zaufany/skan`), file_name, failed_attempts, ip, user_agent, signed_at | pliki `<document_id>_sig_<id>.*` |
+| `document_signatures` | document_id, role, status (`pending/signed/cancelled`), token_hash (unik.), expires_at, channel (`email/sms/link/skan`), sent_to, signer_name, method (`ekran/zaufany/skan`), file_name, failed_attempts, ip, user_agent, signed_at, **device_check**, device_challenge, device_credential, device_verified_at (potwierdzenie blokadą urządzenia), **check_result** (JSONB: wynik weryfikacji pliku z podpisem) | pliki `<document_id>_sig_<id>.*` |
 
 ### Szkolenia
 

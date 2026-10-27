@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     sms_sender: str = ""
     # ważność linku do podpisu dokumentu (godziny)
     sign_link_hours: int = 72
+    # kraje, których krajowe listy zaufania (kwalifikowani dostawcy podpisu) sprawdzamy – kody po przecinku
+    trust_countries: str = "PL"
 
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key

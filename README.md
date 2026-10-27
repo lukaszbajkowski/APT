@@ -298,3 +298,13 @@ cd backend && pytest
 ```
 
 Dokumentacja API: http://localhost:8000/api/docs
+
+## Podpisy elektroniczne – zabezpieczenia
+
+- **Potwierdzenie blokadą telefonu:** przy prośbie o podpis można wymagać Face ID, odcisku palca albo PIN-u telefonu
+  (WebAuthn). Działa w Safari (iOS 16+) i Chrome na Androidzie, wymaga HTTPS i ustawionej blokady ekranu. Gdy telefon
+  tego nie obsługuje, osoba wgrywa plik z podpisem zaufanym / kwalifikowanym albo kadry wysyłają nowy link bez wymogu.
+- **Podpis kwalifikowany:** wgrany PDF jest sprawdzany (poprawność, brak zmian, treść, certyfikat z oznaczeniem
+  „kwalifikowany” i wystawca z unijnej listy zaufania). Wynik widać w oknie „Podpis” i na stronie potwierdzenia.
+  Aplikacja nie sprawdza unieważnienia certyfikatu ani podpisów XML. Listę zaufania odświeża cron w poniedziałki
+  (ręcznie: `docker compose exec api python -m app.cli refresh-trustlist`); kraje: `APT_TRUST_COUNTRIES` (domyślnie `PL`).

@@ -114,6 +114,19 @@ def agency_reports() -> int:
     return 0
 
 
+def refresh_trustlist() -> int:
+    """Pobiera unijną listę zaufania (kwalifikowani dostawcy podpisu) do weryfikacji podpisów."""
+    from app import trustlist
+
+    try:
+        n = trustlist.refresh()
+    except Exception as exc:  # noqa: BLE001
+        print(f"Nie udało się pobrać listy zaufania: {exc}", file=sys.stderr)
+        return 1
+    print(f"Lista zaufania: {n} certyfikatów urzędów kwalifikowanych.")
+    return 0
+
+
 def quality_reminders() -> int:
     """Przypomnienia o brakach w danych: admin i HR (wszyscy pracownicy), kierownicy (swój zakres)."""
     from sqlalchemy import select
@@ -244,6 +257,7 @@ def notify_daily() -> int:
     if local.weekday() == 0:
         quality_reminders()
         training_reminders()
+        refresh_trustlist()
     if local.day == 1:
         agency_reports()
     if not problems:
@@ -274,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
+    sub.add_parser("refresh-trustlist", help="Pobierz unijną listę zaufania do weryfikacji podpisów")
     sub.add_parser("generate-key", help="Wygeneruj klucz APT_DATA_KEY do szyfrowania PESEL")
     args = parser.parse_args(argv)
 
@@ -291,6 +306,8 @@ def main(argv: list[str] | None = None) -> int:
         return training_reminders()
     if args.command == "agency-reports":
         return agency_reports()
+    if args.command == "refresh-trustlist":
+        return refresh_trustlist()
     if args.command == "generate-key":
         from app.crypto import generate_key
 

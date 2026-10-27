@@ -62,6 +62,8 @@ class AppliedSignature:
     image_png: bytes | None = None
     ip: str | None = None
     user_agent: str | None = None
+    device_credential: str | None = None  # potwierdzenie blokadą urządzenia (WebAuthn)
+    check_lines: list[str] | None = None  # wynik weryfikacji pliku z podpisem zaufanym / kwalifikowanym
 
 
 def sha256(data: bytes) -> str:
@@ -203,6 +205,7 @@ def _certificate(original_hash: str, doc_title: str, doc_id: str, sigs: list[App
             method = {
                 "ekran": "podpis złożony na ekranie (zwykły podpis elektroniczny)",
                 "zaufany": "podpis zaufany / kwalifikowany – plik dołączony osobno",
+                "kwalifikowany": "podpis kwalifikowany – plik dołączony osobno",
                 "skan": "podpis odręczny – skan papierowego dokumentu",
             }.get(s.method, s.method)
             for line in (
@@ -210,6 +213,15 @@ def _certificate(original_hash: str, doc_title: str, doc_id: str, sigs: list[App
                 f"Sposób: {method}",
                 f"Adres IP: {s.ip or '—'}",
                 f"Urządzenie: {(s.user_agent or '—')[:500]}",
+                *(
+                    [
+                        "Potwierdzenie na urządzeniu: tak (odblokowanie telefonu: biometria lub kod).",
+                        f"Identyfikator poświadczenia: {s.device_credential}",
+                    ]
+                    if s.device_credential
+                    else []
+                ),
+                *(s.check_lines or []),
             ):
                 text(line, regular, 9.5, indent=4 * mm, gap=1.4)
             if s.image_png:

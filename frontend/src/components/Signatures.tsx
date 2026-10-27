@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   CopyButton,
   Divider,
   FileButton,
@@ -47,6 +48,9 @@ interface RoleState {
   signer_name: string | null;
   signed_at: string | null;
   method: string | null;
+  device_check: boolean;
+  device_verified: boolean;
+  check: { level: "qualified" | "valid" | "unverified" | "invalid"; label: string; signer?: string | null; issuer?: string | null; notes?: string[] } | null;
 }
 interface SignaturesState {
   roles: RoleState[];
@@ -73,6 +77,11 @@ const METHOD: Record<string, string> = {
   zaufany: "podpis zaufany / kwalifikowany",
   skan: "skan papieru",
 };
+
+function methodLabel(r: RoleState): string {
+  if (r.method === "zaufany" && r.check?.level === "qualified") return "podpis kwalifikowany";
+  return METHOD[r.method ?? ""] ?? r.method ?? "";
+}
 
 export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {
   if (doc.signed_at)
@@ -105,12 +114,13 @@ export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {
 function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; employee: Employee; r: RoleState; st: SignaturesState; onDone: () => void }) {
   const [channel, setChannel] = useState<string>(st.email_enabled ? "email" : "link");
   const [to, setTo] = useState("");
+  const [deviceCheck, setDeviceCheck] = useState(r.role === "pracownika");
   const [result, setResult] = useState<RequestResult | null>(null);
   const send = useMutation({
     mutationFn: () =>
       api<RequestResult>(`/documents/${doc.id}/signatures`, {
         method: "POST",
-        body: { role: r.role, channel, to: channel === "link" ? null : to },
+        body: { role: r.role, channel, to: channel === "link" ? null : to, device_check: deviceCheck },
       }),
     onSuccess: (res) => {
       setResult(res);
@@ -184,6 +194,13 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
           {channel === "link" ? "Utwórz link" : "Wyślij"}
         </Button>
       </Group>
+      <Checkbox
+        size="xs"
+        checked={deviceCheck}
+        onChange={(e) => setDeviceCheck(e.currentTarget.checked)}
+        label="Wymagaj potwierdzenia blokadą telefonu (Face ID, odcisk palca lub PIN)"
+        description="Dotyczy podpisu na ekranie. Gdy telefon tego nie obsługuje, osoba może wgrać plik z podpisem zaufanym lub kwalifikowanym albo dostać nowy link bez tego wymogu."
+      />
       {r.role === "pracownika" && !employee.birth_date && (
         <Text size="xs" c="orange">
           Pracownik nie ma daty urodzenia w kartotece – strona podpisu nie poprosi o jej potwierdzenie.
@@ -313,8 +330,20 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
               {r.status === "signed" ? (
                 <Stack gap={4}>
                   <Text size="sm">
-                    {r.signer_name} · {formatDateTime(r.signed_at)} · {METHOD[r.method ?? ""] ?? r.method}
+                    {r.signer_name} · {formatDateTime(r.signed_at)} · {methodLabel(r)}
                   </Text>
+                  {r.device_verified && (
+                    <Text size="xs" c="teal.7">
+                      Potwierdzono blokadą urządzenia (biometria lub kod telefonu).
+                    </Text>
+                  )}
+                  {r.check && (
+                    <Text size="xs" c={r.check.level === "qualified" ? "teal.7" : r.check.level === "invalid" ? "red" : "dimmed"}>
+                      Sprawdzenie podpisu w pliku: {r.check.label}
+                      {r.check.signer ? ` · ${r.check.signer}` : ""}
+                      {r.check.notes?.length ? ` · ${r.check.notes[0]}` : ""}
+                    </Text>
+                  )}
                   {st.can_remove && r.request_id && (
                     <Group justify="flex-end">
                       <RemoveSignature id={r.request_id} what="podpis" docId={doc.id} onDone={refresh} />

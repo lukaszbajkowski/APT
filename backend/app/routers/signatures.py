@@ -14,12 +14,13 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import mailer, notify, signing, sms, templating
+from app import device, mailer, notify, qualified, signing, sms, templating, trustlist
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
@@ -92,6 +93,8 @@ def _rebuild(db: Session, doc: GeneratedDocument) -> None:
                 image_png=png,
                 ip=str(s.ip) if s.ip else None,
                 user_agent=s.user_agent,
+                device_credential=s.device_credential if s.device_verified_at else None,
+                check_lines=qualified.lines(s.check_result) if s.check_result else None,
             )
         )
     if not applied:
@@ -121,6 +124,9 @@ class RoleState(BaseModel):
     signer_name: str | None = None
     signed_at: datetime | None = None
     method: str | None = None
+    device_check: bool = False  # link wymaga potwierdzenia blokadą urządzenia
+    device_verified: bool = False  # podpisano z potwierdzeniem blokadą urządzenia
+    check: dict[str, Any] | None = None  # wynik weryfikacji pliku z podpisem zaufanym / kwalifikowanym
 
 
 class SignaturesOut(BaseModel):
@@ -157,6 +163,9 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
                 signer_name=s.signer_name,
                 signed_at=s.signed_at,
                 method=s.method,
+                device_check=s.device_check,
+                device_verified=s.device_verified_at is not None,
+                check=s.check_result,
             )
         roles.append(st)
     return SignaturesOut(
@@ -190,6 +199,8 @@ class RequestIn(BaseModel):
     role: str
     channel: Literal["email", "sms", "link"] = "link"
     to: str | None = Field(default=None, max_length=254)
+    # wymagaj potwierdzenia blokadą urządzenia (Face ID / odcisk palca / PIN) przy podpisie na ekranie
+    device_check: bool = False
 
 
 class RequestOut(BaseModel):
@@ -242,6 +253,7 @@ def request_signature(
         channel=body.channel,
         sent_to=_mask(body.channel, to) if to else None,
         requested_by_name=ctx.user.full_name,
+        device_check=body.device_check,
     )
     db.add(sig)
     db.flush()
@@ -274,6 +286,7 @@ def request_signature(
             "role": body.role,
             "channel": body.channel,
             "to": sig.sent_to,
+            "device_check": body.device_check,
         },
     )
     db.commit()
@@ -587,6 +600,7 @@ class SignInfo(BaseModel):
     needs_name: bool
     expires_at: datetime | None
     pages: int | None = None
+    device_check: bool = False
 
 
 @router.get("/sign/{token}", response_model=SignInfo)
@@ -601,6 +615,7 @@ def sign_info(token: str, db: DbSession) -> SignInfo:
         needs_birth_date=_needs_birth_date(sig, e),
         needs_name=sig.role != "pracownika",
         expires_at=sig.expires_at,
+        device_check=sig.device_check,
     )
 
 
@@ -653,11 +668,33 @@ def sign_pdf(token: str, db: DbSession, v: str | None = None) -> Response:
     )
 
 
+class DeviceOptionsIn(BaseModel):
+    view: str | None = None
+
+
+@router.post("/sign/{token}/device/options")
+def sign_device_options(token: str, body: DeviceOptionsIn, request: Request, db: DbSession) -> dict[str, Any]:
+    """Opcje potwierdzenia blokadą urządzenia (WebAuthn) – wyzwanie ważne dla tego jednego podpisu."""
+    sig, _, e = _by_token(db, token)
+    _open(sig)
+    _check_view(sig, e, body.view)
+    if not sig.device_check:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Ten podpis nie wymaga potwierdzenia urządzeniem."
+        )
+    rp_id, _ = device.rp_and_origin(request)
+    options, challenge = device.new_options(rp_id)
+    sig.device_challenge = challenge
+    db.commit()
+    return options
+
+
 class SignIn(BaseModel):
     image: str = Field(min_length=50, max_length=3_000_000)
     view: str | None = None
     signer_name: str | None = Field(default=None, max_length=200)
     consent: bool
+    device: dict[str, Any] | None = None  # odpowiedź przeglądarki z navigator.credentials.create()
 
 
 def _complete(
@@ -691,6 +728,8 @@ def _complete(
             "document": doc.template_name,
             "role": sig.role,
             "method": method,
+            "device_verified": sig.device_verified_at is not None,
+            "check": (sig.check_result or {}).get("level"),
         },
     )
     db.commit()
@@ -710,6 +749,17 @@ def sign(token: str, body: SignIn, request: Request, db: DbSession) -> dict[str,
         png = signing.decode_signature(body.image)
     except signing.SignatureError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if sig.device_check:
+        challenge, sig.device_challenge = sig.device_challenge, None  # wyzwanie jest jednorazowe
+        db.commit()
+        if not body.device or not challenge:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Ten podpis wymaga potwierdzenia blokadą urządzenia (Face ID, odcisk palca lub PIN).",
+            )
+        rp_id, origin = device.rp_and_origin(request)
+        sig.device_credential = device.verify(body.device, challenge, rp_id, origin)
+        sig.device_verified_at = datetime.now(UTC)
     sig.file_name = f"{doc.id}_sig_{sig.id}.png"
     (_dir(doc) / sig.file_name).write_bytes(png)
     _complete(db, request, sig, doc, e, "ekran", name)
@@ -741,9 +791,26 @@ async def sign_trusted(
     name = f"{e.first_name} {e.last_name}" if sig.role == "pracownika" else (signer_name or "").strip()
     if not name:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz imię i nazwisko osoby podpisującej.")
+    roots = await run_in_threadpool(trustlist.load_roots)
+    result = await run_in_threadpool(qualified.verify, data, roots)
+    if result.level == "invalid":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Podpis w pliku jest nieprawidłowy. " + " ".join(result.notes),
+        )
+    shown = data if data[:4] == b"%PDF" else signing.embedded_pdf(data)
+    if (
+        shown is not None
+        and await run_in_threadpool(qualified.same_content, current_pdf(doc), shown) is False
+    ):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Podpisany plik ma inną treść niż ten dokument. Podpisz dokładnie pobrany plik.",
+        )
+    sig.check_result = result.as_dict()
     ext = "pdf" if data[:4] == b"%PDF" else "xml"
     sig.file_name = f"{doc.id}_sig_{sig.id}.{ext}"
     sig.original_name = fname[:255]
     (_dir(doc) / sig.file_name).write_bytes(data)
     _complete(db, request, sig, doc, e, "zaufany", name)
-    return {"ok": True}
+    return {"ok": True, "check": sig.check_result}

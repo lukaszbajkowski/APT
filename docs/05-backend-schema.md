@@ -1,6 +1,6 @@
 # 5. Schemat backendu i bazy danych
 
-Źródło prawdy: `backend/app/models.py` i migracje `backend/alembic/versions/0001`–`0023`. Baza: PostgreSQL 16.
+Źródło prawdy: `backend/app/models.py` i migracje `backend/alembic/versions/0001`–`0024`. Baza: PostgreSQL 16.
 
 ## Diagram relacji
 
@@ -40,7 +40,8 @@ erDiagram
 
 | Tabela | Najważniejsze kolumny | Uwagi |
 |---|---|---|
-| `users` | username (unik.), full_name, email (unik.), role (`admin/hr/manager/viewer/agency`), password_hash, is_active, agency_id, failed_login_count, locked_until, totp_secret_enc, totp_enabled_at, totp_last_step, recovery_codes (JSONB) | sekret TOTP zaszyfrowany |
+| `webauthn_credentials`, `webauthn_challenges` | klucze dostępu (id poświadczenia, klucz publiczny, licznik) i jednorazowe wyzwania (5 min) | logowanie bez hasła |
+| `users` | username (unik.), full_name, email (unik.), role (`admin/hr/manager/viewer/agency/employee`), employee_id (konto pracownika, unik.), password_hash (`!…` = konto bez hasła), is_active, agency_id, failed_login_count, locked_until, totp_secret_enc, totp_enabled_at, totp_last_step, recovery_codes (JSONB) | sekret TOTP zaszyfrowany |
 | `user_scopes` | user_id, department_id (kolumna agency_id została, ale nie jest już używana – migracja 0021 usunęła wpisy APT) | zakres kierownika tylko wydziałowy |
 | `user_sessions` | id (UUID), token_hash (unik.), csrf_token, expires_at, revoked_at, mfa_pending, ip, user_agent, sim_role, sim_agency_id, sim_department_id | w bazie tylko skrót tokenu |
 | `password_tokens` | user_id, token_hash, purpose (`reset/invite`), expires_at, used_at | jednorazowe |

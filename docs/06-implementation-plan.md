@@ -21,6 +21,7 @@ i działają na produkcji po `aptid-aktualizuj`. Migracje do `0020_agencje`.
 | 12. Podpisy – zabezpieczenia | potwierdzenie blokadą urządzenia (WebAuthn), weryfikacja podpisu kwalifikowanego, tryb ścisły szablonu | 0022–0023 | ✅ |
 | 13. Szyfrowanie plików | AES-256-GCM dla dokumentów, podpisów, skanów, badań, zdjęć; migracja przy starcie | – | ✅ |
 | 14. Znacznik czasu | RFC 3161 (FreeTSA) dla podpisanych dokumentów, token w dzienniku | – | ✅ |
+| 15. Konta pracowników – etap A | rola `employee`, zaproszenie od kadr, klucze dostępu (WebAuthn), zapas hasło + TOTP | 0024 | ✅ |
 
 ## Plan: konta pracowników (do zatwierdzenia, bez kodu)
 
@@ -32,7 +33,7 @@ powiadomienie (e-mail lub SMS) z odsyłaczem do konta.
 
 | Etap | Zakres | Uwagi |
 |---|---|---|
-| A | Rola `employee`, powiązanie konta z kartoteką (`users.employee_id`), zaproszenie od kadr, logowanie kluczem dostępu, zapas hasło + TOTP | widzi wyłącznie własny rekord; migracja 0024, tabela kluczy dostępu |
+| A ✅ | Rola `employee`, powiązanie konta z kartoteką (`users.employee_id`), zaproszenie od kadr, logowanie kluczem dostępu, zapas hasło + TOTP | widzi wyłącznie własny rekord; migracja 0024, tabela kluczy dostępu |
 | B | „Moje dane”: zdjęcie, telefon, e-mail zapisywane od razu; potwierdzenie własności (e-mail linkiem, telefon kodem SMS); inne dane jako wnioski kadr | wniosek jak `employee_requests`; w historii tylko fakt zmiany pola |
 | C | Ścieżka bez konta: kadry wysyłają link „aktualizacja danych” (jak link do podpisu: ważność, limit prób, data urodzenia) albo wprowadzają dane z dokumentu | ten sam formularz co „Moje dane” |
 | D | Podpis w koncie: lista „Do podpisu”, podpis po ponownym potwierdzeniu kluczem dostępu (zamiast jednorazowego sprawdzenia przy rejestracji), powiadomienia o nowym dokumencie | osoby bez konta nadal podpisują linkiem |

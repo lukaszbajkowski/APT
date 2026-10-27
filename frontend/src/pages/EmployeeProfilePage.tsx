@@ -54,6 +54,7 @@ import { DocumentsCard } from "../components/DocumentsCard";
 import { TrainingsCard } from "../components/TrainingsCard";
 import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
+import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -343,6 +344,8 @@ export function EmployeeProfilePage() {
       {!isAgency && <TrainingsCard employee={e} />}
 
       {!isAgency && <MentorProgramsCard employee={e} />}
+
+      {staff && <EmployeeAccountCard employeeId={e.id} />}
 
       {!isAgency && <TimelineCard employee={e} />}
 

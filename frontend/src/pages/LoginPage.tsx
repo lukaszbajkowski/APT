@@ -2,10 +2,11 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconShieldLock } from "@tabler/icons-react";
+import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
+import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
 function nextPath(me: Me, from: string) {
   if (me.user.must_change_password) return "/zmiana-hasla";
@@ -111,7 +112,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
 }
 
 export function LoginPage() {
-  const { me, login } = useAuth();
+  const { me, login, setMe } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("");
@@ -128,6 +129,22 @@ export function LoginPage() {
   });
 
   if (me && !me.mfa_pending) return <Navigate to={nextPath(me, from)} replace />;
+
+  async function passkeyLogin() {
+    setError(null);
+    setBusy(true);
+    try {
+      const o = await api<{ challenge_id: string; options: Record<string, unknown> }>("/auth/passkey/options", { method: "POST" });
+      const credential = await getPasskey(o.options);
+      const result = await api<Me>("/auth/passkey/login", { method: "POST", body: { challenge_id: o.challenge_id, credential } });
+      setMe(result);
+      navigate(nextPath(result, from), { replace: true });
+    } catch (err) {
+      setError(passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -188,6 +205,11 @@ export function LoginPage() {
               <Button type="submit" loading={busy} fullWidth>
                 Zaloguj
               </Button>
+              {passkeysSupported() && (
+                <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={passkeyLogin}>
+                  Zaloguj kluczem dostępu
+                </Button>
+              )}
               {config.data?.password_reset ? (
                 <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">
                   Nie pamiętasz hasła?

@@ -16,6 +16,7 @@ from app.routers import (
     employees,
     imports,
     lifecycle,
+    passkeys,
     quality,
     reports,
     retention,
@@ -52,6 +53,7 @@ def _apply_planned_changes() -> None:
 
 
 app.include_router(auth.router)
+app.include_router(passkeys.router)
 app.include_router(users.router)
 app.include_router(dictionaries.router)
 app.include_router(audit_log.router)

@@ -15,6 +15,7 @@ from app.models import Role, User, UserSession
 from app.security import token_hash
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+EMPLOYEE_PATHS = ("/api/auth/", "/api/passkeys", "/api/me/")
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -97,6 +98,10 @@ def _load_session(request: Request, db: Session) -> AuthContext:
         raise _unauthorized("Sesja wygasła z powodu bezczynności. Zaloguj się ponownie.")
     if not sess.user.is_active:
         raise _unauthorized("Konto jest wyłączone.")
+
+    # Konto pracownika widzi wyłącznie swoje sprawy: logowanie, klucze dostępu i „Moje konto”.
+    if sess.user.role == Role.employee and not request.url.path.startswith(EMPLOYEE_PATHS):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
 
     # CSRF: dla metod zmieniających dane wymagamy nagłówka zgodnego z tokenem sesji.
     if request.method not in SAFE_METHODS:

@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0023
+backend/alembic/    migracje 0001–0024
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh
@@ -70,6 +70,14 @@ staje się polami formularza. PDF przez LibreOffice.
 **Podpisy.** Miejsce podpisu to znacznik `ZZ…ZZ` w PDF. Link (hash tokenu w bazie, ważność, limit prób) lub skan lub
 podpis zaufany. Wynik: `{id}_signed.pdf` z dołączoną stroną potwierdzenia. `signed_file()` wybiera plik w kolejności:
 zaufany PDF/XML → `_signed.pdf` → skan. `pypdfium2` z `init_forms()` rysuje pola formularza i podpisy gov.pl.
+
+**Konta pracowników (`routers/passkeys.py`).** Kadry zapraszają pracownika (login `pr<numer>`, link ważny 7 dni,
+e-mail niezapisywany – link można też przekazać inaczej). Pracownik potwierdza datę urodzenia i rejestruje klucz
+dostępu (WebAuthn, weryfikacja użytkownika wymagana, poświadczenie „discoverable”, licznik użyć sprawdzany), a gdy
+urządzenie nie obsługuje kluczy – ustawia hasło i musi skonfigurować kod z aplikacji. Logowanie kluczem nie wymaga
+loginu; weryfikacja użytkownika na urządzeniu zastępuje drugi składnik. Sesja roli `employee` ma dostęp wyłącznie do
+`/api/auth/`, `/api/passkeys` i `/api/me/` (bramka w `deps._load_session`). Kadry widzą status konta w karcie
+pracownika, mogą ponowić zaproszenie i wyłączyć konto (kończy sesje).
 
 **Potwierdzenie blokadą urządzenia (WebAuthn, `app/device.py`).** Kadry mogą przy prośbie o podpis zaznaczyć „Wymagaj
 potwierdzenia blokadą telefonu”. Strona podpisu prosi wtedy przeglądarkę o utworzenie poświadczenia z

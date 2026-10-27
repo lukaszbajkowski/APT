@@ -89,7 +89,11 @@ def _active_admins(db: Session) -> int:
 
 @router.get("", response_model=list[UserOut])
 def list_users(ctx: AdminAuth, db: DbSession) -> list[User]:
-    return list(db.scalars(select(User).order_by(User.is_active.desc(), User.username)))
+    return list(
+        db.scalars(
+            select(User).where(User.role != Role.employee).order_by(User.is_active.desc(), User.username)
+        )
+    )
 
 
 @router.get("/{user_id}", response_model=UserOut)
@@ -99,6 +103,11 @@ def get_user(user_id: int, ctx: AdminAuth, db: DbSession) -> User:
 
 def _agency_for(db: Session, role: Role, agency_id: int | None) -> int | None:
     """Konto agencji musi wskazywać APT; inne role – bez APT."""
+    if role == Role.employee:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Konta pracowników zakłada się zaproszeniem w karcie pracownika.",
+        )
     if role != Role.agency:
         return None
 
@@ -163,6 +172,10 @@ def update_user(user_id: int, body: UserUpdateIn, ctx: AdminAuth, request: Reque
     changes: dict[str, object] = {}
 
     if body.role is not None and body.role != user.role:
+        if user.role == Role.employee:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, detail="Roli konta pracownika nie można zmienić."
+            )
         if is_self:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nie możesz zmienić własnej roli.")
         if user.role == Role.admin and user.is_active and _active_admins(db) <= 1:

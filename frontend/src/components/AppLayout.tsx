@@ -21,6 +21,7 @@ import {
   IconFileSpreadsheet,
   IconUserPlus,
   IconDeviceDesktop,
+  IconFingerprint,
   IconHome,
   IconMoon,
   IconChartBar,
@@ -52,9 +53,10 @@ export function AppLayout() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const items = [
-    { to: "/", label: "Start", icon: IconHome, show: true },
-    { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: true },
-    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency") },
+    { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
+    { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
+    { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee") },
+    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee") },
     { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager") },
     { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager") },
     { to: "/szkolenia", label: "Szkolenia", icon: IconCertificate, show: hasRole("admin", "hr", "manager") },
@@ -153,8 +155,13 @@ export function AppLayout() {
               <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
                 Logowanie dwuetapowe
               </Menu.Item>
-              <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
-                Zmień hasło
+              {!hasRole("employee") && (
+                <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
+                  Zmień hasło
+                </Menu.Item>
+              )}
+              <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate("/moje-konto")}>
+                Klucze dostępu
               </Menu.Item>
               <Menu.Item
                 color="red"

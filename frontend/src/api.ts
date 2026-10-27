@@ -1,7 +1,7 @@
 // Cienka warstwa nad fetch: ciasteczko sesji idzie automatycznie,
 // token CSRF dodajemy do każdego żądania zmieniającego dane.
 
-export type Role = "admin" | "hr" | "manager" | "viewer" | "agency";
+export type Role = "admin" | "hr" | "manager" | "viewer" | "agency" | "employee";
 
 export interface Scope {
   agency_id: number | null;
@@ -351,6 +351,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   manager: "Kierownik",
   viewer: "Podgląd",
   agency: "Agencja pracy",
+  employee: "Pracownik",
 };
 
 export const ACTION_LABELS: Record<string, string> = {

@@ -11,6 +11,7 @@ import { ChangePasswordPage } from "./pages/ChangePasswordPage";
 import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
+import { InvitePage, MyAccountPage } from "./pages/AccountPages";
 
 // Rzadziej używane strony ładują się dopiero przy wejściu (mniejszy pierwszy pakiet JS).
 const AgencyReportPage = lazy(() => import("./pages/AgencyReportPage").then((m) => ({ default: m.AgencyReportPage })));
@@ -31,6 +32,12 @@ const QualityPage = lazy(() => import("./pages/QualityPage").then((m) => ({ defa
 const TrainingsPage = lazy(() => import("./pages/TrainingsPage").then((m) => ({ default: m.TrainingsPage })));
 const TasksPage = lazy(() => import("./pages/TasksPage").then((m) => ({ default: m.TasksPage })));
 const TrainingImportPage = lazy(() => import("./pages/TrainingImportPage").then((m) => ({ default: m.TrainingImportPage })));
+
+function Home() {
+  const { me } = useAuth();
+  if (me?.user.role === "employee") return <Navigate to="/moje-konto" replace />;
+  return <HomePage />;
+}
 
 function PageLoader() {
   return (
@@ -58,6 +65,9 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
   if (!me.user.must_change_password && me.mfa_setup_required && location.pathname !== MFA_PATH) {
     return <Navigate to={MFA_PATH} replace />;
   }
+  if (me.user.role === "employee" && location.pathname !== "/moje-konto" && location.pathname !== MFA_PATH) {
+    return <Navigate to="/moje-konto" replace />;
+  }
   if (roles && !roles.includes(me.user.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -70,6 +80,7 @@ export function App() {
       <Route path="/reset-hasla" element={<ForgotPasswordPage />} />
       <Route path="/ustaw-haslo" element={<SetPasswordPage />} />
       <Route path="/podpis/:token" element={<SignPage />} />
+      <Route path="/zaproszenie" element={<InvitePage />} />
       <Route
         path="/zmiana-hasla"
         element={
@@ -93,7 +104,8 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<HomePage />} />
+        <Route index element={<Home />} />
+        <Route path="moje-konto" element={<MyAccountPage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />
         <Route
           path="pracownicy/nowy"

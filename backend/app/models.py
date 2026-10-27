@@ -25,6 +25,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 
+# Znacznik w password_hash: konto bez hasła (np. pracownik logujący się tylko kluczem dostępu).
+NO_PASSWORD = "!"
+
 
 class Role(str, enum.Enum):
     """Role użytkowników aplikacji."""
@@ -34,6 +37,7 @@ class Role(str, enum.Enum):
     manager = "manager"  # Kierownik: tylko przypisane APT / wydziały
     viewer = "viewer"  # Podgląd: tylko odczyt, bez pełnego PESEL
     agency = "agency"  # Agencja pracy: tylko swoi ludzie – zdjęcia, badania, zgłoszenia nowych osób
+    employee = "employee"  # Pracownik: tylko własny rekord (konto założone zaproszeniem od kadr)
 
 
 ROLE_LABELS = {
@@ -41,6 +45,7 @@ ROLE_LABELS = {
     Role.hr: "Kadry",
     Role.manager: "Kierownik",
     Role.viewer: "Podgląd",
+    Role.employee: "Pracownik",
 }
 
 
@@ -92,6 +97,10 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # konto agencji pracy: której APT dotyczy
     agency_id: Mapped[int | None] = mapped_column(ForeignKey("agencies.id", ondelete="SET NULL"))
+    # konto pracownika: do którego rekordu w kartotece należy
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), unique=True
+    )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -114,7 +123,13 @@ class User(TimestampMixin, Base):
     def mfa_required(self) -> bool:
         from app.config import get_settings
 
+        if self.role == Role.employee:  # pracownik z hasłem (bez klucza dostępu) musi mieć kod z aplikacji
+            return self.has_password and get_settings().mfa_enforce
         return self.role in MFA_REQUIRED_ROLES and get_settings().mfa_enforce
+
+    @property
+    def has_password(self) -> bool:
+        return not self.password_hash.startswith(NO_PASSWORD)
 
     @property
     def recovery_codes_left(self) -> int:
@@ -683,3 +698,34 @@ class EmployeeRequest(Base):
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id", ondelete="SET NULL"))
 
     agency: Mapped[Agency] = relationship(lazy="joined")
+
+
+class WebauthnCredential(Base):
+    """Klucz dostępu (Face ID / odcisk palca / PIN urządzenia) przypisany do konta."""
+
+    __tablename__ = "webauthn_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    credential_id: Mapped[str] = mapped_column(String(400), unique=True, nullable=False)
+    public_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sign_count: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), default="Klucz dostępu", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WebauthnChallenge(Base):
+    """Krótkotrwałe wyzwanie WebAuthn (logowanie lub rejestracja klucza)."""
+
+    __tablename__ = "webauthn_challenges"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    challenge: Mapped[str] = mapped_column(String(100), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(10), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

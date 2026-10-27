@@ -295,7 +295,9 @@ def test_active_account_cannot_be_invited_or_reactivated(hr, emp):
     r = hr.post(f"/api/employees/{emp}/account/invite", json={})
     assert r.status_code == 409
     # po resecie dostępu można zaprosić ponownie, a stary klucz przestaje działać
-    assert hr.post(f"/api/employees/{emp}/account/reset").status_code == 200
+    mailer.outbox = []
+    assert hr.post(f"/api/employees/{emp}/account/reset", json={"email": "a@example.com"}).status_code == 200
+    assert mailer.outbox and mailer.outbox[0][0] == "a@example.com"
     assert hr.get(f"/api/employees/{emp}/account").json()["has_passkey"] is False
     assert hr.post(f"/api/employees/{emp}/account/invite", json={}).status_code == 200
 

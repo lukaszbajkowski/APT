@@ -483,8 +483,25 @@ def invite_account(
     return InviteOut(link=link, sent=bool(sent), account=_account_out(db, e))
 
 
+def reset_email(e: Employee) -> Email:
+    return Email(
+        subject="Zresetowano dostęp do Twojego konta – Identyfikacja pracowników APT",
+        title="Dostęp do konta został zresetowany",
+        greeting=f"Dzień dobry {e.first_name},",
+        paragraphs=[
+            "kadry zresetowały dostęp do Twojego konta (klucze dostępu, hasło i kody zostały usunięte). "
+            "Wylogowano Cię ze wszystkich urządzeń.",
+            "Wkrótce dostaniesz nowe zaproszenie, aby ustawić dostęp od nowa.",
+        ],
+        tone="warning",
+        footer_note="Jeśli to dla Ciebie niespodzianka – skontaktuj się z kadrami.",
+    )
+
+
 @router.post("/employees/{employee_id}/account/reset", response_model=AccountOut)
-def reset_account(employee_id: int, ctx: StaffAuth, request: Request, db: DbSession) -> AccountOut:
+def reset_account(
+    employee_id: int, ctx: StaffAuth, request: Request, db: DbSession, body: InviteIn | None = None
+) -> AccountOut:
     """Utrata telefonu: usuwa klucze, hasło i kody, kończy sesje. Potem można wysłać nowe zaproszenie."""
     e = _employee_or_404(db, employee_id)
     user = db.scalar(select(User).where(User.employee_id == e.id))
@@ -504,8 +521,19 @@ def reset_account(employee_id: int, ctx: StaffAuth, request: Request, db: DbSess
         .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
         .values(revoked_at=now)
     )
-    audit(db, request, "employee_account_reset", user=ctx.user, entity_type="employee", entity_id=e.id)
+    to = body.email if body else None
+    audit(
+        db,
+        request,
+        "employee_account_reset",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"notified": bool(to)},
+    )
     db.commit()
+    if to:
+        mailer.send(to, reset_email(e))
     return _account_out(db, e)
 
 

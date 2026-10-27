@@ -40,7 +40,7 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
     onError: (e) => setError(errorText(e)),
   });
   const reset = useMutation({
-    mutationFn: () => api<Account>(`/employees/${employeeId}/account/reset`, { method: "POST" }),
+    mutationFn: () => api<Account>(`/employees/${employeeId}/account/reset`, { method: "POST", body: { email: email.trim() || null } }),
     onSuccess: (a) => {
       setError(null);
       setResult(null);
@@ -106,7 +106,7 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
               color="orange"
               loading={reset.isPending}
               onClick={() =>
-                window.confirm("Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.") &&
+                window.confirm("Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.") &&
                 reset.mutate()
               }
             >

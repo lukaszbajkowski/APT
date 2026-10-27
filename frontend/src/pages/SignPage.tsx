@@ -86,6 +86,22 @@ async function confirmWithDevice(token: string, view: string | null): Promise<Re
   };
 }
 
+/** Strona publiczna: motyw zawsze z systemu telefonu (brak informacji = jasny), niezależnie od wyboru zapisanego w aplikacji. */
+function useSystemColorScheme() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const before = root.getAttribute("data-mantine-color-scheme");
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const apply = () => root.setAttribute("data-mantine-color-scheme", mq?.matches ? "dark" : "light");
+    apply();
+    mq?.addEventListener?.("change", apply);
+    return () => {
+      mq?.removeEventListener?.("change", apply);
+      if (before) root.setAttribute("data-mantine-color-scheme", before);
+    };
+  }, []);
+}
+
 /** Pole do podpisu palcem / rysikiem / myszką. Przezroczyste tło, linia w kolorze tuszu. */
 function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -181,7 +197,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         </Text>
       </Box>
       <Group justify="flex-end">
-        <Button size="xs" variant="subtle" color="gray" leftSection={<IconEraser size={14} />} onClick={clear}>
+        <Button size="md" variant="subtle" color="gray" leftSection={<IconEraser size={16} />} onClick={clear}>
           Wyczyść
         </Button>
       </Group>
@@ -191,6 +207,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
 
 export function SignPage() {
   const { token = "" } = useParams();
+  useSystemColorScheme();
   const info = useQuery({ queryKey: ["sign-info", token], queryFn: () => api<Info>(`/sign/${token}`), retry: false });
   const [view, setView] = useState<string | null>(null);
   const [pages, setPages] = useState(0);
@@ -275,9 +292,9 @@ export function SignPage() {
   const v = view ? `?v=${encodeURIComponent(view)}` : "";
 
   return (
-    <Box bg="var(--mantine-color-gray-0)" mih="100vh" py="lg">
+    <Box className="surface-subtle" mih="100dvh" pt="lg" style={{ paddingBottom: "calc(var(--mantine-spacing-xl) + env(safe-area-inset-bottom))" }}>
       <Container size={760} px="md">
-        <Text fw={700} c="navy.7" mb="md">
+        <Text fw={700} className="brand-title" mb="md">
           Identyfikacja pracowników APT
         </Text>
         {info.isLoading && <Loader />}
@@ -287,7 +304,7 @@ export function SignPage() {
           </Alert>
         )}
         {done && (
-          <Card withBorder padding="xl" radius="md">
+          <Card withBorder padding="lg" radius="md">
             <Center>
               <Stack align="center" gap="xs">
                 <IconCircleCheck size={56} color="var(--mantine-color-teal-6)" />
@@ -316,11 +333,11 @@ export function SignPage() {
             {error && <Alert color="red">{error}</Alert>}
 
             {!view && info.data.needs_birth_date && (
-              <Card withBorder padding="lg" radius="md" component="form" onSubmit={verify}>
+              <Card withBorder padding="md" radius="md" component="form" onSubmit={verify}>
                 <Stack>
                   <Text>Dla bezpieczeństwa potwierdź swoją datę urodzenia.</Text>
-                  <TextInput type="date" label="Data urodzenia" required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
-                  <Button type="submit" loading={busy}>
+                  <TextInput size="md" type="date" label="Data urodzenia" required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
+                  <Button type="submit" size="md" loading={busy}>
                     Dalej
                   </Button>
                 </Stack>
@@ -332,26 +349,28 @@ export function SignPage() {
                 <Card withBorder padding="xs" radius="md">
                   <Stack gap="xs">
                     {Array.from({ length: pages }, (_, i) => (
-                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={`Strona ${i + 1}`} radius="sm" style={{ border: "1px solid var(--mantine-color-gray-3)" }} />
+                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={`Strona ${i + 1}`} radius="sm" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
                     ))}
                   </Stack>
                   <Group justify="flex-end" mt="xs">
-                    <Button size="xs" variant="subtle" component="a" href={`/api/sign/${token}/pdf${v}`} leftSection={<IconDownload size={14} />}>
+                    <Button size="md" variant="subtle" component="a" href={`/api/sign/${token}/pdf${v}`} leftSection={<IconDownload size={16} />}>
                       Pobierz PDF
                     </Button>
                   </Group>
                 </Card>
 
-                <Card withBorder padding="lg" radius="md">
+                <Card withBorder padding="md" radius="md">
                   {info.data.needs_name && (
-                    <TextInput mb="md" label="Imię i nazwisko osoby podpisującej" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+                    <TextInput size="md" mb="md" label="Imię i nazwisko osoby podpisującej" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
                   )}
-                  <Tabs defaultValue="screen">
-                    <Tabs.List mb="md">
+                  <Tabs defaultValue="screen" keepMounted={false}>
+                    <Tabs.List mb="md" grow>
                       <Tabs.Tab value="screen" leftSection={<IconSignature size={16} />}>
-                        Podpis na ekranie
+                        Na ekranie
                       </Tabs.Tab>
-                      <Tabs.Tab value="trusted">Podpis zaufany lub kwalifikowany</Tabs.Tab>
+                      <Tabs.Tab value="trusted" leftSection={<IconFileUpload size={16} />}>
+                        Plik z podpisem
+                      </Tabs.Tab>
                     </Tabs.List>
                     <Tabs.Panel value="screen">
                       <Stack>
@@ -368,7 +387,7 @@ export function SignPage() {
                           onChange={(e) => setConsent(e.currentTarget.checked)}
                           label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go."
                         />
-                        <Button size="md" onClick={sign} loading={busy} disabled={!image || !consent || (info.data.needs_name && !name.trim()) || (info.data.device_check && deviceOk === false)}>
+                        <Button size="lg" onClick={sign} loading={busy} disabled={!image || !consent || (info.data.needs_name && !name.trim()) || (info.data.device_check && deviceOk === false)}>
                           Podpisz dokument
                         </Button>
                         <Text size="xs" c="dimmed">
@@ -378,6 +397,7 @@ export function SignPage() {
                     </Tabs.Panel>
                     <Tabs.Panel value="trusted">
                       <Stack>
+                        <Text fw={600}>Podpis zaufany lub kwalifikowany</Text>
                         <List type="ordered" size="sm" spacing={6}>
                           <List.Item>Pobierz dokument (przycisk „Pobierz PDF” wyżej).</List.Item>
                           <List.Item>
@@ -392,7 +412,7 @@ export function SignPage() {
                         </List>
                         <FileButton accept="application/pdf,.xml,.xades,text/xml,application/xml" onChange={(f) => f && uploadTrusted(f)}>
                           {(props) => (
-                            <Button {...props} variant="light" leftSection={<IconFileUpload size={16} />} loading={busy} disabled={info.data!.needs_name && !name.trim()}>
+                            <Button {...props} size="md" variant="light" leftSection={<IconFileUpload size={16} />} loading={busy} disabled={info.data!.needs_name && !name.trim()}>
                               Wgraj podpisany plik
                             </Button>
                           )}

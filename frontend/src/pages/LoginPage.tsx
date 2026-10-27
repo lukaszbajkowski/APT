@@ -85,6 +85,11 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
             required
             inputMode="numeric"
             autoComplete="one-time-code"
+            name="otp"
+            id="otp-code"
+            data-form-type="other"
+            autoCapitalize="off"
+            autoCorrect="off"
             maxLength={7}
             value={code}
             onChange={(e) => setCode(e.currentTarget.value.replace(/[^\d ]/g, ""))}

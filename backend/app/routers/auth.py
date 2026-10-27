@@ -38,6 +38,7 @@ def _me(user: User, sess: UserSession) -> MeOut:
         mfa_pending=sess.mfa_pending,
         mfa_setup_required=user.mfa_required and not user.mfa_enabled,
         recovery_codes_left=user.recovery_codes_left,
+        has_password=user.has_password,
         real_role=sess.user.role.value,
         sim_role=sess.sim_role if sess.user.role == Role.admin else None,
         sim_agency_id=sess.sim_agency_id,

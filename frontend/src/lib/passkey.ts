@@ -74,8 +74,15 @@ export async function getPasskey(options: Record<string, unknown>): Promise<Reco
 
 /** Czytelny komunikat, gdy użytkownik anulował okno systemowe albo urządzenie nie obsługuje kluczy. */
 export function passkeyErrorText(err: unknown): string | null {
-  if (err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")) {
-    return "Anulowano albo upłynął czas. Spróbuj jeszcze raz.";
+  if (err instanceof DOMException) {
+    const hint: Record<string, string> = {
+      NotAllowedError:
+        "Anulowano, upłynął czas albo przeglądarka odrzuciła żądanie. Otwórz stronę bezpośrednio w Safari / Chrome (nie w oknie aplikacji pocztowej) i spróbuj jeszcze raz.",
+      InvalidStateError: "Ten klucz jest już zapisany na tym urządzeniu.",
+      NotSupportedError: "To urządzenie lub przeglądarka nie obsługuje takiego klucza dostępu.",
+      SecurityError: "Przeglądarka odrzuciła klucz dla tego adresu strony.",
+    };
+    return `${hint[err.name] ?? "Nie udało się użyć klucza dostępu."} (kod błędu: ${err.name}${err.message ? " – " + err.message : ""})`;
   }
   return null;
 }

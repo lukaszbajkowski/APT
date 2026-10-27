@@ -155,7 +155,7 @@ export function AppLayout() {
               <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
                 Logowanie dwuetapowe
               </Menu.Item>
-              {!hasRole("employee") && (
+              {(!hasRole("employee") || me?.has_password) && (
                 <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
                   Zmień hasło
                 </Menu.Item>

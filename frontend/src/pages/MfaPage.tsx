@@ -64,6 +64,11 @@ function CodeInput({ value, onChange, label = "Kod z aplikacji" }: { value: stri
       required
       inputMode="numeric"
       autoComplete="one-time-code"
+      name="otp"
+      id="otp-code"
+      data-form-type="other"
+      autoCapitalize="off"
+      autoCorrect="off"
       maxLength={7}
       value={value}
       onChange={(e) => onChange(e.currentTarget.value.replace(/[^\d ]/g, ""))}

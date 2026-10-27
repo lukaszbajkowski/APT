@@ -21,6 +21,7 @@ export function InvitePage() {
   const navigate = useNavigate();
   const [birth, setBirth] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [fallback, setFallback] = useState(!passkeysSupported());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -129,7 +130,13 @@ export function InvitePage() {
                     value={password}
                     onChange={(e) => setPassword(e.currentTarget.value)}
                   />
-                  <Button size="md" loading={busy} disabled={!ready || !password} onClick={withPassword}>
+                  <PasswordInput
+                    label="Powtórz hasło"
+                    value={password2}
+                    error={password2 && password !== password2 ? "Hasła się różnią." : undefined}
+                    onChange={(e) => setPassword2(e.currentTarget.value)}
+                  />
+                  <Button size="md" loading={busy} disabled={!ready || !password || password !== password2} onClick={withPassword}>
                     Ustaw hasło
                   </Button>
                   {passkeysSupported() && (

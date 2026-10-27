@@ -1,5 +1,13 @@
 // Pomocnicze funkcje WebAuthn: opcje z serwera (JSON, base64url) <-> obiekty przeglądarki.
 
+/** Okno wbudowane w aplikację (komunikator, poczta, social media) – tam klucze dostępu zwykle nie działają. */
+export function inAppBrowser(): boolean {
+  const ua = navigator.userAgent;
+  if (/FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|MicroMessenger|Snapchat|Twitter|GSA\/|Outlook|Teams/i.test(ua)) return true;
+  // iOS: prawdziwy Safari i przeglądarki mają w UA „Safari”; WebView aplikacji – nie
+  return /iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua);
+}
+
 export function passkeysSupported(): boolean {
   return typeof window !== "undefined" && !!window.PublicKeyCredential && !!navigator.credentials;
 }

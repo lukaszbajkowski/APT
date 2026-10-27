@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Center, Group, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
-import { createPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
 interface Options {
   challenge_id: string;
@@ -93,6 +93,21 @@ export function InvitePage() {
               <Text size="sm">
                 {info.data.name}, zalogujesz się na to konto twarzą, odciskiem palca albo PIN-em telefonu – bez hasła.
               </Text>
+              {inAppBrowser() && (
+                <Alert color="yellow" title="Otwórz w przeglądarce" icon={<IconAlertCircle size={18} />}>
+                  <Text size="sm">
+                    Ta strona otworzyła się w oknie aplikacji (np. komunikatora), gdzie klucz dostępu nie działa. Skopiuj
+                    link, otwórz go w Safari lub Chrome i dokończ tam.
+                  </Text>
+                  <CopyButton value={window.location.href}>
+                    {({ copied, copy }) => (
+                      <Button size="xs" variant="light" mt="xs" onClick={copy}>
+                        {copied ? "Skopiowano" : "Kopiuj link"}
+                      </Button>
+                    )}
+                  </CopyButton>
+                </Alert>
+              )}
               {error && (
                 <Alert color="red" icon={<IconAlertCircle size={18} />}>
                   {error}

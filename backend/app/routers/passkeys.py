@@ -30,7 +30,7 @@ from webauthn.helpers.structs import (
 from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
-from app.deps import Auth, DbSession, StaffAuth, utcnow
+from app.deps import Auth, AuthMfaSetup, DbSession, StaffAuth, utcnow
 from app.device import _b64, _unb64, rp_and_origin
 from app.emails import Email
 from app.models import (
@@ -758,3 +758,107 @@ def my_employee(ctx: Auth, db: DbSession) -> MyEmployeeOut:
         is not None,
         has_password=ctx.user.has_password,
     )
+
+
+# --- zapasowe logowanie (hasło + kod) dla pracownika z kluczem dostępu ---------------------
+
+
+def _step_up_options(db: Session, request: Request, user: User) -> LoginOptionsOut:
+    rp_id, _ = rp_and_origin(request)
+    creds = [
+        PublicKeyCredentialDescriptor(id=_unb64(c.credential_id))
+        for c in db.scalars(select(WebauthnCredential).where(WebauthnCredential.user_id == user.id))
+    ]
+    if not creds:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Najpierw dodaj klucz dostępu.")
+    challenge = os.urandom(32)
+    opts = generate_authentication_options(
+        rp_id=rp_id,
+        challenge=challenge,
+        timeout=120_000,
+        allow_credentials=creds,
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    cid = _store_challenge(db, challenge, "reauth", user)
+    return LoginOptionsOut(challenge_id=cid, options=json.loads(options_to_json(opts)))
+
+
+def _step_up_verify(db: Session, request: Request, user: User, challenge_id: str, credential: dict) -> None:
+    """Świeże potwierdzenie kluczem dostępu przed zmianą sposobu logowania."""
+    rp_id, origin = rp_and_origin(request)
+    challenge = _take_challenge(db, challenge_id, "reauth", user)
+    cred = db.scalar(
+        select(WebauthnCredential).where(
+            WebauthnCredential.credential_id == str(credential.get("id") or ""),
+            WebauthnCredential.user_id == user.id,
+        )
+    )
+    if cred is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR)
+    try:
+        res = verify_authentication_response(
+            credential=credential,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=cred.public_key,
+            credential_current_sign_count=cred.sign_count,
+            require_user_verification=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR) from exc
+    cred.sign_count = res.new_sign_count
+    cred.last_used_at = utcnow()
+
+
+def _employee_only(user: User) -> None:
+    if user.role != Role.employee:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
+
+
+@router.post("/me/backup/options", response_model=LoginOptionsOut)
+def backup_options(ctx: AuthMfaSetup, request: Request, db: DbSession) -> LoginOptionsOut:
+    _employee_only(ctx.user)
+    out = _step_up_options(db, request, ctx.user)
+    db.commit()
+    return out
+
+
+class BackupPasswordIn(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+    challenge_id: str = Field(max_length=64)
+    credential: dict
+
+
+@router.post("/me/backup/password", response_model=MeOut)
+def backup_set_password(body: BackupPasswordIn, ctx: AuthMfaSetup, request: Request, db: DbSession) -> MeOut:
+    """Ustawia hasło jako zapas. Wymaga świeżego potwierdzenia kluczem; potem obowiązuje kod z aplikacji."""
+    user = ctx.user
+    _employee_only(user)
+    _step_up_verify(db, request, user, body.challenge_id, body.credential)
+    problems = password_problems(body.password, user.username)
+    if problems:
+        db.commit()  # zużyte wyzwanie i licznik klucza zapisujemy
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=" ".join(problems))
+    user.password_hash = hash_password(body.password)
+    user.password_changed_at = utcnow()
+    audit(db, request, "employee_backup_enabled", user=user)
+    db.commit()
+    return _me(user, ctx.session)
+
+
+class BackupRemoveIn(BaseModel):
+    challenge_id: str = Field(max_length=64)
+    credential: dict
+
+
+@router.post("/me/backup/remove", response_model=MeOut)
+def backup_remove(body: BackupRemoveIn, ctx: AuthMfaSetup, request: Request, db: DbSession) -> MeOut:
+    user = ctx.user
+    _employee_only(user)
+    _step_up_verify(db, request, user, body.challenge_id, body.credential)
+    user.password_hash = NO_PASSWORD
+    totp.clear(user)
+    audit(db, request, "employee_backup_disabled", user=user)
+    db.commit()
+    return _me(user, ctx.session)

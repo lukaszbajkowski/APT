@@ -77,7 +77,7 @@ dostępu (WebAuthn, weryfikacja użytkownika wymagana, poświadczenie „discove
 urządzenie nie obsługuje kluczy – ustawia hasło i musi skonfigurować kod z aplikacji. Logowanie kluczem nie wymaga
 loginu; weryfikacja użytkownika na urządzeniu zastępuje drugi składnik. Sesja roli `employee` ma dostęp wyłącznie do
 `/api/auth/`, `/api/passkeys` i `/api/me/` (bramka w `deps._load_session`). Kadry widzą status konta w karcie
-pracownika (lista wszystkich kont: „Konta pracowników”, `GET /api/employee-accounts`), mogą ponowić zaproszenie i wyłączyć konto (kończy sesje). Konta admina i kadr przed dodaniem klucza muszą
+pracownika z kluczem może w „Moje konto” ustawić zapasowe logowanie (hasło + kod z aplikacji, `/api/me/backup/*`; zmianę potwierdza świeżym kluczem dostępu) albo je wyłączyć. Kadry widzą status konta w karcie pracownika (lista wszystkich kont: „Konta pracowników”, `GET /api/employee-accounts`), mogą ponowić zaproszenie i wyłączyć konto (kończy sesje). Konta admina i kadr przed dodaniem klucza muszą
 ponownie podać hasło i kod z aplikacji, a po dodaniu dostają e-mail; hasło z kodem zostaje zapasem.
 
 **Potwierdzenie blokadą urządzenia (WebAuthn, `app/device.py`).** Kadry mogą przy prośbie o podpis zaznaczyć „Wymagaj

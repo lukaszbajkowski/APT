@@ -346,3 +346,42 @@ def test_accounts_list_forbidden_for_manager(client, make_user):
     make_user("kier2", Role.manager)
     login(client, "kier2")
     assert client.get("/api/employee-accounts").status_code == 403
+
+
+def test_backup_login_needs_fresh_passkey(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    token = _invite(hr, emp)
+    phone = TestClient(app)
+    auth = FakeAuthenticator()
+    r = _activate(phone, token, auth)
+    phone.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+
+    o = phone.post("/api/me/backup/options").json()
+    # bez prawidłowego potwierdzenia kluczem – odrzucone
+    bad = phone.post(
+        "/api/me/backup/password",
+        json={
+            "password": PASSWORD,
+            "challenge_id": o["challenge_id"],
+            "credential": FakeAuthenticator().get(o["options"]),
+        },
+    )
+    assert bad.status_code == 400
+    o = phone.post("/api/me/backup/options").json()
+    ok = phone.post(
+        "/api/me/backup/password",
+        json={"password": PASSWORD, "challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
+    )
+    assert ok.status_code == 200 and ok.json()["has_password"] is True
+    assert hr.get(f"/api/employees/{emp}/account").json()["has_password"] is True
+
+    # wyłączenie zapasu
+    o = phone.post("/api/me/backup/options").json()
+    off = phone.post(
+        "/api/me/backup/remove",
+        json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
+    )
+    assert off.status_code == 200 and off.json()["has_password"] is False

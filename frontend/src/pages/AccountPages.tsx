@@ -6,7 +6,7 @@ import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react
 
 import { api, errorText, formatDate, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
-import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+import { createPasskey, getPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
 interface Options {
   challenge_id: string;
@@ -172,6 +172,106 @@ export function InvitePage() {
   );
 }
 
+/** Zapasowe logowanie (hasło + kod z aplikacji) – tylko dla pracownika z kluczem dostępu. */
+function BackupLoginCard() {
+  const { me, setMe } = useAuth();
+  const enabled = !!me?.has_password;
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [prepared, setPrepared] = useState<Options | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Safari: okno klucza musi otworzyć się od razu po dotknięciu – wyzwanie pobieramy w osobnym kroku.
+  async function prepare() {
+    setError(null);
+    setBusy(true);
+    try {
+      setPrepared(await api<Options>("/me/backup/options", { method: "POST" }));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirm() {
+    if (!prepared) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const credential = await getPasskey(prepared.options);
+      const path = enabled ? "/me/backup/remove" : "/me/backup/password";
+      const body = enabled
+        ? { challenge_id: prepared.challenge_id, credential }
+        : { password: pw, challenge_id: prepared.challenge_id, credential };
+      const result = await api<Me>(path, { method: "POST", body });
+      setPw("");
+      setPw2("");
+      setMe(result);
+    } catch (e) {
+      setError(passkeyErrorText(e) ?? errorText(e));
+    } finally {
+      setPrepared(null);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card withBorder padding="lg">
+      <Group justify="space-between" mb="xs">
+        <Title order={4}>Zapasowe logowanie</Title>
+        <Text size="sm" c={enabled ? "green" : "dimmed"}>
+          {enabled ? "włączone (hasło + kod z aplikacji)" : "wyłączone"}
+        </Text>
+      </Group>
+      <Text size="sm" c="dimmed" mb="sm">
+        Na wypadek utraty telefonu możesz ustawić hasło i kod z aplikacji uwierzytelniającej. Zmianę potwierdzasz
+        swoim kluczem dostępu.
+      </Text>
+      {error && (
+        <Alert color="red" icon={<IconAlertCircle size={18} />} mb="sm">
+          {error}
+        </Alert>
+      )}
+      <Stack gap="xs">
+        {!enabled && (
+          <>
+            <PasswordInput label="Hasło" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+            <PasswordInput
+              label="Powtórz hasło"
+              autoComplete="new-password"
+              value={pw2}
+              error={pw2 && pw !== pw2 ? "Hasła się różnią." : undefined}
+              onChange={(e) => setPw2(e.currentTarget.value)}
+            />
+          </>
+        )}
+        <Group>
+          <Button
+            loading={busy}
+            color={enabled ? "red" : undefined}
+            variant={enabled ? "light" : "filled"}
+            disabled={!enabled && !prepared && (!pw || pw !== pw2)}
+            onClick={() => (prepared ? confirm() : prepare())}
+          >
+            {prepared
+              ? "Potwierdź kluczem dostępu"
+              : enabled
+                ? "Wyłącz zapasowe logowanie"
+                : "Ustaw zapasowe logowanie"}
+          </Button>
+        </Group>
+        {!enabled && (
+          <Text size="xs" c="dimmed">
+            Po zapisaniu poprosimy jeszcze o skonfigurowanie kodu z aplikacji i pokażemy kody awaryjne.
+          </Text>
+        )}
+      </Stack>
+    </Card>
+  );
+}
+
 interface Passkey {
   id: number;
   name: string;
@@ -312,6 +412,7 @@ export function MyAccountPage() {
           {keys.data?.length === 0 && <Text size="sm">Nie masz jeszcze żadnego klucza.</Text>}
         </Stack>
       </Card>
+      {hasRole("employee") && <BackupLoginCard />}
     </Stack>
   );
 }

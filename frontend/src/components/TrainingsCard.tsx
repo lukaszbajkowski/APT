@@ -44,8 +44,7 @@ import {
   type Employee,
   type Page,
   type Training,
-  type TrainingType,
-} from "../api";
+  type TrainingType, withAcct } from "../api";
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
@@ -513,7 +512,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                       </Text>
                     )}
                     {t.has_scan && (
-                      <Anchor href={`/api/trainings/${t.id}/scan`} target="_blank" size="sm">
+                      <Anchor href={withAcct(`/api/trainings/${t.id}/scan`)} target="_blank" size="sm">
                         <Group gap={4} wrap="nowrap">
                           <IconPaperclip size={14} /> {t.scan_name ?? "Skan zaświadczenia"}
                         </Group>

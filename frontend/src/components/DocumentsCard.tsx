@@ -29,7 +29,7 @@ import { DocumentViewer } from "./DocumentViewer";
 import { SignButton, SignatureBadge, SignaturesModal } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
-import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField } from "../api";
+import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
 
 export type Values = Record<string, string | boolean | number | null>;
 
@@ -192,7 +192,7 @@ function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employ
 
 function download(doc: GeneratedDoc, format: "pdf" | "docx") {
   const a = document.createElement("a");
-  a.href = `/api/documents/${doc.id}/download?format=${format}`;
+  a.href = withAcct(`/api/documents/${doc.id}/download?format=${format}`);
   a.download = "";
   document.body.appendChild(a);
   a.click();

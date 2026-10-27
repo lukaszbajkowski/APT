@@ -30,7 +30,7 @@ from webauthn.helpers.structs import (
 from app import mailer, notify, totp
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
-from app.deps import Auth, DbSession, StaffAuth, utcnow
+from app.deps import Auth, DbSession, StaffAuth, set_session_cookies, utcnow
 from app.device import _b64, _unb64, rp_and_origin
 from app.emails import Email
 from app.models import (
@@ -170,14 +170,7 @@ def _start_session(
     )
     db.add(sess)
     db.flush()
-    response.set_cookie(
-        settings.session_cookie_name,
-        token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="strict",
-        path="/api",
-    )
+    set_session_cookies(response, user.id, token)
     return _me(user, sess)
 
 

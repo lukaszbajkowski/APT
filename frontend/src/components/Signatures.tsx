@@ -36,7 +36,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-import { api, errorText, formatDateTime, type Employee, type GeneratedDoc } from "../api";
+import { api, errorText, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
 
 interface RoleState {
   role: string;
@@ -312,7 +312,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                   Zaufany znacznik czasu: {formatDateTime(st.timestamp.gen_time)} ({st.timestamp.tsa ?? "usługa czasu"}
                   {st.timestamp.trusted === false ? ", urząd niezaufany" : ""}; niekwalifikowany).{" "}
                   {st.can_download && (
-                    <a href={`/api/documents/${doc.id}/timestamp`}>Pobierz znacznik (.tsr)</a>
+                    <a href={withAcct(`/api/documents/${doc.id}/timestamp`)}>Pobierz znacznik (.tsr)</a>
                   )}
                 </>
               )}
@@ -408,7 +408,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
             {st.can_remove && st.scan_id && <RemoveSignature id={st.scan_id} what="skan" docId={doc.id} onDone={refresh} />}
             <Box style={{ flex: 1 }} />
             {(st.has_signed_pdf || st.scan) && st.can_download && (
-              <Button size="xs" component="a" href={`/api/documents/${doc.id}/signed`} leftSection={<IconFileCertificate size={14} />}>
+              <Button size="xs" component="a" href={withAcct(`/api/documents/${doc.id}/signed`)} leftSection={<IconFileCertificate size={14} />}>
                 Pobierz podpisany
               </Button>
             )}

@@ -24,7 +24,7 @@ import { notifications } from "@mantine/notifications";
 import { IconFileText, IconPlus, IconStethoscope, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { api, errorText, formatDate, type Employee, type MedicalExam } from "../api";
+import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
   valid: { label: "ważne", color: "teal" },
@@ -198,7 +198,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
                 <Table.Td ta="right">
                   <Group gap={4} justify="flex-end" wrap="nowrap">
                     {x.has_file && (
-                      <Anchor href={`/api/medical-exams/${x.id}/file`} target="_blank" size="sm">
+                      <Anchor href={withAcct(`/api/medical-exams/${x.id}/file`)} target="_blank" size="sm">
                         <Group gap={4} wrap="nowrap">
                           <IconFileText size={14} /> orzeczenie
                         </Group>

@@ -1,10 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, setCsrfToken, setUnauthorizedHandler, type Me, type Role } from "./api";
+import { api, ApiError, setAccountId, setCsrfToken, setUnauthorizedHandler, type Me, type Role } from "./api";
 import { useIdleLogout } from "./idle";
+
+export interface Account {
+  id: number;
+  username: string;
+  full_name: string;
+  role: Role;
+}
 
 interface AuthState {
   me: Me | null;
+  accounts: Account[];
+  switchAccount: (id: number) => void;
+  addAccount: () => void;
   loading: boolean;
   login: (username: string, password: string) => Promise<Me>;
   logout: () => Promise<void>;
@@ -17,11 +27,13 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMeState] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const queryClient = useQueryClient();
   const meRef = useRef<Me | null>(null);
 
   const setMe = useCallback((value: Me | null) => {
     setCsrfToken(value?.csrf_token ?? null);
+    if (value) setAccountId(value.user.id);
     meRef.current = value;
     setMeState(value);
   }, []);
@@ -37,7 +49,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(clear);
     api<Me>("/auth/me")
-      .then(setMe)
+      .catch(async (e) => {
+        if (!(e instanceof ApiError && e.status === 401)) throw e;
+        // konto tej karty wylogowano – spróbuj innego zalogowanego w tej przeglądarce
+        setAccountId(null);
+        const others = await api<Account[]>("/auth/accounts").catch(() => [] as Account[]);
+        if (others.length === 0) throw e;
+        setAccountId(others[0].id);
+        return api<Me>("/auth/me");
+      })
+      .then((m) => {
+        setMe(m);
+        // ostatnio użyte konto jest domyślne dla nowych kart
+        if (!m.mfa_pending) api("/auth/active", { method: "POST" }).catch(() => undefined);
+      })
       .catch((e) => {
         if (!(e instanceof ApiError && e.status === 401)) console.error(e);
         setMe(null);
@@ -55,14 +80,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [setMe],
   );
 
+  // lista kont zalogowanych w tej przeglądarce (do przełącznika)
+  useEffect(() => {
+    if (!me || me.mfa_pending) {
+      setAccounts([]);
+      return;
+    }
+    api<Account[]>("/auth/accounts")
+      .then(setAccounts)
+      .catch(() => setAccounts([]));
+  }, [me]);
+
+  const switchAccount = useCallback((id: number) => {
+    setAccountId(id);
+    window.location.assign("/");
+  }, []);
+
+  const addAccount = useCallback(() => {
+    window.location.assign("/login?dodaj=1");
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api("/auth/logout", { method: "POST" });
     } finally {
       setMe(null);
+      setAccountId(null);
       queryClient.clear();
     }
-  }, [setMe, queryClient]);
+    // wylogowano jedno konto – jeśli w przeglądarce jest drugie, przechodzimy do niego
+    const others = await api<Account[]>("/auth/accounts").catch(() => [] as Account[]);
+    if (others.length > 0) switchAccount(others[0].id);
+  }, [setMe, queryClient, switchAccount]);
 
   const onIdle = useCallback(async () => {
     try {
@@ -79,13 +128,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthState>(
     () => ({
       me,
+      accounts,
+      switchAccount,
+      addAccount,
       loading,
       login,
       logout,
       setMe,
       hasRole: (...roles) => !!me && roles.includes(me.user.role),
     }),
-    [me, loading, login, logout, setMe],
+    [me, accounts, switchAccount, addAccount, loading, login, logout, setMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -132,6 +132,7 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   const [params] = useSearchParams();
   const idleLogout = params.get("powod") === "bezczynnosc";
+  const adding = params.get("dodaj") === "1"; // kolejne konto obok już zalogowanego
   const config = useQuery({
     queryKey: ["auth-config"],
     queryFn: () => api<{ password_reset: boolean }>("/auth/config"),
@@ -155,7 +156,7 @@ export function LoginPage() {
     return () => window.clearInterval(t);
   }, [loadChallenge]);
 
-  if (me && !me.mfa_pending) return <Navigate to={nextPath(me, from)} replace />;
+  if (me && !me.mfa_pending && !adding) return <Navigate to={nextPath(me, from)} replace />;
 
   async function passkeyLogin() {
     setError(null);
@@ -206,6 +207,12 @@ export function LoginPage() {
                   Zaloguj się, aby kontynuować
                 </Text>
               </div>
+              {adding && me && (
+                <Alert color="blue" variant="light">
+                  Dodajesz drugie konto. Konto {me.user.full_name} pozostaje zalogowane i przełączysz się na nie z menu
+                  użytkownika.
+                </Alert>
+              )}
               {idleLogout && !error && (
                 <Alert color="blue" variant="light">
                   Wylogowano automatycznie po okresie bezczynności. Zaloguj się ponownie.

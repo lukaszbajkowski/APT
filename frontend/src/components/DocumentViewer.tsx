@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Box, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
-import { api, errorText } from "../api";
+import { api, errorText, withAcct } from "../api";
 
 interface Preview {
   pages: number;
@@ -99,7 +99,7 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
                 maw={900}
                 style={{
                   aspectRatio: "210 / 297",
-                  backgroundImage: `url(/api/documents/${docId}/preview/${i})`,
+                  backgroundImage: `url(${withAcct(`/api/documents/${docId}/preview/${i}`)})`,
                   backgroundSize: "contain",
                   backgroundRepeat: "no-repeat",
                   backgroundPosition: "center top",

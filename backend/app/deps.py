@@ -80,15 +80,59 @@ def _expire(db: Session, request: Request, sess: UserSession, now: datetime, rea
     db.commit()
 
 
+ACCOUNT_HEADER = "x-apt-account"
+ACTIVE_COOKIE_SUFFIX = "_active"
+
+
+def session_cookie(user_id: int) -> str:
+    """Każde konto zalogowane w przeglądarce ma własne ciasteczko sesji (kilka kont naraz)."""
+    return f"{get_settings().session_cookie_name}_{user_id}"
+
+
+def _cookie_opts() -> dict[str, Any]:
+    return {
+        "httponly": True,
+        "secure": get_settings().cookie_secure,
+        "samesite": "strict",
+        "path": "/api",
+    }
+
+
+def set_active_cookie(response: Any, user_id: int) -> None:
+    """Domyślne konto dla żądań bez nagłówka (nowa karta, zwykłe linki do plików)."""
+    response.set_cookie(
+        get_settings().session_cookie_name + ACTIVE_COOKIE_SUFFIX, str(user_id), **_cookie_opts()
+    )
+
+
+def set_session_cookies(response: Any, user_id: int, token: str) -> None:
+    response.set_cookie(session_cookie(user_id), token, **_cookie_opts())
+    set_active_cookie(response, user_id)
+
+
+def requested_account(request: Request) -> int | None:
+    """Które konto obsługuje to żądanie: nagłówek (karta), ?acct= (obrazy, pliki) albo ostatnio aktywne."""
+    raw = (
+        request.headers.get(ACCOUNT_HEADER)
+        or request.query_params.get("acct")
+        or request.cookies.get(get_settings().session_cookie_name + ACTIVE_COOKIE_SUFFIX)
+    )
+    try:
+        return int(raw) if raw else None
+    except ValueError:
+        return None
+
+
 def _load_session(request: Request, db: Session) -> AuthContext:
     settings = get_settings()
-    token = request.cookies.get(settings.session_cookie_name)
+    account = requested_account(request)
+    token = request.cookies.get(session_cookie(account)) if account is not None else None
     if not token:
         raise _unauthorized()
 
     sess = db.scalar(select(UserSession).where(UserSession.token_hash == token_hash(token)))
     now = utcnow()
-    if sess is None or sess.revoked_at is not None:
+    if sess is None or sess.revoked_at is not None or sess.user_id != account:
         raise _unauthorized("Sesja wygasła. Zaloguj się ponownie.")
     if sess.expires_at <= now:
         _expire(db, request, sess, now, "max_time")

@@ -16,6 +16,9 @@ from app.deps import (
     AuthPwChange,
     DbSession,
     mfa_setup_pending,
+    session_cookie,
+    set_active_cookie,
+    set_session_cookies,
     simulated,
     utcnow,
 )
@@ -142,14 +145,7 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession) ->
         audit(db, request, "login", user=user)
     db.commit()
 
-    response.set_cookie(
-        settings.session_cookie_name,
-        token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="strict",
-        path="/api",
-    )
+    set_session_cookies(response, user.id, token)
     return _me(user, sess)
 
 
@@ -160,7 +156,46 @@ def logout(
     ctx.session.revoked_at = utcnow()
     audit(db, request, "logout", user=ctx.user, details={"reason": "idle"} if reason == "idle" else None)
     db.commit()
-    response.delete_cookie(get_settings().session_cookie_name, path="/api")
+    # wylogowanie dotyczy tylko tego konta; pozostałe zalogowane konta zostają
+    response.delete_cookie(session_cookie(ctx.session.user_id), path="/api")
+
+
+class AccountOut(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    role: str
+
+
+@router.get("/accounts", response_model=list[AccountOut])
+def accounts(request: Request, db: DbSession) -> list[AccountOut]:
+    """Konta zalogowane w tej przeglądarce (z ważną sesją) – do przełącznika kont."""
+    prefix = get_settings().session_cookie_name + "_"
+    now = utcnow()
+    out: list[AccountOut] = []
+    for name, token in request.cookies.items():
+        suffix = name[len(prefix) :]
+        if not name.startswith(prefix) or not suffix.isdigit():
+            continue
+        sess = db.scalar(select(UserSession).where(UserSession.token_hash == token_hash(token)))
+        if (
+            sess is None
+            or sess.revoked_at is not None
+            or sess.expires_at <= now
+            or sess.mfa_pending
+            or not sess.user.is_active
+            or str(sess.user_id) != suffix
+        ):
+            continue
+        u = sess.user
+        out.append(AccountOut(id=u.id, username=u.username, full_name=u.full_name, role=u.role.value))
+    return sorted(out, key=lambda a: a.id)
+
+
+@router.post("/active", status_code=status.HTTP_204_NO_CONTENT)
+def set_active(ctx: AuthPwChange, response: Response) -> None:
+    """Zapamiętuje konto jako domyślne dla nowych kart tej przeglądarki."""
+    set_active_cookie(response, ctx.session.user_id)
 
 
 @router.get("/me", response_model=MeOut)

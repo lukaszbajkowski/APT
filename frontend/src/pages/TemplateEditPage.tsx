@@ -32,7 +32,7 @@ import {
 } from "@tabler/icons-react";
 
 import { FieldsEditor } from "../components/FieldsEditor";
-import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField } from "../api";
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 
 export function TemplateEditPage() {
@@ -118,7 +118,7 @@ export function TemplateEditPage() {
           </Text>
         </div>
         <Group>
-          <Button variant="default" component="a" href={`/api/templates/${t.id}/file`} leftSection={<IconDownload size={16} />}>
+          <Button variant="default" component="a" href={withAcct(`/api/templates/${t.id}/file`)} leftSection={<IconDownload size={16} />}>
             Pobierz .docx
           </Button>
           <FileButton accept=".docx" onChange={(f) => f && replace.mutate(f)}>

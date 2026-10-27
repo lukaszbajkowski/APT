@@ -252,6 +252,37 @@ export class ApiError extends Error {
 
 export const MFA_PATH = "/logowanie-dwuetapowe";
 
+// Konto obsługiwane przez tę kartę przeglądarki (kilka kont może być zalogowanych naraz).
+const ACCOUNT_KEY = "apt-account";
+let accountId: number | null = (() => {
+  try {
+    const v = Number(sessionStorage.getItem(ACCOUNT_KEY));
+    return v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+})();
+
+export function setAccountId(id: number | null) {
+  accountId = id;
+  try {
+    if (id === null) sessionStorage.removeItem(ACCOUNT_KEY);
+    else sessionStorage.setItem(ACCOUNT_KEY, String(id));
+  } catch {
+    /* tryb prywatny */
+  }
+}
+
+export function getAccountId(): number | null {
+  return accountId;
+}
+
+/** Adres pliku / obrazu (bez nagłówków): dopisuje, które konto ma go pobrać. */
+export function withAcct(url: string): string {
+  if (accountId === null) return url;
+  return url + (url.includes("?") ? "&" : "?") + `acct=${accountId}`;
+}
+
 let csrfToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 
@@ -287,6 +318,7 @@ export async function api<T>(
 ): Promise<T> {
   const method = options.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
+  if (accountId !== null) headers["X-APT-Account"] = String(accountId);
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
@@ -314,6 +346,7 @@ export async function api<T>(
 /** POST zwracający plik (np. PDF) – zapisuje go na dysku użytkownika. */
 export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<void> {
   const headers: Record<string, string> = {};
+  if (accountId !== null) headers["X-APT-Account"] = String(accountId);
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   const res = await fetch(`/api${path}`, {

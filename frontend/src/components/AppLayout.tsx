@@ -22,6 +22,7 @@ import {
   IconUserPlus,
   IconDeviceDesktop,
   IconFingerprint,
+  IconSwitchHorizontal,
   IconHome,
   IconMoon,
   IconChartBar,
@@ -46,7 +47,7 @@ import { MFA_PATH, ROLE_LABELS } from "../api";
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
-  const { me, logout, hasRole } = useAuth();
+  const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,6 +117,21 @@ export function AppLayout() {
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Label>Konta w tej przeglądarce</Menu.Label>
+              {accounts
+                .filter((a) => a.id !== me?.user.id)
+                .map((a) => (
+                  <Menu.Item key={a.id} leftSection={<IconSwitchHorizontal size={16} />} onClick={() => switchAccount(a.id)}>
+                    <Text size="sm">{a.full_name}</Text>
+                    <Text size="xs" c="dimmed">
+                      {ROLE_LABELS[a.role]} · {a.username}
+                    </Text>
+                  </Menu.Item>
+                ))}
+              <Menu.Item leftSection={<IconUserPlus size={16} />} onClick={addAccount}>
+                Dodaj konto
+              </Menu.Item>
+              <Menu.Divider />
               <SimulationMenu onDone={() => setMenuOpen(false)} />
               <Menu.Label>Motyw</Menu.Label>
               <Box px="xs" pb="xs">

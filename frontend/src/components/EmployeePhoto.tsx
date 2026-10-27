@@ -1,6 +1,6 @@
 import { Box } from "@mantine/core";
 import { IconUser } from "@tabler/icons-react";
-import type { Employee } from "../api";
+import { withAcct, type Employee } from "../api";
 
 export function EmployeePhoto({ employee, width }: { employee: Employee; width: number }) {
   const height = Math.round((width * 4) / 3);
@@ -19,7 +19,7 @@ export function EmployeePhoto({ employee, width }: { employee: Employee; width: 
   }
   return (
     <img
-      src={`/api/employees/${employee.id}/photo?v=${employee.photo_version}`}
+      src={withAcct(`/api/employees/${employee.id}/photo?v=${employee.photo_version}`)}
       alt={`Zdjęcie: ${employee.first_name} ${employee.last_name}`}
       width={width}
       height={height}

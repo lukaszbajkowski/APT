@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconDownload, IconMail } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { api, errorText, formatDate, formatDateTime, type DictionaryItem } from "../api";
+import { api, errorText, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
 
 interface Row {
   employee_id: number;
@@ -105,7 +105,7 @@ export function AgencyReportPage() {
           variant="default"
           leftSection={<IconDownload size={16} />}
           component="a"
-          href={`/api/agency-report/xlsx?${params}`}
+          href={withAcct(`/api/agency-report/xlsx?${params}`)}
           disabled={!r}
         >
           Pobierz Excel

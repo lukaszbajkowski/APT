@@ -23,7 +23,7 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
-import { api, errorText, formatDate } from "../api";
+import { api, errorText, formatDate, withAcct } from "../api";
 
 interface FieldDef {
   key: string;
@@ -229,7 +229,7 @@ export function ImportPage() {
                 <Button
                   variant="default"
                   component="a"
-                  href="/api/import/template"
+                  href={withAcct("/api/import/template")}
                   download
                   leftSection={<IconDownload size={16} />}
                 >

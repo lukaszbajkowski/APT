@@ -71,6 +71,15 @@ staje się polami formularza. PDF przez LibreOffice.
 podpis zaufany. Wynik: `{id}_signed.pdf` z dołączoną stroną potwierdzenia. `signed_file()` wybiera plik w kolejności:
 zaufany PDF/XML → `_signed.pdf` → skan. `pypdfium2` z `init_forms()` rysuje pola formularza i podpisy gov.pl.
 
+**Kilka kont w jednej przeglądarce.** Każde zalogowane konto ma własne ciasteczko sesji `apt_session_<id>`
+(HttpOnly, SameSite=Strict, ścieżka `/api`), a `apt_session_active` wskazuje ostatnio użyte. Karta przeglądarki
+wybiera konto nagłówkiem `X-APT-Account` (zapamiętanym w `sessionStorage`, więc dwie karty mogą działać na różnych
+kontach); obrazy i pobrania, które nie mogą wysłać nagłówka, dostają `?acct=<id>`. Serwer sprawdza, że sesja z
+ciasteczka należy do wskazanego konta – ciasteczko jednego konta nie otwiera drugiego. `GET /api/auth/accounts`
+zwraca konta z ważną sesją (przełącznik w menu użytkownika, „Dodaj konto” otwiera logowanie bez wylogowania
+bieżącego), wylogowanie dotyczy tylko bieżącego konta. Po wdrożeniu starsze ciasteczko `apt_session` przestaje
+działać (jednorazowe ponowne logowanie).
+
 **Konta pracowników (`routers/passkeys.py`).** Pracownik loguje się wyłącznie kluczem dostępu (WebAuthn) – bez hasła
 i bez kodu 2FA; klucz z weryfikacją użytkownika (Face ID / odcisk / PIN) sam jest pełnym uwierzytelnieniem.
 Kadry zapraszają pracownika (login `pr<numer>`, link ważny 7 dni, e-mail opcjonalny i niezapisywany – link można

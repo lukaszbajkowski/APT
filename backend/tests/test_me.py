@@ -171,3 +171,37 @@ def _second_employee() -> int:
         db.add(e)
         db.commit()
         return e.id
+
+
+def test_stale_conversation_closes_itself(me, hr, emp):  # noqa: F811
+    from datetime import timedelta
+
+    from app.db import SessionLocal
+    from app.deps import utcnow
+    from app.models import HrThread
+
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Pytanie"}).json()["id"]
+    hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "Odpowiedź"})
+    # świeża rozmowa zostaje otwarta
+    assert hr.get("/api/hr-messages").json()[0]["status"] == "in_progress"
+    old = utcnow() - timedelta(days=8)
+    with SessionLocal() as db:
+        t = db.get(HrThread, tid)
+        t.updated_at = old
+        for m in t.messages:
+            m.created_at = old
+        db.commit()
+    assert hr.get("/api/hr-messages").json()[0]["status"] == "done"
+    ev = me.get(f"/api/me/messages/{tid}").json()["messages"][-1]
+    assert ev["kind"] == "status" and ev["body"] == "done_auto"
+
+    # rozmowa, na którą kadry jeszcze nie odpowiedziały, nigdy nie zamyka się sama
+    tid2 = me.post("/api/me/messages", json={"subject": "Inne", "body": "Czekam"}).json()["id"]
+    with SessionLocal() as db:
+        t = db.get(HrThread, tid2)
+        t.updated_at = old
+        for m in t.messages:
+            m.created_at = old
+        db.commit()
+    rows = {r["id"]: r for r in hr.get("/api/hr-messages").json()}
+    assert rows[tid2]["status"] == "new"

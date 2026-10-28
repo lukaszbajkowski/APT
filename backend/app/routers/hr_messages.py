@@ -28,6 +28,7 @@ SUBJECTS = [
     "Inne",
 ]
 Status = Literal["new", "in_progress", "done"]
+AUTO_CLOSE_DAYS = 7  # rozmowa „w toku”, w której po odpowiedzi kadr pracownik milczy, zamyka się sama
 MAX_OPEN = 10
 MAX_PER_HOUR = 10
 
@@ -93,6 +94,33 @@ def _out(t: HrThread, staff: bool) -> ThreadOut:
     )
 
 
+def close_stale(db: DbSession) -> int:
+    """Zamyka rozmowy, w których po odpowiedzi kadr pracownik milczy od AUTO_CLOSE_DAYS dni."""
+    cutoff = utcnow() - timedelta(days=AUTO_CLOSE_DAYS)
+    closed = 0
+    for t in db.scalars(
+        select(HrThread).where(HrThread.status == "in_progress", HrThread.updated_at < cutoff)
+    ).unique():
+        last = _last(t)
+        if not last.from_staff or last.created_at >= cutoff:
+            continue
+        t.status = "done"
+        t.messages.append(HrMessage(kind="status", from_staff=True, body="done_auto"))
+        audit(
+            db,
+            None,
+            "hr_thread_auto_closed",
+            username="system",
+            entity_type="employee",
+            entity_id=t.employee_id,
+            details={"thread": t.id, "days": AUTO_CLOSE_DAYS},
+        )
+        closed += 1
+    if closed:
+        db.commit()
+    return closed
+
+
 def _last(t: HrThread) -> HrMessage:
     """Ostatnia prawdziwa wiadomość (bez zdarzeń zmiany statusu)."""
     return next(m for m in reversed(t.messages) if m.kind == "message")
@@ -152,6 +180,7 @@ def subjects(ctx: Auth) -> list[str]:
 @me_router.get("/count")
 def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
     eid = _employee_id(ctx)
+    close_stale(db)
     rows = db.scalars(select(HrThread).where(HrThread.employee_id == eid)).unique()
     return {"unread": sum(1 for t in rows if _unread(t, False))}
 
@@ -159,6 +188,7 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
 @me_router.get("", response_model=list[ThreadRow])
 def my_threads(ctx: Auth, db: DbSession) -> list[ThreadRow]:
     eid = _employee_id(ctx)
+    close_stale(db)
     rows = db.scalars(
         select(HrThread).where(HrThread.employee_id == eid).order_by(HrThread.updated_at.desc())
     ).unique()
@@ -270,6 +300,7 @@ def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSe
 
 @staff_router.get("/count")
 def new_count(ctx: StaffAuth, db: DbSession) -> dict[str, int]:
+    close_stale(db)
     n = db.scalar(select(func.count()).select_from(HrThread).where(HrThread.status == "new"))
     rows = db.scalars(select(HrThread).where(HrThread.status != "done")).unique()
     return {"new": n or 0, "unread": sum(1 for t in rows if _unread(t, True))}
@@ -279,6 +310,7 @@ def new_count(ctx: StaffAuth, db: DbSession) -> dict[str, int]:
 def staff_threads(
     ctx: StaffAuth, db: DbSession, status_filter: Status | None = None, q: str | None = None
 ) -> list[ThreadRow]:
+    close_stale(db)
     stmt = select(HrThread).join(Employee, Employee.id == HrThread.employee_id)
     if status_filter:
         stmt = stmt.where(HrThread.status == status_filter)

@@ -30,6 +30,7 @@ export function DataLinkPage() {
   const [birth, setBirth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [validUntil, setValidUntil] = useState<Date | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const info = useQuery({
     queryKey: ["data-link", token],
@@ -44,8 +45,9 @@ export function DataLinkPage() {
     setError(null);
     setBusy(true);
     try {
-      const r = await api<{ access: string }>(`${base}/verify`, { method: "POST", body: { birth_date: birth } });
+      const r = await api<{ access: string; valid_until: string }>(`${base}/verify`, { method: "POST", body: { birth_date: birth } });
       setLinkAccess(r.access);
+      setValidUntil(new Date(r.valid_until));
       setUnlocked(true);
     } catch (e) {
       setError(errorText(e));
@@ -71,7 +73,7 @@ export function DataLinkPage() {
           )}
           {info.data && !unlocked && (
             <>
-              <Text size="sm">{info.data.first_name}, potwierdź datę urodzenia, aby zaktualizować zdjęcie i dane kontaktowe.</Text>
+              <Text size="sm">{info.data.first_name}, potwierdź datę urodzenia, aby zaktualizować zdjęcie i dane kontaktowe. Po potwierdzeniu masz na to 15 minut.</Text>
               {error && (
                 <Alert color="red" icon={<IconAlertCircle size={18} />}>
                   {error}
@@ -82,6 +84,11 @@ export function DataLinkPage() {
                 Dalej
               </Button>
             </>
+          )}
+          {unlocked && data.error && (
+            <Alert color="red" icon={<IconAlertCircle size={18} />}>
+              {errorText(data.error)}
+            </Alert>
           )}
           {unlocked && d && (
             <>
@@ -102,7 +109,9 @@ export function DataLinkPage() {
               <ContactEditor kind="phone" current={d.phone} verified={d.phone_verified} base={`${base}/contact`} queryKey={dataKey} />
               <ContactEditor kind="email" current={d.email} verified={d.email_verified} base={`${base}/contact`} queryKey={dataKey} />
               <Alert color="green" icon={<IconCheck size={18} />}>
-                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Możesz zamknąć tę stronę. Pozostałe dane zmieniają kadry.
+                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu.
+                {validUntil ? ` Ten link działa do ${validUntil.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })} – potem poproś kadry o nowy.` : ""}
+                {" "}Pozostałe dane zmieniają kadry.
               </Alert>
               <PhotoEditor
                 employee={{ id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee}

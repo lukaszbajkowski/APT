@@ -148,3 +148,30 @@ def test_manager_cannot_remove_contact(client, make_user, emp):  # noqa: F811
     make_user("kier2", Role.manager)
     login(client, "kier2")
     assert client.delete(f"/api/employees/{emp}/contact/email").status_code == 403
+
+
+def test_link_works_only_15_minutes_after_first_use(hr, emp):  # noqa: F811
+    from datetime import timedelta
+
+    from app.db import SessionLocal
+    from app.deps import utcnow
+    from app.models import DataLink
+
+    token = _token(hr, emp)
+    pub = TestClient(app)
+    h = _verify(pub, token)
+    assert pub.get(f"/api/data-link/{token}/data", headers=h).status_code == 200
+    # ponowne wejście w tym oknie jest możliwe, ale nie wydłuża go
+    _verify(pub, token)
+    with SessionLocal() as db:
+        link = db.query(DataLink).filter(DataLink.employee_id == emp).one()
+        first = link.first_used_at
+        link.first_used_at = utcnow() - timedelta(minutes=16)
+        db.commit()
+    assert first is not None
+    r = pub.get(f"/api/data-link/{token}/data", headers=h)
+    assert r.status_code == 410 and "wykorzystany" in r.json()["detail"]
+    assert (
+        pub.post(f"/api/data-link/{token}/verify", json={"birth_date": BORN.isoformat()}).status_code == 410
+    )
+    assert hr.get(f"/api/employees/{emp}/data-link").json()["active"] is False

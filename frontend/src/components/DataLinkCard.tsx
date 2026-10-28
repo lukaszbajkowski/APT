@@ -54,8 +54,8 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
         Aktualizacja danych (bez konta)
       </Title>
       <Text size="sm" c="dimmed" mb="sm">
-        Link pozwala pracownikowi bez konta zmienić zdjęcie, telefon i e-mail po potwierdzeniu daty urodzenia. Ważny 7 dni, blokuje się po 5
-        błędnych próbach.
+        Link pozwala pracownikowi bez konta zmienić zdjęcie, telefon i e-mail po potwierdzeniu daty urodzenia. Czeka na użycie 7 dni, a od pierwszego
+        potwierdzenia daty urodzenia działa już tylko 15 minut. Blokuje się po 5 błędnych próbach.
         {contactPhone ? ` Zapisany telefon: ${contactPhone}.` : ""}
       </Text>
       {!s.has_birth_date && (
@@ -71,7 +71,7 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
       {s.active && (
         <Text size="sm" mb="sm">
           Aktywny link do {s.expires_at ? formatDateTime(s.expires_at) : ""}
-          {s.last_used_at ? ` · otwarty ${formatDateTime(s.last_used_at)}` : " · jeszcze nie otwarty"}
+          {s.last_used_at ? ` · otwarty ${formatDateTime(s.last_used_at)} (działa 15 min od pierwszego otwarcia)` : " · jeszcze nie otwarty"}
         </Text>
       )}
       <Stack gap="xs">

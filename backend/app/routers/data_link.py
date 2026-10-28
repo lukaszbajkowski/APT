@@ -1,7 +1,8 @@
 """Aktualizacja danych bez konta: kadry wysyłają link, pracownik potwierdza datę urodzenia
 i sam zmienia zdjęcie oraz telefon / e-mail (kontakt dopiero po kodzie, jak w „Moje dane”).
 
-Link działa przez 7 dni, po 5 błędnych datach urodzenia jest blokowany, a nowy link unieważnia poprzedni.
+Link czeka na użycie 7 dni, ale od pierwszego potwierdzenia daty urodzenia działa już tylko 15 minut.
+Po 5 błędnych datach urodzenia jest blokowany, a nowy link unieważnia poprzedni.
 Pracownik z aktywnym kontem robi to w aplikacji – dla niego link nie jest wystawiany.
 """
 
@@ -13,7 +14,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Header, HTTPException, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import crypto, mailer, photos, sms, storage
@@ -28,7 +29,7 @@ from app.security import new_token, token_hash
 
 LINK_DAYS = 7
 MAX_ATTEMPTS = 5
-ACCESS_SECONDS = 1800
+USE_MINUTES = 15  # od pierwszego potwierdzenia daty urodzenia link działa tylko tyle
 WHO = "link-aktualizacji"
 
 staff_router = APIRouter(prefix="/api/employees", tags=["data-link"])
@@ -61,6 +62,10 @@ def _active_link(db: Session, employee_id: int) -> DataLink | None:
             DataLink.employee_id == employee_id,
             DataLink.status == "active",
             DataLink.expires_at > utcnow(),
+            or_(
+                DataLink.first_used_at.is_(None),
+                DataLink.first_used_at > utcnow() - timedelta(minutes=USE_MINUTES),
+            ),
         )
         .order_by(DataLink.id.desc())
     )
@@ -191,12 +196,22 @@ def cancel_link(employee_id: int, ctx: StaffAuth, request: Request, db: DbSessio
 
 def _by_token(db: Session, token: str) -> tuple[DataLink, Employee]:
     link = db.scalar(select(DataLink).where(DataLink.token_hash == token_hash(token)))
+    used = HTTPException(
+        status.HTTP_410_GONE, detail="Link został już wykorzystany i wygasł – poproś kadry o nowy."
+    )
+    if link is not None and link.status == "used":
+        raise used
     if link is None or link.status != "active":
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, detail="Link jest nieprawidłowy albo został unieważniony."
         )
-    if link.expires_at < datetime.now(UTC):
+    now = datetime.now(UTC)
+    if link.expires_at < now:
         raise HTTPException(status.HTTP_410_GONE, detail="Link wygasł – poproś kadry o nowy.")
+    if link.first_used_at and link.first_used_at + timedelta(minutes=USE_MINUTES) < now:
+        link.status = "used"
+        db.commit()
+        raise used
     e = db.get(Employee, link.employee_id)
     if e is None or _has_account(db, e.id):
         raise HTTPException(
@@ -243,6 +258,7 @@ class VerifyIn(BaseModel):
 
 class VerifyOut(BaseModel):
     access: str
+    valid_until: datetime
 
 
 @public_router.post("/{token}/verify", response_model=VerifyOut)
@@ -262,9 +278,13 @@ def verify(token: str, body: VerifyIn, request: Request, db: DbSession) -> Verif
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, detail=f"Data urodzenia się nie zgadza. Pozostało prób: {left}."
         )
-    link.last_used_at = utcnow()
+    now = utcnow()
+    link.last_used_at = now
+    if link.first_used_at is None:
+        link.first_used_at = now  # od tej chwili link ma tylko USE_MINUTES minut
     db.commit()
-    return VerifyOut(access=_key(link, int(time.time()) + ACCESS_SECONDS))
+    deadline = link.first_used_at + timedelta(minutes=USE_MINUTES)
+    return VerifyOut(access=_key(link, int(deadline.timestamp())), valid_until=deadline)
 
 
 class MyData(BaseModel):

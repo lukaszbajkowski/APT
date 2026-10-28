@@ -21,6 +21,7 @@ from typing import Any, Literal
 
 from docxtpl import DocxTemplate
 from jinja2 import Environment, TemplateSyntaxError, nodes
+from jinja2.sandbox import SandboxedEnvironment
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------- zmienne z kartoteki ----------
@@ -423,7 +424,8 @@ class _SignableTemplate(DocxTemplate):
 def render_docx(template: bytes, context: dict[str, Any]) -> bytes:
     tpl = _SignableTemplate(io.BytesIO(template))
     try:
-        tpl.render(context, autoescape=True)
+        # piaskownica: szablon nie może sięgać do wnętrza interpretera (np. {{ x.__class__ ... }})
+        tpl.render(context, jinja_env=SandboxedEnvironment(autoescape=True))
     except TemplateSyntaxError as exc:
         raise TemplateError(_syntax_message(exc)) from exc
     except Exception as exc:

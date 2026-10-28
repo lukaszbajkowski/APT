@@ -11,6 +11,28 @@ from app.models import PushSubscription
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
+# Serwer wysyła powiadomienia pod adres podany przez przeglądarkę – wolno tylko do usług push producentów
+# przeglądarek (inaczej konto mogłoby kazać serwerowi łączyć się z dowolnym adresem, także wewnętrznym).
+PUSH_HOSTS = (
+    "fcm.googleapis.com",  # Chrome, Edge, Opera, Android
+    "push.services.mozilla.com",  # Firefox
+    "push.apple.com",  # Safari, iPhone (web.push.apple.com)
+    "notify.windows.com",  # Edge / Windows
+)
+
+
+def valid_endpoint(url: str) -> bool:
+    from urllib.parse import urlsplit
+
+    try:
+        u = urlsplit(url)
+        host, port = (u.hostname or "").lower(), u.port
+    except ValueError:
+        return False
+    if u.scheme != "https" or u.username or u.password or port not in (None, 443):
+        return False
+    return any(host == h or host.endswith("." + h) for h in PUSH_HOSTS)
+
 
 class Keys(BaseModel):
     p256dh: str = Field(min_length=10, max_length=200)
@@ -47,7 +69,7 @@ def state(ctx: Auth, db: DbSession, endpoint: str | None = None) -> dict:
 
 @router.post("/subscribe", status_code=status.HTTP_204_NO_CONTENT)
 def subscribe(body: SubscribeIn, ctx: Auth, request: Request, db: DbSession) -> None:
-    if not body.endpoint.startswith("https://"):
+    if not valid_endpoint(body.endpoint):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy adres subskrypcji.")
     ua = (request.headers.get("user-agent") or "")[:200]
     sub = db.scalar(

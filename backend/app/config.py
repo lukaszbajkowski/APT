@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # limit żądań na minutę z jednego adresu IP do publicznych adresów podpisu (0 = bez limitu)
     sign_rate_get: int = 300
     sign_rate_post: int = 40
+    # limit prób logowania / resetu hasła / zaproszeń na minutę z jednego adresu IP (0 = bez limitu)
+    auth_rate_post: int = 30
+    # dokumentacja API (/api/docs) tylko na życzenie – na serwerze produkcyjnym wyłączona
+    enable_docs: bool = False
 
     # Klucz do szyfrowania danych wrażliwych (PESEL): 32 bajty w base64url.
     # Trzymany poza bazą danych. Wygeneruj: python -m app.cli generate-key

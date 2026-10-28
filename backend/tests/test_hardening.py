@@ -131,3 +131,26 @@ def test_one_signature_per_link_even_when_parallel(admin_client, outboxes):  # n
         n = db.scalars(select(DocumentSignature).where(DocumentSignature.status == "signed")).all()
         assert len(n) == 1
         assert len(list(db.scalars(select(AuditLog).where(AuditLog.action == "document_sealed")))) == 1
+
+
+def test_login_is_rate_limited_per_ip(client):
+    from app.config import get_settings
+
+    s = get_settings()
+    old = s.auth_rate_post
+    s.auth_rate_post = 5
+    try:
+        codes = [
+            client.post(
+                "/api/auth/login", json={"username": f"x{i}", "password": "zle-haslo-123"}
+            ).status_code
+            for i in range(8)
+        ]
+    finally:
+        s.auth_rate_post = old
+    assert codes[:5] == [401] * 5 and codes[5:] == [429] * 3
+
+
+def test_api_docs_are_off_by_default(client):
+    assert client.get("/api/docs").status_code == 404
+    assert client.get("/api/openapi.json").status_code == 404

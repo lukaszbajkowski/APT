@@ -334,7 +334,11 @@ def test_medical_reminder_push_without_email(admin_client, make_user, monkeypatc
                 employee_id=e["id"], kind="okresowe", exam_date=today, valid_until=today + timedelta(days=5)
             )
         )
-        db.add(PushSubscription(user_id=hr.id, endpoint="https://push.example.com/hr3", p256dh="x", auth="y"))
+        db.add(
+            PushSubscription(
+                user_id=hr.id, endpoint="https://fcm.googleapis.com/fcm/send/hr3", p256dh="x", auth="y"
+            )
+        )
         db.commit()
     monkeypatch.setattr(mailer, "enabled", lambda: False)
     push.outbox = []

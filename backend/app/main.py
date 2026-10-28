@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import FastAPI
 from sqlalchemy import text
 
 from app import hardening
+from app.config import get_settings
 from app.deps import DbSession
 from app.routers import (
     access_review,
@@ -32,17 +35,28 @@ from app.routers import (
     users,
 )
 
+_settings = get_settings()
 app = FastAPI(
     title="Identyfikacja pracowników APT",
     version="0.1.0",
-    docs_url="/api/docs",
+    docs_url="/api/docs" if _settings.enable_docs else None,
     redoc_url=None,
-    openapi_url="/api/openapi.json",
+    openapi_url="/api/openapi.json" if _settings.enable_docs else None,
 )
 
 
 hardening.install_log_filter()
 app.middleware("http")(hardening.sign_rate_limit)
+
+
+@app.on_event("startup")
+def _check_secrets() -> None:
+    """Ostrzeżenie w logach, gdy na serwerze klucz jest domyślny lub krótki (nie blokuje startu)."""
+    s = get_settings()
+    if s.cookie_secure and (s.secret_key == "dev-only-change-me" or len(s.secret_key) < 32):
+        logging.getLogger("uvicorn.error").error(
+            "APT_SECRET_KEY jest pusty, domyślny albo krótszy niż 32 znaki – ustaw długi losowy klucz w .env."
+        )
 
 
 @app.on_event("startup")

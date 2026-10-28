@@ -2,7 +2,10 @@
 
 from app import push
 
-SUB = {"endpoint": "https://push.example.com/abc123", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
+SUB = {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/abc123",
+    "keys": {"p256dh": "B" * 40, "auth": "a" * 16},
+}
 
 
 def test_subscribe_and_test(admin_client):
@@ -92,7 +95,9 @@ def test_one_browser_can_serve_two_accounts(admin_client, make_user):
         # test wysyła tylko do urządzeń bieżącego konta
         assert other.post("/api/push/test", json={"endpoint": SUB["endpoint"]}).json()["sent"] == 1
         assert (
-            other.post("/api/push/test", json={"endpoint": "https://push.example.com/inne"}).status_code
+            other.post(
+                "/api/push/test", json={"endpoint": "https://fcm.googleapis.com/fcm/send/inne"}
+            ).status_code
             == 400
         )
         assert len(push.outbox) == 1
@@ -103,3 +108,30 @@ def test_one_browser_can_serve_two_accounts(admin_client, make_user):
         )
     finally:
         push.outbox = None
+
+
+def test_only_real_push_services_are_accepted(admin_client):
+    """Serwer nie łączy się z adresami spoza usług push (ochrona przed SSRF)."""
+    for bad in (
+        "https://127.0.0.1/x",
+        "https://localhost/x",
+        "https://169.254.169.254/latest",
+        "https://evil.example.com/x",
+        "https://fcm.googleapis.com.evil.com/x",
+        "https://evilfcm.googleapis.com.evil.com/x",
+        "https://fcm.googleapis.com@evil.com/x",
+        "https://user:pw@fcm.googleapis.com/x",
+        "https://fcm.googleapis.com:8443/x",
+        "http://fcm.googleapis.com/x",
+    ):
+        r = admin_client.post("/api/push/subscribe", json={**SUB, "endpoint": bad})
+        assert r.status_code == 400, bad
+    for good in (
+        "https://fcm.googleapis.com/fcm/send/abc",
+        "https://updates.push.services.mozilla.com/wpush/v2/abc",
+        "https://web.push.apple.com/Qabc",
+        "https://wns2-par02p.notify.windows.com/w/?token=abc",
+    ):
+        assert admin_client.post("/api/push/subscribe", json={**SUB, "endpoint": good}).status_code == 204, (
+            good
+        )

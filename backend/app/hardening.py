@@ -68,9 +68,30 @@ class RateLimiter:
 limiter = RateLimiter()
 
 
+# Adresy logowania i odzyskiwania dostępu: osobny, niższy limit zapisów na adres IP (zgadywanie haseł,
+# masowe wysyłanie e-maili z resetem, zgadywanie zaproszeń).
+AUTH_PREFIXES = (
+    "/api/auth/login",
+    "/api/auth/password-reset/",
+    "/api/auth/invite/",
+    "/api/auth/passkey/",
+    "/api/auth/mfa/verify",
+)
+
+
 async def sign_rate_limit(request: Request, call_next):  # noqa: ANN001, ANN201
-    """Publiczne adresy /api/sign/* – limit żądań na adres IP (osobno odczyt i zapis)."""
-    if request.url.path.startswith(("/api/sign/", "/api/data-link/")):
+    """Publiczne adresy /api/sign/* i logowanie – limit żądań na adres IP (osobno odczyt i zapis)."""
+    path = request.url.path
+    if request.method == "POST" and path.startswith(AUTH_PREFIXES):
+        limit = get_settings().auth_rate_post
+        ip = request.client.host if request.client else "?"
+        if limit > 0 and not limiter.allow((ip, "auth"), limit):
+            return JSONResponse(
+                {"detail": "Zbyt wiele prób. Spróbuj ponownie za minutę."},
+                status_code=429,
+                headers={"Retry-After": "60"},
+            )
+    if path.startswith(("/api/sign/", "/api/data-link/")):
         s = get_settings()
         kind = "post" if request.method == "POST" else "get"
         limit = s.sign_rate_post if kind == "post" else s.sign_rate_get

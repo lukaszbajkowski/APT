@@ -264,8 +264,14 @@ def test_deliver_payload_is_generic(monkeypatch, tmp_path):
     assert sent[0]["vapid_claims"]["sub"]
 
 
-_SUB_HR = {"endpoint": "https://push.example.com/hr1", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
-_SUB_ME = {"endpoint": "https://push.example.com/me1", "keys": {"p256dh": "C" * 40, "auth": "b" * 16}}
+_SUB_HR = {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/hr1",
+    "keys": {"p256dh": "B" * 40, "auth": "a" * 16},
+}
+_SUB_ME = {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/me1",
+    "keys": {"p256dh": "C" * 40, "auth": "b" * 16},
+}
 
 
 def test_staff_starts_conversation(me, hr, emp):  # noqa: F811

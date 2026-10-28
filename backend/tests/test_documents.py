@@ -427,3 +427,15 @@ def test_field_formats(admin):
     )
     assert text == "50-001 600 100 200 AB/1234"
     assert {f["value"] for f in admin.get("/api/templates/formats").json()} >= {"postal", "nip", "iban"}
+
+
+def test_template_cannot_escape_the_sandbox(admin):
+    """Szablon Worda nie może uruchamiać kodu na serwerze (np. przez {{ x.__class__ }})."""
+    evil = "{{ cycler.__init__.__globals__.os.popen('id').read() }}"
+    r = upload(admin, simple_docx(evil + " {{ nazwisko_imie }}"), "Zły")
+    assert r.status_code in (201, 400), r.text
+    if r.status_code == 201:
+        e = admin.post("/api/employees", json={"first_name": "A", "last_name": "B"}).json()
+        tid = r.json()["id"]
+        g = admin.post(f"/api/employees/{e['id']}/documents", json={"template_id": tid, "pdf": False})
+        assert g.status_code == 400 and "unsafe" in g.text

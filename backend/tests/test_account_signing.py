@@ -186,7 +186,10 @@ def test_push_on_new_document_to_sign(admin_client):
     e, doc, auth, c = _account(admin_client)
     push.outbox = []
     try:
-        sub = {"endpoint": "https://push.example.com/emp", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
+        sub = {
+            "endpoint": "https://fcm.googleapis.com/fcm/send/emp",
+            "keys": {"p256dh": "B" * 40, "auth": "a" * 16},
+        }
         assert c.post("/api/push/subscribe", json=sub).status_code == 204
         r = admin_client.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika"})
         assert r.status_code == 201 and r.json()["notified"] == "powiadomienie na telefonie"

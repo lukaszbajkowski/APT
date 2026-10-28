@@ -1,9 +1,10 @@
+import { DocumentViewer } from "../components/DocumentViewer";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, Checkbox, Group, Image, Loader, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconCheck, IconDownload, IconFingerprint } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconFingerprint } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
@@ -180,54 +181,18 @@ export function ToSignPage() {
   );
 }
 
-/** Podgląd własnego podpisanego dokumentu z możliwością pobrania. */
+/** Podgląd własnego podpisanego dokumentu: ten sam widok co u kadr, z możliwością pobrania. */
 export function SignedDocPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const base = `/me/signatures/signed/${id}`;
-  const info = useQuery({
-    queryKey: ["my-signed", id],
-    queryFn: () => api<{ document: string; pages: number; signed_at: string | null; complete: boolean }>(base),
-    retry: false,
-  });
-  if (info.isError)
-    return (
-      <Stack maw={640}>
-        <Alert color="red" icon={<IconAlertCircle size={18} />}>
-          {errorText(info.error)}
-        </Alert>
-        <Button component={Link} to="/moje-konto/do-podpisu" variant="default">
-          Wróć do listy
-        </Button>
-      </Stack>
-    );
-  const d = info.data;
   return (
-    <Stack maw={640}>
-      <Button component={Link} to="/moje-konto/do-podpisu" variant="subtle" w="fit-content">
-        ← Do podpisu
-      </Button>
-      <Title order={2}>{d?.document ?? "Dokument"}</Title>
-      {!d && <Loader />}
-      {d && (
-        <>
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">
-              Podpisano {d.signed_at ? formatDateTime(d.signed_at) : ""}
-              {d.complete ? " · dokument ma wszystkie podpisy" : " · czeka jeszcze na pozostałe podpisy"}
-            </Text>
-            <Button component="a" href={withAcct(`/api${base}/pdf`)} leftSection={<IconDownload size={16} />}>
-              Pobierz PDF
-            </Button>
-          </Group>
-          <Card withBorder padding="xs">
-            <Stack gap="xs">
-              {Array.from({ length: d.pages }, (_, i) => (
-                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={`Strona ${i + 1}`} style={{ border: "1px solid var(--mantine-color-default-border)" }} />
-              ))}
-            </Stack>
-          </Card>
-        </>
-      )}
-    </Stack>
+    <DocumentViewer
+      docId={String(id)}
+      base={base}
+      downloadUrl={`${base}/pdf`}
+      opened
+      onClose={() => navigate("/moje-konto/do-podpisu")}
+    />
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Box, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
-import { IconEyeOff, IconShieldLock } from "@tabler/icons-react";
+import { Alert, Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
+import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { api, errorText, withAcct } from "../api";
 
@@ -16,10 +16,28 @@ interface Preview {
  * Utrudnia kopiowanie: brak menu kontekstowego, zaznaczania i przeciągania, strona ukrywa się
  * przy próbie zrzutu ekranu (PrtScn, Win+Shift+S, Cmd+Shift+3/4/5), drukowaniu i gdy okno traci fokus.
  */
-export function DocumentViewer({ docId, opened, onClose }: { docId: string; opened: boolean; onClose: () => void }) {
+export function DocumentViewer({
+  docId,
+  opened,
+  onClose,
+  base,
+  downloadUrl,
+}: {
+  docId: string;
+  opened: boolean;
+  onClose: () => void;
+  /** Własne źródło podglądu (np. podpisany dokument pracownika): `${base}` zwraca informacje, `${base}/page/{i}` strony. */
+  base?: string;
+  downloadUrl?: string;
+}) {
+  const infoUrl = base ?? `/documents/${docId}/preview`;
+  const pageUrl = (i: number) => (base ? `${base}/page/${i}` : `/documents/${docId}/preview/${i}`);
   const q = useQuery({
-    queryKey: ["preview", docId],
-    queryFn: () => api<Preview>(`/documents/${docId}/preview`),
+    queryKey: ["preview", docId, base],
+    queryFn: async () => {
+      const r = await api<Preview & { document?: string }>(infoUrl);
+      return { ...r, title: r.title ?? r.document ?? "Dokument" };
+    },
     enabled: opened,
     gcTime: 0,
     staleTime: 0,
@@ -66,6 +84,11 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
       title={
         <Group gap="xs">
           <Text fw={600}>{q.data?.title ?? "Podgląd dokumentu"}</Text>
+          {downloadUrl && (
+            <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
+              Pobierz PDF
+            </Button>
+          )}
           {q.data?.signed && (
             <Badge color="teal" variant="light">
               wersja podpisana
@@ -99,7 +122,7 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
                 maw={900}
                 style={{
                   aspectRatio: "210 / 297",
-                  backgroundImage: `url(${withAcct(`/api/documents/${docId}/preview/${i}`)})`,
+                  backgroundImage: `url(${withAcct(`/api${pageUrl(i)}`)})`,
                   backgroundSize: "contain",
                   backgroundRepeat: "no-repeat",
                   backgroundPosition: "center top",
@@ -127,7 +150,7 @@ export function DocumentViewer({ docId, opened, onClose }: { docId: string; open
         <Group justify="center" gap={6} pb="md">
           <IconShieldLock size={14} color="var(--mantine-color-gray-6)" />
           <Text size="xs" c="dimmed">
-            Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku
+            {base ? "Twój podpisany dokument" : "Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku"}
           </Text>
         </Group>
       </Box>

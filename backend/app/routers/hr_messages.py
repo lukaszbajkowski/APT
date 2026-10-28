@@ -570,41 +570,48 @@ def _push_staff(db: DbSession) -> None:
 
 def _notify_employee(t: HrThread, started: bool = False) -> None:
     """Krótka wiadomość bez treści odpowiedzi – na potwierdzony e-mail pracownika (jeśli jest)."""
-    from app import crypto, push
+    from app import crypto, i18n, push
     from app.db import SessionLocal
     from app.models import User
 
     with SessionLocal() as pdb:
-        uid = pdb.scalar(select(User.id).where(User.employee_id == t.employee_id, User.is_active))
-        if uid:
+        acct = pdb.scalar(select(User).where(User.employee_id == t.employee_id, User.is_active))
+        lang = acct.language if acct else None
+        if acct:
             push.notify_users(
                 pdb,
-                [uid],
-                "Wiadomość od kadr" if started else "Odpowiedź od kadr",
-                "Kadry napisały do Ciebie." if started else "Kadry odpowiedziały na Twoją wiadomość.",
+                [acct.id],
+                i18n.t(pdb, "Wiadomość od kadr" if started else "Odpowiedź od kadr", lang),
+                i18n.t(
+                    pdb,
+                    "Kadry napisały do Ciebie." if started else "Kadry odpowiedziały na Twoją wiadomość.",
+                    lang,
+                ),
                 "/moje-konto/wiadomosci",
             )
-    e = t.employee
-    if not e.email_enc or e.email_verified_at is None or not (mailer.enabled() or mailer.outbox is not None):
-        return
-    try:
-        to = crypto.decrypt_contact(e.email_enc)
-        mailer.send(
-            to,
-            Email(
+        e = t.employee
+        if (
+            not e.email_enc
+            or e.email_verified_at is None
+            or not (mailer.enabled() or mailer.outbox is not None)
+        ):
+            return
+        try:
+            to = crypto.decrypt_contact(e.email_enc)
+            raw = Email(
                 subject=(
                     "Kadry napisały do Ciebie – Identyfikacja pracowników APT"
                     if started
                     else "Kadry odpowiedziały na Twoją wiadomość – Identyfikacja pracowników APT"
                 ),
                 title="Nowa wiadomość od kadr" if started else "Nowa odpowiedź od kadr",
-                greeting=f"Dzień dobry {e.first_name},",
+                greeting="Dzień dobry {first_name},",
                 paragraphs=[
                     "kadry napisały do Ciebie w aplikacji. Zaloguj się, aby przeczytać."
                     if started
-                    else f"kadry odpowiedziały w sprawie „{t.subject}”. Zaloguj się, aby przeczytać."
+                    else "kadry odpowiedziały w sprawie „{subject}”. Zaloguj się, aby przeczytać."
                 ],
-            ),
-        )
-    except Exception:  # noqa: BLE001 – powiadomienie nie może blokować odpowiedzi
-        pass
+            )
+            mailer.send(to, i18n.tr_email(pdb, raw, lang, first_name=e.first_name, subject=t.subject))
+        except Exception:  # noqa: BLE001 – powiadomienie nie może blokować odpowiedzi
+            pass

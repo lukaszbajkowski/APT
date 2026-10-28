@@ -106,6 +106,8 @@ class User(TimestampMixin, Base):
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # język aplikacji i powiadomień (konto pracownika); puste = polski
+    language: Mapped[str | None] = mapped_column(String(12))
 
     # Logowanie dwuetapowe (TOTP). Sekret zaszyfrowany kluczem APT_DATA_KEY.
     # Gdy totp_enabled_at jest puste, a sekret jest ustawiony – konfiguracja w toku.
@@ -846,3 +848,14 @@ class PushSubscription(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UiTranslation(Base):
+    """Zapamiętane tłumaczenie stałego tekstu aplikacji (klucz: język + skrót polskiego oryginału)."""
+
+    __tablename__ = "ui_translations"
+
+    lang: Mapped[str] = mapped_column(String(12), primary_key=True)
+    source_hash: Mapped[str] = mapped_column(String(40), primary_key=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

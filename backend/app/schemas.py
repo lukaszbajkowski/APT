@@ -42,6 +42,7 @@ class UserOut(BaseModel):
     agency_id: int | None = None  # konto agencji pracy
     mfa_enabled: bool
     mfa_required: bool
+    language: str | None = None
 
 
 class MeOut(BaseModel):

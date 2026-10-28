@@ -8,8 +8,13 @@ import json
 import logging
 import time
 import urllib.request
+from datetime import UTC, datetime
+
+from sqlalchemy import Integer, cast, func, select
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.models import AuditLog
 
 log = logging.getLogger("apt.translate")
 
@@ -71,3 +76,25 @@ def translate(text: str, target: str) -> tuple[str, str | None]:
         return t["translatedText"], t.get("detectedSourceLanguage")
     except (KeyError, IndexError, TypeError) as exc:
         raise TranslateError("Usługa tłumaczenia zwróciła nieoczekiwaną odpowiedź.") from exc
+
+
+# Działania w dzienniku, których znaki liczą się do wspólnego miesięcznego limitu.
+COUNTED_ACTIONS = ("message_translated", "ui_translated")
+
+
+def used_this_month(db: Session) -> int:
+    """Znaki wysłane do tłumacza od początku miesiąca (z dziennika; treści tam nie ma)."""
+    start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    n = db.scalar(
+        select(func.coalesce(func.sum(cast(AuditLog.details["chars"].astext, Integer)), 0)).where(
+            AuditLog.action.in_(COUNTED_ACTIONS), AuditLog.ts >= start
+        )
+    )
+    return int(n or 0)
+
+
+def exhausted(db: Session, extra: int = 0) -> bool:
+    """Czy limit jest wyczerpany (z `extra`: czy nie zmieści się jeszcze tekst o tej długości)."""
+    limit = get_settings().translate_monthly_chars
+    used = used_this_month(db)
+    return limit > 0 and (used + extra > limit if extra else used >= limit)

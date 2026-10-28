@@ -20,6 +20,7 @@ from app.routers import (
     documents,
     employees,
     hr_messages,
+    i18n,
     imports,
     lifecycle,
     me,
@@ -89,6 +90,7 @@ app.include_router(imports.router)
 app.include_router(cards.router)
 app.include_router(documents.router)
 app.include_router(push.router)
+app.include_router(i18n.router)
 app.include_router(translate.router)
 app.include_router(access_review.router)
 app.include_router(dashboard.router)

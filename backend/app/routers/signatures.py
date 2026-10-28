@@ -422,7 +422,12 @@ def _request_in_account(
     contact = _contact_of(e)
     try:
         if "email" in contact and (mailer.enabled() or mailer.outbox is not None):
-            if mailer.send(contact["email"], notify.account_sign_email(e.first_name, doc.template_name, url)):
+            if mailer.send(
+                contact["email"],
+                notify.account_sign_email(
+                    e.first_name, doc.template_name, url, db, acct.language if acct else None
+                ),
+            ):
                 notified = "e-mail"
         elif "sms" in contact and sms.enabled():
             sms.send(
@@ -431,13 +436,13 @@ def _request_in_account(
             notified = "SMS"
     except Exception:  # noqa: BLE001 – brak powiadomienia nie blokuje prośby; dokument i tak jest w koncie
         notified = None
-    from app import push
+    from app import i18n, push
 
     pushed = push.notify_users(
         db,
         [acct.id] if acct else [],
-        "Nowy dokument do podpisu",
-        "Masz dokument do podpisu w aplikacji.",
+        i18n.t(db, "Nowy dokument do podpisu", acct.language if acct else None),
+        i18n.t(db, "Masz dokument do podpisu w aplikacji.", acct.language if acct else None),
         "/moje-konto/do-podpisu",
     )
     if pushed and notified is None:

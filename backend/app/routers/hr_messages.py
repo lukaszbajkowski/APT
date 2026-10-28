@@ -38,6 +38,8 @@ staff_router = APIRouter(prefix="/api/hr-messages", tags=["hr-messages"])
 class MessageOut(BaseModel):
     id: int
     from_staff: bool
+    kind: Literal["message", "status"] = "message"
+    author_name: str | None = None
     body: str
     created_at: datetime
 
@@ -75,7 +77,14 @@ def _out(t: HrThread, staff: bool) -> ThreadOut:
         created_at=t.created_at,
         updated_at=t.updated_at,
         messages=[
-            MessageOut(id=m.id, from_staff=m.from_staff, body=m.body, created_at=m.created_at)
+            MessageOut(
+                id=m.id,
+                from_staff=m.from_staff,
+                kind=m.kind,  # type: ignore[arg-type]
+                author_name=m.author.full_name if staff and m.kind == "status" and m.author else None,
+                body=m.body,
+                created_at=m.created_at,
+            )
             for m in t.messages
         ],
         employee_id=t.employee_id if staff else None,
@@ -84,15 +93,26 @@ def _out(t: HrThread, staff: bool) -> ThreadOut:
     )
 
 
+def _last(t: HrThread) -> HrMessage:
+    """Ostatnia prawdziwa wiadomość (bez zdarzeń zmiany statusu)."""
+    return next(m for m in reversed(t.messages) if m.kind == "message")
+
+
+def _change_status(t: HrThread, new: str, user, staff: bool) -> None:
+    if t.status != new:
+        t.status = new
+        t.messages.append(HrMessage(kind="status", from_staff=staff, author_id=user.id, body=new))
+
+
 def _unread(t: HrThread, staff: bool) -> bool:
     """Ostatnia wiadomość jest od drugiej strony i nie była jeszcze otwarta."""
-    last = t.messages[-1]
+    last = _last(t)
     seen = t.staff_seen_at if staff else t.employee_seen_at
     return last.from_staff != staff and (seen is None or seen < last.created_at)
 
 
 def _row(t: HrThread, staff: bool) -> ThreadRow:
-    last = t.messages[-1]
+    last = _last(t)
     return ThreadRow(
         id=t.id,
         subject=t.subject,
@@ -171,6 +191,7 @@ def _check_rate(db: DbSession, eid: int) -> None:
         .where(
             HrThread.employee_id == eid,
             HrMessage.from_staff.is_(False),
+            HrMessage.kind == "message",
             HrMessage.created_at > utcnow() - timedelta(hours=1),
         )
     )
@@ -227,7 +248,8 @@ def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSe
     _check_rate(db, eid)
     now = utcnow()
     t.messages.append(HrMessage(from_staff=False, author_id=ctx.user.id, body=text, created_at=now))
-    t.status = "new" if t.status == "done" else t.status
+    if t.status == "done":
+        _change_status(t, "new", ctx.user, False)
     t.updated_at = now
     audit(
         db,
@@ -293,8 +315,8 @@ def staff_reply(thread_id: int, body: BodyIn, ctx: StaffAuth, request: Request, 
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz treść odpowiedzi.")
     now = utcnow()
     t.messages.append(HrMessage(from_staff=True, author_id=ctx.user.id, body=text, created_at=now))
-    if t.status == "new":
-        t.status = "in_progress"
+    if t.status in ("new", "done"):  # odpowiedź kadr otwiera także zamkniętą rozmowę
+        _change_status(t, "in_progress", ctx.user, True)
     t.updated_at = now
     audit(
         db,
@@ -318,7 +340,7 @@ class StatusIn(BaseModel):
 @staff_router.post("/{thread_id}/status", response_model=ThreadOut)
 def set_status(thread_id: int, body: StatusIn, ctx: StaffAuth, request: Request, db: DbSession) -> ThreadOut:
     t = _thread(db, thread_id)
-    t.status = body.status
+    _change_status(t, body.status, ctx.user, True)
     t.updated_at = utcnow()
     audit(
         db,

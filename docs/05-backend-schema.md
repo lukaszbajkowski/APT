@@ -131,3 +131,4 @@ Dokumentacja interaktywna: `/api/docs` (Swagger).
 - `hr_threads` – wątek pracownika: `employee_id`, `subject` (temat z listy), `status` (`new` / `in_progress` / `done`), `created_at`, `updated_at`.
 - `hr_messages` – wiadomości wątku: `thread_id`, `from_staff`, `author_id`, `body` (do 2000 znaków), `created_at`. Bez załączników.
 - `hr_threads.staff_seen_at` / `employee_seen_at` (migracja 0029) – znaczniki przeczytania; nieprzeczytana = ostatnia wiadomość od drugiej strony, nowsza niż znacznik.
+- `hr_messages.kind` (migracja 0030) – `message` albo `status` (zdarzenie zmiany statusu, `body` = nowy status; nie liczy się do podglądu ani nieprzeczytanych).

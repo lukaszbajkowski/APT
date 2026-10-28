@@ -22,7 +22,7 @@ interface Thread {
   id: number;
   subject: string;
   status: ThreadRow["status"];
-  messages: { id: number; from_staff: boolean; body: string; created_at: string }[];
+  messages: { id: number; from_staff: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
   employee_name: string | null;
   employee_number: string | null;
 }
@@ -126,6 +126,17 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
       <ScrollArea style={{ flex: 1 }} px="sm" type="auto">
         <Stack gap={6} py="sm">
           {t?.messages.map((m) => {
+            if (m.kind === "status") {
+              const label = THREAD_STATUS[m.body as ThreadRow["status"]]?.label ?? m.body;
+              const text = m.from_staff
+                ? `Status rozmowy zmieniono na: ${label}${staff && m.author_name ? ` (${m.author_name})` : ""}`
+                : "Rozmowa została otwarta ponownie";
+              return (
+                <Text key={m.id} size="xs" c="dimmed" ta="center" py={6}>
+                  {text} · {formatDateTime(m.created_at)}
+                </Text>
+              );
+            }
             const mine = m.from_staff === staff;
             return (
               <Group key={m.id} justify={mine ? "flex-end" : "flex-start"}>
@@ -230,11 +241,6 @@ export function Messenger({ staff }: { staff: boolean }) {
     ...LIVE,
   });
   const rows = list.data ?? [];
-  // na komputerze od razu pokazujemy pierwszą rozmowę
-  useEffect(() => {
-    if (!mobile && openId === null && !composing && rows.length > 0) setOpenId(rows[0].id);
-  }, [mobile, openId, composing, rows]);
-
   const showList = !mobile || (openId === null && !composing);
   const showRight = !mobile || openId !== null || composing;
   const back = () => {

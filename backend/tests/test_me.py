@@ -129,9 +129,21 @@ def test_write_to_hr_thread(me, hr, emp):  # noqa: F811
     r = hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "W przyszłym tygodniu."})
     assert r.status_code == 200 and r.json()["status"] == "in_progress"
     assert me.get("/api/me/messages/count").json() == {"unread": 1}
-    assert len(me.get(f"/api/me/messages/{tid}").json()["messages"]) == 2
+    assert len(me.get(f"/api/me/messages/{tid}").json()["messages"]) == 3
     assert me.get("/api/me/messages/count").json() == {"unread": 0}
-    assert hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"}).json()["status"] == "done"
+    r = hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"}).json()
+    assert r["status"] == "done"
+    ev = [m for m in r["messages"] if m["kind"] == "status"]
+    assert [m["body"] for m in ev] == ["in_progress", "done"] and ev[-1]["author_name"]
+    # status nie zmienia podglądu ani nieprzeczytanych po stronie pracownika
+    assert me.get("/api/me/messages").json()[0]["preview"] == "W przyszłym tygodniu."
+    assert me.get(f"/api/me/messages/{tid}").json()["messages"][-1]["author_name"] is None
+    # odpowiedź kadr w zamkniętej rozmowie otwiera ją
+    assert (
+        hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "Jeszcze jedno."}).json()["status"]
+        == "in_progress"
+    )
+    hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"})
     # odpowiedź pracownika otwiera wątek ponownie
     r = me.post(f"/api/me/messages/{tid}/messages", json={"body": "Dziękuję, a gdzie?"})
     assert r.json()["status"] == "new"

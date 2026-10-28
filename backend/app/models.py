@@ -756,9 +756,12 @@ class HrMessage(Base):
     from_staff: Mapped[bool] = mapped_column(Boolean, nullable=False)
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    # "message" albo "status" (zdarzenie zmiany statusu; body = nowy status)
+    kind: Mapped[str] = mapped_column(String(10), default="message", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    author: Mapped["User | None"] = relationship(lazy="joined")
     thread: Mapped[HrThread] = relationship(back_populates="messages")
 
 

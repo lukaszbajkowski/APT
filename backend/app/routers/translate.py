@@ -1,15 +1,18 @@
 """Tłumaczenie wiadomości „Napisz do kadr” (Google Cloud Translation), na żądanie uczestnika rozmowy."""
 
 import re
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import Integer, cast, func, select
 
 from app import translate
 from app.audit import audit
+from app.config import get_settings
 from app.deps import Auth, DbSession
 from app.hardening import limiter
-from app.models import HrMessage, HrThread, Role
+from app.models import AuditLog, HrMessage, HrThread, Role
 
 router = APIRouter(prefix="/api/translate", tags=["translate"])
 
@@ -17,19 +20,40 @@ LANG = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
 PER_HOUR = 120
 
 
+def used_this_month(db: DbSession) -> int:
+    """Znaki wysłane do tłumacza od początku miesiąca (z dziennika; treści tam nie ma)."""
+    now = datetime.now(UTC)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    n = db.scalar(
+        select(func.coalesce(func.sum(cast(AuditLog.details["chars"].astext, Integer)), 0)).where(
+            AuditLog.action == "message_translated", AuditLog.ts >= start
+        )
+    )
+    return int(n or 0)
+
+
+def exhausted(db: DbSession, extra: int = 0) -> bool:
+    """Czy limit jest wyczerpany (z `extra`: czy nie zmieści się jeszcze tekst o tej długości)."""
+    limit = get_settings().translate_monthly_chars
+    used = used_this_month(db)
+    return limit > 0 and (used + extra > limit if extra else used >= limit)
+
+
 class ConfigOut(BaseModel):
     enabled: bool
+    exhausted: bool = False
     languages: list[dict[str, str]] = []
 
 
 @router.get("/config", response_model=ConfigOut)
-def config(ctx: Auth) -> ConfigOut:
+def config(ctx: Auth, db: DbSession) -> ConfigOut:
     if not translate.enabled():
         return ConfigOut(enabled=False)
+    done = exhausted(db)
     try:
-        return ConfigOut(enabled=True, languages=translate.languages())
+        return ConfigOut(enabled=True, exhausted=done, languages=translate.languages())
     except translate.TranslateError:
-        return ConfigOut(enabled=True, languages=[])
+        return ConfigOut(enabled=True, exhausted=done, languages=[])
 
 
 class MessageIn(BaseModel):
@@ -63,6 +87,11 @@ def translate_message(body: MessageIn, ctx: Auth, request: Request, db: DbSessio
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS, detail="Zbyt wiele tłumaczeń. Spróbuj za godzinę."
         )
+    if exhausted(db, len(m.body)):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Miesięczny limit tłumaczeń został wykorzystany. Wróci od początku następnego miesiąca.",
+        )
     try:
         text, source = translate.translate(m.body, body.target)
     except translate.TranslateError as exc:
@@ -74,7 +103,7 @@ def translate_message(body: MessageIn, ctx: Auth, request: Request, db: DbSessio
         user=ctx.user,
         entity_type="employee",
         entity_id=t.employee_id,
-        details={"thread": t.id, "target": body.target},
+        details={"thread": t.id, "target": body.target, "chars": len(m.body)},
     )
     db.commit()
     return TranslationOut(text=text, source=source, target=body.target)

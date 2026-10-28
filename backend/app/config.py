@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     # Tłumaczenie wiadomości (Google Cloud Translation, Basic v2): klucz API z konsoli Google Cloud.
     # Pusty klucz = funkcja wyłączona (nic nie opuszcza serwera).
     google_translate_key: str = ""
+    # Miesięczny limit znaków wysyłanych do tłumacza (0 = bez limitu). Darmowa pula Google to 500 000 znaków.
+    translate_monthly_chars: int = 400_000
     # ważność linku do podpisu dokumentu (godziny)
     sign_link_hours: int = 72
     # kraje, których krajowe listy zaufania (kwalifikowani dostawcy podpisu) sprawdzamy – kody po przecinku

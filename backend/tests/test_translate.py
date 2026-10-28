@@ -49,7 +49,7 @@ def _thread(me, hr):  # noqa: F811
 
 def test_disabled_without_key(me, hr, monkeypatch):  # noqa: F811
     monkeypatch.setattr(get_settings(), "google_translate_key", "")
-    assert me.get("/api/translate/config").json() == {"enabled": False, "languages": []}
+    assert me.get("/api/translate/config").json() == {"enabled": False, "exhausted": False, "languages": []}
     _, mid = _thread(me, hr)
     assert me.post("/api/translate/message", json={"message_id": mid, "target": "pl"}).status_code == 404
     assert calls == []
@@ -113,3 +113,19 @@ def test_translation_is_rate_limited(me, hr, monkeypatch):  # noqa: F811
         for _ in range(5)
     ]
     assert codes == [200, 200, 200, 429, 429]
+
+
+def test_monthly_character_limit(me, hr, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(get_settings(), "translate_monthly_chars", 25)
+    _, mid = _thread(me, hr)  # „Добрий день” = 11 znaków
+    assert hr.get("/api/translate/config").json()["exhausted"] is False
+    assert hr.post("/api/translate/message", json={"message_id": mid, "target": "pl"}).status_code == 200
+    assert hr.post("/api/translate/message", json={"message_id": mid, "target": "pl"}).status_code == 200
+    # trzecie tłumaczenie przekroczyłoby 25 znaków
+    r = hr.post("/api/translate/message", json={"message_id": mid, "target": "pl"})
+    assert r.status_code == 429 and "limit" in r.json()["detail"].lower()
+    assert len(calls) == 3  # 1× lista języków + 2× tłumaczenie, trzecie nie wyszło do Google
+    monkeypatch.setattr(get_settings(), "translate_monthly_chars", 22)
+    assert hr.get("/api/translate/config").json()["exhausted"] is True
+    monkeypatch.setattr(get_settings(), "translate_monthly_chars", 0)  # 0 = bez limitu
+    assert hr.post("/api/translate/message", json={"message_id": mid, "target": "pl"}).status_code == 200

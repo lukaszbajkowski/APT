@@ -66,7 +66,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   const count = t?.messages.length ?? 0;
   // tłumaczenie na żądanie (Google Cloud Translation); funkcja ukryta, gdy serwer nie ma klucza
   const { me: account } = useAuth();
-  const cfg = useQuery({ queryKey: ["translate-config"], queryFn: () => api<{ enabled: boolean; languages: { code: string; name: string }[] }>("/translate/config"), staleTime: 3_600_000 });
+  const cfg = useQuery({ queryKey: ["translate-config"], queryFn: () => api<{ enabled: boolean; exhausted: boolean; languages: { code: string; name: string }[] }>("/translate/config"), staleTime: 3_600_000 });
   const langKey = `apt-translate-${account?.user.id ?? 0}`;
   const [lang, setLangState] = useState<string>(() => {
     try {
@@ -186,7 +186,9 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
       {cfg.data?.enabled && (
         <Group px="sm" py={4} gap="xs" justify="flex-end" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
           <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={2}>
-            „Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.
+            {cfg.data.exhausted
+              ? "Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca."
+              : "„Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation."}
           </Text>
           <Select
             size="xs"
@@ -238,7 +240,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
                     </Box>
                   )}
                   <Group justify="space-between" gap="xs" wrap="nowrap">
-                    {cfg.data?.enabled ? (
+                    {cfg.data?.enabled && !cfg.data.exhausted ? (
                       tr[m.id] === "loading" ? (
                         <Text size="10px" opacity={0.7}>Tłumaczę…</Text>
                       ) : tr[m.id] ? (

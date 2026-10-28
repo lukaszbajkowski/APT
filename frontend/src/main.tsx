@@ -58,3 +58,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </MantineProvider>
   </React.StrictMode>,
 );
+
+// Instalacja na telefonie (PWA): service worker nic nie buforuje, służy tylko do instalacji.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  });
+}

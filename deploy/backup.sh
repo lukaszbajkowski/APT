@@ -61,5 +61,10 @@ else
   write_status true "$STAMP, $SIZE" none ""
 fi
 
+# raz w tygodniu (w niedzielę) sprawdzamy, że najnowszą kopię da się odtworzyć (w osobnej, tymczasowej bazie)
+if [ "$(date +%u)" = "7" ] && [ -x "$APP_DIR/deploy/restore-test.sh" ]; then
+  "$APP_DIR/deploy/restore-test.sh" "$DEST" || true
+fi
+
 # ostrzeżenia e-mail dla administratorów (nieudana kopia, dane do usunięcia) – jeśli e-mail skonfigurowany
 docker compose exec -T api python -m app.cli notify-daily >/dev/null 2>&1 || true

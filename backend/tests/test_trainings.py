@@ -300,3 +300,21 @@ def test_medical_reminders(admin_client, make_user, monkeypatch):
     assert cli.medical_reminders() == 0
     msg = dict(sent)["kadry2@example.com"]
     assert "Badana Ola" in msg.items[0] and "ważne do" in msg.items[0] and "(1)" in msg.subject
+
+
+def test_restore_test_status(tmp_path, monkeypatch):
+    import json
+    from datetime import UTC, datetime, timedelta
+
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "data_dir", str(tmp_path))
+    now = datetime.now(UTC)
+    assert cli.restore_test_problems(now) == []  # test jeszcze nie ruszył
+    f = tmp_path / "restore-test.json"
+    f.write_text(json.dumps({"at": now.isoformat(), "ok": True, "info": "ok"}))
+    assert cli.restore_test_problems(now) == []
+    f.write_text(json.dumps({"at": (now - timedelta(days=20)).isoformat(), "ok": True, "info": "ok"}))
+    assert "Ostatni udany test" in cli.restore_test_problems(now)[0]
+    f.write_text(json.dumps({"at": now.isoformat(), "ok": False, "info": "baza uszkodzona"}))
+    assert "nie powiódł się: baza uszkodzona" in cli.restore_test_problems(now)[0]

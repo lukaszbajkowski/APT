@@ -137,8 +137,13 @@ dla kierownika; zrzutów ekranu nie da się zablokować w przeglądarce całkowi
 **Zestawienia agencji.** `agency_report.rows_for` łączy bieżące zatrudnienie, okresy i przydziały; Excel przez openpyxl;
 `send_monthly` (polecenie `agency-reports`, wołane 1. dnia miesiąca z `notify_daily`) nie wysyła drugi raz za ten sam miesiąc (sprawdza dziennik).
 
-**Zadania cykliczne.** CLI `python -m app.cli notify-daily` wywoływane przez `deploy/backup.sh` (cron 2:30): planowane zmiany, przypomnienia Dodatkowo `notify-daily` wywołuje `close-stale-threads` (rozmowy „Napisz do kadr” bez odpowiedzi pracownika przez 3 dni po odpowiedzi kadr zamykają się same; to samo dzieje się przy pobraniu listy/licznika rozmów).
-(poniedziałki), zestawienia agencji (1. dnia miesiąca), alerty dla administratorów.
+**Zadania cykliczne.** CLI `python -m app.cli notify-daily` wywoływane przez `deploy/backup.sh` (cron 2:30): planowane zmiany,
+przypomnienia (poniedziałki: braki w danych, szkolenia, badania lekarskie), zestawienia agencji (1. dnia miesiąca), alerty dla
+administratorów. Codziennie `notify-daily` także zamyka rozmowy „Napisz do kadr”, w których pracownik nie odpowiedział na
+odpowiedź kadr przez 3 dni (`close-stale-threads`; to samo dzieje się przy pobraniu listy lub licznika rozmów), i trwale usuwa
+dokumenty leżące w koszu dłużej niż 30 dni. W niedzielę `backup.sh` uruchamia `deploy/restore-test.sh` – odtworzenie najnowszej
+kopii do tymczasowej bazy obok produkcyjnej (bez zastępowania danych); wynik w `restore-test.json`, a nieudany lub nieaktualny
+test trafia do alertu dla administratorów.
 
 ## Konfiguracja (zmienne środowiskowe)
 

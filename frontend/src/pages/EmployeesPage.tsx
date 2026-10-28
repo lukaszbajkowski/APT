@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { SavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Alert,
@@ -257,6 +258,7 @@ export function EmployeesPage() {
           value={missing}
           onChange={(v) => update({ missing: v })}
         />
+        <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
       </Group>
 
       {canPrint && list.data && list.data.total > 0 && (

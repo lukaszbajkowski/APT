@@ -76,18 +76,20 @@ Wycofanie: `/opt/apt/deploy/restore.sh /var/backups/apt/<kopia>`.
 | 5 | Zewnętrzny monitoring (np. UptimeRobot na `/api/health`) | Administrator |
 | 6 | Przetestować odtworzenie kopii na czystym serwerze | Administrator |
 
-## Backlog (propozycje bez decyzji)
+## Backlog
 
-| Priorytet | Pomysł | Uwagi |
-|---|---|---|
-| Wysoki | Kosz 30 dni dla usuniętych dokumentów | usunięcia są dziś trwałe |
-| Wysoki | Cotygodniowy e-mail o kończących się badaniach | dane już są w `medical_exams.valid_until` |
-| Średni | Wysyłka dokumentu e-mailem | użyć `mailer` z załącznikami |
-| Średni | Przegląd uprawnień (kto ma jaką rolę, kiedy ostatnio logował) | widok z `users` + `audit_log` |
-| Średni | Raport dostępu do PESEL | z `audit_log` |
-| Niski | Zapisane filtry listy | |
-| Niski | PWA / instalacja na telefonie | skaner i podpis |
-| Niski | Cykliczny, zautomatyzowany test odtwarzania kopii | |
+Wszystkie pozycje poprzedniego backlogu są zrobione:
+
+| Pozycja | Gdzie |
+|---|---|
+| Kosz 30 dni dla usuniętych dokumentów (przywracanie, trwałe usunięcie po 30 dniach, migracja 0034) | karta „Dokumenty” → „Kosz” |
+| Cotygodniowy e-mail o badaniach lekarskich (nieważne i kończące się w 30 dni) | `app.cli notify-medical`, poniedziałki |
+| Wysyłka dokumentu e-mailem (wersja podpisana, jeśli jest; limit 20/h; wpis w dzienniku) | przycisk „E-mail” przy dokumencie |
+| Przegląd uprawnień (role, zakres, ostatnie logowanie, 2FA, uwagi) | menu „Przegląd dostępu” (admin) |
+| Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
+| Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
+| PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |
+| Cykliczny test odtwarzania kopii (niedziela, tymczasowa baza) | `deploy/restore-test.sh` |
 
 Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie ukończenia szkolenia przez opiekuna.
 

@@ -311,6 +311,26 @@ def medical_reminders() -> int:
     return 0
 
 
+def restore_test_problems(now) -> list[str]:
+    """Wynik cotygodniowego testu odtwarzania kopii (restore-test.sh); brak pliku = test nie ruszył."""
+    import json
+    from datetime import datetime, timedelta
+    from pathlib import Path
+
+    from app.config import get_settings
+
+    try:
+        r = json.loads((Path(get_settings().data_dir) / "restore-test.json").read_text())
+        at = datetime.fromisoformat(r["at"])
+    except (OSError, ValueError, KeyError):
+        return []
+    if not r.get("ok"):
+        return [f"Test odtwarzania kopii zapasowej nie powiódł się: {str(r.get('info', ''))[:300]}"]
+    if now - at > timedelta(days=15):
+        return [f"Ostatni udany test odtwarzania kopii był {at:%d.%m.%Y} – sprawdź, czy kopie są wykonywane."]
+    return []
+
+
 def notify_daily() -> int:
     """Codzienne ostrzeżenia dla administratorów (wywoływane przez deploy/backup.sh)."""
     from datetime import UTC, datetime, timedelta
@@ -339,6 +359,7 @@ def notify_daily() -> int:
             problems.append(f"Ostatnia kopia zapasowa jest z {status.local.at:%d.%m.%Y %H:%M}.")
         if status.offsite is not None and not status.offsite.ok:
             problems.append(f"Wysyłka kopii poza serwer nie powiodła się: {status.offsite.info[:300]}")
+    problems.extend(restore_test_problems(now))
     with SessionLocal() as db:
         due = count_due(db)
         if due:

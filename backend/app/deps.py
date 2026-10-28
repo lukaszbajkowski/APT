@@ -15,7 +15,7 @@ from app.models import Role, User, UserSession
 from app.security import token_hash
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-EMPLOYEE_PATHS = ("/api/auth/", "/api/passkeys", "/api/me/", "/api/push/")
+EMPLOYEE_PATHS = ("/api/auth/", "/api/passkeys", "/api/me/", "/api/push/", "/api/translate/")
 
 DbSession = Annotated[Session, Depends(get_db)]
 

@@ -148,7 +148,7 @@ test trafia do alertu dla administratorów.
 ## Konfiguracja (zmienne środowiskowe)
 
 `APT_DATABASE_URL`, `APT_SECRET_KEY`, `APT_DATA_KEY`, `APT_DATA_DIR`, `APT_COOKIE_SECURE`, `APT_DOMAIN`,
-`APT_RETENTION_YEARS`, `APT_TSA_URL`, ustawienia SMTP (mail-setup.sh), opcjonalnie SMSAPI (token wpisywany ręcznie na serwerze).
+`APT_RETENTION_YEARS`, `APT_TSA_URL`, ustawienia SMTP (mail-setup.sh), opcjonalnie SMSAPI (token wpisywany ręcznie na serwerze), opcjonalnie tłumaczenie wiadomości `APT_GOOGLE_TRANSLATE_KEY` (Google Cloud Translation Basic v2; klucz wpisywany ręcznie na serwerze; puste = wyłączone).
 
 ## Wdrożenie i operacje
 

@@ -471,6 +471,7 @@ export const ACTION_LABELS: Record<string, string> = {
   document_restored: "Przywrócenie dokumentu z kosza",
   document_emailed: "Wysłanie dokumentu e-mailem",
   hr_thread_auto_closed: "Automatyczne zamknięcie rozmowy",
+  message_translated: "Przetłumaczono wiadomość",
   hr_thread_archived: "Zarchiwizowano rozmowę",
   hr_thread_unarchived: "Przywrócono rozmowę z archiwum",
   hr_thread_auto_archived: "Automatyczna archiwizacja rozmowy",

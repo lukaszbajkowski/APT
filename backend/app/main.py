@@ -32,6 +32,7 @@ from app.routers import (
     signatures,
     training_import,
     trainings,
+    translate,
     users,
 )
 
@@ -88,6 +89,7 @@ app.include_router(imports.router)
 app.include_router(cards.router)
 app.include_router(documents.router)
 app.include_router(push.router)
+app.include_router(translate.router)
 app.include_router(access_review.router)
 app.include_router(dashboard.router)
 app.include_router(retention.router)

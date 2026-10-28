@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconArchive, IconArchiveOff, IconArrowLeft, IconPlus, IconSearch, IconSend } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
+import { useAuth } from "../auth";
 
 export interface ThreadRow {
   id: number;
@@ -63,6 +64,41 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   const q = useQuery({ queryKey: ["thread", base, id], queryFn: () => api<Thread>(`${base}/${id}`), refetchInterval: 3000, ...LIVE });
   const t = q.data;
   const count = t?.messages.length ?? 0;
+  // tłumaczenie na żądanie (Google Cloud Translation); funkcja ukryta, gdy serwer nie ma klucza
+  const { me: account } = useAuth();
+  const cfg = useQuery({ queryKey: ["translate-config"], queryFn: () => api<{ enabled: boolean; languages: { code: string; name: string }[] }>("/translate/config"), staleTime: 3_600_000 });
+  const langKey = `apt-translate-${account?.user.id ?? 0}`;
+  const [lang, setLangState] = useState<string>(() => {
+    try {
+      return localStorage.getItem(langKey) || (staff ? "pl" : (navigator.language || "pl").slice(0, 2));
+    } catch {
+      return "pl";
+    }
+  });
+  const setLang = (v: string | null) => {
+    if (!v) return;
+    setLangState(v);
+    try {
+      localStorage.setItem(langKey, v);
+    } catch {
+      /* brak pamięci przeglądarki – wybór obowiązuje do odświeżenia */
+    }
+  };
+  const [tr, setTr] = useState<Record<number, { text: string; source: string | null; target: string } | "loading">>({});
+  const langName = (code: string | null) => cfg.data?.languages.find((l) => l.code === code)?.name ?? code ?? "?";
+  async function translateMessage(id: number) {
+    setTr((x) => ({ ...x, [id]: "loading" }));
+    try {
+      const r = await api<{ text: string; source: string | null; target: string }>("/translate/message", { method: "POST", body: { message_id: id, target: lang } });
+      setTr((x) => ({ ...x, [id]: r }));
+    } catch (e) {
+      setTr((x) => {
+        const { [id]: _drop, ...rest } = x;
+        return rest;
+      });
+      setError(errorText(e));
+    }
+  }
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [count, id]);
@@ -147,6 +183,24 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
           </Group>
         )}
       </Group>
+      {cfg.data?.enabled && (
+        <Group px="sm" py={4} gap="xs" justify="flex-end" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+          <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={2}>
+            „Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.
+          </Text>
+          <Select
+            size="xs"
+            w={150}
+            searchable
+            allowDeselect={false}
+            aria-label="Język tłumaczenia"
+            placeholder="Tłumacz na…"
+            value={lang}
+            onChange={setLang}
+            data={(cfg.data.languages.length ? cfg.data.languages : [{ code: "pl", name: "polski" }]).map((l) => ({ value: l.code, label: l.name }))}
+          />
+        </Group>
+      )}
       <ScrollArea style={{ flex: 1 }} px="sm" type="auto">
         <Stack gap={6} py="sm">
           {t?.messages.map((m) => {
@@ -175,9 +229,34 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
                   c={mine ? "white" : undefined}
                 >
                   <Text style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.body}</Text>
-                  <Text size="10px" ta="right" opacity={0.7}>
-                    {formatDateTime(m.created_at)}
-                  </Text>
+                  {tr[m.id] && tr[m.id] !== "loading" && (
+                    <Box mt={4} pt={4} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
+                      <Text size="xs" opacity={0.75}>
+                        Tłumaczenie: {langName((tr[m.id] as { source: string | null }).source)} → {langName((tr[m.id] as { target: string }).target)}
+                      </Text>
+                      <Text style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{(tr[m.id] as { text: string }).text}</Text>
+                    </Box>
+                  )}
+                  <Group justify="space-between" gap="xs" wrap="nowrap">
+                    {cfg.data?.enabled ? (
+                      tr[m.id] === "loading" ? (
+                        <Text size="10px" opacity={0.7}>Tłumaczę…</Text>
+                      ) : tr[m.id] ? (
+                        <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => setTr((x) => { const { [m.id]: _d, ...rest } = x; return rest; })}>
+                          Ukryj tłumaczenie
+                        </Anchor>
+                      ) : (
+                        <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => translateMessage(m.id)}>
+                          Przetłumacz
+                        </Anchor>
+                      )
+                    ) : (
+                      <span />
+                    )}
+                    <Text size="10px" ta="right" opacity={0.7}>
+                      {formatDateTime(m.created_at)}
+                    </Text>
+                  </Group>
                 </Paper>
               </Group>
             );

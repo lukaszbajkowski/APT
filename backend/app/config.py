@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # SMS przez SMSAPI.pl (opcjonalnie): token API i nazwa nadawcy zarejestrowana w SMSAPI
     smsapi_token: str = ""
     sms_sender: str = ""
+    # Tłumaczenie wiadomości (Google Cloud Translation, Basic v2): klucz API z konsoli Google Cloud.
+    # Pusty klucz = funkcja wyłączona (nic nie opuszcza serwera).
+    google_translate_key: str = ""
     # ważność linku do podpisu dokumentu (godziny)
     sign_link_hours: int = 72
     # kraje, których krajowe listy zaufania (kwalifikowani dostawcy podpisu) sprawdzamy – kody po przecinku

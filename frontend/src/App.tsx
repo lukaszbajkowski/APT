@@ -12,6 +12,7 @@ import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
 import { InvitePage, MyAccountPage } from "./pages/AccountPages";
+import { EmployeeArea } from "./components/EmployeeArea";
 import { SignedDocPage, ToSignListPage, ToSignPage } from "./pages/ToSignPages";
 import { DataLinkPage } from "./pages/DataLinkPage";
 import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
@@ -63,7 +64,7 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
       </Center>
     );
   }
-  if (!me || me.mfa_pending) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!me || me.mfa_pending) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   if (me.user.must_change_password && location.pathname !== "/zmiana-hasla") {
     return <Navigate to="/zmiana-hasla" replace />;
   }
@@ -117,11 +118,13 @@ export function App() {
       >
         <Route index element={<Home />} />
         <Route path="moje-konto" element={<MyAccountRoot />} />
-        <Route path="moje-konto/do-podpisu" element={<ToSignListPage />} />
-        <Route path="moje-konto/do-podpisu/podpisane/:id" element={<SignedDocPage />} />
-        <Route path="moje-konto/do-podpisu/:id" element={<ToSignPage />} />
+        <Route element={<EmployeeArea />}>
+          <Route path="moje-konto/do-podpisu" element={<ToSignListPage />} />
+          <Route path="moje-konto/do-podpisu/podpisane/:id" element={<SignedDocPage />} />
+          <Route path="moje-konto/do-podpisu/:id" element={<ToSignPage />} />
+          <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />
+        </Route>
         <Route path="moje-konto/klucze" element={<MyAccountPage />} />
-        <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />
         <Route
           path="pracownicy/nowy"

@@ -415,7 +415,9 @@ def _request_in_account(
     )
     db.add(sig)
     db.flush()
-    url = mailer.link("/moje-konto/do-podpisu")
+    acct = employee_account(db, e.id)
+    # ?u=: konto, w którym czeka dokument – aplikacja przełączy się na nie, jeśli jest zalogowane w tej przeglądarce
+    url = mailer.link("/moje-konto/do-podpisu" + (f"?u={acct.id}" if acct else ""))
     notified: str | None = None
     contact = _contact_of(e)
     try:

@@ -829,12 +829,13 @@ class PushSubscription(Base):
     """Urządzenie użytkownika zapisane na powiadomienia push (Web Push)."""
 
     __tablename__ = "push_subscriptions"
+    __table_args__ = (UniqueConstraint("user_id", "endpoint", name="uq_push_user_endpoint"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    endpoint: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    endpoint: Mapped[str] = mapped_column(Text, index=True, nullable=False)
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(100), nullable=False)
     user_agent: Mapped[str | None] = mapped_column(String(200))

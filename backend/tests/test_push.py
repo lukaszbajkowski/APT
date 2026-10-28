@@ -8,17 +8,18 @@ SUB = {"endpoint": "https://push.example.com/abc123", "keys": {"p256dh": "B" * 4
 def test_subscribe_and_test(admin_client):
     push.outbox = []
     assert len(admin_client.get("/api/push/key").json()["public_key"]) > 60
-    assert admin_client.get("/api/push/status").json() == {"devices": 0}
+    assert admin_client.get("/api/push/status").json()["devices"] == 0
     assert admin_client.post("/api/push/test").status_code == 400
     assert admin_client.post("/api/push/subscribe", json={**SUB, "endpoint": "http://zle"}).status_code == 400
     assert admin_client.post("/api/push/subscribe", json=SUB).status_code == 204
     assert admin_client.post("/api/push/subscribe", json=SUB).status_code == 204  # to samo urządzenie
-    assert admin_client.get("/api/push/status").json() == {"devices": 1}
+    st = admin_client.get("/api/push/status", params={"endpoint": SUB["endpoint"]}).json()
+    assert st == {"devices": 1, "this_device": True, "other_accounts": 0}
     assert admin_client.post("/api/push/test").json() == {"sent": 1, "failed": []}
     uid, title, _, url = push.outbox[-1]
     assert title == "Test powiadomień" and url == f"/?u={uid}"
     assert admin_client.post("/api/push/unsubscribe", json={"endpoint": SUB["endpoint"]}).status_code == 204
-    assert admin_client.get("/api/push/status").json() == {"devices": 0}
+    assert admin_client.get("/api/push/status").json()["devices"] == 0
     push.outbox = None
 
 
@@ -68,3 +69,34 @@ def test_real_webpush_library_signs_request(tmp_path, monkeypatch):
     headers = post.call_args.kwargs["headers"]
     assert headers["authorization"].startswith("vapid t=") and "k=" in headers["authorization"]
     assert headers["content-encoding"] == "aes128gcm"
+
+
+def test_one_browser_can_serve_two_accounts(admin_client, make_user):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.models import Role
+    from tests.conftest import login
+
+    make_user("drugie_konto", Role.hr)
+    other = TestClient(app)
+    login(other, "drugie_konto")
+    push.outbox = []
+    try:
+        assert admin_client.post("/api/push/subscribe", json=SUB).status_code == 204
+        assert (
+            other.post("/api/push/subscribe", json=SUB).status_code == 204
+        )  # to samo urządzenie, inne konto
+        st = admin_client.get("/api/push/status", params={"endpoint": SUB["endpoint"]}).json()
+        assert st["this_device"] is True and st["other_accounts"] == 1
+        # test wysyła tylko do urządzeń bieżącego konta
+        assert other.post("/api/push/test", json={"endpoint": SUB["endpoint"]}).json()["sent"] == 1
+        assert other.post("/api/push/test", json={"endpoint": "https://push.example.com/inne"}).status_code == 400
+        assert len(push.outbox) == 1
+        # wyłączenie jednego konta nie rusza drugiego
+        admin_client.post("/api/push/unsubscribe", json={"endpoint": SUB["endpoint"]})
+        assert (
+            other.get("/api/push/status", params={"endpoint": SUB["endpoint"]}).json()["this_device"] is True
+        )
+    finally:
+        push.outbox = None

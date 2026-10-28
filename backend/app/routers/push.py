@@ -32,11 +32,17 @@ def key(ctx: Auth) -> dict[str, str]:
 
 
 @router.get("/status")
-def state(ctx: Auth, db: DbSession) -> dict[str, int]:
+def state(ctx: Auth, db: DbSession, endpoint: str | None = None) -> dict:
+    """Liczba urządzeń konta i (po podaniu adresu urządzenia) czy to urządzenie jest zapisane dla konta."""
     n = db.scalar(
         select(func.count()).select_from(PushSubscription).where(PushSubscription.user_id == ctx.user.id)
     )
-    return {"devices": n or 0}
+    out: dict = {"devices": n or 0, "this_device": False, "other_accounts": 0}
+    if endpoint:
+        rows = list(db.scalars(select(PushSubscription.user_id).where(PushSubscription.endpoint == endpoint)))
+        out["this_device"] = ctx.user.id in rows
+        out["other_accounts"] = len([u for u in rows if u != ctx.user.id])
+    return out
 
 
 @router.post("/subscribe", status_code=status.HTTP_204_NO_CONTENT)
@@ -44,12 +50,15 @@ def subscribe(body: SubscribeIn, ctx: Auth, request: Request, db: DbSession) -> 
     if not body.endpoint.startswith("https://"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy adres subskrypcji.")
     ua = (request.headers.get("user-agent") or "")[:200]
-    sub = db.scalar(select(PushSubscription).where(PushSubscription.endpoint == body.endpoint))
-    if sub is None:
-        sub = PushSubscription(endpoint=body.endpoint, p256dh=body.keys.p256dh, auth=body.keys.auth)
+    sub = db.scalar(
+        select(PushSubscription).where(
+            PushSubscription.endpoint == body.endpoint, PushSubscription.user_id == ctx.user.id
+        )
+    )
+    if sub is None:  # jedna przeglądarka może odbierać powiadomienia dla kilku zalogowanych w niej kont
+        sub = PushSubscription(user_id=ctx.user.id, endpoint=body.endpoint)
         db.add(sub)
-    # to samo urządzenie po zmianie konta przechodzi na nowe konto
-    sub.user_id, sub.p256dh, sub.auth, sub.user_agent = ctx.user.id, body.keys.p256dh, body.keys.auth, ua
+    sub.p256dh, sub.auth, sub.user_agent = body.keys.p256dh, body.keys.auth, ua
     audit(db, request, "push_subscribed", user=ctx.user)
     db.commit()
 
@@ -75,10 +84,19 @@ def unsubscribe_all(ctx: Auth, request: Request, db: DbSession) -> None:
     db.commit()
 
 
+class TestIn(BaseModel):
+    endpoint: str | None = Field(default=None, max_length=2000)  # tylko to urządzenie
+
+
 @router.post("/test")
-def test(ctx: Auth, db: DbSession) -> dict:
+def test(ctx: Auth, db: DbSession, body: TestIn | None = None) -> dict:
     results = push.send_now(
-        db, ctx.user.id, "Test powiadomień", "Powiadomienia na tym urządzeniu działają.", "/"
+        db,
+        ctx.user.id,
+        "Test powiadomień",
+        "Powiadomienia na tym urządzeniu działają.",
+        "/",
+        endpoint=body.endpoint if body else None,
     )
     if not results:
         raise HTTPException(

@@ -32,9 +32,14 @@ export function PushCard() {
       setOn(false);
       return;
     }
+    // „włączone” znaczy: to urządzenie ma subskrypcję I jest zapisane dla TEGO konta (przeglądarka może mieć
+    // subskrypcję zapisaną wcześniej dla innego konta)
     registration()
       .then((r) => r.pushManager.getSubscription())
-      .then((s) => setOn(!!s))
+      .then((s) =>
+        s ? api<{ this_device: boolean }>(`/push/status?endpoint=${encodeURIComponent(s.endpoint)}`).then((st) => st.this_device) : false,
+      )
+      .then(setOn)
       .catch(() => setOn(false));
   }, []);
 
@@ -65,8 +70,10 @@ export function PushCard() {
       const reg = await registration();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await api("/push/unsubscribe", { method: "POST", body: { endpoint: sub.endpoint } }).catch(() => undefined);
-        await sub.unsubscribe();
+        const st = await api<{ other_accounts: number }>(`/push/status?endpoint=${encodeURIComponent(sub.endpoint)}`).catch(() => ({ other_accounts: 1 }));
+        await api("/push/unsubscribe", { method: "POST", body: { endpoint: sub.endpoint } });
+        // subskrypcję w przeglądarce kasujemy tylko wtedy, gdy nie korzysta z niej inne konto
+        if (st.other_accounts === 0) await sub.unsubscribe();
       }
       setOn(false);
     },
@@ -74,7 +81,10 @@ export function PushCard() {
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const test = useMutation({
-    mutationFn: () => api("/push/test", { method: "POST" }),
+    mutationFn: async () => {
+      const sub = await (await registration()).pushManager.getSubscription();
+      return api("/push/test", { method: "POST", body: { endpoint: sub?.endpoint ?? null } });
+    },
     onSuccess: () => notifications.show({ message: "Wysłano testowe powiadomienie." }),
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });

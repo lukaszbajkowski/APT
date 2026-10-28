@@ -149,9 +149,14 @@ def _deliver(jobs: list[tuple[int, dict, int]], title: str, body: str, url: str)
     return results
 
 
-def send_now(db: Session, user_id: int, title: str, body: str, url: str = "/") -> list[str]:
+def send_now(
+    db: Session, user_id: int, title: str, body: str, url: str = "/", endpoint: str | None = None
+) -> list[str]:
     """Jak notify_users, ale czeka na wynik (do przycisku „Wyślij testowe”)."""
-    subs = list(db.scalars(select(PushSubscription).where(PushSubscription.user_id == user_id)))
+    q = select(PushSubscription).where(PushSubscription.user_id == user_id)
+    if endpoint:
+        q = q.where(PushSubscription.endpoint == endpoint)
+    subs = list(db.scalars(q))
     if outbox is not None:
         for sub in subs:
             outbox.append((sub.user_id, title, body, _url_for(url, sub.user_id)))

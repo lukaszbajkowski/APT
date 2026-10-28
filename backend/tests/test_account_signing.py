@@ -158,3 +158,18 @@ def test_account_download_and_file_signature(admin_client):
     # inne konto nie widzi cudzego dokumentu ani go nie pobierze
     other = TestClient(app)
     assert other.get(f"/api/me/signatures/{sid}/pdf").status_code in (401, 403)
+
+
+def test_email_document(admin_client):
+    mailer.outbox = []
+    e, doc = _doc(admin_client)
+    url = f"/api/documents/{doc['id']}/email"
+    # pracownik bez potwierdzonego e-maila – trzeba podać adres
+    assert admin_client.post(url, json={}).status_code == 400
+    assert admin_client.post(url, json={"to": "zle"}).status_code == 400
+    r = admin_client.post(url, json={"to": "ola@example.com", "message": "Proszę o zapoznanie"})
+    assert r.status_code == 200 and r.json()["sent_to"] == "ol***@example.com"
+    assert mailer.outbox[-1][0] == "ola@example.com" and "Proszę o zapoznanie" in mailer.outbox[-1][2]
+    with SessionLocal() as db:
+        log = db.scalars(select(AuditLog).where(AuditLog.action == "document_emailed")).one()
+        assert log.details["to"] == "ol***@example.com"

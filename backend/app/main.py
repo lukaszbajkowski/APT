@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app import hardening
 from app.deps import DbSession
 from app.routers import (
+    access_review,
     agency_portal,
     agency_reports,
     audit_log,
@@ -71,6 +72,7 @@ app.include_router(employees.router)
 app.include_router(imports.router)
 app.include_router(cards.router)
 app.include_router(documents.router)
+app.include_router(access_review.router)
 app.include_router(dashboard.router)
 app.include_router(retention.router)
 app.include_router(reports.router)

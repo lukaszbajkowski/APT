@@ -7,8 +7,9 @@ i nie ma dostępu do dokumentów, które te dane zawierają.
 Podgląd online jest zawsze w PDF; formaty do pobrania ustawia administrator w szablonie.
 """
 
+import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -414,9 +415,14 @@ def can_delete(doc: GeneratedDocument, user: User) -> bool:
     )
 
 
-def _get_doc(db: Session, user: User, document_id: uuid.UUID) -> tuple[GeneratedDocument, Any, Any]:
+TRASH_DAYS = 30
+
+
+def _get_doc(
+    db: Session, user: User, document_id: uuid.UUID, trashed: bool = False
+) -> tuple[GeneratedDocument, Any, Any]:
     doc = db.get(GeneratedDocument, document_id)
-    if doc is None:
+    if doc is None or (doc.deleted_at is not None) != trashed:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono dokumentu.")
     e = get_visible(db, user, doc.employee_id)
     if user.role == Role.manager and doc.contains_sensitive:
@@ -433,7 +439,7 @@ def list_documents(employee_id: int, ctx: DocAuth, db: DbSession) -> list[Docume
     docs = list(
         db.scalars(
             select(GeneratedDocument)
-            .where(GeneratedDocument.employee_id == employee_id)
+            .where(GeneratedDocument.employee_id == employee_id, GeneratedDocument.deleted_at.is_(None))
             .order_by(GeneratedDocument.created_at.desc())
         )
     )
@@ -730,6 +736,98 @@ def download_document(
     )
 
 
+class EmailIn(BaseModel):
+    to: str | None = Field(default=None, max_length=254)  # domyślnie potwierdzony e-mail pracownika
+    message: str | None = Field(default=None, max_length=1000)
+
+
+class EmailOut(BaseModel):
+    sent_to: str
+
+
+MAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+MAX_MAILS_PER_HOUR = 20
+
+
+@router.post("/documents/{document_id}/email", response_model=EmailOut)
+def email_document(
+    document_id: uuid.UUID, body: EmailIn, ctx: DocAuth, request: Request, db: DbSession
+) -> EmailOut:
+    """Wysyła dokument (podpisany, jeśli jest) jako załącznik e-mailem – do pracownika lub na podany adres."""
+    from app import mailer
+    from app.emails import Email
+    from app.models import AuditLog
+    from app.routers.signatures import _contact_of, signed_file
+
+    forbid_download(ctx.user)
+    doc, e, t = _get_doc(db, ctx.user, document_id)
+    to = (body.to or "").strip() or _contact_of(e).get("email", "")
+    if not to:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Pracownik nie ma potwierdzonego e-maila – wpisz adres, na który wysłać dokument.",
+        )
+    if not MAIL_RE.match(to):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Podaj poprawny adres e-mail.")
+    if not (mailer.enabled() or mailer.outbox is not None):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wysyłka e-maili nie jest skonfigurowana.")
+    recent = db.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(
+            AuditLog.action == "document_emailed",
+            AuditLog.user_id == ctx.user.id,
+            AuditLog.ts > datetime.now(UTC) - timedelta(hours=1),
+        )
+    )
+    if (recent or 0) >= MAX_MAILS_PER_HOUR:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, detail="Za dużo wysłanych dokumentów – spróbuj za godzinę."
+        )
+    signed = signed_file(db, doc) if (doc.has_signed_pdf or doc.signed_at) else None
+    if signed:
+        path, ext, mime = signed
+    else:
+        fmt = "pdf" if "pdf" in _allowed_formats(t, doc) and doc.has_pdf else "docx"
+        path, ext, mime = _doc_path(doc, fmt), fmt, "application/pdf" if fmt == "pdf" else DOCX_MIME
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku dokumentu.")
+    name = templating.safe_filename(f"{doc.template_name}_{e.last_name}_{e.first_name}") + f".{ext}"
+    note = (body.message or "").strip()
+    mail = Email(
+        subject=f"Dokument: {doc.template_name}",
+        title="Dokument w załączniku",
+        greeting=f"Dzień dobry {e.first_name}," if to == _contact_of(e).get("email") else "Dzień dobry,",
+        paragraphs=[f"w załączniku przesyłamy dokument „{doc.template_name}”."] + ([note] if note else []),
+        footer_note=f"Wysłał(-a): {ctx.user.full_name}.",
+        attachments=[(name, storage.read(path), mime)],
+    )
+    try:
+        if mailer.outbox is not None:
+            mailer.outbox.append((to, mail.subject, mail.text()))
+        else:
+            mailer.send_now(to, mail)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail="Nie udało się wysłać e-maila.") from exc
+    masked = f"{to.split('@')[0][:2]}***@{to.split('@')[1]}"
+    audit(
+        db,
+        request,
+        "document_emailed",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "template": doc.template_name,
+            "to": masked,
+            "signed": bool(signed),
+        },
+    )
+    db.commit()
+    return EmailOut(sent_to=masked)
+
+
 def _view_source(db: Session, doc: GeneratedDocument) -> tuple[bytes, str, bool, bool]:
     """Plik do podglądu: (dane, rozszerzenie, czy wersja podpisana, czy to plik z podpisem zaufanym).
 
@@ -849,11 +947,94 @@ class DeleteIn(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class TrashedOut(BaseModel):
+    id: uuid.UUID
+    template_name: str
+    created_at: datetime
+    deleted_at: datetime
+    deleted_by_name: str | None
+    delete_reason: str | None
+    purge_at: datetime
+    can_restore: bool
+
+
+@router.get("/employees/{employee_id}/documents/trash", response_model=list[TrashedOut])
+def list_trash(employee_id: int, ctx: DocAuth, db: DbSession) -> list[TrashedOut]:
+    get_visible(db, ctx.user, employee_id)
+    rows = db.scalars(
+        select(GeneratedDocument)
+        .where(GeneratedDocument.employee_id == employee_id, GeneratedDocument.deleted_at.is_not(None))
+        .order_by(GeneratedDocument.deleted_at.desc())
+    )
+    return [
+        TrashedOut(
+            id=d.id,
+            template_name=d.template_name,
+            created_at=d.created_at,
+            deleted_at=d.deleted_at,
+            deleted_by_name=d.deleted_by_name,
+            delete_reason=d.delete_reason,
+            purge_at=d.deleted_at + timedelta(days=TRASH_DAYS),
+            can_restore=can_delete(d, ctx.user),
+        )
+        for d in rows
+        if not (ctx.user.role == Role.manager and d.contains_sensitive)
+    ]
+
+
+@router.post("/documents/{document_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def restore_document(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> Response:
+    doc, e, _ = _get_doc(db, ctx.user, document_id, trashed=True)
+    if not can_delete(doc, ctx.user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Nie możesz przywrócić tego dokumentu.")
+    doc.deleted_at = doc.deleted_by_name = doc.delete_reason = None
+    audit(
+        db,
+        request,
+        "document_restored",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"number": format_number(e.number), "template": doc.template_name},
+    )
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def purge_trash(db: Session) -> int:
+    """Trwale usuwa dokumenty, które leżą w koszu dłużej niż TRASH_DAYS (pliki i wiersze)."""
+    cutoff = datetime.now(UTC) - timedelta(days=TRASH_DAYS)
+    n = 0
+    for doc in list(
+        db.scalars(
+            select(GeneratedDocument).where(
+                GeneratedDocument.deleted_at.is_not(None), GeneratedDocument.deleted_at < cutoff
+            )
+        )
+    ):
+        files = list(_dir(f"documents/{doc.employee_id}").glob(f"{doc.id}*"))
+        audit(
+            db,
+            None,
+            "document_deleted",
+            username="system",
+            entity_type="employee",
+            entity_id=doc.employee_id,
+            details={"template": doc.template_name, "purged_from_trash": True},
+        )
+        db.delete(doc)
+        db.commit()
+        for f in files:
+            f.unlink(missing_ok=True)
+        n += 1
+    return n
+
+
 @router.post("/documents/{document_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: uuid.UUID, body: DeleteIn, ctx: DocAuth, request: Request, db: DbSession
 ) -> Response:
-    """Usunięcie dokumentu (np. wygenerowanego przez pomyłkę) razem z plikami i podpisami."""
+    """Usunięcie dokumentu (np. wygenerowanego przez pomyłkę): trafia do kosza na 30 dni."""
     from app.models import DocumentSignature
 
     doc, e, _ = _get_doc(db, ctx.user, document_id)
@@ -872,11 +1053,10 @@ def delete_document(
             )
         )
     )
-    files = list(_dir(f"documents/{doc.employee_id}").glob(f"{doc.id}*"))
     audit(
         db,
         request,
-        "document_deleted",
+        "document_trashed",
         user=ctx.user,
         entity_type="employee",
         entity_id=e.id,
@@ -889,8 +1069,13 @@ def delete_document(
             "reason": body.reason.strip(),
         },
     )
-    db.delete(doc)
+    doc.deleted_at, doc.deleted_by_name = datetime.now(UTC), ctx.user.full_name
+    doc.delete_reason = body.reason.strip()
+    for sg in db.scalars(
+        select(DocumentSignature).where(
+            DocumentSignature.document_id == doc.id, DocumentSignature.status == "pending"
+        )
+    ):
+        sg.status, sg.token_hash = "cancelled", None  # prośby o podpis przestają działać
     db.commit()
-    for f in files:
-        f.unlink(missing_ok=True)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

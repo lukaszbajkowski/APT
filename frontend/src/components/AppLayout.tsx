@@ -36,6 +36,7 @@ import {
   IconId,
   IconKey,
   IconListDetails,
+  IconShieldCheck,
   IconCertificate,
   IconChecklist,
   IconClipboardCheck,
@@ -100,6 +101,7 @@ export function AppLayout() {
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
     { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin") },
+    { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin") },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin") },
   ];
 

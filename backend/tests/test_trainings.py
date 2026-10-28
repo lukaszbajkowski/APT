@@ -8,7 +8,7 @@ from app.db import SessionLocal
 from app.main import app
 from app.models import Department, Role, User, UserScope
 from app.routers.trainings import add_months
-from tests.conftest import login
+from tests.conftest import login, make_pesel
 from tests.test_documents import doc_text, simple_docx, upload
 
 PDF = b"%PDF-1.4 test"
@@ -277,3 +277,26 @@ def test_mentor_programs_from_employee_side(admin_client):
     progs = {x["name"]: x for x in _types(c)["Szkolenie stanowiskowe"]["programs"]}
     assert progs["A"]["mentors"] == [] and progs["B"]["mentors"][0]["id"] == m["id"]
     assert c.put(f"/api/employees/{m['id']}/mentor-programs", json={"ids": [99999]}).status_code == 400
+
+
+def test_medical_reminders(admin_client, make_user, monkeypatch):
+    from app import cli, mailer
+    from app.models import MedicalExam
+
+    hr = make_user("kadry2", Role.hr)
+    e = _emp(admin_client, "Ola", "Badana", pesel=make_pesel(date(1990, 1, 1), "K"))
+    today = date.today()
+    with SessionLocal() as db:
+        db.get(User, hr.id).email = "kadry2@example.com"
+        db.add(
+            MedicalExam(
+                employee_id=e["id"], kind="okresowe", exam_date=today, valid_until=today + timedelta(days=10)
+            )
+        )
+        db.commit()
+    sent = []
+    monkeypatch.setattr(mailer, "enabled", lambda: True)
+    monkeypatch.setattr(mailer, "send_now", lambda to, msg: sent.append((to, msg)))
+    assert cli.medical_reminders() == 0
+    msg = dict(sent)["kadry2@example.com"]
+    assert "Badana Ola" in msg.items[0] and "ważne do" in msg.items[0] and "(1)" in msg.subject

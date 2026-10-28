@@ -38,6 +38,7 @@ def _mine(db: DbSession, e: Employee, sig_id: int) -> tuple[DocumentSignature, G
     if (
         sig is None
         or doc is None
+        or doc.deleted_at is not None
         or doc.employee_id != e.id
         or sig.role != "pracownika"
         or sig.channel != "konto"
@@ -70,6 +71,7 @@ def _pending(db: DbSession, e: Employee) -> list[tuple[DocumentSignature, Genera
         .join(GeneratedDocument, GeneratedDocument.id == DocumentSignature.document_id)
         .where(
             GeneratedDocument.employee_id == e.id,
+            GeneratedDocument.deleted_at.is_(None),
             DocumentSignature.role == "pracownika",
             DocumentSignature.channel == "konto",
             DocumentSignature.status == "pending",
@@ -87,6 +89,7 @@ def my_list(ctx: Auth, db: DbSession) -> ListOut:
         .join(GeneratedDocument, GeneratedDocument.id == DocumentSignature.document_id)
         .where(
             GeneratedDocument.employee_id == e.id,
+            GeneratedDocument.deleted_at.is_(None),
             DocumentSignature.role == "pracownika",
             DocumentSignature.channel == "konto",
             DocumentSignature.status == "signed",
@@ -114,6 +117,7 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
         .join(GeneratedDocument, GeneratedDocument.id == DocumentSignature.document_id)
         .where(
             GeneratedDocument.employee_id == e.id,
+            GeneratedDocument.deleted_at.is_(None),
             DocumentSignature.role == "pracownika",
             DocumentSignature.channel == "konto",
             DocumentSignature.status == "pending",

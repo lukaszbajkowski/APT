@@ -1,6 +1,7 @@
 import base64
 import io
 import re
+import uuid
 from datetime import date
 
 import pytest
@@ -282,11 +283,37 @@ def test_delete_document(admin_client, make_user, outboxes):
     r = c.post(f"/api/documents/{doc['id']}/delete", json={"reason": "zła osoba"})
     assert r.status_code == 204, r.text
     assert c.get(f"/api/employees/{e['id']}/documents").json() == []
-    assert list(folder.glob(f"{doc['id']}*")) == []
+    # kosz: pliki zostają na 30 dni, dokument można przywrócić
+    assert list(folder.glob(f"{doc['id']}*"))
+    trash = c.get(f"/api/employees/{e['id']}/documents/trash").json()
+    assert len(trash) == 1 and trash[0]["delete_reason"] == "zła osoba" and trash[0]["can_restore"]
+    assert c.get(f"/api/documents/{doc['id']}/signatures").status_code == 404
     with SessionLocal() as db:
-        log = db.scalars(select(AuditLog).where(AuditLog.action == "document_deleted")).one()
+        log = db.scalars(select(AuditLog).where(AuditLog.action == "document_trashed")).one()
         assert log.details["reason"] == "zła osoba" and log.details["signed"] is True
         assert log.details["signatures"] == 1
+    assert c.post(f"/api/documents/{doc['id']}/restore").status_code == 204
+    assert len(c.get(f"/api/employees/{e['id']}/documents").json()) == 1
+    assert c.get(f"/api/employees/{e['id']}/documents/trash").json() == []
+    # po 30 dniach w koszu dokument znika trwale
+    assert c.post(f"/api/documents/{doc['id']}/delete", json={"reason": "jednak nie"}).status_code == 204
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import GeneratedDocument
+    from app.routers.documents import purge_trash
+
+    with SessionLocal() as db:
+        assert purge_trash(db) == 0
+        db.get(GeneratedDocument, uuid.UUID(doc["id"])).deleted_at = datetime.now(UTC) - timedelta(days=31)
+        db.commit()
+        assert purge_trash(db) == 1
+        assert db.get(GeneratedDocument, uuid.UUID(doc["id"])) is None
+        assert (
+            db.scalars(select(AuditLog).where(AuditLog.action == "document_deleted"))
+            .one()
+            .details["purged_from_trash"]
+        )
+    assert list(folder.glob(f"{doc['id']}*")) == []
 
 
 def test_trusted_xades_xml(admin_client, outboxes):

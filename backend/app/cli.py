@@ -252,6 +252,65 @@ def training_reminders() -> int:
     return 0
 
 
+def medical_reminders() -> int:
+    """Cotygodniowe przypomnienie o badaniach lekarskich: nieważne i kończące się w 30 dni.
+
+    Dostają admin, HR, kierownicy i agencje (każdy w swoim zakresie)."""
+    from datetime import date, timedelta
+
+    from sqlalchemy import select
+
+    from app import mailer, notify
+    from app.models import Employee, EmployeeStatus, MedicalExam, Role, User
+    from app.routers.employees import apply_scope, format_number
+
+    if not mailer.enabled():
+        print("E-maile wyłączone – pomijam przypomnienia o badaniach.")
+        return 0
+    today = date.today()
+    sent = 0
+    with SessionLocal() as db:
+        users = db.scalars(
+            select(User)
+            .where(User.role.in_([Role.admin, Role.hr, Role.manager, Role.agency]), User.is_active)
+            .order_by(User.username)
+        ).unique()
+        for u in users:
+            if not u.email:
+                continue
+            q = (
+                select(MedicalExam, Employee)
+                .join(Employee, Employee.id == MedicalExam.employee_id)
+                .where(Employee.status == EmployeeStatus.active, MedicalExam.valid_until.is_not(None))
+                .order_by(MedicalExam.exam_date.desc())
+            )
+            seen: set[int] = set()
+            late: list[str] = []
+            soon: list[tuple[date, str]] = []
+            for x, e in db.execute(apply_scope(q, u)).unique().all():
+                if e.id in seen:  # liczy się tylko najnowsze badanie
+                    continue
+                seen.add(e.id)
+                who = f"{e.last_name} {e.first_name} (nr {format_number(e.number)})"
+                if x.valid_until < today:
+                    late.append(f"{who}: nieważne od {x.valid_until:%d.%m.%Y}")
+                elif x.valid_until <= today + timedelta(days=30):
+                    soon.append((x.valid_until, f"{who}: ważne do {x.valid_until:%d.%m.%Y}"))
+            if not late and not soon:
+                continue
+            items = late + [t for _, t in sorted(soon)]
+            total = len(items)
+            if total > 50:
+                items = items[:50] + [f"… i {total - 50} więcej w aplikacji"]
+            try:
+                mailer.send_now(u.email, notify.medical_email(u, items, len(late), len(soon)))
+                sent += 1
+            except Exception as ex:  # noqa: BLE001
+                print(f"- {u.username}: błąd wysyłki do {u.email}: {ex}", file=sys.stderr)
+    print(f"Przypomnienia o badaniach wysłane: {sent}.")
+    return 0
+
+
 def notify_daily() -> int:
     """Codzienne ostrzeżenia dla administratorów (wywoływane przez deploy/backup.sh)."""
     from datetime import UTC, datetime, timedelta
@@ -262,6 +321,12 @@ def notify_daily() -> int:
     from app.routers.retention import count_due
 
     close_stale_threads()
+    from app.routers.documents import purge_trash
+
+    with SessionLocal() as db:
+        purged = purge_trash(db)
+    if purged:
+        print(f"Z kosza usunięto trwale dokumentów: {purged}.")
     problems: list[str] = []
     status = read_backup_status()
     now = datetime.now(UTC)
@@ -292,6 +357,7 @@ def notify_daily() -> int:
     if local.weekday() == 0:
         quality_reminders()
         training_reminders()
+        medical_reminders()
         refresh_trustlist()
     if local.day == 1:
         agency_reports()
@@ -320,6 +386,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--to", required=True)
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
+    sub.add_parser("notify-medical", help="Wyślij teraz przypomnienia o badaniach lekarskich")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
     sub.add_parser("close-stale-threads", help="Zamknij rozmowy bez odpowiedzi pracownika")
@@ -339,6 +406,8 @@ def main(argv: list[str] | None = None) -> int:
         return notify_daily()
     if args.command == "notify-quality":
         return quality_reminders()
+    if args.command == "notify-medical":
+        return medical_reminders()
     if args.command == "notify-trainings":
         return training_reminders()
     if args.command == "agency-reports":

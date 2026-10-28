@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
@@ -101,6 +101,56 @@ export function FieldInput({ field, value, onChange }: { field: TemplateField; v
   }
 }
 
+function EmailDocument({ doc, size }: { doc: GeneratedDoc; size: "compact-xs" | "sm" }) {
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState("");
+  const [message, setMessage] = useState("");
+  const send = useMutation({
+    mutationFn: () =>
+      api<{ sent_to: string }>(`/documents/${doc.id}/email`, { method: "POST", body: { to: to.trim() || null, message: message.trim() || null } }),
+    onSuccess: (r) => {
+      notifications.show({ color: "green", message: `Wysłano na ${r.sent_to}.` });
+      setOpen(false);
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  return (
+    <>
+      <Button size={size} variant="default" leftSection={<IconMail size={14} />} onClick={() => { setTo(""); setMessage(""); setOpen(true); }}>
+        E-mail
+      </Button>
+      <Modal opened={open} onClose={() => setOpen(false)} title="Wyślij dokument e-mailem" size="md">
+        <Stack>
+          <Text size="sm">
+            <b>{doc.template_name}</b> zostanie wysłany jako załącznik (wersja podpisana, jeśli dokument jest podpisany).
+          </Text>
+          <TextInput
+            label="Adres e-mail"
+            description="Zostaw puste, aby wysłać na potwierdzony e-mail pracownika."
+            placeholder="np. osoba@example.com"
+            value={to}
+            onChange={(e) => setTo(e.currentTarget.value)}
+          />
+          <Textarea label="Wiadomość (opcjonalnie)" autosize minRows={2} maxLength={1000} value={message} onChange={(e) => setMessage(e.currentTarget.value)} />
+          {doc.download.length > 0 && (
+            <Text size="xs" c="dimmed">
+              Wysłanie jest zapisywane w dzienniku zdarzeń. E-mail nie jest szyfrowany – nie wysyłaj dokumentów z danymi wrażliwymi na obce adresy.
+            </Text>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOpen(false)}>
+              Anuluj
+            </Button>
+            <Button loading={send.isPending} onClick={() => send.mutate()}>
+              Wyślij
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
 function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "compact-xs" | "sm" }) {
   const [viewing, setViewing] = useState(false);
   if (!doc.accessible) {
@@ -128,6 +178,7 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
           Word
         </Button>
       )}
+      {doc.download.length > 0 && <EmailDocument doc={doc} size={size} />}
     </Group>
   );
 }
@@ -142,7 +193,8 @@ function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employ
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents", employee.id] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
-      notifications.show({ color: "green", message: "Dokument usunięty." });
+      qc.invalidateQueries({ queryKey: ["documents-trash", employee.id] });
+      notifications.show({ color: "green", message: "Dokument przeniesiony do kosza." });
       setOpen(false);
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
@@ -158,12 +210,12 @@ function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employ
       <Modal opened={open} onClose={() => setOpen(false)} title="Usuń dokument" size="md">
         <Stack>
           <Text size="sm">
-            <b>{doc.template_name}</b> z {formatDateTime(doc.created_at)} zostanie trwale usunięty razem z plikami
-            {signed ? ", podpisami i podpisaną wersją" : ""}. Tej operacji nie można cofnąć.
+            <b>{doc.template_name}</b> z {formatDateTime(doc.created_at)} trafi do kosza na 30 dni (razem z plikami
+            {signed ? ", podpisami i podpisaną wersją" : ""}), potem zostanie usunięty trwale. W tym czasie możesz go przywrócić. Prośby o podpis zostaną anulowane.
           </Text>
           {signed && (
             <Alert color="red" variant="light">
-              Ten dokument jest już podpisany. Usuwaj go tylko wtedy, gdy podpis był pomyłką – podpisanej wersji nie da się odzyskać.
+              Ten dokument jest już podpisany. Usuwaj go tylko wtedy, gdy podpis był pomyłką.
             </Alert>
           )}
           <Textarea
@@ -197,6 +249,60 @@ function download(doc: GeneratedDoc, format: "pdf" | "docx") {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+interface Trashed {
+  id: string;
+  template_name: string;
+  deleted_at: string;
+  deleted_by_name: string | null;
+  delete_reason: string | null;
+  purge_at: string;
+  can_restore: boolean;
+}
+
+function TrashList({ employee }: { employee: Employee }) {
+  const qc = useQueryClient();
+  const [show, setShow] = useState(false);
+  const trash = useQuery({
+    queryKey: ["documents-trash", employee.id],
+    queryFn: () => api<Trashed[]>(`/employees/${employee.id}/documents/trash`),
+  });
+  const restore = useMutation({
+    mutationFn: (id: string) => api(`/documents/${id}/restore`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", employee.id] });
+      qc.invalidateQueries({ queryKey: ["documents-trash", employee.id] });
+      notifications.show({ color: "green", message: "Dokument przywrócony." });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  if (!trash.data?.length) return null;
+  return (
+    <Stack gap={4} mt="md">
+      <Button variant="subtle" color="gray" size="compact-sm" w="fit-content" leftSection={<IconTrash size={14} />} onClick={() => setShow(!show)}>
+        Kosz ({trash.data.length})
+      </Button>
+      {show &&
+        trash.data.map((t) => (
+          <Group key={t.id} justify="space-between" wrap="nowrap" align="flex-start">
+            <div>
+              <Text size="sm">{t.template_name}</Text>
+              <Text size="xs" c="dimmed">
+                Usunięto {formatDateTime(t.deleted_at)}
+                {t.deleted_by_name ? ` · ${t.deleted_by_name}` : ""}
+                {t.delete_reason ? ` · ${t.delete_reason}` : ""} · zniknie na stałe {formatDateTime(t.purge_at)}
+              </Text>
+            </div>
+            {t.can_restore && (
+              <Button size="compact-xs" variant="light" loading={restore.isPending} onClick={() => restore.mutate(t.id)}>
+                Przywróć
+              </Button>
+            )}
+          </Group>
+        ))}
+    </Stack>
+  );
 }
 
 export function DocumentsCard({ employee }: { employee: Employee }) {
@@ -323,6 +429,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
           </Table.Tbody>
         </Table>
       )}
+      <TrashList employee={employee} />
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Nowy dokument" size="lg">
         {done ? (

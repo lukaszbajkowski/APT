@@ -378,6 +378,10 @@ class GeneratedDocument(Base):
     signature_roles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # wszyscy podpisali
     has_signed_pdf: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # kosz: dokument usunięty przez człowieka czeka 30 dni na ewentualne przywrócenie
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    deleted_by_name: Mapped[str | None] = mapped_column(String(200))
+    delete_reason: Mapped[str | None] = mapped_column(String(500))
 
 
 class DocumentSignature(Base):

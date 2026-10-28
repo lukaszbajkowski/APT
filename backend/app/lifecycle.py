@@ -194,6 +194,7 @@ def auto_done(db: Session, it: ChecklistItem, e: Employee) -> bool:
         q = select(GeneratedDocument.id).where(
             GeneratedDocument.employee_id == e.id,
             GeneratedDocument.template_id == int(ref),
+            GeneratedDocument.deleted_at.is_(None),
             GeneratedDocument.created_at >= since,
         )
         return db.scalar(q.limit(1)) is not None

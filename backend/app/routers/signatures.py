@@ -718,7 +718,7 @@ def _by_token(db: Session, token: str) -> tuple[DocumentSignature, GeneratedDocu
         )
     doc = db.get(GeneratedDocument, sig.document_id)
     e = db.get(Employee, doc.employee_id) if doc else None
-    if doc is None or e is None:
+    if doc is None or e is None or doc.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Dokument już nie istnieje.")
     return sig, doc, e
 

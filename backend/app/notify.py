@@ -145,6 +145,24 @@ def trainings_email(user: User, items: list[str], expired: int, overdue: int, ex
     )
 
 
+def medical_email(user: User, items: list[str], expired: int, expiring: int) -> Email:
+    parts = []
+    if expired:
+        parts.append(f"{expired} badań jest już nieważnych")
+    if expiring:
+        parts.append(f"{expiring} badań kończy się w ciągu 30 dni")
+    return Email(
+        subject=f"Identyfikacja APT – badania lekarskie wymagające uwagi ({expired + expiring})",
+        title="Badania lekarskie wymagające uwagi",
+        preheader="; ".join(parts),
+        paragraphs=[f"Dzień dobry {user.full_name},", "w Twoim zakresie: " + "; ".join(parts) + "."],
+        items=items,
+        button=("Otwórz aplikację", _for("/", user)),
+        tone="danger" if expired else "warning",
+        footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wymaga uwagi.",
+    )
+
+
 def sign_request_email(person: str, document: str, url: str, expires: datetime) -> Email:
     when = expires.astimezone(ZoneInfo("Europe/Warsaw")).strftime("%d.%m.%Y, %H:%M")
     return Email(

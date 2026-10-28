@@ -205,3 +205,21 @@ def test_stale_conversation_closes_itself(me, hr, emp):  # noqa: F811
         db.commit()
     rows = {r["id"]: r for r in hr.get("/api/hr-messages").json()}
     assert rows[tid2]["status"] == "new"
+
+
+def test_access_review(admin_client, make_user):
+    from app.models import Role
+
+    make_user("kier_x", Role.manager)
+    rows = admin_client.get("/api/access-review/users").json()
+    names = {r["username"]: r for r in rows}
+    assert "nigdy się nie logował(-a)" in names["kier_x"]["flags"]
+    assert any(r["role"] == "admin" and "pełne uprawnienia" in r["flags"] for r in rows)
+    rep = admin_client.get("/api/access-review/pesel?days=7").json()
+    assert rep["days"] == 7 and rep["total"] == len(rep["recent"]) >= 0
+    # tylko administrator
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    assert TestClient(app).get("/api/access-review/users").status_code == 401

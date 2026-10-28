@@ -11,6 +11,16 @@ import { api, errorText, type Employee } from "../api";
 const OUT_W = 600;
 const OUT_H = 800;
 
+/** Data URL -> Blob bez fetch (polityka CSP serwera blokuje fetch na adresach data:). */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, body] = dataUrl.split(",");
+  const type = /data:([^;]+)/.exec(head)?.[1] ?? "image/jpeg";
+  const bin = atob(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
 async function cropToBlob(src: string, area: Area): Promise<Blob> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new window.Image();
@@ -134,7 +144,7 @@ export function PhotoEditor({
   const enhance = useMutation({
     mutationFn: async () => {
       if (!src) throw new Error("Brak zdjęcia");
-      const blob = await (await fetch(src)).blob();
+      const blob = dataUrlToBlob(src);
       const form = new FormData();
       form.append("file", blob, "zdjecie.jpg");
       return api<Enh>(`${endpoint ?? `/employees/${employee.id}/photo`}/enhance`, { method: "POST", form });

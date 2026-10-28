@@ -13,6 +13,7 @@ Zakres: kod backendu (FastAPI) i frontendu (React), konfiguracja wdrożenia (Doc
 | 3 | wysoka | **Znane luki w Starlette 0.48** (12 wpisów PYSEC; m.in. Range w FileResponse, walidacja Host/ścieżki, limity formularzy multipart). Aplikacja nie używa większości zagrożonych funkcji, ale wersja była przypięta przez `fastapi<0.120`. | FastAPI ≥ 0.160 i Starlette ≥ 1.3.1; pip-audit: brak znanych luk; 258 testów przechodzi. |
 | 4 | średnia | **Brak limitu prób logowania na adres IP** – blokada działa tylko per konto (5 prób), więc „spryskiwanie” haseł po wielu loginach i masowe żądania resetu hasła były nieograniczone; zablokowanie konta cudzymi próbami było łatwe. | Limit 30 zapisów/min/IP dla logowania, resetu hasła, zaproszeń, kluczy dostępu i kodu 2FA (`APT_AUTH_RATE_POST`). |
 | 5 | niska | **Publiczna dokumentacja API** (`/api/docs`, `/api/openapi.json`) ujawniała pełną mapę adresów. | Domyślnie wyłączona (`APT_ENABLE_DOCS=true` tylko lokalnie). |
+| 7 | średnia | `npm audit`: dwie luki w `react-router` 6.x / ≤ 7.17 (przekierowanie przez backslash w `<Link>`; wstrzyknięcie konstruktora w SSR – aplikacja nie używa SSR). | `react-router-dom` 7.18.5; `npm audit --omit=dev`: 0 luk. |
 | 6 | niska | Domyślny/krótki `APT_SECRET_KEY` nie był zgłaszany. | Ostrzeżenie w logach przy starcie (instalator generuje 96 znaków). |
 
 ## Sprawdzone i w porządku
@@ -39,8 +40,8 @@ Zakres: kod backendu (FastAPI) i frontendu (React), konfiguracja wdrożenia (Doc
 
 ## Zalecenia (niepilne)
 
-1. Dodać do CI `pip-audit` i `npm audit --omit=dev` (w tym środowisku nie dało się uruchomić `npm audit` – brak dostępu do
-   rejestru; uruchom lokalnie: `cd frontend && npm audit --omit=dev`).
+1. Dodać do CI `pip-audit` i `npm audit --omit=dev`. Na serwerze `npm` nie jest zainstalowany – audyt uruchamia się w
+   kontenerze: `docker run --rm -v /opt/apt/frontend:/app -w /app node:22-alpine npm audit --omit=dev`.
 2. Rozważyć blokadę konta także po adresie IP lub CAPTCHA – obecnie obcy może zablokować cudze konto na 15 min
    (dla admina i kadr mitigowane drugim składnikiem, ale blokada nadal działa).
 3. Komunikat „konto zablokowane” ujawnia, że login istnieje (enumeracja loginów) – można ujednolicić z komunikatem

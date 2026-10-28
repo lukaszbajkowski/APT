@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Button, Center, Group, Loader, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconCamera, IconCheck } from "@tabler/icons-react";
+import { Alert, Avatar, Badge, Button, Center, Group, Loader, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertCircle, IconCamera, IconCheck, IconClock } from "@tabler/icons-react";
 
 import { api, errorText, getLinkAccess, setLinkAccess } from "../api";
 import { ContactEditor } from "../components/MyDataCards";
@@ -56,15 +56,39 @@ export function DataLinkPage() {
     }
   }
 
+  // odliczanie czasu linku (od pierwszego potwierdzenia daty urodzenia)
+  const [left, setLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (!validUntil) return;
+    const tick = () => setLeft(Math.max(0, Math.round((validUntil.getTime() - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [validUntil]);
+  const expired = unlocked && left === 0;
+  const clock = left === null ? "" : `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
+
   const d = data.data;
   const photoUrl = d?.has_photo ? `/api${base}/photo?k=${encodeURIComponent(getLinkAccess() ?? "")}&v=${d.photo_version}` : undefined;
   return (
     <Center mih="100vh" className="surface-subtle" p="md">
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={480}>
         <Stack>
-          <Title order={3} className="brand-title">
-            Aktualizacja danych
-          </Title>
+          <Group justify="space-between" wrap="nowrap">
+            <Title order={3} className="brand-title">
+              Aktualizacja danych
+            </Title>
+            {unlocked && left !== null && !expired && (
+              <Badge size="lg" variant="light" color={left < 120 ? "red" : "blue"} leftSection={<IconClock size={14} />} style={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }} styles={{ root: { overflow: "visible" }, label: { overflow: "visible", textOverflow: "clip" } }}>
+                {clock}
+              </Badge>
+            )}
+          </Group>
+          {expired && (
+            <Alert color="red" icon={<IconAlertCircle size={18} />}>
+              Czas na aktualizację minął. Poproś kadry o nowy link.
+            </Alert>
+          )}
           {info.isLoading && <Loader />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
@@ -90,7 +114,7 @@ export function DataLinkPage() {
               {errorText(data.error)}
             </Alert>
           )}
-          {unlocked && d && (
+          {unlocked && !expired && d && (
             <>
               <Group>
                 <Avatar size={72} radius="md" src={photoUrl}>
@@ -109,9 +133,7 @@ export function DataLinkPage() {
               <ContactEditor kind="phone" current={d.phone} verified={d.phone_verified} base={`${base}/contact`} queryKey={dataKey} />
               <ContactEditor kind="email" current={d.email} verified={d.email_verified} base={`${base}/contact`} queryKey={dataKey} />
               <Alert color="green" icon={<IconCheck size={18} />}>
-                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu.
-                {validUntil ? ` Ten link działa do ${validUntil.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })} – potem poproś kadry o nowy.` : ""}
-                {" "}Pozostałe dane zmieniają kadry.
+                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Pozostałe dane zmieniają kadry.
               </Alert>
               <PhotoEditor
                 employee={{ id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee}

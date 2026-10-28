@@ -5,6 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
+import { isIos, isStandalone } from "../lib/install";
 
 function toKey(b64: string): Uint8Array {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -13,9 +14,6 @@ function toKey(b64: string): Uint8Array {
 }
 
 const supported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
-const standalone = () =>
-  window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 
 /**
  * Powiadomienia push na tym urządzeniu. Treść powiadomień jest ogólna (np. „Masz dokument do podpisu”) –
@@ -81,7 +79,7 @@ export function PushCard() {
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
-  const needInstall = isIos() && !standalone();
+  const needInstall = isIos() && !isStandalone();
   return (
     <Card withBorder padding="lg">
       <Title order={4} mb={4}>

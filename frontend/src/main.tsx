@@ -1,3 +1,4 @@
+import "./lib/install";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./app.css";

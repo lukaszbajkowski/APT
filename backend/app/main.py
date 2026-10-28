@@ -22,6 +22,7 @@ from app.routers import (
     me,
     me_signatures,
     passkeys,
+    push,
     quality,
     reports,
     retention,
@@ -72,6 +73,7 @@ app.include_router(employees.router)
 app.include_router(imports.router)
 app.include_router(cards.router)
 app.include_router(documents.router)
+app.include_router(push.router)
 app.include_router(access_review.router)
 app.include_router(dashboard.router)
 app.include_router(retention.router)

@@ -1,3 +1,4 @@
+import { PushCard } from "../components/PushCard";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -197,7 +198,8 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>Klucze dostępu</Title>
+      <Title order={2}>Moje konto</Title>
+      <PushCard />
       {error && (
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {error}

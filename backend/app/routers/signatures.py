@@ -431,6 +431,17 @@ def _request_in_account(
             notified = "SMS"
     except Exception:  # noqa: BLE001 – brak powiadomienia nie blokuje prośby; dokument i tak jest w koncie
         notified = None
+    from app import push
+
+    pushed = push.notify_users(
+        db,
+        [acct.id] if acct else [],
+        "Nowy dokument do podpisu",
+        "Masz dokument do podpisu w aplikacji.",
+        "/moje-konto/do-podpisu",
+    )
+    if pushed and notified is None:
+        notified = "powiadomienie na telefonie"
     sig.sent_to = notified
     audit(
         db,

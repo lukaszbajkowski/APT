@@ -182,3 +182,10 @@ scenariusze Playwright uruchamiane lokalnie przy zmianach interfejsu.
 - Pojedynczy serwer: brak redundancji; ratunkiem są kopie zdalne.
 - LibreOffice może inaczej złamać układ niż Word; szablony weryfikować w PDF.
 - Podpis zaufany nie jest weryfikowany kryptograficznie, tylko przechowywany.
+
+
+**Powiadomienia push (Web Push).** `app/push.py`, `routers/push.py`, tabela `push_subscriptions` (migracja 0035), service worker
+`frontend/public/sw.js`. Klucze VAPID powstają przy pierwszym użyciu w katalogu danych (`vapid.json`, klucz prywatny
+zaszyfrowany kluczem aplikacji) i trafiają do kopii zapasowych. Powiadomienie ma zawsze ogólną treść (bez nazwisk, tytułów
+dokumentów i treści wiadomości), a adres po kliknięciu zawiera `?u=<konto>`, więc aplikacja przełącza się na konto adresata.
+Wygasłe subskrypcje (404/410) są usuwane. Na iPhonie (iOS 16.4+) działa po dodaniu aplikacji do ekranu początkowego.

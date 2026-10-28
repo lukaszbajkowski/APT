@@ -823,3 +823,22 @@ class WebauthnChallenge(Base):
     purpose: Mapped[str] = mapped_column(String(10), nullable=False)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class PushSubscription(Base):
+    """Urządzenie użytkownika zapisane na powiadomienia push (Web Push)."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    endpoint: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
+    auth: Mapped[str] = mapped_column(String(100), nullable=False)
+    user_agent: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -89,6 +89,7 @@ Wszystkie pozycje poprzedniego backlogu są zrobione:
 | Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
 | Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
 | PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |
+| Powiadomienia push na telefonie (Web Push): nowy dokument do podpisu, odpowiedź kadr, nowa wiadomość od pracownika dla kadr; treść ogólna, klucze VAPID generowane automatycznie (`vapid.json`, migracja 0035) | „Moje konto” → „Powiadomienia na telefonie” |
 | Cykliczny test odtwarzania kopii (niedziela, tymczasowa baza) | `deploy/restore-test.sh` |
 
 Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie ukończenia szkolenia przez opiekuna.

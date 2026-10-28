@@ -265,6 +265,7 @@ def create_thread(body: NewThreadIn, ctx: Auth, request: Request, db: DbSession)
     )
     db.commit()
     db.refresh(t)
+    _push_staff(db)
     return _out(t, False)
 
 
@@ -292,6 +293,7 @@ def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSe
     )
     db.commit()
     db.refresh(t)
+    _push_staff(db)
     return _out(t, False)
 
 
@@ -388,10 +390,31 @@ def set_status(thread_id: int, body: StatusIn, ctx: StaffAuth, request: Request,
     return _out(t, True)
 
 
+def _push_staff(db: DbSession) -> None:
+    """Powiadomienie push dla kadr i administratorów (ogólne, bez nazwiska i treści)."""
+    from app import push
+    from app.models import Role, User
+
+    ids = list(db.scalars(select(User.id).where(User.role.in_([Role.admin, Role.hr]), User.is_active)))
+    push.notify_users(db, ids, "Nowa wiadomość od pracownika", "Sprawdź skrzynkę w aplikacji.", "/wiadomosci")
+
+
 def _notify_employee(t: HrThread) -> None:
     """Krótka wiadomość bez treści odpowiedzi – na potwierdzony e-mail pracownika (jeśli jest)."""
-    from app import crypto
+    from app import crypto, push
+    from app.db import SessionLocal
+    from app.models import User
 
+    with SessionLocal() as pdb:
+        uid = pdb.scalar(select(User.id).where(User.employee_id == t.employee_id, User.is_active))
+        if uid:
+            push.notify_users(
+                pdb,
+                [uid],
+                "Odpowiedź od kadr",
+                "Kadry odpowiedziały na Twoją wiadomość.",
+                "/moje-konto/wiadomosci",
+            )
     e = t.employee
     if not e.email_enc or e.email_verified_at is None or not (mailer.enabled() or mailer.outbox is not None):
         return

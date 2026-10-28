@@ -224,3 +224,45 @@ def test_access_review(admin_client, make_user):
     from app.main import app
 
     assert TestClient(app).get("/api/access-review/users").status_code == 401
+
+
+def test_push_for_messages(me, hr, emp):  # noqa: F811
+    from app import push
+
+    push.outbox = []
+    try:
+        assert hr.post("/api/push/subscribe", json=_SUB_HR).status_code == 204
+        assert me.post("/api/push/subscribe", json=_SUB_ME).status_code == 204
+        tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Pytanie"}).json()["id"]
+        assert any(
+            t == "Nowa wiadomość od pracownika" and u.startswith("/wiadomosci?u=")
+            for _, t, _, u in push.outbox
+        )
+        assert all("Pytanie" not in b for _, _, b, _ in push.outbox)  # treść wiadomości nie wychodzi w push
+        push.outbox.clear()
+        hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "Odpowiedź"})
+        assert [(t, u.split("?")[0]) for _, t, _, u in push.outbox] == [
+            ("Odpowiedź od kadr", "/moje-konto/wiadomosci")
+        ]
+    finally:
+        push.outbox = None
+
+
+def test_deliver_payload_is_generic(monkeypatch, tmp_path):
+    import json
+
+    import pywebpush
+
+    from app import push
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "data_dir", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(pywebpush, "webpush", lambda **kw: sent.append(kw))
+    push._deliver([(0, {"endpoint": "https://x.example/1", "keys": {}}, 7)], "Tytuł", "Treść", "/a")
+    assert json.loads(sent[0]["data"]) == {"title": "Tytuł", "body": "Treść", "url": "/a?u=7"}
+    assert sent[0]["vapid_claims"]["sub"]
+
+
+_SUB_HR = {"endpoint": "https://push.example.com/hr1", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
+_SUB_ME = {"endpoint": "https://push.example.com/me1", "keys": {"p256dh": "C" * 40, "auth": "b" * 16}}

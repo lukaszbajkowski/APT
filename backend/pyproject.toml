@@ -25,6 +25,7 @@ dependencies = [
     "pyhanko>=0.25",
     "pyhanko-certvalidator>=0.26",
     "webauthn>=2.5",
+    "pywebpush>=2.0",
 ]
 
 [project.optional-dependencies]

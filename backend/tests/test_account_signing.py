@@ -173,3 +173,21 @@ def test_email_document(admin_client):
     with SessionLocal() as db:
         log = db.scalars(select(AuditLog).where(AuditLog.action == "document_emailed")).one()
         assert log.details["to"] == "ol***@example.com"
+
+
+def test_push_on_new_document_to_sign(admin_client):
+    from app import push
+
+    e, doc, auth, c = _account(admin_client)
+    push.outbox = []
+    try:
+        sub = {"endpoint": "https://push.example.com/emp", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
+        assert c.post("/api/push/subscribe", json=sub).status_code == 204
+        r = admin_client.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika"})
+        assert r.status_code == 201 and r.json()["notified"] == "powiadomienie na telefonie"
+        assert [(t, u.split("?")[0]) for _, t, _, u in push.outbox] == [
+            ("Nowy dokument do podpisu", "/moje-konto/do-podpisu")
+        ]
+        assert doc["template_name"] not in push.outbox[0][2]  # w powiadomieniu nie ma tytułu dokumentu
+    finally:
+        push.outbox = None

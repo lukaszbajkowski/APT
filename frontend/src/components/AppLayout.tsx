@@ -84,7 +84,7 @@ export function AppLayout() {
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0 },
-    { to: "/moje-konto/klucze", label: "Klucze dostępu", icon: IconFingerprint, show: hasRole("employee") },
+    { to: "/moje-konto/klucze", label: "Klucze i powiadomienia", icon: IconFingerprint, show: hasRole("employee") },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee") },
     { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee") },

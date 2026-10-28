@@ -56,7 +56,7 @@ export function EmployeeHome() {
           badge={noContact ? "uzupełnij" : undefined}
           onClick={() => document.getElementById("kontakt")?.scrollIntoView({ behavior: "smooth" })}
         />
-        <Tile icon={IconFingerprint} title="Klucze dostępu" hint="Dodaj drugie urządzenie" to="/moje-konto/klucze" />
+        <Tile icon={IconFingerprint} title="Klucze i powiadomienia" hint="Powiadomienia na telefonie, drugie urządzenie" to="/moje-konto/klucze" />
       </SimpleGrid>
       <MyDataCards />
     </Stack>

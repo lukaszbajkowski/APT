@@ -117,7 +117,9 @@ export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {
 
 function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; employee: Employee; r: RoleState; st: SignaturesState; onDone: () => void }) {
   const [channel, setChannel] = useState<string>(st.email_enabled ? "email" : "link");
-  const [to, setTo] = useState("");
+  const fromRecord = (ch: string) =>
+    r.role === "pracownika" ? ((ch === "email" ? employee.contact_email : ch === "sms" ? employee.contact_phone : "") ?? "") : "";
+  const [to, setTo] = useState(() => fromRecord(st.email_enabled ? "email" : "link"));
   const [deviceCheck, setDeviceCheck] = useState(r.role === "pracownika");
   const [result, setResult] = useState<RequestResult | null>(null);
   const send = useMutation({
@@ -169,7 +171,10 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
       <SegmentedControl
         size="xs"
         value={channel}
-        onChange={setChannel}
+        onChange={(v) => {
+          setChannel(v);
+          setTo(fromRecord(v));
+        }}
         data={[
           { value: "email", label: "E-mail", disabled: !st.email_enabled },
           { value: "sms", label: st.sms_enabled ? "SMS" : "SMS (nieskonfigurowany)", disabled: !st.sms_enabled },

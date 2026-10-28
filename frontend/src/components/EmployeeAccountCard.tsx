@@ -20,11 +20,11 @@ interface InviteOut {
 }
 
 /** Konto pracownika w systemie (tylko kadry): zaproszenie, status, wyłączenie. */
-export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
+export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: number; contactEmail?: string | null }) {
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(contactEmail ?? "");
   const [result, setResult] = useState<InviteOut | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ export function EmployeeAccountCard({ employeeId }: { employeeId: number }) {
       <Stack gap="xs">
         <TextInput
           label="E-mail pracownika (opcjonalnie)"
-          description="Na ten adres wyślemy zaproszenie. Adresu nie zapisujemy – bez niego dostaniesz sam link."
+          description={contactEmail ? "Podstawiony potwierdzony adres z kartoteki – możesz go zmienić dla tej wysyłki." : "Na ten adres wyślemy zaproszenie. Adresu nie zapisujemy – bez niego dostaniesz sam link."}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.currentTarget.value)}

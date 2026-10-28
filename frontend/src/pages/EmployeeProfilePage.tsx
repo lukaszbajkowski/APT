@@ -350,7 +350,7 @@ export function EmployeeProfilePage() {
 
       {!isAgency && <MentorProgramsCard employee={e} />}
 
-      {staff && <EmployeeAccountCard employeeId={e.id} />}
+      {staff && <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />}
 
       {!isAgency && <TimelineCard employee={e} />}
 

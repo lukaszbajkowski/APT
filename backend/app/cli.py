@@ -298,11 +298,10 @@ def notify_daily() -> int:
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
-    alert = notify.admin_alert_email(problems)
     if mailer.enabled():
         for a in admins:
             try:
-                mailer.send_now(a.email, alert)
+                mailer.send_now(a.email, notify.admin_alert_email(problems, a))
             except Exception as e:  # noqa: BLE001
                 print(f"Błąd wysyłki do {a.email}: {e}", file=sys.stderr)
     print(f"Problemy: {len(problems)}, powiadomieni administratorzy: {len(admins)}.")

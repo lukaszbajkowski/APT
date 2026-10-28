@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Center, Loader, Stack, Text } from "@mantine/core";
@@ -8,24 +8,23 @@ import { api, setAccountId } from "../api";
 import { useAuth, type Account } from "../auth";
 
 /**
- * Strony tylko dla konta pracownika. Gdy link (np. z e-maila o dokumencie do podpisu) ma `?u=<konto>`,
- * a w tej karcie jest aktywne inne konto (np. administratora), przełączamy się na wskazane konto, jeśli
- * jest zalogowane w tej przeglądarce; jeśli nie – prosimy o zalogowanie pracownika zamiast pustej strony.
+ * Linki z e-maili i SMS-ów mają `?u=<konto adresata>`. Gdy w tej karcie jest aktywne inne konto
+ * (każdy ma osobne konta: pracownika i funkcyjne), przełączamy się na wskazane konto, jeśli jest zalogowane
+ * w tej przeglądarce; jeśli nie – prosimy o zalogowanie zamiast pokazywać pustą lub cudzą stronę.
  */
-export function EmployeeArea() {
+export function LinkedAccount({ children }: { children: ReactNode }) {
   const { me } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const wanted = Number(new URLSearchParams(location.search).get("u")) || null;
-  const wrong = !!me && me.user.role !== "employee";
-  const switchNeeded = !!me && wanted !== null && wanted !== me.user.id;
+  const mismatch = !!me && wanted !== null && wanted !== me.user.id;
   const accounts = useQuery({
     queryKey: ["browser-accounts"],
     queryFn: () => api<Account[]>("/auth/accounts"),
-    enabled: switchNeeded || wrong,
+    enabled: mismatch,
     staleTime: 0,
   });
-  const target = switchNeeded ? accounts.data?.find((a) => a.id === wanted) : undefined;
+  const target = mismatch ? accounts.data?.find((a) => a.id === wanted) : undefined;
 
   useEffect(() => {
     if (target) {
@@ -34,7 +33,7 @@ export function EmployeeArea() {
     }
   }, [target, location.pathname, location.search]);
 
-  if (!wrong && !switchNeeded) return <Outlet />;
+  if (!mismatch) return <>{children}</>;
   if (accounts.isLoading || target) {
     return (
       <Center h="50vh">
@@ -42,24 +41,29 @@ export function EmployeeArea() {
       </Center>
     );
   }
-  if (!wrong) return <Outlet />; // inne konto pracownika niż w linku – serwer i tak nie pokaże cudzych danych
-  if (wanted === null) return <Navigate to="/" replace />;
+  if (accounts.isError) return <>{children}</>;
   return (
     <Stack maw={520} mt="xl" mx="auto" px="md">
-      <Alert color="orange" icon={<IconUserExclamation size={18} />} title="To strona dla konta pracownika">
-        Jesteś zalogowany(-a) jako {me?.user.full_name}. Ten link dotyczy konta pracownika, które nie jest zalogowane w tej
+      <Alert color="orange" icon={<IconUserExclamation size={18} />} title="Ten link dotyczy innego konta">
+        Jesteś zalogowany(-a) jako {me?.user.full_name}, a link przygotowano dla innego konta, które nie jest zalogowane w tej
         przeglądarce.
       </Alert>
       <Text size="sm" c="dimmed">
-        Zaloguj się na konto pracownika (kluczem dostępu) – wrócisz od razu do tego dokumentu. Twoje obecne konto pozostanie
-        zalogowane.
+        Zaloguj się na to konto – wrócisz od razu na tę stronę. Obecne konto pozostanie zalogowane.
       </Text>
       <Button onClick={() => navigate("/login?dodaj=1", { state: { from: location.pathname + location.search } })}>
-        Zaloguj się jako pracownik
+        Zaloguj się na właściwe konto
       </Button>
       <Button variant="default" onClick={() => navigate("/", { replace: true })}>
         Wróć do mojego konta
       </Button>
     </Stack>
   );
+}
+
+/** Strony tylko dla konta pracownika: inne role wracają na stronę główną. */
+export function EmployeeArea() {
+  const { me } = useAuth();
+  if (me && me.user.role !== "employee") return <Navigate to="/" replace />;
+  return <Outlet />;
 }

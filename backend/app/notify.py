@@ -90,14 +90,19 @@ def security_email(user: User, what: str) -> Email:
     )
 
 
-def admin_alert_email(problems: list[str]) -> Email:
+def _for(path: str, user: User | None) -> str:
+    """Link do aplikacji z numerem konta adresata – aplikacja przełączy się na nie, jeśli jest zalogowane."""
+    return mailer.link(path + (("&" if "?" in path else "?") + f"u={user.id}" if user is not None else ""))
+
+
+def admin_alert_email(problems: list[str], user: User | None = None) -> Email:
     return Email(
         subject="Identyfikacja APT – wymaga uwagi",
         title="Wymaga uwagi administratora",
         preheader=problems[0] if problems else "",
         paragraphs=["Codzienne sprawdzenie aplikacji znalazło sprawy do załatwienia:"],
         items=problems,
-        button=("Otwórz aplikację", mailer.link("/")),
+        button=("Otwórz aplikację", _for("/", user)),
         tone="danger" if any("kopi" in p.lower() for p in problems) else "warning",
         footer_note="Tę wiadomość dostają administratorzy z wpisanym adresem e-mail.",
     )
@@ -113,7 +118,7 @@ def quality_email(user: User, counts: list[tuple[str, int]], people: int) -> Ema
             f"w Twoim zakresie {people} aktywnych pracowników ma niekompletne dane w kartotece:",
         ],
         items=[f"{label}: {n}" for label, n in counts if n],
-        button=("Zobacz braki", mailer.link("/braki")),
+        button=("Zobacz braki", _for("/braki", user)),
         tone="warning",
         footer_note="Przypomnienie wysyłane w poniedziałki, gdy w danych są braki.",
     )
@@ -134,7 +139,7 @@ def trainings_email(user: User, items: list[str], expired: int, overdue: int, ex
         preheader="; ".join(parts),
         paragraphs=[f"Dzień dobry {user.full_name},", "w Twoim zakresie: " + "; ".join(parts) + "."],
         items=items,
-        button=("Zobacz szkolenia", mailer.link("/szkolenia")),
+        button=("Zobacz szkolenia", _for("/szkolenia", user)),
         tone="danger" if expired or overdue else "warning",
         footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wymaga uwagi.",
     )

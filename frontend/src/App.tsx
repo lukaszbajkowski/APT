@@ -12,7 +12,7 @@ import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
 import { InvitePage, MyAccountPage } from "./pages/AccountPages";
-import { EmployeeArea } from "./components/EmployeeArea";
+import { EmployeeArea, LinkedAccount } from "./components/LinkedAccount";
 import { SignedDocPage, ToSignListPage, ToSignPage } from "./pages/ToSignPages";
 import { DataLinkPage } from "./pages/DataLinkPage";
 import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
@@ -71,10 +71,18 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
   if (!me.user.must_change_password && me.mfa_setup_required && location.pathname !== MFA_PATH) {
     return <Navigate to={MFA_PATH} replace />;
   }
-  if (me.user.role === "employee" && !location.pathname.startsWith("/moje-konto")) {
-    return <Navigate to="/moje-konto" replace />;
-  }
-  if (roles && !roles.includes(me.user.role)) return <Navigate to="/" replace />;
+  return (
+    <LinkedAccount>
+      <RoleGate roles={roles} path={location.pathname} role={me.user.role}>
+        {children}
+      </RoleGate>
+    </LinkedAccount>
+  );
+}
+
+function RoleGate({ roles, path, role, children }: { roles?: Role[]; path: string; role: Role; children: ReactNode }) {
+  if (role === "employee" && !path.startsWith("/moje-konto")) return <Navigate to="/moje-konto" replace />;
+  if (roles && !roles.includes(role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

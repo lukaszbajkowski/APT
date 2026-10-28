@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconArrowLeft, IconPlus, IconSearch, IconSend } from "@tabler/icons-react";
+import { IconArchive, IconArchiveOff, IconArrowLeft, IconPlus, IconSearch, IconSend } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 
@@ -14,6 +14,7 @@ export interface ThreadRow {
   last_from_staff: boolean;
   preview: string;
   unread: boolean;
+  archived: boolean;
   employee_id: number | null;
   employee_name: string | null;
   employee_number: string | null;
@@ -22,6 +23,7 @@ interface Thread {
   id: number;
   subject: string;
   status: ThreadRow["status"];
+  archived: boolean;
   messages: { id: number; from_staff: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
   employee_name: string | null;
   employee_number: string | null;
@@ -90,6 +92,14 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
     onSuccess: refresh,
     onError: (e) => setError(errorText(e)),
   });
+  const archive = useMutation({
+    mutationFn: (on: boolean) => api<Thread>(`${base}/${id}/${on ? "archive" : "unarchive"}`, { method: "POST" }),
+    onSuccess: (nt) => {
+      refresh(nt);
+      onBack();
+    },
+    onError: (e) => setError(errorText(e)),
+  });
   const submit = () => body.trim() && !send.isPending && send.mutate();
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
@@ -109,19 +119,33 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
             </Text>
           </Box>
         </Group>
-        {t &&
-          (staff ? (
-            <Select
-              size="xs"
-              w={140}
-              allowDeselect={false}
-              value={t.status}
-              data={Object.entries(THREAD_STATUS).map(([value, v]) => ({ value, label: v.label }))}
-              onChange={(v) => v && setStatus.mutate(v)}
-            />
-          ) : (
-            <Badge color={THREAD_STATUS[t.status].color}>{THREAD_STATUS[t.status].label}</Badge>
-          ))}
+        {t && (
+          <Group gap="xs" wrap="nowrap">
+            {staff ? (
+              <Select
+                size="xs"
+                w={140}
+                allowDeselect={false}
+                value={t.status}
+                data={Object.entries(THREAD_STATUS).map(([value, v]) => ({ value, label: v.label }))}
+                onChange={(v) => v && setStatus.mutate(v)}
+              />
+            ) : (
+              <Badge color={THREAD_STATUS[t.status].color}>{THREAD_STATUS[t.status].label}</Badge>
+            )}
+            {t.archived ? (
+              <Button size="xs" variant="default" leftSection={<IconArchiveOff size={14} />} loading={archive.isPending} onClick={() => archive.mutate(false)}>
+                Przywróć
+              </Button>
+            ) : (
+              t.status === "done" && (
+                <Button size="xs" variant="light" leftSection={<IconArchive size={14} />} loading={archive.isPending} onClick={() => archive.mutate(true)}>
+                  Archiwizuj
+                </Button>
+              )
+            )}
+          </Group>
+        )}
       </Group>
       <ScrollArea style={{ flex: 1 }} px="sm" type="auto">
         <Stack gap={6} py="sm">
@@ -274,10 +298,12 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   const [composing, setComposing] = useState(!!preset);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
+  const [view, setView] = useState<"active" | "archive">("active");
   const list = useQuery({
-    queryKey: ["threads", base, q, status],
+    queryKey: ["threads", base, q, status, view],
     queryFn: () => {
       const p = new URLSearchParams();
+      if (view === "archive") p.set("archived", "true");
       if (q.trim()) p.set("q", q.trim());
       if (status) p.set("status_filter", status);
       return api<ThreadRow[]>(`${base}?${p.toString()}`);
@@ -307,6 +333,20 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                 <IconPlus size={18} />
               </ActionIcon>
             </Group>
+            <SegmentedControl
+              size="xs"
+              fullWidth
+              value={view}
+              onChange={(v) => {
+                setView(v as "active" | "archive");
+                setOpenId(null);
+                setComposing(false);
+              }}
+              data={[
+                { value: "active", label: "Aktywne" },
+                { value: "archive", label: "Archiwum" },
+              ]}
+            />
             {staff && (
               <>
                 <TextInput size="xs" placeholder="Szukaj: nazwisko lub temat" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
@@ -328,7 +368,11 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           <ScrollArea style={{ flex: 1 }}>
             {rows.length === 0 && (
               <Text size="sm" c="dimmed" p="md">
-                {staff ? "Brak wiadomości." : "Nie masz jeszcze wiadomości. Kliknij +, aby napisać do kadr."}
+                {view === "archive"
+                  ? "Archiwum jest puste. Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu."
+                  : staff
+                  ? "Brak wiadomości."
+                  : "Nie masz jeszcze wiadomości. Kliknij +, aby napisać do kadr."}
               </Text>
             )}
             {rows.map((t) => {

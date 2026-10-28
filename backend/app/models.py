@@ -769,6 +769,9 @@ class HrThread(Base):
     )
     staff_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     employee_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # archiwum: każda strona archiwizuje osobno; nowa wiadomość lub otwarcie rozmowy czyści oba znaczniki
+    staff_archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    employee_archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     employee: Mapped["Employee"] = relationship(lazy="joined")
     messages: Mapped[list["HrMessage"]] = relationship(
         back_populates="thread", order_by="HrMessage.id", cascade="all, delete-orphan"

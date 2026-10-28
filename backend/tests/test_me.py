@@ -315,3 +315,48 @@ def test_staff_starts_conversation(me, hr, emp):  # noqa: F811
         ).status_code in (401, 403)
     finally:
         mailer.outbox, push.outbox = None, None
+
+
+def test_archive_threads_per_side(me, hr, emp):  # noqa: F811
+    from datetime import timedelta
+
+    from app.cli import close_stale_threads
+    from app.db import SessionLocal
+    from app.deps import utcnow
+    from app.models import HrThread
+
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Pytanie"}).json()["id"]
+    # tylko zakończone można archiwizować
+    assert hr.post(f"/api/hr-messages/{tid}/archive").status_code == 400
+    assert me.post(f"/api/me/messages/{tid}/archive").status_code == 400
+    hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"})
+    # kadry archiwizują po swojej stronie – pracownik dalej widzi rozmowę
+    assert hr.post(f"/api/hr-messages/{tid}/archive").json()["archived"] is True
+    assert hr.get("/api/hr-messages").json() == []
+    arch = hr.get("/api/hr-messages", params={"archived": True}).json()
+    assert [r["id"] for r in arch] == [tid] and arch[0]["archived"] is True
+    assert [r["id"] for r in me.get("/api/me/messages").json()] == [tid]
+    # pracownik archiwizuje po swojej
+    assert me.post(f"/api/me/messages/{tid}/archive").json()["archived"] is True
+    assert me.get("/api/me/messages").json() == []
+    assert [r["id"] for r in me.get("/api/me/messages", params={"archived": True}).json()] == [tid]
+    # przywrócenie
+    assert me.post(f"/api/me/messages/{tid}/unarchive").json()["archived"] is False
+    assert [r["id"] for r in me.get("/api/me/messages").json()] == [tid]
+    # nowa wiadomość pracownika wyciąga rozmowę z archiwum kadr
+    me.post(f"/api/me/messages/{tid}/messages", json={"body": "Jeszcze jedno"})
+    assert [r["id"] for r in hr.get("/api/hr-messages").json()] == [tid]
+    assert hr.get("/api/hr-messages", params={"archived": True}).json() == []
+    # obca rozmowa: 404
+    assert me.post("/api/me/messages/99999/archive").status_code == 404
+
+    # automat: zakończona i nieruszana ponad 30 dni
+    hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"})
+    with SessionLocal() as db:
+        db.get(HrThread, tid).updated_at = utcnow() - timedelta(days=31)
+        db.commit()
+    assert close_stale_threads() == 0
+    assert hr.get("/api/hr-messages").json() == []
+    assert me.get("/api/me/messages").json() == []
+    assert len(hr.get("/api/hr-messages", params={"archived": True}).json()) == 1
+    assert len(me.get("/api/me/messages", params={"archived": True}).json()) == 1

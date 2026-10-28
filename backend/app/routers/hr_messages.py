@@ -29,6 +29,7 @@ SUBJECTS = [
     "Inne",
 ]
 Status = Literal["new", "in_progress", "done"]
+ARCHIVE_DAYS = 30  # zakończona rozmowa bez ruchu tyle dni trafia do archiwum sama
 AUTO_CLOSE_DAYS = 3  # rozmowa „w toku”, w której po odpowiedzi kadr pracownik milczy, zamyka się sama
 MAX_OPEN = 10
 MAX_PER_HOUR = 10
@@ -56,6 +57,7 @@ class ThreadOut(BaseModel):
     employee_id: int | None = None
     employee_name: str | None = None
     employee_number: str | None = None
+    archived: bool = False
 
 
 class ThreadRow(BaseModel):
@@ -66,14 +68,20 @@ class ThreadRow(BaseModel):
     last_from_staff: bool
     preview: str
     unread: bool = False
+    archived: bool = False
     employee_id: int | None = None
     employee_name: str | None = None
     employee_number: str | None = None
 
 
+def _archived(t: HrThread, staff: bool) -> bool:
+    return (t.staff_archived_at if staff else t.employee_archived_at) is not None
+
+
 def _out(t: HrThread, staff: bool) -> ThreadOut:
     return ThreadOut(
         id=t.id,
+        archived=_archived(t, staff),
         subject=t.subject,
         status=t.status,  # type: ignore[arg-type]
         created_at=t.created_at,
@@ -122,6 +130,53 @@ def close_stale(db: DbSession) -> int:
     return closed
 
 
+def auto_archive(db: DbSession) -> int:
+    """Zakończone rozmowy bez ruchu od ARCHIVE_DAYS dni trafiają do archiwum obu stron."""
+    cutoff = utcnow() - timedelta(days=ARCHIVE_DAYS)
+    now = utcnow()
+    n = 0
+    for t in db.scalars(
+        select(HrThread).where(
+            HrThread.status == "done",
+            HrThread.updated_at < cutoff,
+            or_(HrThread.staff_archived_at.is_(None), HrThread.employee_archived_at.is_(None)),
+        )
+    ).unique():
+        t.staff_archived_at = t.staff_archived_at or now
+        t.employee_archived_at = t.employee_archived_at or now
+        audit(
+            db,
+            None,
+            "hr_thread_auto_archived",
+            username="system",
+            entity_type="employee",
+            entity_id=t.employee_id,
+            details={"thread": t.id, "days": ARCHIVE_DAYS},
+        )
+        n += 1
+    if n:
+        db.commit()
+    return n
+
+
+def _archive(db: DbSession, t: HrThread, staff: bool, on: bool, ctx, request: Request) -> None:
+    if on and t.status != "done":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Archiwizować można tylko zakończone rozmowy."
+        )
+    setattr(t, "staff_archived_at" if staff else "employee_archived_at", utcnow() if on else None)
+    audit(
+        db,
+        request,
+        "hr_thread_archived" if on else "hr_thread_unarchived",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=t.employee_id,
+        details={"thread": t.id, "side": "kadry" if staff else "pracownik"},
+    )
+    db.commit()
+
+
 def _last(t: HrThread) -> HrMessage:
     """Ostatnia prawdziwa wiadomość (bez zdarzeń zmiany statusu)."""
     return next(m for m in reversed(t.messages) if m.kind == "message")
@@ -130,6 +185,8 @@ def _last(t: HrThread) -> HrMessage:
 def _change_status(t: HrThread, new: str, user, staff: bool) -> None:
     if t.status != new:
         t.status = new
+        if new != "done":  # wznowiona rozmowa wraca do skrzynek obu stron
+            t.staff_archived_at = t.employee_archived_at = None
         t.messages.append(HrMessage(kind="status", from_staff=staff, author_id=user.id, body=new))
 
 
@@ -150,6 +207,7 @@ def _row(t: HrThread, staff: bool) -> ThreadRow:
         last_from_staff=last.from_staff,
         preview=last.body[:120],
         unread=_unread(t, staff),
+        archived=_archived(t, staff),
         employee_id=t.employee_id if staff else None,
         employee_name=f"{t.employee.last_name} {t.employee.first_name}" if staff else None,
         employee_number=format_number(t.employee.number) if staff else None,
@@ -182,16 +240,21 @@ def subjects(ctx: Auth) -> list[str]:
 def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
     eid = _employee_id(ctx)
     close_stale(db)
-    rows = db.scalars(select(HrThread).where(HrThread.employee_id == eid)).unique()
+    rows = db.scalars(
+        select(HrThread).where(HrThread.employee_id == eid, HrThread.employee_archived_at.is_(None))
+    ).unique()
     return {"unread": sum(1 for t in rows if _unread(t, False))}
 
 
 @me_router.get("", response_model=list[ThreadRow])
-def my_threads(ctx: Auth, db: DbSession) -> list[ThreadRow]:
+def my_threads(ctx: Auth, db: DbSession, archived: bool = False) -> list[ThreadRow]:
     eid = _employee_id(ctx)
     close_stale(db)
+    col = HrThread.employee_archived_at
     rows = db.scalars(
-        select(HrThread).where(HrThread.employee_id == eid).order_by(HrThread.updated_at.desc())
+        select(HrThread)
+        .where(HrThread.employee_id == eid, col.is_not(None) if archived else col.is_(None))
+        .order_by(HrThread.updated_at.desc())
     ).unique()
     return [_row(t, False) for t in rows]
 
@@ -202,6 +265,20 @@ def my_thread(thread_id: int, ctx: Auth, db: DbSession) -> ThreadOut:
     if _unread(t, False):
         t.employee_seen_at = utcnow()
         db.commit()
+    return _out(t, False)
+
+
+@me_router.post("/{thread_id}/archive", response_model=ThreadOut)
+def my_archive(thread_id: int, ctx: Auth, request: Request, db: DbSession) -> ThreadOut:
+    t = _own_thread(db, _employee_id(ctx), thread_id)
+    _archive(db, t, False, True, ctx, request)
+    return _out(t, False)
+
+
+@me_router.post("/{thread_id}/unarchive", response_model=ThreadOut)
+def my_unarchive(thread_id: int, ctx: Auth, request: Request, db: DbSession) -> ThreadOut:
+    t = _own_thread(db, _employee_id(ctx), thread_id)
+    _archive(db, t, False, False, ctx, request)
     return _out(t, False)
 
 
@@ -305,16 +382,27 @@ def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSe
 def new_count(ctx: StaffAuth, db: DbSession) -> dict[str, int]:
     close_stale(db)
     n = db.scalar(select(func.count()).select_from(HrThread).where(HrThread.status == "new"))
-    rows = db.scalars(select(HrThread).where(HrThread.status != "done")).unique()
+    rows = db.scalars(
+        select(HrThread).where(HrThread.status != "done", HrThread.staff_archived_at.is_(None))
+    ).unique()
     return {"new": n or 0, "unread": sum(1 for t in rows if _unread(t, True))}
 
 
 @staff_router.get("", response_model=list[ThreadRow])
 def staff_threads(
-    ctx: StaffAuth, db: DbSession, status_filter: Status | None = None, q: str | None = None
+    ctx: StaffAuth,
+    db: DbSession,
+    status_filter: Status | None = None,
+    q: str | None = None,
+    archived: bool = False,
 ) -> list[ThreadRow]:
     close_stale(db)
-    stmt = select(HrThread).join(Employee, Employee.id == HrThread.employee_id)
+    col = HrThread.staff_archived_at
+    stmt = (
+        select(HrThread)
+        .join(Employee, Employee.id == HrThread.employee_id)
+        .where(col.is_not(None) if archived else col.is_(None))
+    )
     if status_filter:
         stmt = stmt.where(HrThread.status == status_filter)
     if q and q.strip():
@@ -365,6 +453,20 @@ def staff_reply(thread_id: int, body: BodyIn, ctx: StaffAuth, request: Request, 
     db.commit()
     _notify_employee(t)
     db.refresh(t)
+    return _out(t, True)
+
+
+@staff_router.post("/{thread_id}/archive", response_model=ThreadOut)
+def staff_archive(thread_id: int, ctx: StaffAuth, request: Request, db: DbSession) -> ThreadOut:
+    t = _thread(db, thread_id)
+    _archive(db, t, True, True, ctx, request)
+    return _out(t, True)
+
+
+@staff_router.post("/{thread_id}/unarchive", response_model=ThreadOut)
+def staff_unarchive(thread_id: int, ctx: StaffAuth, request: Request, db: DbSession) -> ThreadOut:
+    t = _thread(db, thread_id)
+    _archive(db, t, True, False, ctx, request)
     return _out(t, True)
 
 

@@ -107,3 +107,5 @@ Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie 
 
 
 **Dodatkowo (v. październik 2026):** przycisk instalacji aplikacji na ekranie logowania (tylko telefon/tablet); kafelek „Ostatnio podpisany” na stronie głównej pracownika; link „aktualizacja danych” jednorazowy – po pierwszym zapisie działa jeszcze 10 minut, a przycisk „Gotowe – zakończ” zamyka go od razu (audyt `data_link_finished`).
+
+**Archiwum wiadomości (migracja 0037):** zakończone rozmowy „Napisz do kadr” można archiwizować (osobno po stronie kadr i pracownika; zakładki „Aktywne / Archiwum”, przycisk „Przywróć”); nowa wiadomość lub wznowienie rozmowy wyciąga ją z archiwum obu stron; zakończone rozmowy bez ruchu 30 dni archiwizują się same (zadanie dzienne, audyt `hr_thread_auto_archived`).

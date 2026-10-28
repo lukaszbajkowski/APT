@@ -130,11 +130,13 @@ def refresh_trustlist() -> int:
 def close_stale_threads() -> int:
     """Zamyka rozmowy „Napisz do kadr”, w których pracownik nie odpowiada na odpowiedź kadr."""
     from app.db import SessionLocal
-    from app.routers.hr_messages import AUTO_CLOSE_DAYS, close_stale
+    from app.routers.hr_messages import ARCHIVE_DAYS, AUTO_CLOSE_DAYS, auto_archive, close_stale
 
     with SessionLocal() as db:
         n = close_stale(db)
+        a = auto_archive(db)
     print(f"Rozmowy zamknięte automatycznie (brak odpowiedzi {AUTO_CLOSE_DAYS} dni): {n}.")
+    print(f"Rozmowy zarchiwizowane automatycznie (zakończone ponad {ARCHIVE_DAYS} dni): {a}.")
     return 0
 
 

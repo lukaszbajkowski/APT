@@ -493,6 +493,21 @@ def _save_missing_pesel(db: Session, request: Request, user: User, e: Any, pesel
     db.flush()
 
 
+def _contact(e: Any, user: User) -> dict[str, str]:
+    """Zweryfikowany kontakt pracownika – tylko dla administratora i kadr."""
+    if user.role not in (Role.admin, Role.hr):
+        return {}
+    out: dict[str, str] = {}
+    try:
+        if e.email_enc:
+            out["email"] = crypto.decrypt_contact(e.email_enc)
+        if e.phone_enc:
+            out["phone"] = crypto.decrypt_contact(e.phone_enc)
+    except ValueError:
+        pass
+    return out
+
+
 def _create_document(
     db: Session,
     request: Request,
@@ -506,13 +521,19 @@ def _create_document(
     """Wypełnia szablon dla jednej osoby, zapisuje pliki i wpis w historii (bez commita)."""
     masked = user.role == Role.manager and t.sensitive
     fields = [FieldDef.model_validate(f) for f in t.fields]
+    contact = _contact(e, user)
+    raw_values = dict(raw_values)
+    for f in fields:  # puste pola „e-mail” / „telefon” uzupełniamy z kartoteki
+        kind = templating.contact_kind(f.key)
+        if kind and contact.get(kind) and not str(raw_values.get(f.key) or "").strip():
+            raw_values[f.key] = contact[kind]
     values = templating.form_values(fields, raw_values)  # TemplateError → obsługuje wywołujący
     if pesel_input and pesel_input.strip():
         _save_missing_pesel(db, request, user, e, pesel_input)
 
     uses_pesel = "pesel" in t.variables
     pesel = crypto.decrypt(e.pesel_enc) if (uses_pesel and e.pesel_enc and not masked) else None
-    builtin = templating.builtin_values(e, pesel, training=training)
+    builtin = templating.builtin_values(e, pesel, training=training, contact=contact)
     if masked:
         builtin |= {k: "" for k in templating.SENSITIVE}
     context = {v: "" for v in t.variables} | builtin | values

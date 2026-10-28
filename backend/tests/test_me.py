@@ -9,6 +9,7 @@ from PIL import Image
 
 from app import mailer, sms
 from app.main import app
+from app.models import Role
 from tests.test_accounts import BORN, FakeAuthenticator, _activate, _invite, emp, hr  # noqa: F401, F811
 
 
@@ -84,3 +85,27 @@ def test_photo_upload_and_serve(me):
 
 def test_staff_cannot_use_me_endpoints(hr):  # noqa: F811
     assert hr.get("/api/me/employee").status_code == 403
+
+
+def test_document_fields_prefilled_from_contact(me, hr, emp):  # noqa: F811
+    from app import templating
+
+    assert templating.contact_kind("E_mail_pracownika") == "email"
+    assert templating.contact_kind("telefon") == "phone"
+    assert templating.contact_kind("imie") is None
+    me.post("/api/me/contact/email/start", json={"value": "anna@example.com"})
+    me.post("/api/me/contact/email/confirm", json={"code": _code(mailer.outbox[-1][2])})
+    from app.db import SessionLocal
+    from app.models import Employee
+    from app.routers.documents import _contact
+
+    with SessionLocal() as db:
+        e = db.get(Employee, emp)
+
+        class U:
+            role = Role.hr
+
+        assert _contact(e, U()) == {"email": "anna@example.com"}
+        U.role = Role.manager
+        assert _contact(e, U()) == {}
+        assert templating.builtin_values(e, None, contact={"email": "x@y.pl"})["email_pracownika"] == "x@y.pl"

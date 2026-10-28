@@ -41,6 +41,8 @@ BUILTINS: dict[str, str] = {
     "stanowisko": "Stanowisko",
     "data_zatrudnienia": "Data zatrudnienia",
     "data_dzisiaj": "Dzisiejsza data",
+    "email_pracownika": "E-mail pracownika (z kartoteki, tylko kadry)",
+    "telefon_pracownika": "Telefon pracownika (z kartoteki, tylko kadry)",
     # wypełniane tylko przy dokumencie generowanym ze szkolenia (inaczej puste)
     "szkolenie_rodzaj": "Szkolenie: rodzaj",
     "szkolenie_nazwa": "Szkolenie: nazwa",
@@ -84,7 +86,16 @@ def signature_roles(variables: list[str]) -> list[str]:
 
 
 # Zmienne z danymi wrażliwymi – szablonów z nimi nie może używać Kierownik.
-SENSITIVE = {"pesel", "data_urodzenia"}
+SENSITIVE = {"pesel", "data_urodzenia", "email_pracownika", "telefon_pracownika"}
+
+_EMAIL_KEY = re.compile(r"^(e_?mail|mail)(_.*)?$")
+_PHONE_KEY = re.compile(r"^(telefon|tel|phone|komorka)(_.*)?$")
+
+
+def contact_kind(key: str) -> str | None:
+    """Pole formularza o nazwie typu „email”, „e_mail”, „telefon” dostaje kontakt z kartoteki."""
+    k = key.lower()
+    return "email" if _EMAIL_KEY.match(k) else "phone" if _PHONE_KEY.match(k) else None
 
 
 def _d(v: date | None) -> str:
@@ -112,7 +123,11 @@ def training_values(tr: Any | None) -> dict[str, str]:
 
 
 def builtin_values(
-    e: Any, pesel: str | None, today: date | None = None, training: Any = None
+    e: Any,
+    pesel: str | None,
+    today: date | None = None,
+    training: Any = None,
+    contact: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     today = today or date.today()
     d = _d
@@ -135,6 +150,8 @@ def builtin_values(
             "stanowisko": e.position.name if e.position else "",
             "data_zatrudnienia": d(e.hire_date),
             "data_dzisiaj": d(today),
+            "email_pracownika": (contact or {}).get("email", ""),
+            "telefon_pracownika": (contact or {}).get("phone", ""),
         }
         | training_values(training)
         | signature_values()

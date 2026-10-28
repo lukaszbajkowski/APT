@@ -223,11 +223,17 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);
 
   useEffect(() => {
-    setValues({});
+    const pre: Values = {};
+    for (const f of template?.fields ?? []) {
+      const k = f.key.toLowerCase();
+      if (/^(e_?mail|mail)(_.*)?$/.test(k) && employee.contact_email) pre[f.key] = employee.contact_email;
+      else if (/^(telefon|tel|phone|komorka)(_.*)?$/.test(k) && employee.contact_phone) pre[f.key] = employee.contact_phone;
+    }
+    setValues(pre);
     setPesel("");
     setError(null);
     setDone(null);
-  }, [templateId]);
+  }, [template, open, employee.contact_email, employee.contact_phone]);
 
   const generate = useMutation({
     mutationFn: () =>

@@ -91,7 +91,10 @@ def test_one_browser_can_serve_two_accounts(admin_client, make_user):
         assert st["this_device"] is True and st["other_accounts"] == 1
         # test wysyła tylko do urządzeń bieżącego konta
         assert other.post("/api/push/test", json={"endpoint": SUB["endpoint"]}).json()["sent"] == 1
-        assert other.post("/api/push/test", json={"endpoint": "https://push.example.com/inne"}).status_code == 400
+        assert (
+            other.post("/api/push/test", json={"endpoint": "https://push.example.com/inne"}).status_code
+            == 400
+        )
         assert len(push.outbox) == 1
         # wyłączenie jednego konta nie rusza drugiego
         admin_client.post("/api/push/unsubscribe", json={"endpoint": SUB["endpoint"]})

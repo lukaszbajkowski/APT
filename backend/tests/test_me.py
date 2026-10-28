@@ -109,3 +109,47 @@ def test_document_fields_prefilled_from_contact(me, hr, emp):  # noqa: F811
         U.role = Role.manager
         assert _contact(e, U()) == {}
         assert templating.builtin_values(e, None, contact={"email": "x@y.pl"})["email_pracownika"] == "x@y.pl"
+
+
+def test_write_to_hr_thread(me, hr, emp):  # noqa: F811
+    assert "Inne" in me.get("/api/me/messages/subjects").json()
+    assert me.post("/api/me/messages", json={"subject": "xx", "body": "a"}).status_code == 400
+    r = me.post("/api/me/messages", json={"subject": "Szkolenia", "body": "Kiedy kolejne szkolenie?"})
+    assert r.status_code == 201, r.text
+    tid = r.json()["id"]
+    assert r.json()["employee_name"] is None  # pracownik nie dostaje danych kadrowych
+    assert hr.get("/api/hr-messages/count").json() == {"new": 1}
+    row = hr.get("/api/hr-messages").json()[0]
+    assert row["employee_name"] == "Nowak Anna" and row["status"] == "new"
+    mailer.outbox = []
+    r = hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "W przyszłym tygodniu."})
+    assert r.status_code == 200 and r.json()["status"] == "in_progress"
+    assert len(me.get(f"/api/me/messages/{tid}").json()["messages"]) == 2
+    assert hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"}).json()["status"] == "done"
+    # odpowiedź pracownika otwiera wątek ponownie
+    r = me.post(f"/api/me/messages/{tid}/messages", json={"body": "Dziękuję, a gdzie?"})
+    assert r.json()["status"] == "new"
+    assert hr.get("/api/hr-messages/count").json() == {"new": 1}
+
+
+def test_hr_threads_isolated(me, hr, emp, make_user):  # noqa: F811
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Hej"}).json()["id"]
+    assert hr.get(f"/api/hr-messages/{tid}").status_code == 200
+    assert me.get("/api/hr-messages").status_code == 403
+    other = TestClient(app)
+    token = _invite(hr, _second_employee())
+    r = _activate(other, token, FakeAuthenticator())
+    assert r.status_code == 200
+    assert other.get(f"/api/me/messages/{tid}").status_code == 404
+    assert other.get("/api/me/messages").json() == []
+
+
+def _second_employee() -> int:
+    from app.db import SessionLocal
+    from app.models import Employee
+
+    with SessionLocal() as db:
+        e = Employee(first_name="Jan", last_name="Kowalski", birth_date=BORN)
+        db.add(e)
+        db.commit()
+        return e.id

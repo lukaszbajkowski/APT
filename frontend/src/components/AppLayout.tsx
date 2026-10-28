@@ -7,6 +7,7 @@ import {
   Burger,
   Group,
   Menu,
+  Badge,
   NavLink,
   SegmentedControl,
   Text,
@@ -22,6 +23,7 @@ import {
   IconUserPlus,
   IconDeviceDesktop,
   IconFingerprint,
+  IconMessage,
   IconSwitchHorizontal,
   IconHome,
   IconMoon,
@@ -43,7 +45,8 @@ import {
 
 import { useAuth } from "../auth";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
-import { MFA_PATH, ROLE_LABELS } from "../api";
+import { api, MFA_PATH, ROLE_LABELS } from "../api";
+import { useQuery } from "@tanstack/react-query";
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -53,7 +56,14 @@ export function AppLayout() {
   const location = useLocation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
-  const items = [
+  const count = useQuery({
+    queryKey: ["hr-count"],
+    queryFn: () => api<{ new: number }>("/hr-messages/count"),
+    enabled: hasRole("admin", "hr"),
+    refetchInterval: 60_000,
+  });
+  const newMessages = count.data?.new ?? 0;
+  const items: { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number }[] = [
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee") },
@@ -65,6 +75,7 @@ export function AppLayout() {
     { to: "/zgloszenia", label: "Zgłoszenia agencji", icon: IconUserPlus, show: hasRole("admin", "hr") },
     { to: "/zgloszenia", label: "Zgłoszenia osób", icon: IconUserPlus, show: hasRole("agency") },
     { to: "/zestawienia", label: "Zestawienie dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency") },
+    { to: "/wiadomosci", label: "Wiadomości od pracowników", icon: IconMessage, show: hasRole("admin", "hr"), badge: newMessages },
     { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconFingerprint, show: hasRole("admin", "hr") },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
@@ -208,6 +219,7 @@ export function AppLayout() {
               active={i.to === "/" ? location.pathname === "/" : location.pathname.startsWith(i.to)}
               label={i.label}
               leftSection={<i.icon size={18} />}
+              rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
               onClick={close}
             />
           ))}

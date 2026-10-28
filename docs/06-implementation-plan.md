@@ -35,6 +35,7 @@ powiadomienie (e-mail lub SMS) z odsyłaczem do konta.
 |---|---|---|
 | A ✅ | Rola `employee`, powiązanie konta z kartoteką (`users.employee_id`), zaproszenie od kadr, logowanie wyłącznie kluczem dostępu (bez hasła i 2FA) | widzi wyłącznie własny rekord; migracje 0024–0026, tabela kluczy dostępu |
 | B ✅ | „Moje dane”: podgląd własnych danych (PESEL zamaskowany, obywatelstwo) i historii zatrudnienia/stanowisk/wydziałów, własne zdjęcie, telefon i e-mail zapisywane po potwierdzeniu kodem (SMS / e-mail); kontakt szyfrowany, widoczny tylko dla administratora i kadr | migracja 0027, `routers/me.py`; imię, nazwisko, płeć, obywatelstwo zmieniają tylko kadry |
+| B+ ✅ | „Napisz do kadr”: wątki pracownik ↔ kadry w aplikacji (temat z listy, status nowa / w toku / zakończona, odpowiedzi, powiadomienie e-mail bez treści, licznik nowych w menu kadr); bez załączników | migracja 0028, `routers/hr_messages.py` |
 | C | Ścieżka bez konta: kadry wysyłają link „aktualizacja danych” (jak link do podpisu: ważność, limit prób, data urodzenia) albo wprowadzają dane z dokumentu | ten sam formularz co „Moje dane” |
 | D | Podpis w koncie: lista „Do podpisu”, podpis po ponownym potwierdzeniu kluczem dostępu (zamiast jednorazowego sprawdzenia przy rejestracji), powiadomienia o nowym dokumencie | osoby bez konta nadal podpisują linkiem |
 

@@ -721,6 +721,45 @@ class ContactVerification(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class HrThread(Base):
+    """Wątek „Napisz do kadr”: temat z listy, status (new / in_progress / done)."""
+
+    __tablename__ = "hr_threads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    subject: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), default="new", nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    employee: Mapped["Employee"] = relationship(lazy="joined")
+    messages: Mapped[list["HrMessage"]] = relationship(
+        back_populates="thread", order_by="HrMessage.id", cascade="all, delete-orphan"
+    )
+
+
+class HrMessage(Base):
+    __tablename__ = "hr_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    thread_id: Mapped[int] = mapped_column(
+        ForeignKey("hr_threads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    from_staff: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    thread: Mapped[HrThread] = relationship(back_populates="messages")
+
+
 class WebauthnCredential(Base):
     """Klucz dostępu (Face ID / odcisk palca / PIN urządzenia) przypisany do konta."""
 

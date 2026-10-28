@@ -125,3 +125,8 @@ Dokumentacja interaktywna: `/api/docs` (Swagger).
 - Dane osobowe w historii zmian: zapisujemy tylko fakt zmiany pola, nie wartość.
 - Usunięcie pracownika kasuje kaskadą zdjęcia, dokumenty, szkolenia, badania, przydziały i checklisty.
 - Migracje są liniowe; każda zmiana modelu = nowa migracja Alembic (`alembic upgrade head` robi `aptid-aktualizuj`).
+
+## Wiadomości do kadr (migracja 0028)
+
+- `hr_threads` – wątek pracownika: `employee_id`, `subject` (temat z listy), `status` (`new` / `in_progress` / `done`), `created_at`, `updated_at`.
+- `hr_messages` – wiadomości wątku: `thread_id`, `from_staff`, `author_id`, `body` (do 2000 znaków), `created_at`. Bez załączników.

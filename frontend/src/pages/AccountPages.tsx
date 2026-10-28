@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { WriteToHrCard } from "../components/HrThreads";
 import { MyDataCards } from "../components/MyDataCards";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -204,6 +205,7 @@ export function MyAccountPage() {
           {error}
         </Alert>
       )}
+      {hasRole("employee") && <WriteToHrCard />}
       {hasRole("employee") && <MyDataCards />}
       <Card withBorder padding="lg">
         <Group justify="space-between" mb="sm">

@@ -6,9 +6,9 @@ Pracownik z kontem podpisuje wyłącznie po zalogowaniu; sam podpis wymaga dodat
 
 import io
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -18,7 +18,7 @@ from app.audit import audit
 from app.deps import Auth, DbSession, utcnow
 from app.models import DocumentSignature, Employee, GeneratedDocument, Role
 from app.routers.passkeys import reauth_options, verify_reauth
-from app.routers.signatures import _complete, _dir, _open, current_pdf
+from app.routers.signatures import _complete, _dir, _open, accept_trusted_file, current_pdf
 
 router = APIRouter(prefix="/api/me/signatures", tags=["me"])
 
@@ -160,6 +160,43 @@ def challenge(sig_id: int, ctx: Auth, request: Request, db: DbSession) -> dict[s
     out = reauth_options(db, request, ctx.user)
     db.commit()
     return out
+
+
+@router.get("/{sig_id}/pdf")
+def pdf(sig_id: int, ctx: Auth, request: Request, db: DbSession) -> Response:
+    """Pobranie dokumentu do podpisania poza aplikacją (podpis zaufany / kwalifikowany)."""
+    e = _employee(ctx, db)
+    sig, doc = _mine(db, e, sig_id)
+    _open(sig)
+    audit(
+        db,
+        request,
+        "document_downloaded",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"template": doc.template_name, "format": "to_sign", "own": True},
+    )
+    db.commit()
+    name = templating.safe_filename(doc.template_name) + ".pdf"
+    return Response(
+        current_pdf(doc),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
+    )
+
+
+@router.post("/{sig_id}/trusted")
+async def trusted(
+    sig_id: int, file: Annotated[UploadFile, File()], ctx: Auth, request: Request, db: DbSession
+) -> dict[str, Any]:
+    """Plik podpisany podpisem zaufanym lub kwalifikowanym – zamiast podpisu na ekranie."""
+    e = _employee(ctx, db)
+    sig, doc = _mine(db, e, sig_id)
+    _open(sig)
+    return await accept_trusted_file(
+        db, request, sig, doc, e, file, f"{e.first_name} {e.last_name}", {"account": True}
+    )
 
 
 class SignIn(BaseModel):

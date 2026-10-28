@@ -2,11 +2,12 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Checkbox, Group, Image, Loader, Stack, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, Image, List, Loader, Stack, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconCheck, IconFingerprint } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconDownload, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct } from "../api";
+import { useAuth } from "../auth";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { SignaturePad } from "./SignPage";
 
@@ -80,6 +81,23 @@ export function ToSignPage() {
   const [image, setImage] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { me, accounts, switchAccount } = useAuth();
+  const others = accounts.filter((a) => a.id !== me?.user.id && a.role === "employee");
+  const done = () => {
+    qc.invalidateQueries({ queryKey: ["my-signatures"] });
+    qc.invalidateQueries({ queryKey: ["my-sig-count"] });
+    notifications.show({ color: "green", message: "Dokument podpisany." });
+    navigate("/moje-konto/do-podpisu", { replace: true });
+  };
+  const upload = useMutation({
+    mutationFn: (file: File) => {
+      const f = new FormData();
+      f.append("file", file);
+      return api(`${base}/trusted`, { method: "POST", form: f });
+    },
+    onSuccess: done,
+    onError: (e) => setError(errorText(e)),
+  });
 
   // Safari wymaga otwarcia okna klucza od razu po dotknięciu – wyzwanie pobieramy wcześniej i odświeżamy co 4 min.
   const challenge = useRef<Challenge | null>(null);
@@ -112,12 +130,7 @@ export function ToSignPage() {
       const credential = await getPasskey(c.options);
       await api(`${base}/sign`, { method: "POST", body: { image, consent, challenge_id: c.challenge_id, credential } });
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-signatures"] });
-      qc.invalidateQueries({ queryKey: ["my-sig-count"] });
-      notifications.show({ color: "green", message: "Dokument podpisany." });
-      navigate("/moje-konto/do-podpisu", { replace: true });
-    },
+    onSuccess: done,
     onError: (e) => {
       setError(passkeyErrorText(e) ?? errorText(e));
       api<Challenge>(`${base}/challenge`, { method: "POST" })
@@ -134,7 +147,13 @@ export function ToSignPage() {
       <Stack maw={640}>
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {errorText(info.error)}
+          {others.length > 0 && " Ten dokument może należeć do innego konta zalogowanego w tej przeglądarce – przełącz konto."}
         </Alert>
+        {others.map((a) => (
+          <Button key={a.id} variant="light" onClick={() => switchAccount(a.id)}>
+            Przełącz na konto: {a.full_name}
+          </Button>
+        ))}
         <Button component={Link} to="/moje-konto/do-podpisu" variant="default">
           Wróć do listy
         </Button>
@@ -143,9 +162,19 @@ export function ToSignPage() {
   return (
     <Stack maw={640}>
       <Title order={2}>{info.data?.document ?? "Podpis"}</Title>
+      {accounts.length > 1 && (
+        <Alert color="blue" icon={<IconAlertCircle size={18} />}>
+          W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako: <b>{me?.user.full_name}</b>.
+        </Alert>
+      )}
       {!info.data && <Loader />}
       {info.data && (
         <>
+          <Group justify="flex-end">
+            <Button component="a" variant="default" href={withAcct(`/api${base}/pdf`)} leftSection={<IconDownload size={16} />}>
+              Pobierz PDF
+            </Button>
+          </Group>
           <Card withBorder padding="xs">
             <Stack gap="xs">
               {Array.from({ length: info.data.pages }, (_, i) => (
@@ -165,14 +194,52 @@ export function ToSignPage() {
                   {error}
                 </Alert>
               )}
+              <Tabs defaultValue="screen" keepMounted={false}>
+                <Tabs.List mb="md" grow>
+                  <Tabs.Tab value="screen" leftSection={<IconSignature size={16} />}>
+                    Na ekranie
+                  </Tabs.Tab>
+                  <Tabs.Tab value="trusted" leftSection={<IconFileUpload size={16} />}>
+                    Plik z podpisem
+                  </Tabs.Tab>
+                </Tabs.List>
+                <Tabs.Panel value="screen">
+                  <Stack>
               <SignaturePad onChange={setImage} />
-              <Checkbox checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go." />
-              <Button size="lg" leftSection={<IconFingerprint size={20} />} loading={sign.isPending} disabled={!image || !consent || !ready || !passkeysSupported()} onClick={() => sign.mutate()}>
-                Podpisz dokument
-              </Button>
-              <Text size="xs" c="dimmed">
-                Po dotknięciu potwierdzisz podpis twarzą, odciskiem palca lub PIN-em urządzenia. Zapiszemy podpis, datę i godzinę oraz adres IP.
-              </Text>
+                      <Checkbox checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go." />
+                      <Button size="lg" leftSection={<IconFingerprint size={20} />} loading={sign.isPending} disabled={!image || !consent || !ready || !passkeysSupported()} onClick={() => sign.mutate()}>
+                        Podpisz dokument
+                      </Button>
+                      <Text size="xs" c="dimmed">
+                        Po dotknięciu potwierdzisz podpis twarzą, odciskiem palca lub PIN-em urządzenia. Zapiszemy podpis, datę i godzinę oraz adres IP.
+                      </Text>
+                  </Stack>
+                </Tabs.Panel>
+                <Tabs.Panel value="trusted">
+                  <Stack>
+                    <Text fw={600}>Podpis zaufany lub kwalifikowany</Text>
+                    <List type="ordered" size="sm" spacing={6}>
+                      <List.Item>Pobierz dokument (przycisk „Pobierz PDF” u góry).</List.Item>
+                      <List.Item>
+                        Otwórz{" "}
+                        <Anchor href="https://moj.gov.pl/nforms/signer/upload?xFormsAppName=SIGNER" target="_blank" rel="noreferrer">
+                          podpisywanie dokumentu na gov.pl
+                        </Anchor>
+                        , dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym certyfikatem
+                        kwalifikowanym.
+                      </List.Item>
+                      <List.Item>Pobierz podpisany plik i wgraj go poniżej.</List.Item>
+                    </List>
+                    <FileButton accept="application/pdf,.xml,.xades,text/xml,application/xml" onChange={(f) => f && upload.mutate(f)}>
+                      {(props) => (
+                        <Button {...props} variant="light" leftSection={<IconFileUpload size={16} />} loading={upload.isPending}>
+                          Wgraj podpisany plik
+                        </Button>
+                      )}
+                    </FileButton>
+                  </Stack>
+                </Tabs.Panel>
+              </Tabs>
             </Stack>
           </Card>
         </>

@@ -454,7 +454,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                       </Button>
                     </Group>
                   )}
-                  {r.employee_account && r.status !== "pending" ? (
+                  {r.employee_account ? (
                     <AccountRequest key={r.role} doc={doc} employee={employee} r={r} st={st} onDone={refresh} />
                   ) : (
                     <RoleRequest key={r.role} doc={doc} employee={employee} r={r} st={st} onDone={refresh} />

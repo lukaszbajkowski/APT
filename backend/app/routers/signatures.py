@@ -968,6 +968,21 @@ async def sign_trusted(
     sig, doc, e = _by_token(db, token)
     _open(sig)
     _check_view(sig, e, view)
+    name = f"{e.first_name} {e.last_name}" if sig.role == "pracownika" else (signer_name or "").strip()
+    return await accept_trusted_file(db, request, sig, doc, e, file, name)
+
+
+async def accept_trusted_file(
+    db: Session,
+    request: Request,
+    sig: DocumentSignature,
+    doc: GeneratedDocument,
+    e: Employee,
+    file: UploadFile,
+    name: str,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Wspólna obsługa pliku z podpisem zaufanym/kwalifikowanym (link do podpisu i konto pracownika)."""
     data = await file.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Plik jest za duży (max 15 MB).")
@@ -977,7 +992,6 @@ async def sign_trusted(
             status.HTTP_400_BAD_REQUEST,
             detail="Ten plik nie wygląda na podpisany. Wgraj plik pobrany po podpisaniu (PDF albo XML).",
         )
-    name = f"{e.first_name} {e.last_name}" if sig.role == "pracownika" else (signer_name or "").strip()
     if not name:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz imię i nazwisko osoby podpisującej.")
     roots = await run_in_threadpool(trustlist.load_roots)
@@ -1015,5 +1029,14 @@ async def sign_trusted(
     sig.file_name = f"{doc.id}_sig_{sig.id}.{ext}"
     sig.original_name = fname[:255]
     storage.write(_dir(doc) / sig.file_name, data)
-    _complete(db, request, sig, doc, e, "zaufany", name, {"uploaded_file_sha256": signing.sha256(data)})
+    _complete(
+        db,
+        request,
+        sig,
+        doc,
+        e,
+        "zaufany",
+        name,
+        {"uploaded_file_sha256": signing.sha256(data), **(extra or {})},
+    )
     return {"ok": True, "check": sig.check_result}

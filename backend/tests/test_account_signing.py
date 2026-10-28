@@ -143,3 +143,18 @@ def test_company_role_still_uses_link_and_others_cannot_sign(admin_client):
     anon = TestClient(app)
     assert anon.get(f"/api/me/signatures/{sid}").status_code == 401
     assert admin_client.get(f"/api/me/signatures/{sid}").status_code == 403
+
+
+def test_account_download_and_file_signature(admin_client):
+    e, doc, auth, c = _account(admin_client)
+    admin_client.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika"})
+    sid = c.get("/api/me/signatures").json()["pending"][0]["id"]
+    pdf = c.get(f"/api/me/signatures/{sid}/pdf")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    # plik bez podpisu jest odrzucany, a dokument zostaje do podpisu
+    bad = c.post(f"/api/me/signatures/{sid}/trusted", files={"file": ("x.pdf", b"%PDF-1.4 nic")})
+    assert bad.status_code == 400
+    assert len(c.get("/api/me/signatures").json()["pending"]) == 1
+    # inne konto nie widzi cudzego dokumentu ani go nie pobierze
+    other = TestClient(app)
+    assert other.get(f"/api/me/signatures/{sid}/pdf").status_code in (401, 403)

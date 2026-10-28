@@ -211,7 +211,7 @@ export function AppLayout() {
                   </Menu.Item>
                 </>
               )}
-              <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate("/moje-konto")}>
+              <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
                 Klucze i powiadomienia
               </Menu.Item>
               <Menu.Item

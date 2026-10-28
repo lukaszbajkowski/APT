@@ -191,28 +191,64 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   );
 }
 
-function NewThread({ onCreated, onCancel }: { onCreated: (id: number) => void; onCancel: () => void }) {
+function NewThread({ staff, onCreated, onCancel }: { staff: boolean; onCreated: (id: number) => void; onCancel: () => void }) {
   const qc = useQueryClient();
   const [subject, setSubject] = useState<string | null>(null);
+  const [custom, setCustom] = useState("");
+  const [employee, setEmployee] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const subjects = useQuery({ queryKey: ["thread-subjects"], queryFn: () => api<string[]>("/me/messages/subjects") });
+  const subjects = useQuery({ queryKey: ["thread-subjects"], queryFn: () => api<string[]>("/me/messages/subjects"), enabled: !staff });
+  const people = useQuery({
+    queryKey: ["thread-people", search],
+    queryFn: () => api<{ employee_id: number; number: string; name: string }[]>(`/employee-accounts?status_filter=active&q=${encodeURIComponent(search)}`),
+    enabled: staff,
+  });
   const create = useMutation({
-    mutationFn: () => api<{ id: number }>("/me/messages", { method: "POST", body: { subject, body } }),
+    mutationFn: () =>
+      staff
+        ? api<{ id: number }>("/hr-messages", { method: "POST", body: { employee_id: Number(employee), subject: custom.trim(), body } })
+        : api<{ id: number }>("/me/messages", { method: "POST", body: { subject, body } }),
     onSuccess: (t) => {
-      qc.invalidateQueries({ queryKey: ["threads", "/me/messages"] });
+      qc.invalidateQueries({ queryKey: ["threads", staff ? "/hr-messages" : "/me/messages"] });
       onCreated(t.id);
     },
     onError: (e) => setError(errorText(e)),
   });
+  const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
   return (
     <Stack p="md" maw={560}>
-      <Title order={4}>Nowa wiadomość do kadr</Title>
-      <Select label="Temat" placeholder="Wybierz" data={subjects.data ?? []} value={subject} onChange={setSubject} />
+      <Title order={4}>{staff ? "Nowa wiadomość do pracownika" : "Nowa wiadomość do kadr"}</Title>
+      {staff ? (
+        <>
+          <Select
+            label="Pracownik"
+            description="Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości."
+            placeholder="Wpisz nazwisko"
+            searchable
+            data={(people.data ?? []).map((p) => ({ value: String(p.employee_id), label: `${p.name} (${p.number})` }))}
+            value={employee}
+            onChange={setEmployee}
+            searchValue={search}
+            onSearchChange={setSearch}
+            nothingFoundMessage="Brak pracownika z aktywnym kontem"
+            filter={({ options }) => options}
+          />
+          <TextInput label="Temat" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
+        </>
+      ) : (
+        <Select label="Temat" placeholder="Wybierz" data={subjects.data ?? []} value={subject} onChange={setSubject} />
+      )}
       <Textarea label="Treść" autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+      {staff && (
+        <Text size="xs" c="dimmed">
+          Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
+        </Text>
+      )}
       {error && <Alert color="red">{error}</Alert>}
       <Group>
-        <Button loading={create.isPending} disabled={!subject || !body.trim()} onClick={() => create.mutate()}>
+        <Button loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
           Wyślij
         </Button>
         <Button variant="default" onClick={onCancel}>
@@ -260,11 +296,9 @@ export function Messenger({ staff }: { staff: boolean }) {
           <Stack p="sm" gap="xs">
             <Group justify="space-between">
               <Title order={4}>{staff ? "Wiadomości" : "Napisz do kadr"}</Title>
-              {!staff && (
-                <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setComposing(true); setOpenId(null); }} aria-label="Nowa wiadomość">
-                  <IconPlus size={18} />
-                </ActionIcon>
-              )}
+              <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setComposing(true); setOpenId(null); }} aria-label="Nowa wiadomość">
+                <IconPlus size={18} />
+              </ActionIcon>
             </Group>
             {staff && (
               <>
@@ -333,7 +367,7 @@ export function Messenger({ staff }: { staff: boolean }) {
       {showRight && (
         <Box style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           {composing ? (
-            <NewThread onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
+            <NewThread staff={staff} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
           ) : openId !== null ? (
             <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} />
           ) : (

@@ -2,6 +2,7 @@
 
 Pracownik zakłada wątek (temat z listy) i dopisuje wiadomości; kadry i administrator odpowiadają i
 ustawiają status: new → in_progress → done. Nowa wiadomość pracownika otwiera zamknięty wątek ponownie.
+Kadry mogą też same zacząć rozmowę z pracownikiem, który ma aktywne konto (własny temat, status „w toku”).
 """
 
 from datetime import datetime, timedelta
@@ -390,6 +391,72 @@ def set_status(thread_id: int, body: StatusIn, ctx: StaffAuth, request: Request,
     return _out(t, True)
 
 
+class StaffNewIn(BaseModel):
+    employee_id: int
+    subject: str = Field(min_length=3, max_length=80)
+    body: str = Field(min_length=1, max_length=2000)
+
+
+MAX_STAFF_PER_HOUR = 30
+
+
+@staff_router.post("", response_model=ThreadOut, status_code=status.HTTP_201_CREATED)
+def staff_start(body: StaffNewIn, ctx: StaffAuth, request: Request, db: DbSession) -> ThreadOut:
+    """Kadry zaczynają rozmowę z pracownikiem, który ma aktywne konto (inaczej jej nie przeczyta)."""
+    from app.routers.passkeys import employee_account
+
+    e = db.get(Employee, body.employee_id)
+    if e is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pracownika.")
+    if employee_account(db, e.id) is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Ten pracownik nie ma aktywnego konta w aplikacji, więc nie przeczyta wiadomości.",
+        )
+    subject, text = body.subject.strip(), body.body.strip()
+    if len(subject) < 3 or not text:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz temat i treść wiadomości.")
+    sent = db.scalar(
+        select(func.count())
+        .select_from(HrThread)
+        .join(HrMessage, HrMessage.thread_id == HrThread.id)
+        .where(
+            HrMessage.author_id == ctx.user.id,
+            HrMessage.kind == "message",
+            HrMessage.created_at > utcnow() - timedelta(hours=1),
+        )
+    )
+    if (sent or 0) >= MAX_STAFF_PER_HOUR:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, detail="Za dużo wiadomości. Spróbuj za godzinę."
+        )
+    now = utcnow()
+    t = HrThread(
+        employee_id=e.id,
+        subject=subject,
+        status="in_progress",
+        created_at=now,
+        updated_at=now,
+        staff_seen_at=now,
+    )
+    t.messages.append(HrMessage(from_staff=True, author_id=ctx.user.id, body=text, created_at=now))
+    db.add(t)
+    db.flush()
+    audit(
+        db,
+        request,
+        "hr_thread_started_by_staff",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"thread": t.id, "subject": subject, "number": format_number(e.number)},
+    )
+    db.commit()
+    _notify_employee(t, started=True)
+    db.refresh(t)
+    return _out(t, True)
+
+
 def _push_staff(db: DbSession) -> None:
     """Powiadomienie push dla kadr i administratorów (ogólne, bez nazwiska i treści)."""
     from app import push
@@ -399,7 +466,7 @@ def _push_staff(db: DbSession) -> None:
     push.notify_users(db, ids, "Nowa wiadomość od pracownika", "Sprawdź skrzynkę w aplikacji.", "/wiadomosci")
 
 
-def _notify_employee(t: HrThread) -> None:
+def _notify_employee(t: HrThread, started: bool = False) -> None:
     """Krótka wiadomość bez treści odpowiedzi – na potwierdzony e-mail pracownika (jeśli jest)."""
     from app import crypto, push
     from app.db import SessionLocal
@@ -411,8 +478,8 @@ def _notify_employee(t: HrThread) -> None:
             push.notify_users(
                 pdb,
                 [uid],
-                "Odpowiedź od kadr",
-                "Kadry odpowiedziały na Twoją wiadomość.",
+                "Wiadomość od kadr" if started else "Odpowiedź od kadr",
+                "Kadry napisały do Ciebie." if started else "Kadry odpowiedziały na Twoją wiadomość.",
                 "/moje-konto/wiadomosci",
             )
     e = t.employee
@@ -423,10 +490,18 @@ def _notify_employee(t: HrThread) -> None:
         mailer.send(
             to,
             Email(
-                subject="Kadry odpowiedziały na Twoją wiadomość – Identyfikacja pracowników APT",
-                title="Nowa odpowiedź od kadr",
+                subject=(
+                    "Kadry napisały do Ciebie – Identyfikacja pracowników APT"
+                    if started
+                    else "Kadry odpowiedziały na Twoją wiadomość – Identyfikacja pracowników APT"
+                ),
+                title="Nowa wiadomość od kadr" if started else "Nowa odpowiedź od kadr",
                 greeting=f"Dzień dobry {e.first_name},",
-                paragraphs=[f"kadry odpowiedziały w sprawie „{t.subject}”. Zaloguj się, aby przeczytać."],
+                paragraphs=[
+                    "kadry napisały do Ciebie w aplikacji. Zaloguj się, aby przeczytać."
+                    if started
+                    else f"kadry odpowiedziały w sprawie „{t.subject}”. Zaloguj się, aby przeczytać."
+                ],
             ),
         )
     except Exception:  # noqa: BLE001 – powiadomienie nie może blokować odpowiedzi

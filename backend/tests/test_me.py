@@ -266,3 +266,46 @@ def test_deliver_payload_is_generic(monkeypatch, tmp_path):
 
 _SUB_HR = {"endpoint": "https://push.example.com/hr1", "keys": {"p256dh": "B" * 40, "auth": "a" * 16}}
 _SUB_ME = {"endpoint": "https://push.example.com/me1", "keys": {"p256dh": "C" * 40, "auth": "b" * 16}}
+
+
+def test_staff_starts_conversation(me, hr, emp):  # noqa: F811
+    from app import mailer, push
+
+    mailer.outbox, push.outbox = [], []
+    try:
+        eid = emp
+        assert (
+            hr.post("/api/push/subscribe", json=_SUB_ME).status_code == 204
+        )  # subskrypcja kadr, nie pracownika
+        r = hr.post(
+            "/api/hr-messages",
+            json={"employee_id": eid, "subject": "Prośba o dokument", "body": "Proszę o skan"},
+        )
+        assert r.status_code == 201, r.text
+        t = r.json()
+        assert t["status"] == "in_progress" and t["messages"][0]["from_staff"] is True
+        # pracownik widzi nieprzeczytaną wiadomość od kadr i może odpowiedzieć
+        assert me.get("/api/me/messages/count").json()["unread"] == 1
+        rows = me.get("/api/me/messages").json()
+        assert rows[0]["subject"] == "Prośba o dokument" and rows[0]["unread"] is True
+        assert me.get(f"/api/me/messages/{t['id']}").status_code == 200
+        assert me.get("/api/me/messages/count").json()["unread"] == 0
+        assert me.post(f"/api/me/messages/{t['id']}/messages", json={"body": "Wysyłam"}).status_code == 200
+        # kadry nie widzą własnej wiadomości jako nowej; powiadomienie e-mail bez treści i tematu
+        assert all("Proszę o skan" not in m[2] and "Prośba o dokument" not in m[2] for m in mailer.outbox)
+        # walidacja
+        assert (
+            hr.post(
+                "/api/hr-messages", json={"employee_id": 999999, "subject": "Abc", "body": "x"}
+            ).status_code
+            == 404
+        )
+        assert (
+            hr.post("/api/hr-messages", json={"employee_id": eid, "subject": "ab", "body": "x"}).status_code
+            == 422
+        )
+        assert me.post(
+            "/api/hr-messages", json={"employee_id": eid, "subject": "Abc", "body": "x"}
+        ).status_code in (401, 403)
+    finally:
+        mailer.outbox, push.outbox = None, None

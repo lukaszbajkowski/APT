@@ -83,6 +83,16 @@ def _contact_key() -> bytes:
     return _derive(b"apt/contact/enc/v1")
 
 
+@lru_cache
+def _contact_mac_key() -> bytes:
+    return _derive(b"apt/contact/hmac/v1")
+
+
+def contact_hash(kind: str, value: str) -> str:
+    """Wyszukiwalny skrót telefonu / e-maila (do pilnowania, że należy do jednej osoby)."""
+    return hmac.new(_contact_mac_key(), f"{kind}:{value}".encode(), hashlib.sha256).hexdigest()
+
+
 def encrypt_contact(value: str) -> bytes:
     """Telefon / e-mail pracownika: szyfrowanie osobnym kluczem wyprowadzonym z APT_DATA_KEY."""
     nonce = os.urandom(12)
@@ -104,3 +114,4 @@ def reset_cache() -> None:
     _keys.cache_clear()
     _totp_key.cache_clear()
     _contact_key.cache_clear()
+    _contact_mac_key.cache_clear()

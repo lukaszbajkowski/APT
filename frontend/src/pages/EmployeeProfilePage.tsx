@@ -59,6 +59,34 @@ import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
+function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "phone" | "email"; value?: string | null }) {
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () => api(`/employees/${employeeId}/contact/${kind}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee", String(employeeId)] });
+      qc.invalidateQueries({ queryKey: ["data-link-status", employeeId] });
+    },
+  });
+  if (!value) return null;
+  return (
+    <Group gap={6} wrap="nowrap">
+      <Text span size="sm">
+        {value}
+      </Text>
+      <Button
+        size="compact-xs"
+        variant="subtle"
+        color="red"
+        loading={remove.isPending}
+        onClick={() => window.confirm(`Usunąć ${kind === "phone" ? "telefon" : "e-mail"} z kartoteki? Pracownik może go później podać ponownie.`) && remove.mutate()}
+      >
+        Usuń
+      </Button>
+    </Group>
+  );
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -322,7 +350,8 @@ export function EmployeeProfilePage() {
               )}
               {(e.contact_phone || e.contact_email) && (
                 <Field label="Kontakt">
-                  {[e.contact_phone, e.contact_email].filter(Boolean).join(" · ")}
+                  <ContactLine employeeId={e.id} kind="phone" value={e.contact_phone} />
+                  <ContactLine employeeId={e.id} kind="email" value={e.contact_email} />
                 </Field>
               )}
               <Field label="Obywatelstwo">{e.country?.name ?? "—"}</Field>

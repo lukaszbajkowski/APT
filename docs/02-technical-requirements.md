@@ -30,7 +30,7 @@ backend/app/        logika: models, schemas, deps (uprawnienia), signing, previe
                     agency_report, lifecycle, importer, mailer, sms, crypto, retention, cli
 backend/app/routers/ 19 modułów API (auth, users, employees, documents, signatures, trainings,
                     lifecycle, agency_portal, agency_reports, reports, retention, audit_log ...)
-backend/alembic/    migracje 0001–0031
+backend/alembic/    migracje 0001–0032
 backend/tests/      testy pytest (173)
 frontend/src/       pages/ (strony), components/ (widoki wielokrotnego użytku), api.ts, auth
 deploy/             Caddyfile, install.sh, backup.sh, restore.sh, offsite*.sh, monitor*.sh, mail-setup.sh

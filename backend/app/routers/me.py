@@ -13,6 +13,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import crypto, mailer, photos, sms, storage
@@ -181,10 +182,27 @@ class ContactStartOut(BaseModel):
     expires_minutes: int
 
 
+def _ensure_free(db: Session, e: Employee, kind: Kind, value: str) -> None:
+    """Jeden telefon / e-mail może należeć tylko do jednego pracownika."""
+    col = Employee.phone_hash if kind == "phone" else Employee.email_hash
+    taken = db.scalar(select(Employee.id).where(col == crypto.contact_hash(kind, value), Employee.id != e.id))
+    if taken is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=(
+                "Ten adres e-mail jest już przypisany do innego pracownika."
+                if kind == "email"
+                else "Ten numer telefonu jest już przypisany do innego pracownika."
+            )
+            + " Skontaktuj się z kadrami.",
+        )
+
+
 def start_contact(
     db: Session, request: Request, e: Employee, kind: Kind, raw_value: str, user: User | None, who: str
 ) -> ContactStartOut:
     value = _normalize(kind, raw_value)
+    _ensure_free(db, e, kind, value)
     now = utcnow()
     sent_last_hour = db.scalar(
         select(func.count())
@@ -292,11 +310,14 @@ def confirm_contact(
         v.attempts += 1
         db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy kod.")
+    value = crypto.decrypt_contact(v.value_enc)
+    _ensure_free(db, e, kind, value)
     v.used_at = now
+    h = crypto.contact_hash(kind, value)
     if kind == "phone":
-        e.phone_enc, e.phone_verified_at = v.value_enc, now
+        e.phone_enc, e.phone_verified_at, e.phone_hash = v.value_enc, now, h
     else:
-        e.email_enc, e.email_verified_at = v.value_enc, now
+        e.email_enc, e.email_verified_at, e.email_hash = v.value_enc, now, h
     audit(
         db,
         request,
@@ -307,7 +328,13 @@ def confirm_contact(
         entity_id=e.id,
         details={"kind": kind},
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:  # wyścig: ktoś zapisał ten sam kontakt chwilę wcześniej
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="Ten kontakt jest już przypisany do innego pracownika."
+        ) from exc
 
 
 @router.post("/contact/{kind}/confirm", response_model=MyEmployeeOut)
@@ -322,9 +349,9 @@ def remove_contact(
     db: Session, request: Request, e: Employee, kind: Kind, user: User | None, who: str
 ) -> None:
     if kind == "phone":
-        e.phone_enc = e.phone_verified_at = None
+        e.phone_enc = e.phone_verified_at = e.phone_hash = None
     else:
-        e.email_enc = e.email_verified_at = None
+        e.email_enc = e.email_verified_at = e.email_hash = None
     audit(
         db,
         request,

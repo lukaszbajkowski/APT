@@ -361,3 +361,11 @@ def contact_remove(
     _, e = _authorized(db, token, access)
     me_mod.remove_contact(db, request, e, kind, None, WHO)
     return _data(e)
+
+
+@staff_router.delete("/{employee_id}/contact/{kind}", status_code=status.HTTP_204_NO_CONTENT)
+def staff_remove_contact(
+    employee_id: int, kind: me_mod.Kind, ctx: StaffAuth, request: Request, db: DbSession
+) -> None:
+    """Kadry / administrator usuwają zapisany telefon albo e-mail pracownika."""
+    me_mod.remove_contact(db, request, _employee(db, employee_id), kind, ctx.user, ctx.user.username)

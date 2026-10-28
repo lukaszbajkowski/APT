@@ -97,3 +97,54 @@ def test_only_staff_creates_link(client, make_user, emp):  # noqa: F811
     make_user("kierownik", Role.manager)
     login(client, "kierownik")
     assert client.post(f"/api/employees/{emp}/data-link", json={}).status_code == 403
+
+
+def _set_contact(c, kind, value):  # noqa: ANN001
+    """Zapis kontaktu przez „Moje dane” (start + kod z poczty / SMS)."""
+    r = c.post(f"/api/me/contact/{kind}/start", json={"value": value})
+    if r.status_code != 200:
+        return r
+    text = mailer.outbox[-1][2] if kind == "email" else sms.outbox[-1][1]
+    code = re.search(r"\b(\d{6})\b", text).group(1)
+    return c.post(f"/api/me/contact/{kind}/confirm", json={"code": code})
+
+
+def test_contact_unique_and_staff_can_remove(hr, emp):  # noqa: F811
+    from app.db import SessionLocal
+    from app.models import Employee
+
+    with SessionLocal() as db:
+        e2 = Employee(first_name="Jan", last_name="Kowalski", birth_date=BORN)
+        db.add(e2)
+        db.commit()
+        e2_id = e2.id
+    mailer.outbox, sms.outbox = [], []
+    a, b = TestClient(app), TestClient(app)
+    for c, eid in ((a, emp), (b, e2_id)):
+        r = _activate(c, _invite(hr, eid), FakeAuthenticator())
+        assert r.status_code == 200, r.text
+        c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+    assert _set_contact(a, "email", "wspolny@example.com").status_code == 200
+    assert _set_contact(a, "phone", "600100200").status_code == 200
+    # ten sam kontakt (także w innej pisowni) nie trafi do drugiego pracownika
+    assert _set_contact(b, "email", "Wspolny@Example.com").status_code == 409
+    assert _set_contact(b, "phone", "+48 600 100 200").status_code == 409
+    assert _set_contact(b, "email", "inny@example.com").status_code == 200
+    # ten sam pracownik może zapisać własny kontakt ponownie
+    assert _set_contact(a, "email", "wspolny@example.com").status_code == 200
+
+    # kadry usuwają kontakt – wtedy adres jest wolny
+    assert hr.delete(f"/api/employees/{emp}/contact/email").status_code == 204
+    assert hr.delete(f"/api/employees/{emp}/contact/phone").status_code == 204
+    d = hr.get(f"/api/employees/{emp}").json()
+    assert not d.get("contact_email") and not d.get("contact_phone")
+    assert _set_contact(b, "phone", "600100200").status_code == 200
+
+
+def test_manager_cannot_remove_contact(client, make_user, emp):  # noqa: F811
+    from app.models import Role
+    from tests.conftest import login
+
+    make_user("kier2", Role.manager)
+    login(client, "kier2")
+    assert client.delete(f"/api/employees/{emp}/contact/email").status_code == 403

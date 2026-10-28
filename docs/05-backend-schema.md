@@ -136,3 +136,4 @@ Dokumentacja interaktywna: `/api/docs` (Swagger).
 ## Link „aktualizacja danych” (migracja 0031)
 
 - `data_links` – link dla pracownika bez konta: `employee_id`, `token_hash` (unikalny, zerowany po unieważnieniu), `status` (`active` / `cancelled`), `failed_attempts` (blokada po 5), `created_by`, `expires_at` (7 dni), `last_used_at`. Nowy link unieważnia poprzedni; dla pracownika z aktywnym kontem link nie jest wystawiany.
+- `employees.phone_hash` / `email_hash` (migracja 0032) – unikalne skróty HMAC telefonu i e-maila: jeden kontakt należy tylko do jednego pracownika; kadry i administrator mogą kontakt usunąć (`DELETE /api/employees/{id}/contact/{phone|email}`).

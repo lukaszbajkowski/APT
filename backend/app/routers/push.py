@@ -76,12 +76,15 @@ def unsubscribe_all(ctx: Auth, request: Request, db: DbSession) -> None:
 
 
 @router.post("/test")
-def test(ctx: Auth, db: DbSession) -> dict[str, int]:
-    n = push.notify_users(
-        db, [ctx.user.id], "Test powiadomień", "Powiadomienia na tym urządzeniu działają.", "/"
+def test(ctx: Auth, db: DbSession) -> dict:
+    results = push.send_now(
+        db, ctx.user.id, "Test powiadomień", "Powiadomienia na tym urządzeniu działają.", "/"
     )
-    if n == 0:
+    if not results:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail="To konto nie ma włączonych powiadomień na żadnym urządzeniu."
         )
-    return {"sent": n}
+    failed = [r for r in results if r != "ok"]
+    if len(failed) == len(results):
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail="Nie udało się wysłać: " + "; ".join(failed))
+    return {"sent": len(results) - len(failed), "failed": failed}

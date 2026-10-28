@@ -90,30 +90,41 @@ def notify_users(db: Session, user_ids: list[int], title: str, body: str, url: s
     return len(jobs)
 
 
-def _deliver(jobs: list[tuple[int, dict, int]], title: str, body: str, url: str) -> None:
+def _deliver(jobs: list[tuple[int, dict, int]], title: str, body: str, url: str) -> list[str]:
+    """Wysyła powiadomienia (synchronicznie). Zwraca opis wyniku dla każdego urządzenia."""
     from datetime import UTC, datetime
 
+    from py_vapid import Vapid
     from pywebpush import WebPushException, webpush
 
     s = get_settings()
     try:
         pem, _ = _keys()
-    except Exception:  # noqa: BLE001
+        vapid = Vapid.from_pem(pem.encode())
+    except Exception as exc:  # noqa: BLE001
         log.exception("Klucze push niedostępne")
-        return
+        return [f"klucze serwera niedostępne: {exc}"]
     contact = s.mail_from.split("<")[-1].strip(" >") if s.mail_from else ""
-    claims = {"sub": f"mailto:{contact}" if "@" in contact else s.public_url}
+    if "@" in contact:
+        sub_claim = f"mailto:{contact}"
+    elif s.public_url.startswith("https://"):
+        sub_claim = s.public_url
+    else:
+        sub_claim = "mailto:admin@example.com"  # tylko środowisko testowe (bez https)
+    claims = {"sub": sub_claim}
+    results: list[str] = []
     for sub_id, info, user_id in jobs:
         payload = json.dumps({"title": title, "body": body, "url": _url_for(url, user_id)})
         try:
             webpush(
                 subscription_info=info,
                 data=payload,
-                vapid_private_key=pem,
+                vapid_private_key=vapid,
                 vapid_claims=dict(claims),
                 ttl=24 * 3600,
                 timeout=10,
             )
+            results.append("ok")
             with SessionLocal() as db:
                 row = db.get(PushSubscription, sub_id)
                 if row is not None:
@@ -121,13 +132,32 @@ def _deliver(jobs: list[tuple[int, dict, int]], title: str, body: str, url: str)
                     db.commit()
         except WebPushException as exc:
             code = getattr(exc.response, "status_code", None)
+            text = (getattr(exc.response, "text", "") or "")[:200]
             if code in (404, 410):  # subskrypcja wygasła albo odwołana w przeglądarce
+                results.append(f"urządzenie wypisane ({code})")
                 with SessionLocal() as db:
                     row = db.get(PushSubscription, sub_id)
                     if row is not None:
                         db.delete(row)
                         db.commit()
             else:
-                log.warning("Push nieudany (%s): %s", code, exc)
-        except Exception:  # noqa: BLE001
+                log.warning("Push nieudany (%s): %s %s", code, exc, text)
+                results.append(f"odrzucone przez usługę powiadomień ({code}): {text or exc}"[:300])
+        except Exception as exc:  # noqa: BLE001
             log.exception("Push nieudany")
+            results.append(f"błąd wysyłki: {exc}"[:300])
+    return results
+
+
+def send_now(db: Session, user_id: int, title: str, body: str, url: str = "/") -> list[str]:
+    """Jak notify_users, ale czeka na wynik (do przycisku „Wyślij testowe”)."""
+    subs = list(db.scalars(select(PushSubscription).where(PushSubscription.user_id == user_id)))
+    if outbox is not None:
+        for sub in subs:
+            outbox.append((sub.user_id, title, body, _url_for(url, sub.user_id)))
+        return ["ok"] * len(subs)
+    jobs = [
+        (x.id, {"endpoint": x.endpoint, "keys": {"p256dh": x.p256dh, "auth": x.auth}}, x.user_id)
+        for x in subs
+    ]
+    return _deliver(jobs, title, body, url)

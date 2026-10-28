@@ -822,6 +822,49 @@ async def store_uploaded_photo(
     db.refresh(e)
 
 
+class EnhanceOut(BaseModel):
+    image: str  # data URL (JPEG 600×800)
+    notes: list[dict[str, str]]
+    changed: list[str]
+
+
+async def enhance_uploaded(file: UploadFile, key: str) -> EnhanceOut:
+    """Podgląd automatycznej poprawy zdjęcia – nic nie zapisuje, wynik zatwierdza człowiek."""
+    import base64
+
+    from starlette.concurrency import run_in_threadpool
+
+    from app import photo_fix
+    from app.hardening import limiter
+
+    if not limiter.allow((key, "photo-enhance"), 30, 3600.0):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail="Zbyt wiele prób. Spróbuj za godzinę.")
+    limit = get_settings().photo_max_upload_mb * 1024 * 1024
+    raw = await file.read(limit + 1)
+    if len(raw) > limit:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Plik jest za duży (maks. {get_settings().photo_max_upload_mb} MB).",
+        )
+    try:
+        res = await run_in_threadpool(photo_fix.enhance, raw)
+    except photo_fix.FixError as exc:
+        raise _bad(str(exc)) from exc
+    return EnhanceOut(
+        image="data:image/jpeg;base64," + base64.b64encode(res.jpeg).decode(),
+        notes=[{"level": n.level, "text": n.text} for n in res.notes],
+        changed=res.changed,
+    )
+
+
+@router.post("/{employee_id}/photo/enhance", response_model=EnhanceOut)
+async def enhance_photo(
+    employee_id: int, ctx: PhotoAuth, db: DbSession, file: Annotated[UploadFile, File()]
+) -> EnhanceOut:
+    get_visible(db, ctx.user, employee_id)
+    return await enhance_uploaded(file, f"u{ctx.user.id}")
+
+
 @router.put("/{employee_id}/photo", response_model=EmployeeOut)
 async def upload_photo(
     employee_id: int,

@@ -21,7 +21,7 @@ from app.audit import audit
 from app.deps import Auth, DbSession, utcnow
 from app.emails import Email
 from app.models import ContactVerification, Employee, Role, User
-from app.routers.employees import format_number, store_uploaded_photo
+from app.routers.employees import EnhanceOut, enhance_uploaded, format_number, store_uploaded_photo
 from app.routers.lifecycle import AssignmentOut, PeriodOut, build_timeline
 from app.security import token_hash
 
@@ -145,6 +145,12 @@ async def upload_my_photo(
     e = _me_employee(ctx, db)
     await store_uploaded_photo(db, request, ctx.user, e, file)
     return my_employee(ctx, db)
+
+
+@router.post("/photo/enhance", response_model=EnhanceOut)
+async def enhance_my_photo(ctx: Auth, db: DbSession, file: Annotated[UploadFile, File()]) -> EnhanceOut:
+    _me_employee(ctx, db)
+    return await enhance_uploaded(file, f"u{ctx.user.id}")
 
 
 # --- kontakt: telefon i e-mail z potwierdzeniem kodem ------------------------------------------

@@ -24,7 +24,7 @@ from app.deps import DbSession, StaffAuth, utcnow
 from app.emails import Email
 from app.models import DataLink, Employee, User, WebauthnCredential
 from app.routers import me as me_mod
-from app.routers.employees import store_uploaded_photo
+from app.routers.employees import EnhanceOut, enhance_uploaded, store_uploaded_photo
 from app.security import new_token, token_hash
 
 LINK_DAYS = 7
@@ -365,6 +365,14 @@ async def upload_photo(
     await store_uploaded_photo(db, request, None, e, file, who=WHO)
     _saved(db, link)
     return _data(e)
+
+
+@public_router.post("/{token}/photo/enhance", response_model=EnhanceOut)
+async def enhance_photo(
+    token: str, request: Request, db: DbSession, file: Annotated[UploadFile, File()], access: Access = None
+) -> EnhanceOut:
+    _authorized(db, token, access)
+    return await enhance_uploaded(file, request.client.host if request.client else "?")
 
 
 @public_router.post("/{token}/contact/{kind}/start", response_model=me_mod.ContactStartOut)

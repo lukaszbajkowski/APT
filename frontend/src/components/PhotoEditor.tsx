@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import { Alert, Box, Button, FileButton, Group, Modal, Slider, Stack, Text } from "@mantine/core";
+import { Alert, Box, Button, FileButton, Group, Image, Modal, Slider, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCamera, IconUpload } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCamera, IconCheck, IconUpload, IconWand } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useT } from "../lib/i18n";
@@ -13,7 +13,7 @@ const OUT_H = 800;
 
 async function cropToBlob(src: string, area: Area): Promise<Blob> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
+    const i = new window.Image();
     i.onload = () => resolve(i);
     i.onerror = reject;
     i.src = src;
@@ -99,9 +99,15 @@ export function PhotoEditor({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // automatyczna poprawa: podgląd „przed i po”, zatwierdzany ręcznie
+  type Enh = { image: string; notes: { level: string; text: string }[]; changed: string[] };
+  const [enh, setEnh] = useState<Enh | null>(null);
+  const [original, setOriginal] = useState<string | null>(null); // zdjęcie sprzed zatwierdzonej poprawy
 
   useEffect(() => {
     if (!opened) {
+      setEnh(null);
+      setOriginal(null);
       setSrc(null);
       setCamera(false);
       setZoom(1);
@@ -124,6 +130,35 @@ export function PhotoEditor({
     };
     reader.readAsDataURL(file);
   }
+
+  const enhance = useMutation({
+    mutationFn: async () => {
+      if (!src) throw new Error("Brak zdjęcia");
+      const blob = await (await fetch(src)).blob();
+      const form = new FormData();
+      form.append("file", blob, "zdjecie.jpg");
+      return api<Enh>(`${endpoint ?? `/employees/${employee.id}/photo`}/enhance`, { method: "POST", form });
+    },
+    onSuccess: (r) => {
+      setError(null);
+      setEnh(r);
+    },
+    onError: (err) => setError(errorText(err)),
+  });
+  const acceptEnhanced = () => {
+    if (!enh) return;
+    setOriginal(src);
+    setSrc(enh.image);
+    setEnh(null);
+    setZoom(1);
+    setCrop({ x: 0, y: 0 });
+  };
+  const revertOriginal = () => {
+    setSrc(original);
+    setOriginal(null);
+    setZoom(1);
+    setCrop({ x: 0, y: 0 });
+  };
 
   const upload = useMutation({
     mutationFn: async () => {
@@ -181,7 +216,46 @@ export function PhotoEditor({
             }}
           />
         )}
-        {src && (
+        {src && enh && (
+          <Stack>
+            <Group grow align="flex-start" wrap="nowrap">
+              <Stack gap={4} align="center">
+                <Text size="sm" fw={600}>
+                  {T("Przed")}
+                </Text>
+                <Image src={src} radius="sm" mah={320} fit="contain" />
+              </Stack>
+              <Stack gap={4} align="center">
+                <Text size="sm" fw={600}>
+                  {T("Po")}
+                </Text>
+                <Image src={enh.image} radius="sm" mah={320} fit="contain" />
+              </Stack>
+            </Group>
+            <Stack gap={4}>
+              {enh.notes.map((n, i) => (
+                <Group key={i} gap={6} wrap="nowrap" align="flex-start">
+                  {n.level === "ok" ? <IconCheck size={16} color="var(--mantine-color-green-6)" /> : <IconAlertTriangle size={16} color="var(--mantine-color-orange-6)" />}
+                  <Text size="xs">{T(n.text)}</Text>
+                </Group>
+              ))}
+            </Stack>
+            {enh.changed.length > 0 && (
+              <Text size="xs" c="dimmed">
+                {T("Zmieniono:")} {enh.changed.map((c) => T(c)).join(", ")}
+              </Text>
+            )}
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setEnh(null)}>
+                {T("Zostaw oryginał")}
+              </Button>
+              <Button leftSection={<IconCheck size={16} />} onClick={acceptEnhanced}>
+                {T("Użyj poprawionego")}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+        {src && !enh && (
           <>
             <Box pos="relative" h={420} bg="dark.7" style={{ borderRadius: 8, overflow: "hidden" }}>
               <Cropper
@@ -200,6 +274,19 @@ export function PhotoEditor({
               </Text>
               <Slider min={1} max={3} step={0.05} value={zoom} onChange={setZoom} label={null} />
             </div>
+            {original ? (
+              <Group gap="xs">
+                <IconCheck size={16} color="var(--mantine-color-green-6)" />
+                <Text size="xs">{T("Użyto zdjęcia poprawionego automatycznie.")}</Text>
+                <Button size="compact-xs" variant="subtle" onClick={revertOriginal}>
+                  {T("Wróć do oryginału")}
+                </Button>
+              </Group>
+            ) : (
+              <Button variant="light" leftSection={<IconWand size={16} />} loading={enhance.isPending} onClick={() => enhance.mutate()}>
+                {T("Popraw automatycznie")}
+              </Button>
+            )}
             <Group justify="space-between">
               <Button variant="subtle" onClick={() => setSrc(null)}>
                 {T("Wybierz inne")}

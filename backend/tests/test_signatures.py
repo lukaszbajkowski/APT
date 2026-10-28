@@ -132,6 +132,16 @@ def test_sign_on_screen_flow(admin_client, outboxes):
         assert lifecycle.auto_done(db, it, emp)
         it.auto = "signed:999999"
         assert not lifecycle.auto_done(db, it, emp)
+        it.auto = f"signed:{doc['template_id']}"
+    # dokument w koszu nie spełnia pozycji; po przywróceniu znowu
+    assert c.post(f"/api/documents/{doc['id']}/delete", json={"reason": "pomyłka"}).status_code == 204
+    with SessionLocal() as db:
+        emp = db.get(Employee, e["id"])
+        assert not lifecycle.auto_done(db, it, emp)
+    assert c.post(f"/api/documents/{doc['id']}/restore").status_code == 204
+    with SessionLocal() as db:
+        emp = db.get(Employee, e["id"])
+        assert lifecycle.auto_done(db, it, emp)
     assert st["has_signed_pdf"] and st["signed_at"] is None  # brakuje podpisu firmy
     signed = c.get(f"/api/documents/{doc['id']}/signed")
     pdf = PdfReader(io.BytesIO(signed.content))

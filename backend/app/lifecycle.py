@@ -206,6 +206,7 @@ def auto_done(db: Session, it: ChecklistItem, e: Employee) -> bool:
             .where(
                 GeneratedDocument.employee_id == e.id,
                 GeneratedDocument.template_id == int(ref),
+                GeneratedDocument.deleted_at.is_(None),
                 DocumentSignature.status == "signed",
                 DocumentSignature.role.in_(("pracownika", "skan")),
             )

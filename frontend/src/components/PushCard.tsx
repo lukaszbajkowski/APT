@@ -4,6 +4,7 @@ import { Alert, Button, Card, Group, Loader, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
+import { useT } from "../lib/i18n";
 import { api, errorText } from "../api";
 import { isIos, isStandalone } from "../lib/install";
 
@@ -20,6 +21,7 @@ const supported = () => "serviceWorker" in navigator && "PushManager" in window 
  * nazwiska, tytuły dokumentów i treść wiadomości nie opuszczają aplikacji.
  */
 export function PushCard() {
+  const t = useT();
   const [on, setOn] = useState<boolean | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>(supported() ? Notification.permission : "denied");
 
@@ -47,7 +49,7 @@ export function PushCard() {
     mutationFn: async () => {
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== "granted") throw new Error("Przeglądarka nie pozwoliła na powiadomienia. Zmień to w ustawieniach strony.");
+      if (perm !== "granted") throw new Error(t("Przeglądarka nie pozwoliła na powiadomienia. Zmień to w ustawieniach strony."));
       const reg = await registration();
       await navigator.serviceWorker.ready;
       const { public_key } = await api<{ public_key: string }>("/push/key");
@@ -56,13 +58,13 @@ export function PushCard() {
         try {
           sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(public_key) });
         } catch {
-          throw new Error("Nie udało się połączyć z usługą powiadomień przeglądarki. Spróbuj ponownie za chwilę.");
+          throw new Error(t("Nie udało się połączyć z usługą powiadomień przeglądarki. Spróbuj ponownie za chwilę."));
         }
       }
       await api("/push/subscribe", { method: "POST", body: sub.toJSON() });
       setOn(true);
     },
-    onSuccess: () => notifications.show({ color: "green", message: "Powiadomienia włączone na tym urządzeniu." }),
+    onSuccess: () => notifications.show({ color: "green", message: t("Powiadomienia włączone na tym urządzeniu.") }),
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const disable = useMutation({
@@ -77,7 +79,7 @@ export function PushCard() {
       }
       setOn(false);
     },
-    onSuccess: () => notifications.show({ message: "Powiadomienia wyłączone na tym urządzeniu." }),
+    onSuccess: () => notifications.show({ message: t("Powiadomienia wyłączone na tym urządzeniu.") }),
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const test = useMutation({
@@ -85,7 +87,7 @@ export function PushCard() {
       const sub = await (await registration()).pushManager.getSubscription();
       return api("/push/test", { method: "POST", body: { endpoint: sub?.endpoint ?? null } });
     },
-    onSuccess: () => notifications.show({ message: "Wysłano testowe powiadomienie." }),
+    onSuccess: () => notifications.show({ message: t("Wysłano testowe powiadomienie.") }),
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
@@ -93,27 +95,25 @@ export function PushCard() {
   return (
     <Card withBorder padding="lg">
       <Title order={4} mb={4}>
-        Powiadomienia na tym urządzeniu
+        {t("Powiadomienia na tym urządzeniu")}
       </Title>
       <Text size="sm" c="dimmed" mb="sm">
-        Dostaniesz krótkie powiadomienie na tym urządzeniu (telefonie, tablecie lub komputerze), gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest
-        ogólna – bez nazwisk i szczegółów.
+        {t("Dostaniesz krótkie powiadomienie na tym urządzeniu (telefonie, tablecie lub komputerze), gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest ogólna – bez nazwisk i szczegółów.")}
       </Text>
       {on === null && <Loader size="sm" />}
       {needInstall && (
         <Alert color="blue" icon={<IconInfoCircle size={18} />} mb="sm">
-          Na iPhonie powiadomienia działają po dodaniu aplikacji do ekranu początkowego: w Safari wybierz „Udostępnij” → „Dodaj do ekranu
-          początkowego”, otwórz aplikację z ikony i wróć tutaj.
+          {t("Na iPhonie powiadomienia działają po dodaniu aplikacji do ekranu początkowego: w Safari wybierz „Udostępnij” → „Dodaj do ekranu początkowego”, otwórz aplikację z ikony i wróć tutaj.")}
         </Alert>
       )}
       {!needInstall && !supported() && (
         <Alert color="orange" icon={<IconInfoCircle size={18} />}>
-          Ta przeglądarka nie obsługuje powiadomień push.
+          {t("Ta przeglądarka nie obsługuje powiadomień push.")}
         </Alert>
       )}
       {permission === "denied" && supported() && !on && !needInstall && (
         <Alert color="orange" icon={<IconInfoCircle size={18} />} mb="sm">
-          Powiadomienia są zablokowane w ustawieniach przeglądarki dla tej strony. Odblokuj je, aby je włączyć.
+          {t("Powiadomienia są zablokowane w ustawieniach przeglądarki dla tej strony. Odblokuj je, aby je włączyć.")}
         </Alert>
       )}
       {on !== null && supported() && !needInstall && (
@@ -121,15 +121,15 @@ export function PushCard() {
           {on ? (
             <>
               <Button variant="light" leftSection={<IconBell size={16} />} loading={test.isPending} onClick={() => test.mutate()}>
-                Wyślij testowe
+                {t("Wyślij testowe")}
               </Button>
               <Button variant="default" leftSection={<IconBellOff size={16} />} loading={disable.isPending} onClick={() => disable.mutate()}>
-                Wyłącz na tym urządzeniu
+                {t("Wyłącz na tym urządzeniu")}
               </Button>
             </>
           ) : (
             <Button leftSection={<IconBell size={16} />} loading={enable.isPending} onClick={() => enable.mutate()}>
-              Włącz powiadomienia
+              {t("Włącz powiadomienia")}
             </Button>
           )}
         </Group>

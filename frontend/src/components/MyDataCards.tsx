@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCamera, IconMail, IconPhone } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, withAcct, type Employee } from "../api";
+import { useT } from "../lib/i18n";
 import { PhotoEditor } from "./PhotoEditor";
 
 export interface MyEmployee {
@@ -37,10 +38,11 @@ interface History {
 }
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
+  const t = useT();
   return (
     <Group justify="space-between" wrap="nowrap" align="flex-start">
       <Text size="sm" c="dimmed">
-        {label}
+        {t(label)}
       </Text>
       <Text size="sm" ta="right">
         {value || "—"}
@@ -63,6 +65,7 @@ export function ContactEditor({
   queryKey?: unknown[];
 }) {
   const qc = useQueryClient();
+  const t = useT();
   const [value, setValue] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -87,7 +90,7 @@ export function ContactEditor({
     mutationFn: () => api<unknown>(`${base}/${kind}/confirm`, { method: "POST", body: { code } }),
     onSuccess: (d) => {
       done(d);
-      notifications.show({ color: "green", message: isMail ? "Zapisano adres e-mail." : "Zapisano numer telefonu." });
+      notifications.show({ color: "green", message: isMail ? t("Zapisano adres e-mail.") : t("Zapisano numer telefonu.") });
     },
     onError: (e) => setError(errorText(e)),
   });
@@ -102,13 +105,13 @@ export function ContactEditor({
         <Group gap="xs">
           {isMail ? <IconMail size={18} /> : <IconPhone size={18} />}
           <Text size="sm" fw={500}>
-            {isMail ? "E-mail" : "Telefon"}: {current ?? "nie podano"}
+            {isMail ? t("E-mail") : t("Telefon")}: {current ?? t("nie podano")}
           </Text>
-          {current && <Badge color={verified ? "green" : "gray"}>{verified ? "potwierdzony" : "niepotwierdzony"}</Badge>}
+          {current && <Badge color={verified ? "green" : "gray"}>{verified ? t("potwierdzony") : t("niepotwierdzony")}</Badge>}
         </Group>
         {current && (
           <Button size="xs" variant="subtle" color="red" loading={remove.isPending} onClick={() => remove.mutate()}>
-            Usuń
+            {t("Usuń")}
           </Button>
         )}
       </Group>
@@ -116,7 +119,7 @@ export function ContactEditor({
       {sentTo ? (
         <Group align="flex-end">
           <TextInput
-            label={`Kod wysłany na ${sentTo}`}
+            label={t("Kod wysłany na {to}", { to: sentTo })}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={7}
@@ -124,22 +127,22 @@ export function ContactEditor({
             onChange={(e) => setCode(e.currentTarget.value)}
           />
           <Button loading={confirm.isPending} disabled={code.length < 4} onClick={() => confirm.mutate()}>
-            Potwierdź
+            {t("Potwierdź")}
           </Button>
           <Button variant="default" onClick={() => setSentTo(null)}>
-            Anuluj
+            {t("Anuluj")}
           </Button>
         </Group>
       ) : (
         <Group align="flex-end">
           <TextInput
-            label={current ? "Nowa wartość" : isMail ? "Adres e-mail" : "Numer telefonu"}
+            label={current ? t("Nowa wartość") : isMail ? t("Adres e-mail") : t("Numer telefonu")}
             type={isMail ? "email" : "tel"}
             value={value}
             onChange={(e) => setValue(e.currentTarget.value)}
           />
           <Button loading={start.isPending} disabled={value.length < 3} onClick={() => start.mutate()}>
-            Wyślij kod
+            {t("Wyślij kod")}
           </Button>
         </Group>
       )}
@@ -149,6 +152,7 @@ export function ContactEditor({
 
 export function MyDataCards() {
   const qc = useQueryClient();
+  const t = useT();
   const [params, setParams] = useSearchParams();
   const photoOpen = params.get("zdjecie") === "1";
   const setPhotoOpen = (v: boolean) => setParams(v ? { zdjecie: "1" } : {});
@@ -167,7 +171,7 @@ export function MyDataCards() {
               {d.last_name[0]}
             </Avatar>
             <Button size="xs" variant="light" leftSection={<IconCamera size={14} />} onClick={() => setPhotoOpen(true)}>
-              {d.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+              {d.has_photo ? t("Zmień zdjęcie") : t("Dodaj zdjęcie")}
             </Button>
           </Stack>
           <Stack gap={4} style={{ flex: 1 }}>
@@ -183,17 +187,17 @@ export function MyDataCards() {
             <Row label="Stanowisko" value={d.position} />
             <Row label="Zatrudniony od" value={d.hire_date ? formatDate(d.hire_date) : null} />
             <Text size="xs" c="dimmed" mt="xs">
-              Imię, nazwisko, obywatelstwo, płeć i PESEL zmieniają wyłącznie kadry – zgłoś to poza aplikacją.
+              {t("Imię, nazwisko, obywatelstwo, płeć i PESEL zmieniają wyłącznie kadry – zgłoś to poza aplikacją.")}
             </Text>
           </Stack>
         </Group>
       </Card>
       <Card withBorder padding="lg" id="kontakt">
         <Title order={4} mb="xs">
-          Dane kontaktowe
+          {t("Dane kontaktowe")}
         </Title>
         <Text size="xs" c="dimmed" mb="sm">
-          Widzą je tylko kadry i administrator. Zmiana wymaga kodu wysłanego na nowy numer lub adres.
+          {t("Widzą je tylko kadry i administrator. Zmiana wymaga kodu wysłanego na nowy numer lub adres.")}
         </Text>
         <Stack>
           <ContactEditor kind="phone" current={d.phone} verified={d.phone_verified} />
@@ -203,23 +207,23 @@ export function MyDataCards() {
       {history.data && (history.data.periods.length > 0 || history.data.assignments.length > 0) && (
         <Card withBorder padding="lg">
           <Title order={4} mb="xs">
-            Historia zatrudnienia
+            {t("Historia zatrudnienia")}
           </Title>
           <Table.ScrollContainer minWidth={420}>
             <Table fz="sm">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Okres</Table.Th>
-                  <Table.Th>Agencja</Table.Th>
-                  <Table.Th>Wydział</Table.Th>
-                  <Table.Th>Stanowisko</Table.Th>
+                  <Table.Th>{t("Okres")}</Table.Th>
+                  <Table.Th>{t("Agencja")}</Table.Th>
+                  <Table.Th>{t("Wydział")}</Table.Th>
+                  <Table.Th>{t("Stanowisko")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {history.data.periods.map((p, i) => (
                   <Table.Tr key={i}>
                     <Table.Td>
-                      {p.hire_date ? formatDate(p.hire_date) : "?"} – {p.termination_date ? formatDate(p.termination_date) : "obecnie"}
+                      {p.hire_date ? formatDate(p.hire_date) : "?"} – {p.termination_date ? formatDate(p.termination_date) : t("obecnie")}
                     </Table.Td>
                     <Table.Td>{p.agency ?? "—"}</Table.Td>
                     <Table.Td>{p.department ?? "—"}</Table.Td>
@@ -232,13 +236,13 @@ export function MyDataCards() {
           {history.data.assignments.length > 0 && (
             <>
               <Text size="sm" fw={500} mt="md" mb={4}>
-                Zmiany wydziału i stanowiska
+                {t("Zmiany wydziału i stanowiska")}
               </Text>
               <Table fz="sm">
                 <Table.Tbody>
                   {history.data.assignments.map((a, i) => (
                     <Table.Tr key={i}>
-                      <Table.Td>od {formatDate(a.valid_from)}</Table.Td>
+                      <Table.Td>{t("od {date}", { date: formatDate(a.valid_from) })}</Table.Td>
                       <Table.Td>{a.department ?? "—"}</Table.Td>
                       <Table.Td>{a.position ?? "—"}</Table.Td>
                     </Table.Tr>

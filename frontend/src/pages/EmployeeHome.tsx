@@ -6,6 +6,7 @@ import { IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, Ico
 import { api, formatDate } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
 import { Messenger } from "../components/HrThreads";
+import { useT } from "../lib/i18n";
 
 export function EmployeeMessagesPage() {
   return <Messenger staff={false} />;
@@ -40,31 +41,32 @@ export function EmployeeHome() {
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const unread = useQuery({ queryKey: ["my-msg-count"], queryFn: () => api<{ unread: number }>("/me/messages/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
   const toSign = useQuery({ queryKey: ["my-sig-count"], queryFn: () => api<{ pending: number; last_signed: { id: number; document: string; signed_at: string | null } | null }>("/me/signatures/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
+  const t = useT();
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
   return (
     <Stack maw={760}>
-      <Title order={2}>{d ? `Dzień dobry, ${d.first_name}` : "Moje konto"}</Title>
+      <Title order={2}>{d ? t("Dzień dobry, {name}", { name: d.first_name }) : t("Moje konto")}</Title>
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
-        <Tile icon={IconSignature} title="Do podpisu" hint="Dokumenty czekające na Twój podpis" to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
+        <Tile icon={IconSignature} title={t("Do podpisu")} hint={t("Dokumenty czekające na Twój podpis")} to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
         {toSign.data?.last_signed && (
           <Tile
             icon={IconFileCheck}
-            title="Ostatnio podpisany"
+            title={t("Ostatnio podpisany")}
             hint={`${toSign.data.last_signed.document}${toSign.data.last_signed.signed_at ? ` · ${formatDate(toSign.data.last_signed.signed_at)}` : ""}`}
             to={`/moje-konto/do-podpisu/podpisane/${toSign.data.last_signed.id}`}
           />
         )}
-        <Tile icon={IconMessage} title="Napisz do kadr" hint="Zadaj pytanie lub zgłoś sprawę" to="/moje-konto/wiadomosci" badge={unread.data?.unread || undefined} />
-        <Tile icon={IconCamera} title={d?.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"} hint="Do karty identyfikacyjnej" onClick={() => setParams({ zdjecie: "1" })} />
+        <Tile icon={IconMessage} title={t("Napisz do kadr")} hint={t("Zadaj pytanie lub zgłoś sprawę")} to="/moje-konto/wiadomosci" badge={unread.data?.unread || undefined} />
+        <Tile icon={IconCamera} title={d?.has_photo ? t("Zmień zdjęcie") : t("Dodaj zdjęcie")} hint={t("Do karty identyfikacyjnej")} onClick={() => setParams({ zdjecie: "1" })} />
         <Tile
           icon={IconPhone}
-          title="Telefon i e-mail"
-          hint="Potwierdź kodem"
-          badge={noContact ? "uzupełnij" : undefined}
+          title={t("Telefon i e-mail")}
+          hint={t("Potwierdź kodem")}
+          badge={noContact ? t("uzupełnij") : undefined}
           onClick={() => document.getElementById("kontakt")?.scrollIntoView({ behavior: "smooth" })}
         />
-        <Tile icon={IconFingerprint} title="Klucze i powiadomienia" hint="Powiadomienia, drugie urządzenie" to="/moje-konto/klucze" />
+        <Tile icon={IconFingerprint} title={t("Klucze i powiadomienia")} hint={t("Powiadomienia, drugie urządzenie")} to="/moje-konto/klucze" />
       </SimpleGrid>
       <MyDataCards />
     </Stack>

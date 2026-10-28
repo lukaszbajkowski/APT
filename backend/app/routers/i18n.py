@@ -53,6 +53,25 @@ def public_strings(body: StringsIn, request: Request, db: DbSession) -> StringsO
     return _run(db, request, body)
 
 
+class LanguagesOut(BaseModel):
+    enabled: bool
+    languages: list[dict[str, str]] = []
+
+
+@router.get("/languages", response_model=LanguagesOut)
+def languages(request: Request) -> LanguagesOut:
+    """Lista języków do wyboru (też dla stron bez logowania). Bez klucza tłumacza: wyłączone."""
+    if not translate.enabled():
+        return LanguagesOut(enabled=False)
+    ip = request.client.host if request.client else "?"
+    if not limiter.allow((ip, "i18n-langs"), 120, 3600.0):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail="Zbyt wiele żądań. Spróbuj za godzinę.")
+    try:
+        return LanguagesOut(enabled=True, languages=translate.languages())
+    except translate.TranslateError:
+        return LanguagesOut(enabled=True, languages=[])
+
+
 class LanguageIn(BaseModel):
     language: str | None = Field(default=None, max_length=12)
 

@@ -9,6 +9,7 @@ import { IconAlertCircle, IconCheck, IconDownload, IconFileUpload, IconFingerpri
 import { api, errorText, formatDateTime, withAcct } from "../api";
 import { useAuth } from "../auth";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
 
 interface ListOut {
@@ -24,13 +25,14 @@ const LIVE = { refetchInterval: 8000, refetchOnWindowFocus: true } as const;
 
 /** Lista „Do podpisu” pracownika z kontem. */
 export function ToSignListPage() {
+  const t = useT();
   const list = useQuery({ queryKey: ["my-signatures"], queryFn: () => api<ListOut>("/me/signatures"), ...LIVE });
   return (
     <Stack maw={640}>
-      <Title order={2}>Do podpisu</Title>
+      <Title order={2}>{t("Do podpisu")}</Title>
       {list.isLoading && <Loader />}
       {list.data && list.data.pending.length === 0 && (
-        <Text c="dimmed">Nie masz dokumentów do podpisu. O nowym dokumencie dostaniesz powiadomienie.</Text>
+        <Text c="dimmed">{t("Nie masz dokumentów do podpisu. O nowym dokumencie dostaniesz powiadomienie.")}</Text>
       )}
       {list.data?.pending.map((p) => (
         <Card key={p.id} withBorder padding="md">
@@ -38,12 +40,12 @@ export function ToSignListPage() {
             <div>
               <Text fw={600}>{p.document}</Text>
               <Text size="xs" c="dimmed">
-                Od {formatDateTime(p.requested_at)}
+                {t("Od {date}", { date: formatDateTime(p.requested_at) })}
                 {p.requested_by ? ` · ${p.requested_by}` : ""}
               </Text>
             </div>
             <Button component={Link} to={`/moje-konto/do-podpisu/${p.id}`}>
-              Podpisz
+              {t("Podpisz")}
             </Button>
           </Group>
         </Card>
@@ -51,7 +53,7 @@ export function ToSignListPage() {
       {list.data && list.data.signed.length > 0 && (
         <>
           <Title order={4} mt="md">
-            Podpisane
+            {t("Podpisane")}
           </Title>
           {list.data.signed.map((s, i) => (
             <Card key={i} withBorder padding="sm" component={Link} to={`/moje-konto/do-podpisu/podpisane/${s.id}`} style={{ textDecoration: "none", color: "inherit" }}>
@@ -60,7 +62,7 @@ export function ToSignListPage() {
                   {s.document}
                 </Text>
                 <Badge color="teal" variant="light" leftSection={<IconCheck size={10} />}>
-                  {s.signed_at ? formatDateTime(s.signed_at) : "podpisano"}
+                  {s.signed_at ? formatDateTime(s.signed_at) : t("podpisano")}
                 </Badge>
               </Group>
             </Card>
@@ -73,6 +75,7 @@ export function ToSignListPage() {
 
 /** Podpis dokumentu w koncie: rysunek na ekranie + potwierdzenie kluczem dostępu. */
 export function ToSignPage() {
+  const t = useT();
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -86,7 +89,7 @@ export function ToSignPage() {
   const done = () => {
     qc.invalidateQueries({ queryKey: ["my-signatures"] });
     qc.invalidateQueries({ queryKey: ["my-sig-count"] });
-    notifications.show({ color: "green", message: "Dokument podpisany." });
+    notifications.show({ color: "green", message: t("Dokument podpisany.") });
     navigate("/moje-konto/do-podpisu", { replace: true });
   };
   const upload = useMutation({
@@ -114,10 +117,10 @@ export function ToSignPage() {
         })
         .catch(() => undefined);
     load();
-    const t = setInterval(load, 4 * 60 * 1000);
+    const timer = setInterval(load, 4 * 60 * 1000);
     return () => {
       stop = true;
-      clearInterval(t);
+      clearInterval(timer);
     };
   }, [base]);
 
@@ -147,24 +150,24 @@ export function ToSignPage() {
       <Stack maw={640}>
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {errorText(info.error)}
-          {others.length > 0 && " Ten dokument może należeć do innego konta zalogowanego w tej przeglądarce – przełącz konto."}
+          {others.length > 0 && " " + t("Ten dokument może należeć do innego konta zalogowanego w tej przeglądarce – przełącz konto.")}
         </Alert>
         {others.map((a) => (
           <Button key={a.id} variant="light" onClick={() => switchAccount(a.id)}>
-            Przełącz na konto: {a.full_name}
+            {t("Przełącz na konto: {name}", { name: a.full_name })}
           </Button>
         ))}
         <Button component={Link} to="/moje-konto/do-podpisu" variant="default">
-          Wróć do listy
+          {t("Wróć do listy")}
         </Button>
       </Stack>
     );
   return (
     <Stack maw={640}>
-      <Title order={2}>{info.data?.document ?? "Podpis"}</Title>
+      <Title order={2}>{info.data?.document ?? t("Podpis")}</Title>
       {accounts.length > 1 && (
         <Alert color="blue" icon={<IconAlertCircle size={18} />}>
-          W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako: <b>{me?.user.full_name}</b>.
+          {t("W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako:")} <b>{me?.user.full_name}</b>.
         </Alert>
       )}
       {!info.data && <Loader />}
@@ -172,13 +175,13 @@ export function ToSignPage() {
         <>
           <Group justify="flex-end">
             <Button component="a" variant="default" href={withAcct(`/api${base}/pdf`)} leftSection={<IconDownload size={16} />}>
-              Pobierz PDF
+              {t("Pobierz PDF")}
             </Button>
           </Group>
           <Card withBorder padding="xs">
             <Stack gap="xs">
               {Array.from({ length: info.data.pages }, (_, i) => (
-                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={`Strona ${i + 1}`} style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={t("Strona {n}", { n: i + 1 })} style={{ border: "1px solid var(--mantine-color-default-border)" }} />
               ))}
             </Stack>
           </Card>
@@ -186,7 +189,7 @@ export function ToSignPage() {
             <Stack>
               {!passkeysSupported() && (
                 <Alert color="orange" icon={<IconAlertCircle size={18} />}>
-                  To urządzenie nie obsługuje kluczy dostępu – otwórz konto w Safari lub Chrome.
+                  {t("To urządzenie nie obsługuje kluczy dostępu – otwórz konto w Safari lub Chrome.")}
                 </Alert>
               )}
               {error && (
@@ -197,43 +200,42 @@ export function ToSignPage() {
               <Tabs defaultValue="screen" keepMounted={false}>
                 <Tabs.List mb="md" grow>
                   <Tabs.Tab value="screen" leftSection={<IconSignature size={16} />}>
-                    Na ekranie
+                    {t("Na ekranie")}
                   </Tabs.Tab>
                   <Tabs.Tab value="trusted" leftSection={<IconFileUpload size={16} />}>
-                    Plik z podpisem
+                    {t("Plik z podpisem")}
                   </Tabs.Tab>
                 </Tabs.List>
                 <Tabs.Panel value="screen">
                   <Stack>
               <SignaturePad onChange={setImage} />
-                      <Checkbox checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go." />
+                      <Checkbox checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} label={t("Zapoznałem(-am) się z treścią dokumentu i podpisuję go.")} />
                       <Button size="lg" leftSection={<IconFingerprint size={20} />} loading={sign.isPending} disabled={!image || !consent || !ready || !passkeysSupported()} onClick={() => sign.mutate()}>
-                        Podpisz dokument
+                        {t("Podpisz dokument")}
                       </Button>
                       <Text size="xs" c="dimmed">
-                        Po dotknięciu potwierdzisz podpis twarzą, odciskiem palca lub PIN-em urządzenia. Zapiszemy podpis, datę i godzinę oraz adres IP.
+                        {t("Po dotknięciu potwierdzisz podpis twarzą, odciskiem palca lub PIN-em urządzenia. Zapiszemy podpis, datę i godzinę oraz adres IP.")}
                       </Text>
                   </Stack>
                 </Tabs.Panel>
                 <Tabs.Panel value="trusted">
                   <Stack>
-                    <Text fw={600}>Podpis zaufany lub kwalifikowany</Text>
+                    <Text fw={600}>{t("Podpis zaufany lub kwalifikowany")}</Text>
                     <List type="ordered" size="sm" spacing={6}>
-                      <List.Item>Pobierz dokument (przycisk „Pobierz PDF” u góry).</List.Item>
+                      <List.Item>{t("Pobierz dokument (przycisk „Pobierz PDF” u góry).")}</List.Item>
                       <List.Item>
-                        Otwórz{" "}
+                        {t("Otwórz")}{" "}
                         <Anchor href="https://moj.gov.pl/nforms/signer/upload?xFormsAppName=SIGNER" target="_blank" rel="noreferrer">
-                          podpisywanie dokumentu na gov.pl
+                          {t("podpisywanie dokumentu na gov.pl")}
                         </Anchor>
-                        , dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym certyfikatem
-                        kwalifikowanym.
+                        {t(", dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym certyfikatem kwalifikowanym.")}
                       </List.Item>
-                      <List.Item>Pobierz podpisany plik i wgraj go poniżej.</List.Item>
+                      <List.Item>{t("Pobierz podpisany plik i wgraj go poniżej.")}</List.Item>
                     </List>
                     <FileButton accept="application/pdf,.xml,.xades,text/xml,application/xml" onChange={(f) => f && upload.mutate(f)}>
                       {(props) => (
                         <Button {...props} variant="light" leftSection={<IconFileUpload size={16} />} loading={upload.isPending}>
-                          Wgraj podpisany plik
+                          {t("Wgraj podpisany plik")}
                         </Button>
                       )}
                     </FileButton>

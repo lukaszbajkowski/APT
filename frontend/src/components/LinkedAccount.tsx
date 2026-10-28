@@ -6,6 +6,7 @@ import { IconUserExclamation } from "@tabler/icons-react";
 
 import { api, setAccountId } from "../api";
 import { useAuth, type Account } from "../auth";
+import { useT } from "../lib/i18n";
 
 /**
  * Linki z e-maili i SMS-ów mają `?u=<konto adresata>`. Gdy w tej karcie jest aktywne inne konto
@@ -13,6 +14,7 @@ import { useAuth, type Account } from "../auth";
  * w tej przeglądarce; jeśli nie – prosimy o zalogowanie zamiast pokazywać pustą lub cudzą stronę.
  */
 export function LinkedAccount({ children }: { children: ReactNode }) {
+  const t = useT();
   const { me } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,18 +46,17 @@ export function LinkedAccount({ children }: { children: ReactNode }) {
   if (accounts.isError) return <>{children}</>;
   return (
     <Stack maw={520} mt="xl" mx="auto" px="md">
-      <Alert color="orange" icon={<IconUserExclamation size={18} />} title="Ten link dotyczy innego konta">
-        Jesteś zalogowany(-a) jako {me?.user.full_name}, a link przygotowano dla innego konta, które nie jest zalogowane w tej
-        przeglądarce.
+      <Alert color="orange" icon={<IconUserExclamation size={18} />} title={t("Ten link dotyczy innego konta")}>
+        {t("Jesteś zalogowany(-a) jako {name}, a link przygotowano dla innego konta, które nie jest zalogowane w tej przeglądarce.", { name: me?.user.full_name })}
       </Alert>
       <Text size="sm" c="dimmed">
-        Zaloguj się na to konto – wrócisz od razu na tę stronę. Obecne konto pozostanie zalogowane.
+        {t("Zaloguj się na to konto – wrócisz od razu na tę stronę. Obecne konto pozostanie zalogowane.")}
       </Text>
       <Button onClick={() => navigate("/login?dodaj=1", { state: { from: location.pathname + location.search } })}>
-        Zaloguj się na właściwe konto
+        {t("Zaloguj się na właściwe konto")}
       </Button>
       <Button variant="default" onClick={() => navigate("/", { replace: true })}>
-        Wróć do mojego konta
+        {t("Wróć do mojego konta")}
       </Button>
     </Stack>
   );

@@ -23,6 +23,7 @@ export interface User {
   agency_id?: number | null;
   mfa_enabled: boolean;
   mfa_required: boolean;
+  language?: string | null;
 }
 
 export interface Me {
@@ -472,6 +473,8 @@ export const ACTION_LABELS: Record<string, string> = {
   document_emailed: "Wysłanie dokumentu e-mailem",
   hr_thread_auto_closed: "Automatyczne zamknięcie rozmowy",
   message_translated: "Przetłumaczono wiadomość",
+  ui_translated: "Przetłumaczono teksty aplikacji",
+  language_changed: "Zmieniono język konta",
   hr_thread_archived: "Zarchiwizowano rozmowę",
   hr_thread_unarchived: "Przywrócono rozmowę z archiwum",
   hr_thread_auto_archived: "Automatyczna archiwizacja rozmowy",

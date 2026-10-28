@@ -250,18 +250,19 @@ def start_contact(
                 value, f"APT: kod potwierdzający {code}. Ważny {CODE_MINUTES} min. Nie podawaj go nikomu."
             )
         else:
-            mailer.send(
-                value,
-                Email(
-                    subject="Kod potwierdzający adres e-mail – Identyfikacja pracowników APT",
-                    title="Potwierdź adres e-mail",
-                    greeting=f"Dzień dobry {e.first_name},",
-                    paragraphs=["wpisz w aplikacji poniższy kod, aby potwierdzić ten adres."],
-                    details=[("Kod", code)],
-                    notice=f"Kod jest ważny {CODE_MINUTES} minut. Nie podawaj go nikomu.",
-                    footer_note="Jeśli to nie Ty – zignoruj tę wiadomość.",
-                ),
+            from app import i18n
+
+            raw = Email(
+                subject="Kod potwierdzający adres e-mail – Identyfikacja pracowników APT",
+                title="Potwierdź adres e-mail",
+                greeting="Dzień dobry {first_name},",
+                paragraphs=["wpisz w aplikacji poniższy kod, aby potwierdzić ten adres."],
+                details=[("Kod", code)],
+                notice="Kod jest ważny {minutes} minut. Nie podawaj go nikomu.",
+                footer_note="Jeśli to nie Ty – zignoruj tę wiadomość.",
             )
+            lang = user.language if user is not None else None
+            mailer.send(value, i18n.tr_email(db, raw, lang, first_name=e.first_name, minutes=CODE_MINUTES))
     except sms.SmsError as exc:
         db.rollback()
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc

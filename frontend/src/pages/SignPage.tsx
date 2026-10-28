@@ -24,6 +24,7 @@ import {
 import { IconCircleCheck, IconDownload, IconEraser, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
+import { LanguagePicker, useT } from "../lib/i18n";
 
 interface Info {
   document: string;
@@ -133,6 +134,7 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Pt[][], scale: numb
  * motywu (jasny na ciemnym tle), a zapisywany obraz zawsze ma granatowy tusz na przezroczystym tle.
  */
 export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+  const T = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Pt[][]>([]);
   const drawing = useRef(false);
@@ -220,7 +222,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
       >
         <canvas
           ref={canvas}
-          aria-label="Pole podpisu"
+          aria-label={T("Pole podpisu")}
           style={{ width: "100%", height: "100%", display: "block", cursor: "crosshair", touchAction: "none" }}
           onPointerDown={down}
           onPointerMove={move}
@@ -230,13 +232,13 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
         />
         {empty && (
           <Text size="xs" c="dimmed" style={{ position: "absolute", left: 14, bottom: 10, pointerEvents: "none" }}>
-            Podpisz się tutaj palcem lub myszką
+            {T("Podpisz się tutaj palcem lub myszką")}
           </Text>
         )}
       </Box>
       <Group justify="flex-end">
         <Button size="md" variant="subtle" color="gray" leftSection={<IconEraser size={16} />} onClick={clear}>
-          Wyczyść
+          {T("Wyczyść")}
         </Button>
       </Group>
     </Stack>
@@ -244,6 +246,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
 }
 
 export function SignPage() {
+  const T = useT();
   const { token = "" } = useParams();
   useSystemColorScheme();
   const info = useQuery({ queryKey: ["sign-info", token], queryFn: () => api<Info>(`/sign/${token}`), retry: false });
@@ -341,9 +344,12 @@ export function SignPage() {
         <Text fw={700} className="brand-title" mb="md">
           Identyfikacja pracowników APT
         </Text>
+        <Box mb="md" maw={240}>
+          <LanguagePicker />
+        </Box>
         {info.isLoading && <Loader />}
         {info.error && (
-          <Alert color="red" title="Nie można otworzyć dokumentu">
+          <Alert color="red" title={T("Nie można otworzyć dokumentu")}>
             {errorText(info.error)}
           </Alert>
         )}
@@ -352,13 +358,13 @@ export function SignPage() {
             <Center>
               <Stack align="center" gap="xs">
                 <IconCircleCheck size={56} color="var(--mantine-color-teal-6)" />
-                <Title order={3}>Dziękujemy – dokument podpisany</Title>
+                <Title order={3}>{T("Dziękujemy – dokument podpisany")}</Title>
                 <Text c="dimmed" ta="center">
-                  Podpisany dokument trafił do działu kadr. Możesz zamknąć tę stronę.
+                  {T("Podpisany dokument trafił do działu kadr. Możesz zamknąć tę stronę.")}
                 </Text>
                 {check && (
                   <Text size="sm" ta="center" c={check.level === "qualified" ? "teal.7" : "dimmed"}>
-                    Sprawdzenie podpisu w pliku: {check.label}.
+                    {T("Sprawdzenie podpisu w pliku: {label}.", { label: check.label })}
                   </Text>
                 )}
               </Stack>
@@ -368,14 +374,14 @@ export function SignPage() {
         {info.data && !done && (
           <Stack>
             <div>
-              <Title order={2}>Dokument do podpisu</Title>
+              <Title order={2}>{T("Dokument do podpisu")}</Title>
               <Text c="dimmed">
                 {info.data.document}
-                {info.data.person ? ` · ${info.data.person}` : ""} · podpisuje: {info.data.role_label.toLowerCase()}
+                {info.data.person ? ` · ${info.data.person}` : ""} · {T("podpisuje:")} {T(info.data.role_label).toLowerCase()}
               </Text>
             </div>
             {error && !view && (
-              <Alert color="red" ref={errorBox} title="Nie udało się">
+              <Alert color="red" ref={errorBox} title={T("Nie udało się")}>
                 {error}
               </Alert>
             )}
@@ -383,10 +389,10 @@ export function SignPage() {
             {!view && info.data.needs_birth_date && (
               <Card withBorder padding="md" radius="md" component="form" onSubmit={verify}>
                 <Stack>
-                  <Text>Dla bezpieczeństwa potwierdź swoją datę urodzenia.</Text>
-                  <TextInput size="md" type="date" label="Data urodzenia" required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
+                  <Text>{T("Dla bezpieczeństwa potwierdź swoją datę urodzenia.")}</Text>
+                  <TextInput size="md" type="date" label={T("Data urodzenia")} required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
                   <Button type="submit" size="md" loading={busy}>
-                    Dalej
+                    {T("Dalej")}
                   </Button>
                 </Stack>
               </Card>
@@ -397,27 +403,27 @@ export function SignPage() {
                 <Card withBorder padding="xs" radius="md">
                   <Stack gap="xs">
                     {Array.from({ length: pages }, (_, i) => (
-                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={`Strona ${i + 1}`} radius="sm" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={T("Strona {n}", { n: i + 1 })} radius="sm" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
                     ))}
                   </Stack>
                   <Group justify="flex-end" mt="xs">
                     <Button size="md" variant="subtle" component="a" href={`/api/sign/${token}/pdf${v}`} leftSection={<IconDownload size={16} />}>
-                      Pobierz PDF
+                      {T("Pobierz PDF")}
                     </Button>
                   </Group>
                 </Card>
 
                 <Card withBorder padding="md" radius="md">
                   {info.data.needs_name && (
-                    <TextInput size="md" mb="md" label="Imię i nazwisko osoby podpisującej" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+                    <TextInput size="md" mb="md" label={T("Imię i nazwisko osoby podpisującej")} required value={name} onChange={(e) => setName(e.currentTarget.value)} />
                   )}
                   <Tabs defaultValue="screen" keepMounted={false}>
                     <Tabs.List mb="md" grow>
                       <Tabs.Tab value="screen" leftSection={<IconSignature size={16} />}>
-                        Na ekranie
+                        {T("Na ekranie")}
                       </Tabs.Tab>
                       <Tabs.Tab value="trusted" leftSection={<IconFileUpload size={16} />}>
-                        Plik z podpisem
+                        {T("Plik z podpisem")}
                       </Tabs.Tab>
                     </Tabs.List>
                     <Tabs.Panel value="screen">
@@ -425,43 +431,42 @@ export function SignPage() {
                         {info.data.device_check && (
                           <Alert color={deviceOk === false ? "red" : "blue"} icon={<IconFingerprint size={18} />}>
                             {deviceOk === false
-                              ? "Ten telefon nie obsługuje potwierdzenia blokadą ekranu (Face ID, odcisk palca lub PIN). Ustaw blokadę ekranu w telefonie albo poproś dział kadr o nowy link bez tego wymogu. Możesz też wgrać plik z podpisem zaufanym lub kwalifikowanym (zakładka obok)."
-                              : "Po kliknięciu „Podpisz dokument” telefon poprosi o potwierdzenie: twarzą, odciskiem palca albo kodem odblokowania."}
+                              ? T("Ten telefon nie obsługuje potwierdzenia blokadą ekranu (Face ID, odcisk palca lub PIN). Ustaw blokadę ekranu w telefonie albo poproś dział kadr o nowy link bez tego wymogu. Możesz też wgrać plik z podpisem zaufanym lub kwalifikowanym (zakładka obok).")
+                              : T("Po kliknięciu „Podpisz dokument” telefon poprosi o potwierdzenie: twarzą, odciskiem palca albo kodem odblokowania.")}
                           </Alert>
                         )}
                         <SignaturePad onChange={setImage} />
                         <Checkbox
                           checked={consent}
                           onChange={(e) => setConsent(e.currentTarget.checked)}
-                          label="Zapoznałem(-am) się z treścią dokumentu i podpisuję go."
+                          label={T("Zapoznałem(-am) się z treścią dokumentu i podpisuję go.")}
                         />
                         <Button size="lg" onClick={sign} loading={busy} disabled={!image || !consent || (info.data.needs_name && !name.trim()) || (info.data.device_check && deviceOk === false)}>
-                          Podpisz dokument
+                          {T("Podpisz dokument")}
                         </Button>
                         <Text size="xs" c="dimmed">
-                          Zapiszemy podpis, datę i godzinę, adres IP i rodzaj urządzenia – na potwierdzenie, kto i kiedy podpisał.
+                          {T("Zapiszemy podpis, datę i godzinę, adres IP i rodzaj urządzenia – na potwierdzenie, kto i kiedy podpisał.")}
                         </Text>
                       </Stack>
                     </Tabs.Panel>
                     <Tabs.Panel value="trusted">
                       <Stack>
-                        <Text fw={600}>Podpis zaufany lub kwalifikowany</Text>
+                        <Text fw={600}>{T("Podpis zaufany lub kwalifikowany")}</Text>
                         <List type="ordered" size="sm" spacing={6}>
-                          <List.Item>Pobierz dokument (przycisk „Pobierz PDF” wyżej).</List.Item>
+                          <List.Item>{T("Pobierz dokument (przycisk „Pobierz PDF” wyżej).")}</List.Item>
                           <List.Item>
-                            Otwórz{" "}
+                            {T("Otwórz")}{" "}
                             <Anchor href="https://moj.gov.pl/nforms/signer/upload?xFormsAppName=SIGNER" target="_blank" rel="noreferrer">
-                              podpisywanie dokumentu na gov.pl
+                              {T("podpisywanie dokumentu na gov.pl")}
                             </Anchor>
-                            , dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym
-                            certyfikatem kwalifikowanym (np. w aplikacji swojego dostawcy podpisu).
+                            {T(", dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym certyfikatem kwalifikowanym (np. w aplikacji swojego dostawcy podpisu).")}
                           </List.Item>
-                          <List.Item>Pobierz podpisany plik i wgraj go poniżej.</List.Item>
+                          <List.Item>{T("Pobierz podpisany plik i wgraj go poniżej.")}</List.Item>
                         </List>
                         <FileButton accept="application/pdf,.xml,.xades,text/xml,application/xml" onChange={(f) => f && uploadTrusted(f)}>
                           {(props) => (
                             <Button {...props} size="md" variant="light" leftSection={<IconFileUpload size={16} />} loading={busy} disabled={info.data!.needs_name && !name.trim()}>
-                              Wgraj podpisany plik
+                              {T("Wgraj podpisany plik")}
                             </Button>
                           )}
                         </FileButton>
@@ -469,7 +474,7 @@ export function SignPage() {
                     </Tabs.Panel>
                   </Tabs>
                   {error && (
-                    <Alert color="red" title="Nie udało się" mt="md" ref={errorBox}>
+                    <Alert color="red" title={T("Nie udało się")} mt="md" ref={errorBox}>
                       {error}
                     </Alert>
                   )}

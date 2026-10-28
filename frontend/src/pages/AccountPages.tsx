@@ -8,6 +8,7 @@ import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
+import { LanguagePicker, useT } from "../lib/i18n";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
 interface Options {
@@ -17,6 +18,7 @@ interface Options {
 
 /** Strona z linku z zaproszenia: data urodzenia -> klucz dostępu (albo hasło jako zapas). */
 export function InvitePage() {
+  const t = useT();
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const { setMe } = useAuth();
@@ -76,29 +78,29 @@ export function InvitePage() {
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={440}>
         <Stack>
           <Title order={3} className="brand-title">
-            Załóż swoje konto
+            {t("Załóż swoje konto")}
           </Title>
+          <LanguagePicker />
           {info.isLoading && <Loader />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
-              Zaproszenie wygasło albo zostało już wykorzystane. Poproś kadry o nowe.
+              {t("Zaproszenie wygasło albo zostało już wykorzystane. Poproś kadry o nowe.")}
             </Alert>
           )}
           {info.data && (
             <>
               <Text size="sm">
-                {info.data.name}, zalogujesz się na to konto twarzą, odciskiem palca albo PIN-em telefonu – bez hasła.
+                {info.data.name}, {t("zalogujesz się na to konto twarzą, odciskiem palca albo PIN-em telefonu – bez hasła.")}
               </Text>
               {inAppBrowser() && (
-                <Alert color="yellow" title="Otwórz w przeglądarce" icon={<IconAlertCircle size={18} />}>
+                <Alert color="yellow" title={t("Otwórz w przeglądarce")} icon={<IconAlertCircle size={18} />}>
                   <Text size="sm">
-                    Ta strona otworzyła się w oknie aplikacji (np. komunikatora), gdzie klucz dostępu nie działa. Skopiuj
-                    link, otwórz go w Safari lub Chrome i dokończ tam.
+                    {t("Ta strona otworzyła się w oknie aplikacji (np. komunikatora), gdzie klucz dostępu nie działa. Skopiuj link, otwórz go w Safari lub Chrome i dokończ tam.")}
                   </Text>
                   <CopyButton value={window.location.href}>
                     {({ copied, copy }) => (
                       <Button size="xs" variant="light" mt="xs" onClick={copy}>
-                        {copied ? "Skopiowano" : "Kopiuj link"}
+                        {copied ? t("Skopiowano") : t("Kopiuj link")}
                       </Button>
                     )}
                   </CopyButton>
@@ -111,8 +113,8 @@ export function InvitePage() {
               )}
               {needsBirth && (
                 <TextInput
-                  label="Data urodzenia"
-                  description="Potwierdzamy, że to Ty."
+                  label={t("Data urodzenia")}
+                  description={t("Potwierdzamy, że to Ty.")}
                   type="date"
                   value={birth}
                   onChange={(e) => setBirth(e.currentTarget.value)}
@@ -120,22 +122,21 @@ export function InvitePage() {
               )}
               {!passkeysSupported() ? (
                 <Alert color="orange" icon={<IconAlertCircle size={18} />}>
-                  To urządzenie albo przeglądarka nie obsługuje kluczy dostępu. Otwórz zaproszenie w Safari (iPhone) lub
-                  Chrome (Android) albo skontaktuj się z kadrami.
+                  {t("To urządzenie albo przeglądarka nie obsługuje kluczy dostępu. Otwórz zaproszenie w Safari (iPhone) lub Chrome (Android) albo skontaktuj się z kadrami.")}
                 </Alert>
               ) : !prepared ? (
                 <Button size="md" loading={busy} disabled={!ready} onClick={prepare}>
-                  Dalej
+                  {t("Dalej")}
                 </Button>
               ) : (
                 <Button size="md" leftSection={<IconFingerprint size={20} />} loading={busy} onClick={withPasskey}>
-                  Utwórz klucz dostępu
+                  {t("Utwórz klucz dostępu")}
                 </Button>
               )}
             </>
           )}
           <Anchor component={Link} to="/login" size="sm" c="dimmed" ta="center">
-            Mam już konto – zaloguj
+            {t("Mam już konto – zaloguj")}
           </Anchor>
         </Stack>
       </Paper>
@@ -151,6 +152,7 @@ interface Passkey {
 }
 
 export function MyAccountPage() {
+  const t = useT();
   const { hasRole } = useAuth();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -199,7 +201,7 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>Klucze i powiadomienia</Title>
+      <Title order={2}>{t("Klucze i powiadomienia")}</Title>
       <InstallApp />
       <PushCard />
       {error && (
@@ -209,27 +211,25 @@ export function MyAccountPage() {
       )}
       <Card withBorder padding="lg">
         <Group justify="space-between" mb="sm">
-          <Title order={4}>Twoje klucze</Title>
+          <Title order={4}>{t("Twoje klucze")}</Title>
           <Button
             leftSection={<IconFingerprint size={18} />}
             loading={add.isPending || prepare.isPending}
             disabled={!passkeysSupported() || (!prepared && reauth && !pw)}
             onClick={() => (prepared ? add.mutate() : prepare.mutate())}
           >
-            {prepared ? "Utwórz klucz na tym urządzeniu" : "Dodaj klucz"}
+            {prepared ? t("Utwórz klucz na tym urządzeniu") : t("Dodaj klucz")}
           </Button>
         </Group>
         <Text size="sm" c="dimmed" mb="sm">
-          Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu
-          (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go
-          i wyślą nowe zaproszenie.
+          {t("Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go i wyślą nowe zaproszenie.")}
         </Text>
         {reauth && (
           <Stack gap="xs" mb="sm">
-            <Text size="sm">Przed dodaniem klucza potwierdź tożsamość:</Text>
-            <PasswordInput label="Obecne hasło" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+            <Text size="sm">{t("Przed dodaniem klucza potwierdź tożsamość:")}</Text>
+            <PasswordInput label={t("Obecne hasło")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
             {me?.user.mfa_enabled && (
-              <TextInput label="Kod z aplikacji" inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
+              <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
             )}
           </Stack>
         )}
@@ -241,8 +241,8 @@ export function MyAccountPage() {
                   {k.name}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  dodany {formatDateTime(k.created_at)}
-                  {k.last_used_at ? ` · ostatnio ${formatDateTime(k.last_used_at)}` : ""}
+                  {t("dodany {date}", { date: formatDateTime(k.created_at) })}
+                  {k.last_used_at ? ` · ${t("ostatnio {date}", { date: formatDateTime(k.last_used_at) })}` : ""}
                 </Text>
               </div>
               <Button
@@ -251,13 +251,13 @@ export function MyAccountPage() {
                 size="xs"
                 leftSection={<IconTrash size={14} />}
                 loading={remove.isPending && remove.variables === k.id}
-                onClick={() => window.confirm("Usunąć ten klucz?") && remove.mutate(k.id)}
+                onClick={() => window.confirm(t("Usunąć ten klucz?")) && remove.mutate(k.id)}
               >
-                Usuń
+                {t("Usuń")}
               </Button>
             </Group>
           ))}
-          {keys.data?.length === 0 && <Text size="sm">Nie masz jeszcze żadnego klucza.</Text>}
+          {keys.data?.length === 0 && <Text size="sm">{t("Nie masz jeszcze żadnego klucza.")}</Text>}
         </Stack>
       </Card>
     </Stack>

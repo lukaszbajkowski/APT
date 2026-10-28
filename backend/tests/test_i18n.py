@@ -86,3 +86,34 @@ def test_translation_failure_keeps_polish(monkeypatch):
     monkeypatch.setattr(translate, "transport", boom)
     with SessionLocal() as db:
         assert account_sign_email("Jan", "Umowa", "u", db, "uk").greeting == "Dzień dobry Jan,"
+
+
+def test_languages_public(client, monkeypatch):
+    r = client.get("/api/i18n/languages").json()
+    assert r["enabled"] is True and {"code": "uk", "name": "ukraiński"} in r["languages"]
+    monkeypatch.setattr(get_settings(), "google_translate_key", "")
+    assert client.get("/api/i18n/languages").json() == {"enabled": False, "languages": []}
+
+
+def test_push_from_hr_in_employee_language(me, hr):  # noqa: F811
+    from app import push
+
+    assert me.put("/api/i18n/language", json={"language": "uk"}).status_code == 204
+    eid = me.get("/api/me/employee").json()
+    emp_id = hr.get("/api/employee-accounts?status_filter=active").json()[0]["employee_id"]
+    push.outbox = []
+    try:
+        # subskrypcja potrzebna, by push trafił do outboxa
+        from app.db import SessionLocal as S
+        from app.models import PushSubscription, User
+
+        with S() as db:
+            uid = db.query(User).filter(User.employee_id == emp_id).one().id
+            db.add(PushSubscription(user_id=uid, endpoint="https://x/y", p256dh="a", auth="b"))
+            db.commit()
+        r = hr.post("/api/hr-messages", json={"employee_id": emp_id, "subject": "Temat", "body": "Cześć"})
+        assert r.status_code in (200, 201), r.text
+        assert push.outbox and push.outbox[-1][1] == "[uk] Wiadomość od kadr"
+    finally:
+        push.outbox = None
+    assert eid

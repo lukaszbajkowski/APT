@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Alert } from "@mantine/core";
+import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppShell,
@@ -57,6 +59,8 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const t = useT();
+  const lang = useLang();
 
   const count = useQuery({
     queryKey: ["hr-count"],
@@ -161,11 +165,11 @@ export function AppLayout() {
                   </Menu.Item>
                 ))}
               <Menu.Item leftSection={<IconUserPlus size={16} />} onClick={addAccount}>
-                Dodaj konto
+                {t("Dodaj konto")}
               </Menu.Item>
               <Menu.Divider />
               <SimulationMenu onDone={() => setMenuOpen(false)} />
-              <Menu.Label>Motyw</Menu.Label>
+              <Menu.Label>{t("Motyw")}</Menu.Label>
               <Box px="xs" pb="xs">
                 <SegmentedControl
                   fullWidth
@@ -177,7 +181,7 @@ export function AppLayout() {
                       value: "light",
                       label: (
                         <Group gap={4} justify="center" wrap="nowrap">
-                          <IconSun size={14} /> Jasny
+                          <IconSun size={14} /> {t("Jasny")}
                         </Group>
                       ),
                     },
@@ -185,7 +189,7 @@ export function AppLayout() {
                       value: "dark",
                       label: (
                         <Group gap={4} justify="center" wrap="nowrap">
-                          <IconMoon size={14} /> Ciemny
+                          <IconMoon size={14} /> {t("Ciemny")}
                         </Group>
                       ),
                     },
@@ -193,7 +197,7 @@ export function AppLayout() {
                       value: "auto",
                       label: (
                         <Group gap={4} justify="center" wrap="nowrap">
-                          <IconDeviceDesktop size={14} /> System
+                          <IconDeviceDesktop size={14} /> {t("System")}
                         </Group>
                       ),
                     },
@@ -201,6 +205,15 @@ export function AppLayout() {
                 />
               </Box>
               <Menu.Divider />
+              {hasRole("employee") && (
+                <>
+                  <Menu.Label>{t("Język")}</Menu.Label>
+                  <Box px="xs" pb="xs">
+                    <LanguagePicker size="xs" />
+                  </Box>
+                  <Menu.Divider />
+                </>
+              )}
               {!hasRole("employee") && (
                 <>
                   <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
@@ -212,7 +225,7 @@ export function AppLayout() {
                 </>
               )}
               <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
-                Klucze i powiadomienia
+                {t("Klucze i powiadomienia")}
               </Menu.Item>
               <Menu.Item
                 color="red"
@@ -222,7 +235,7 @@ export function AppLayout() {
                   navigate("/login");
                 }}
               >
-                Wyloguj
+                {t("Wyloguj")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -238,7 +251,7 @@ export function AppLayout() {
               component={Link}
               to={i.to}
               active={i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to)}
-              label={i.label}
+              label={t(i.label)}
               leftSection={<i.icon size={18} />}
               rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
               onClick={close}
@@ -248,6 +261,11 @@ export function AppLayout() {
 
       <AppShell.Main>
         <SimulationBanner />
+        {lang && hasRole("employee") && (
+          <Alert variant="light" color="gray" p="xs" mb="sm">
+            {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
+          </Alert>
+        )}
         <Outlet />
       </AppShell.Main>
     </AppShell>

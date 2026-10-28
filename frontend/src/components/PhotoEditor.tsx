@@ -5,6 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCamera, IconUpload } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useT } from "../lib/i18n";
 import { api, errorText, type Employee } from "../api";
 
 const OUT_W = 600;
@@ -31,6 +32,7 @@ async function cropToBlob(src: string, area: Area): Promise<Blob> {
 }
 
 function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCancel: () => void }) {
+  const T = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,8 +44,8 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
         stream = s;
         if (videoRef.current) videoRef.current.srcObject = s;
       })
-      .catch(() => setError("Nie udało się włączyć kamery. Sprawdź uprawnienia przeglądarki."));
-    if (!navigator.mediaDevices) setError("Ta przeglądarka nie udostępnia kamery (wymagane HTTPS).");
+      .catch(() => setError(T("Nie udało się włączyć kamery. Sprawdź uprawnienia przeglądarki.")));
+    if (!navigator.mediaDevices) setError(T("Ta przeglądarka nie udostępnia kamery (wymagane HTTPS)."));
     return () => stream?.getTracks().forEach((t) => t.stop());
   }, []);
 
@@ -66,10 +68,10 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
       )}
       <Group justify="flex-end">
         <Button variant="default" onClick={onCancel}>
-          Wróć
+          {T("Wróć")}
         </Button>
         <Button leftSection={<IconCamera size={16} />} onClick={shoot} disabled={!!error}>
-          Zrób zdjęcie
+          {T("Zrób zdjęcie")}
         </Button>
       </Group>
     </Stack>
@@ -90,6 +92,7 @@ export function PhotoEditor({
   onSaved?: () => void;
 }) {
   const qc = useQueryClient();
+  const T = useT();
   const [src, setSrc] = useState<string | null>(null);
   const [camera, setCamera] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -111,7 +114,7 @@ export function PhotoEditor({
   function loadFile(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Wybierz plik graficzny (JPG, PNG, WebP).");
+      setError(T("Wybierz plik graficzny (JPG, PNG, WebP)."));
       return;
     }
     const reader = new FileReader();
@@ -133,38 +136,38 @@ export function PhotoEditor({
     onSuccess: (e) => {
       if (endpoint) {
         onSaved?.();
-        notifications.show({ color: "green", message: "Zapisano zdjęcie." });
+        notifications.show({ color: "green", message: T("Zapisano zdjęcie.") });
         onClose();
         return;
       }
       qc.setQueryData(["employee", String(e.id)], e);
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(e.id)] });
-      notifications.show({ color: "green", message: "Zapisano zdjęcie." });
+      notifications.show({ color: "green", message: T("Zapisano zdjęcie.") });
       onClose();
     },
     onError: (err) => setError(errorText(err)),
   });
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Zdjęcie pracownika" size="lg">
+    <Modal opened={opened} onClose={onClose} title={T("Zdjęcie pracownika")} size="lg">
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         {!src && !camera && (
           <Stack align="center" py="lg">
             <Text size="sm" c="dimmed" ta="center">
-              Zdjęcie zostanie przycięte do proporcji karty (3:4). Najlepiej twarz na jasnym, jednolitym tle.
+              {T("Zdjęcie zostanie przycięte do proporcji karty (3:4). Najlepiej twarz na jasnym, jednolitym tle.")}
             </Text>
             <Group>
               <FileButton onChange={loadFile} accept="image/jpeg,image/png,image/webp">
                 {(props) => (
                   <Button {...props} leftSection={<IconUpload size={16} />}>
-                    Wybierz plik
+                    {T("Wybierz plik")}
                   </Button>
                 )}
               </FileButton>
               <Button variant="light" leftSection={<IconCamera size={16} />} onClick={() => setCamera(true)}>
-                Użyj kamery
+                {T("Użyj kamery")}
               </Button>
             </Group>
           </Stack>
@@ -193,20 +196,20 @@ export function PhotoEditor({
             </Box>
             <div>
               <Text size="sm" mb={4}>
-                Powiększenie
+                {T("Powiększenie")}
               </Text>
               <Slider min={1} max={3} step={0.05} value={zoom} onChange={setZoom} label={null} />
             </div>
             <Group justify="space-between">
               <Button variant="subtle" onClick={() => setSrc(null)}>
-                Wybierz inne
+                {T("Wybierz inne")}
               </Button>
               <Group>
                 <Button variant="default" onClick={onClose}>
-                  Anuluj
+                  {T("Anuluj")}
                 </Button>
                 <Button onClick={() => upload.mutate()} loading={upload.isPending} disabled={!area}>
-                  Zapisz zdjęcie
+                  {T("Zapisz zdjęcie")}
                 </Button>
               </Group>
             </Group>

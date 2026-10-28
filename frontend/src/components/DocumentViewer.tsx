@@ -4,6 +4,7 @@ import { Alert, Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack,
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { api, errorText, withAcct } from "../api";
+import { useT } from "../lib/i18n";
 
 interface Preview {
   pages: number;
@@ -30,6 +31,7 @@ export function DocumentViewer({
   base?: string;
   downloadUrl?: string;
 }) {
+  const T = useT();
   const infoUrl = base ?? `/documents/${docId}/preview`;
   const pageUrl = (i: number) => (base ? `${base}/page/${i}` : `/documents/${docId}/preview/${i}`);
   const q = useQuery({
@@ -83,15 +85,15 @@ export function DocumentViewer({
       zIndex={500}
       title={
         <Group gap="xs">
-          <Text fw={600}>{q.data?.title ?? "Podgląd dokumentu"}</Text>
+          <Text fw={600}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
           {downloadUrl && (
             <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
-              Pobierz PDF
+              {T("Pobierz PDF")}
             </Button>
           )}
           {q.data?.signed && (
             <Badge color="teal" variant="light">
-              wersja podpisana
+              {T("wersja podpisana")}
             </Badge>
           )}
         </Group>
@@ -139,9 +141,9 @@ export function DocumentViewer({
           <Center style={{ position: "fixed", inset: 0, zIndex: 1000, cursor: "pointer" }} onClick={() => setHidden(false)}>
             <Stack align="center" gap={6} bg="white" p="lg" style={{ borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,.15)" }}>
               <IconEyeOff size={36} color="var(--mantine-color-gray-6)" />
-              <Text fw={600}>Podgląd ukryty</Text>
+              <Text fw={600}>{T("Podgląd ukryty")}</Text>
               <Text size="sm" c="dimmed" ta="center" maw={320}>
-                Dokument ukrywa się, gdy okno traci fokus albo przy próbie zrzutu ekranu lub druku. Kliknij, aby wrócić.
+                {T("Dokument ukrywa się, gdy okno traci fokus albo przy próbie zrzutu ekranu lub druku. Kliknij, aby wrócić.")}
               </Text>
             </Stack>
           </Center>
@@ -150,7 +152,7 @@ export function DocumentViewer({
         <Group justify="center" gap={6} pb="md">
           <IconShieldLock size={14} color="var(--mantine-color-gray-6)" />
           <Text size="xs" c="dimmed">
-            {base ? "Twój podpisany dokument" : "Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku"}
+            {base ? T("Twój podpisany dokument") : T("Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku")}
           </Text>
         </Group>
       </Box>

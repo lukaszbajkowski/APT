@@ -5,6 +5,7 @@ import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text
 import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { LanguagePicker, useT } from "../lib/i18n";
 import { InstallApp } from "../components/InstallApp";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
@@ -22,6 +23,7 @@ function nextPath(me: Me, from: string) {
 
 function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
   const { setMe, logout } = useAuth();
+  const T = useT();
   const [recovery, setRecovery] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -52,11 +54,11 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
         <Group gap="sm" wrap="nowrap">
           <IconShieldLock size={28} color="var(--mantine-color-navy-6)" />
           <div>
-            <Title order={4}>Logowanie dwuetapowe</Title>
+            <Title order={4}>{T("Logowanie dwuetapowe")}</Title>
             <Text size="sm" c="dimmed">
               {recovery
-                ? "Wpisz jeden z kodów zapasowych. Każdy działa tylko raz."
-                : "Wpisz 6-cyfrowy kod z aplikacji uwierzytelniającej w telefonie."}
+                ? T("Wpisz jeden z kodów zapasowych. Każdy działa tylko raz.")
+                : T("Wpisz 6-cyfrowy kod z aplikacji uwierzytelniającej w telefonie.")}
             </Text>
           </div>
         </Group>
@@ -68,7 +70,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
         {recovery ? (
           <TextInput
             key="recovery"
-            label="Kod zapasowy"
+            label={T("Kod zapasowy")}
             placeholder="XXXXX-XXXXX"
             autoFocus
             required
@@ -80,7 +82,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
         ) : (
           <TextInput
             key="totp"
-            label="Kod z aplikacji"
+            label={T("Kod z aplikacji")}
             placeholder="123456"
             autoFocus
             required
@@ -98,7 +100,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
           />
         )}
         <Button type="submit" loading={busy} fullWidth>
-          Potwierdź
+          {T("Potwierdź")}
         </Button>
         <Group justify="space-between">
           <Anchor
@@ -111,10 +113,10 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
               setError(null);
             }}
           >
-            {recovery ? "Użyj kodu z aplikacji" : "Nie mam telefonu – użyj kodu zapasowego"}
+            {recovery ? T("Użyj kodu z aplikacji") : T("Nie mam telefonu – użyj kodu zapasowego")}
           </Anchor>
           <Anchor component="button" type="button" size="sm" c="dimmed" onClick={() => logout()}>
-            Anuluj
+            {T("Anuluj")}
           </Anchor>
         </Group>
       </Stack>
@@ -123,6 +125,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
 }
 
 export function LoginPage() {
+  const T = useT();
   const { me, login, setMe } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -206,18 +209,17 @@ export function LoginPage() {
                   Identyfikacja pracowników APT
                 </Title>
                 <Text size="sm" c="dimmed">
-                  Zaloguj się, aby kontynuować
+                  {T("Zaloguj się, aby kontynuować")}
                 </Text>
               </div>
               {adding && me && (
                 <Alert color="blue" variant="light">
-                  Dodajesz drugie konto. Konto {me.user.full_name} pozostaje zalogowane i przełączysz się na nie z menu
-                  użytkownika.
+                  {T("Dodajesz drugie konto. Konto {name} pozostaje zalogowane i przełączysz się na nie z menu użytkownika.", { name: me.user.full_name })}
                 </Alert>
               )}
               {idleLogout && !error && (
                 <Alert color="blue" variant="light">
-                  Wylogowano automatycznie po okresie bezczynności. Zaloguj się ponownie.
+                  {T("Wylogowano automatycznie po okresie bezczynności. Zaloguj się ponownie.")}
                 </Alert>
               )}
               {error && (
@@ -226,7 +228,7 @@ export function LoginPage() {
                 </Alert>
               )}
               <TextInput
-                label="Login"
+                label={T("Login")}
                 autoComplete="username"
                 autoFocus
                 required
@@ -234,33 +236,34 @@ export function LoginPage() {
                 onChange={(e) => setUsername(e.currentTarget.value)}
               />
               <PasswordInput
-                label="Hasło"
+                label={T("Hasło")}
                 autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.currentTarget.value)}
               />
               <Button type="submit" loading={busy} fullWidth>
-                Zaloguj
+                {T("Zaloguj")}
               </Button>
               {passkeysSupported() && (
                 <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={passkeyLogin}>
-                  Zaloguj kluczem dostępu
+                  {T("Zaloguj kluczem dostępu")}
                 </Button>
               )}
               {config.data?.password_reset ? (
                 <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">
-                  Nie pamiętasz hasła?
+                  {T("Nie pamiętasz hasła?")}
                 </Anchor>
               ) : (
                 <Text size="xs" c="dimmed" ta="center">
-                  Nie pamiętasz hasła? Poproś administratora o reset.
+                  {T("Nie pamiętasz hasła? Poproś administratora o reset.")}
                 </Text>
               )}
             </Stack>
           </form>
         )}
       </Paper>
+      <LanguagePicker />
       <InstallApp compact />
       </Stack>
     </Center>

@@ -5,6 +5,7 @@ import { Alert, Avatar, Badge, Button, Center, Group, Loader, Paper, Stack, Text
 import { IconAlertCircle, IconCamera, IconCheck, IconClock } from "@tabler/icons-react";
 
 import { api, errorText, getLinkAccess, setLinkAccess } from "../api";
+import { LanguagePicker, useT } from "../lib/i18n";
 import { ContactEditor } from "../components/MyDataCards";
 import { PhotoEditor } from "../components/PhotoEditor";
 import type { Employee } from "../api";
@@ -22,6 +23,7 @@ interface Data {
 
 /** Publiczna strona „aktualizacja danych” dla pracownika bez konta (link od kadr + data urodzenia). */
 export function DataLinkPage() {
+  const T = useT();
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const qc = useQueryClient();
@@ -106,7 +108,7 @@ export function DataLinkPage() {
         <Stack>
           <Group justify="space-between" wrap="nowrap">
             <Title order={3} className="brand-title">
-              Aktualizacja danych
+              {T("Aktualizacja danych")}
             </Title>
             {unlocked && left !== null && !expired && !finished && (
               <Badge size="lg" variant="light" color={left < 120 ? "red" : "blue"} leftSection={<IconClock size={14} />} style={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }} styles={{ root: { overflow: "visible" }, label: { overflow: "visible", textOverflow: "clip" } }}>
@@ -114,28 +116,29 @@ export function DataLinkPage() {
               </Badge>
             )}
           </Group>
+          <LanguagePicker />
           {expired && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
-              Czas na aktualizację minął. Poproś kadry o nowy link.
+              {T("Czas na aktualizację minął. Poproś kadry o nowy link.")}
             </Alert>
           )}
           {info.isLoading && <Loader />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
-              {info.error ? errorText(info.error) : "Link jest nieprawidłowy."} Poproś kadry o nowy.
+              {info.error ? errorText(info.error) : T("Link jest nieprawidłowy.")} {T("Poproś kadry o nowy.")}
             </Alert>
           )}
           {info.data && !unlocked && (
             <>
-              <Text size="sm">{info.data.first_name}, potwierdź datę urodzenia, aby zaktualizować zdjęcie i dane kontaktowe. Po potwierdzeniu masz na to 15 minut.</Text>
+              <Text size="sm">{info.data.first_name}, {T("potwierdź datę urodzenia, aby zaktualizować zdjęcie i dane kontaktowe. Po potwierdzeniu masz na to 15 minut.")}</Text>
               {error && (
                 <Alert color="red" icon={<IconAlertCircle size={18} />}>
                   {error}
                 </Alert>
               )}
-              <TextInput label="Data urodzenia" type="date" value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
+              <TextInput label={T("Data urodzenia")} type="date" value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
               <Button size="md" loading={busy} disabled={!birth} onClick={verify}>
-                Dalej
+                {T("Dalej")}
               </Button>
             </>
           )}
@@ -146,7 +149,7 @@ export function DataLinkPage() {
           )}
           {finished && (
             <Alert color="green" icon={<IconCheck size={18} />}>
-              Dziękujemy – dane zapisane, a link został zamknięty. Możesz zamknąć tę stronę.
+              {T("Dziękujemy – dane zapisane, a link został zamknięty. Możesz zamknąć tę stronę.")}
             </Alert>
           )}
           {unlocked && !expired && !finished && d && (
@@ -161,19 +164,18 @@ export function DataLinkPage() {
                     {d.first_name} {d.last_name}
                   </Text>
                   <Button size="xs" variant="light" leftSection={<IconCamera size={14} />} onClick={() => setPhotoOpen(true)}>
-                    {d.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+                    {d.has_photo ? T("Zmień zdjęcie") : T("Dodaj zdjęcie")}
                   </Button>
                 </div>
               </Group>
               <ContactEditor kind="phone" current={d.phone} verified={d.phone_verified} base={`${base}/contact`} queryKey={dataKey} />
               <ContactEditor kind="email" current={d.email} verified={d.email_verified} base={`${base}/contact`} queryKey={dataKey} />
               <Alert color="green" icon={<IconCheck size={18} />}>
-                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Pozostałe dane zmieniają kadry. Link jest
-                jednorazowy – po pierwszym zapisie masz jeszcze 10 minut.
+                {T("Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Pozostałe dane zmieniają kadry. Link jest jednorazowy – po pierwszym zapisie masz jeszcze 10 minut.")}
               </Alert>
               {saved && (
                 <Button color="green" loading={busy} onClick={finish}>
-                  Gotowe – zakończ
+                  {T("Gotowe – zakończ")}
                 </Button>
               )}
               <PhotoEditor

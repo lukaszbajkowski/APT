@@ -3,10 +3,11 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from app.audit import audit
 from app.deps import AdminAuth, DbSession, utcnow
 from app.models import Agency, AuditLog, Department, Role, User, WebauthnCredential
 
@@ -98,17 +99,26 @@ class PeselEvent(BaseModel):
     number: str | None
 
 
+class ReportView(BaseModel):
+    ts: str
+    username: str | None
+
+
 class PeselReport(BaseModel):
     days: int
     total: int
+    report_views: list[ReportView]  # kto oglądał ten raport
     users: list[PeselUser]
     recent: list[PeselEvent]
 
 
 @router.get("/pesel", response_model=PeselReport)
 def pesel_access(
-    ctx: AdminAuth, db: DbSession, days: Annotated[int, Query(ge=1, le=365)] = 30
+    ctx: AdminAuth, request: Request, db: DbSession, days: Annotated[int, Query(ge=1, le=365)] = 30
 ) -> PeselReport:
+    # samo zajrzenie do raportu o dostępie do PESEL też zostaje w dzienniku i widać je w raporcie
+    audit(db, request, "pesel_report_viewed", user=ctx.user, details={"days": days})
+    db.commit()
     since = utcnow() - timedelta(days=days)
     base = (AuditLog.action == "pesel_viewed", AuditLog.ts >= since)
     agg = db.execute(
@@ -125,9 +135,16 @@ def pesel_access(
     recent = db.scalars(
         select(AuditLog).where(*base).order_by(AuditLog.ts.desc(), AuditLog.id.desc()).limit(100)
     )
+    views = db.scalars(
+        select(AuditLog)
+        .where(AuditLog.action == "pesel_report_viewed", AuditLog.ts >= since)
+        .order_by(AuditLog.ts.desc(), AuditLog.id.desc())
+        .limit(50)
+    )
     return PeselReport(
         days=days,
         total=sum(r[1] for r in agg),
+        report_views=[ReportView(ts=v.ts.isoformat(), username=v.username) for v in views],
         users=[
             PeselUser(username=r[0] or "?", views=r[1], employees=r[2], last_at=r[3].isoformat()) for r in agg
         ],

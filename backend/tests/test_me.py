@@ -216,6 +216,7 @@ def test_access_review(admin_client, make_user):
     assert "nigdy się nie logował(-a)" in names["kier_x"]["flags"]
     assert any(r["role"] == "admin" and "pełne uprawnienia" in r["flags"] for r in rows)
     rep = admin_client.get("/api/access-review/pesel?days=7").json()
+    assert rep["report_views"][0]["username"]  # oglądanie raportu jest w raporcie
     assert rep["days"] == 7 and rep["total"] == len(rep["recent"]) >= 0
     # tylko administrator
     from fastapi.testclient import TestClient

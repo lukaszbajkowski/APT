@@ -428,6 +428,7 @@ export const ACTION_LABELS: Record<string, string> = {
   employee_terminated: "Przeniesienie do archiwum",
   employee_restored: "Przywrócenie z archiwum",
   pesel_viewed: "Odczyt PESEL",
+  pesel_report_viewed: "Podgląd raportu dostępu do PESEL",
   photo_uploaded: "Zmiana zdjęcia",
   signature_link_despite_account: "Link do podpisu mimo konta pracownika",
   data_link_created: "Wysłano link do aktualizacji danych",

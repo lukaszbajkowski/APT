@@ -21,6 +21,7 @@ interface UserReview {
 interface PeselReport {
   days: number;
   total: number;
+  report_views: { ts: string; username: string | null }[];
   users: { username: string; views: number; employees: number; last_at: string }[];
   recent: { ts: string; username: string | null; employee_id: string | null; number: string | null }[];
 }
@@ -162,6 +163,20 @@ function PeselTab() {
               </Table>
             </>
           )}
+          <Title order={5}>Kto oglądał ten raport</Title>
+          <Text size="xs" c="dimmed">
+            Samo zajrzenie do tego raportu też jest zapisywane w dzienniku zdarzeń.
+          </Text>
+          <Table verticalSpacing={4}>
+            <Table.Tbody>
+              {q.data.report_views.map((v, i) => (
+                <Table.Tr key={i}>
+                  <Table.Td>{formatDateTime(v.ts)}</Table.Td>
+                  <Table.Td>{v.username}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
           {q.data.total === 0 && <Text size="sm">Nikt nie odsłaniał PESEL w tym okresie.</Text>}
         </>
       )}

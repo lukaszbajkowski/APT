@@ -30,6 +30,7 @@ from app.security import new_token, token_hash
 LINK_DAYS = 7
 MAX_ATTEMPTS = 5
 USE_MINUTES = 15  # od pierwszego potwierdzenia daty urodzenia link działa tylko tyle
+AFTER_SAVE_MINUTES = 10  # po pierwszym zapisie link działa już tylko tyle (np. dokończenie e-maila)
 WHO = "link-aktualizacji"
 
 staff_router = APIRouter(prefix="/api/employees", tags=["data-link"])
@@ -241,6 +242,24 @@ def _authorized(db: Session, token: str, access: str | None) -> tuple[DataLink, 
 Access = Annotated[str | None, Header(alias="X-Link-Access")]
 
 
+def _saved(db: Session, link: DataLink) -> None:
+    """Link jest jednorazowy: po pierwszym zapisie skraca się do kilku minut (na dokończenie reszty)."""
+    now = utcnow()
+    limit = now - timedelta(minutes=USE_MINUTES - AFTER_SAVE_MINUTES)
+    if link.first_used_at is None or link.first_used_at > limit:
+        link.first_used_at = limit
+        db.commit()
+
+
+@public_router.post("/{token}/finish", status_code=status.HTTP_204_NO_CONTENT)
+def finish(token: str, request: Request, db: DbSession, access: Access = None) -> None:
+    """Pracownik kończy aktualizację – link przestaje działać od razu."""
+    link, e = _authorized(db, token, access)
+    link.status = "used"
+    audit(db, request, "data_link_finished", username=WHO, entity_type="employee", entity_id=e.id)
+    db.commit()
+
+
 class LinkInfo(BaseModel):
     first_name: str
     expires_at: datetime
@@ -342,8 +361,9 @@ def photo(token: str, db: DbSession, access: Access = None, k: str | None = None
 async def upload_photo(
     token: str, request: Request, db: DbSession, file: Annotated[UploadFile, File()], access: Access = None
 ) -> MyData:
-    _, e = _authorized(db, token, access)
+    link, e = _authorized(db, token, access)
     await store_uploaded_photo(db, request, None, e, file, who=WHO)
+    _saved(db, link)
     return _data(e)
 
 
@@ -369,8 +389,9 @@ def contact_confirm(
     db: DbSession,
     access: Access = None,
 ) -> MyData:
-    _, e = _authorized(db, token, access)
+    link, e = _authorized(db, token, access)
     me_mod.confirm_contact(db, request, e, kind, body.code, None, WHO)
+    _saved(db, link)
     return _data(e)
 
 
@@ -378,8 +399,9 @@ def contact_confirm(
 def contact_remove(
     token: str, kind: me_mod.Kind, request: Request, db: DbSession, access: Access = None
 ) -> MyData:
-    _, e = _authorized(db, token, access)
+    link, e = _authorized(db, token, access)
     me_mod.remove_contact(db, request, e, kind, None, WHO)
+    _saved(db, link)
     return _data(e)
 
 

@@ -175,3 +175,31 @@ def test_link_works_only_15_minutes_after_first_use(hr, emp):  # noqa: F811
         pub.post(f"/api/data-link/{token}/verify", json={"birth_date": BORN.isoformat()}).status_code == 410
     )
     assert hr.get(f"/api/employees/{emp}/data-link").json()["active"] is False
+
+
+def test_link_shortens_after_first_save_and_finish_closes_it(hr, emp):  # noqa: F811
+    from datetime import timedelta
+
+    from app.db import SessionLocal
+    from app.deps import utcnow
+    from app.models import DataLink
+
+    token = _token(hr, emp, email="anna@example.com")
+    pub = TestClient(app)
+    h = _verify(pub, token)
+    # zapis (usunięcie/zmiana kontaktu lub zdjęcie) skraca okno do 10 minut
+    pub.post(f"/api/data-link/{token}/contact/email/start", json={"value": "n@example.com"}, headers=h)
+    code = re.search(r"\b(\d{6})\b", mailer.outbox[-1][2]).group(1)
+    assert (
+        pub.post(f"/api/data-link/{token}/contact/email/confirm", json={"code": code}, headers=h).status_code
+        == 200
+    )
+    with SessionLocal() as db:
+        link = db.query(DataLink).filter(DataLink.employee_id == emp).one()
+        left = link.first_used_at + timedelta(minutes=15) - utcnow()
+        assert timedelta(minutes=9) < left <= timedelta(minutes=10, seconds=5)
+    # bez dostępu nie zakończy
+    assert pub.post(f"/api/data-link/{token}/finish").status_code == 403
+    assert pub.post(f"/api/data-link/{token}/finish", headers=h).status_code == 204
+    assert pub.get(f"/api/data-link/{token}/data", headers=h).status_code == 410
+    assert hr.get(f"/api/employees/{emp}/data-link").json()["active"] is False

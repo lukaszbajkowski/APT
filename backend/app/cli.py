@@ -160,17 +160,32 @@ def encrypt_files() -> int:
     return 0
 
 
+def _remind(db, u, title: str, body: str, url: str, msg=None) -> bool:
+    """Przypomnienie dla konta: push na jego urządzenia i/lub e-mail (każde niezależnie od drugiego)."""
+    from app import mailer, push
+
+    ok = False
+    try:
+        ok = "ok" in push.send_now(db, u.id, title, body, url)
+    except Exception as exc:  # noqa: BLE001
+        print(f"- {u.username}: błąd powiadomienia push: {exc}", file=sys.stderr)
+    if msg is not None and u.email and mailer.enabled():
+        try:
+            mailer.send_now(u.email, msg)
+            ok = True
+        except Exception as exc:  # noqa: BLE001
+            print(f"- {u.username}: błąd wysyłki do {u.email}: {exc}", file=sys.stderr)
+    return ok
+
+
 def quality_reminders() -> int:
     """Przypomnienia o brakach w danych: admin i HR (wszyscy pracownicy), kierownicy (swój zakres)."""
     from sqlalchemy import select
 
-    from app import mailer, notify
+    from app import notify
     from app.models import Role, User
     from app.routers.quality import summary
 
-    if not mailer.enabled():
-        print("E-maile wyłączone – pomijam przypomnienia o brakach.")
-        return 0
     sent = 0
     with SessionLocal() as db:
         users = db.scalars(
@@ -179,20 +194,14 @@ def quality_reminders() -> int:
             .order_by(User.username)
         ).unique()
         for u in users:
-            if not u.email:
-                print(f"- {u.username}: pominięty (brak adresu e-mail)")
-                continue
             s = summary(db, u)
             if not s.rows:
                 print(f"- {u.username}: brak braków w zakresie – nie wysyłam")
                 continue
             msg = notify.quality_email(u, [(c.label, c.count) for c in s.checks], len(s.rows))
-            try:
-                mailer.send_now(u.email, msg)
+            if _remind(db, u, "Braki w danych", f"Osób do uzupełnienia: {len(s.rows)}", "/braki", msg):
                 sent += 1
-                print(f"- {u.username}: wysłano na {u.email} ({len(s.rows)} os.)")
-            except Exception as e:  # noqa: BLE001
-                print(f"- {u.username}: błąd wysyłki do {u.email}: {e}", file=sys.stderr)
+                print(f"- {u.username}: wysłano ({len(s.rows)} os.)")
     print(f"Przypomnienia o brakach wysłane: {sent}.")
     return 0
 
@@ -203,13 +212,10 @@ def training_reminders() -> int:
     Dostają admin, HR i kierownicy (swój zakres)."""
     from sqlalchemy import select
 
-    from app import mailer, notify
+    from app import notify
     from app.models import Role, User
     from app.routers.trainings import expiring, in_progress
 
-    if not mailer.enabled():
-        print("E-maile wyłączone – pomijam przypomnienia o szkoleniach.")
-        return 0
     sent = 0
     with SessionLocal() as db:
         users = db.scalars(
@@ -218,9 +224,6 @@ def training_reminders() -> int:
             .order_by(User.username)
         ).unique()
         for u in users:
-            if not u.email:
-                print(f"- {u.username}: pominięty (brak adresu e-mail)")
-                continue
             rows = expiring(db, u)
             late = [r for r in in_progress(db, u) if r.status == "overdue"]
             if not rows and not late:
@@ -240,14 +243,11 @@ def training_reminders() -> int:
             if total > 50:
                 items = items[:50] + [f"… i {total - 50} więcej w aplikacji"]
             expired = sum(r.status == "expired" for r in rows)
-            try:
-                mailer.send_now(u.email, notify.trainings_email(u, items, expired, len(late), len(rows)))
+            msg = notify.trainings_email(u, items, expired, len(late), len(rows))
+            body = f"Ponad standard: {len(late)}, ważność szkoleń: {len(rows)}"
+            if _remind(db, u, "Szkolenia wymagają uwagi", body, "/szkolenia", msg):
                 sent += 1
-                print(
-                    f"- {u.username}: wysłano na {u.email} ({len(late)} ponad standard, {len(rows)} ważność)"
-                )
-            except Exception as e:  # noqa: BLE001
-                print(f"- {u.username}: błąd wysyłki do {u.email}: {e}", file=sys.stderr)
+                print(f"- {u.username}: wysłano ({len(late)} ponad standard, {len(rows)} ważność)")
     print(f"Przypomnienia o szkoleniach wysłane: {sent}.")
     return 0
 
@@ -260,13 +260,10 @@ def medical_reminders() -> int:
 
     from sqlalchemy import select
 
-    from app import mailer, notify
+    from app import notify
     from app.models import Employee, EmployeeStatus, MedicalExam, Role, User
     from app.routers.employees import apply_scope, format_number
 
-    if not mailer.enabled():
-        print("E-maile wyłączone – pomijam przypomnienia o badaniach.")
-        return 0
     today = date.today()
     sent = 0
     with SessionLocal() as db:
@@ -276,8 +273,6 @@ def medical_reminders() -> int:
             .order_by(User.username)
         ).unique()
         for u in users:
-            if not u.email:
-                continue
             q = (
                 select(MedicalExam, Employee)
                 .join(Employee, Employee.id == MedicalExam.employee_id)
@@ -302,11 +297,10 @@ def medical_reminders() -> int:
             total = len(items)
             if total > 50:
                 items = items[:50] + [f"… i {total - 50} więcej w aplikacji"]
-            try:
-                mailer.send_now(u.email, notify.medical_email(u, items, len(late), len(soon)))
+            msg = notify.medical_email(u, items, len(late), len(soon))
+            body = f"Badania nieważne: {len(late)}, kończą się w 30 dni: {len(soon)}"
+            if _remind(db, u, "Badania lekarskie", body, "/", msg):
                 sent += 1
-            except Exception as ex:  # noqa: BLE001
-                print(f"- {u.username}: błąd wysyłki do {u.email}: {ex}", file=sys.stderr)
     print(f"Przypomnienia o badaniach wysłane: {sent}.")
     return 0
 
@@ -336,7 +330,7 @@ def notify_daily() -> int:
     from datetime import UTC, datetime, timedelta
     from zoneinfo import ZoneInfo
 
-    from app import mailer, notify
+    from app import notify
     from app.routers.dashboard import read_backup_status
     from app.routers.retention import count_due
 
@@ -366,7 +360,6 @@ def notify_daily() -> int:
             problems.append(
                 f"Dane {due} os. mają za sobą okres przechowywania – usuń je w zakładce Retencja danych."
             )
-        admins = notify.admins_with_email(db)
     from app import lifecycle
 
     with SessionLocal() as db:
@@ -385,13 +378,19 @@ def notify_daily() -> int:
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0
-    if mailer.enabled():
-        for a in admins:
-            try:
-                mailer.send_now(a.email, notify.admin_alert_email(problems, a))
-            except Exception as e:  # noqa: BLE001
-                print(f"Błąd wysyłki do {a.email}: {e}", file=sys.stderr)
-    print(f"Problemy: {len(problems)}, powiadomieni administratorzy: {len(admins)}.")
+    with SessionLocal() as db:
+        from sqlalchemy import select
+
+        from app.models import Role, User
+
+        everyone = list(db.scalars(select(User).where(User.role == Role.admin, User.is_active)).unique())
+        n = 0
+        for a in everyone:
+            msg = notify.admin_alert_email(problems, a) if a.email else None
+            first = problems[0][:120] if problems else ""
+            if _remind(db, a, "Aplikacja wymaga uwagi", first, "/", msg):
+                n += 1
+    print(f"Problemy: {len(problems)}, powiadomieni administratorzy: {n}.")
     return 0
 
 

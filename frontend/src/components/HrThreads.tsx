@@ -191,11 +191,13 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   );
 }
 
-function NewThread({ staff, onCreated, onCancel }: { staff: boolean; onCreated: (id: number) => void; onCancel: () => void }) {
+type Preset = { id: string; name: string };
+
+function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; preset?: Preset; onCreated: (id: number) => void; onCancel: () => void }) {
   const qc = useQueryClient();
   const [subject, setSubject] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
-  const [employee, setEmployee] = useState<string | null>(null);
+  const [employee, setEmployee] = useState<string | null>(preset?.id ?? null);
   const [search, setSearch] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -227,7 +229,12 @@ function NewThread({ staff, onCreated, onCancel }: { staff: boolean; onCreated: 
             description="Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości."
             placeholder="Wpisz nazwisko"
             searchable
-            data={(people.data ?? []).map((p) => ({ value: String(p.employee_id), label: `${p.name} (${p.number})` }))}
+            data={[
+              ...(preset ? [{ value: preset.id, label: preset.name }] : []),
+              ...(people.data ?? [])
+                .filter((p) => String(p.employee_id) !== preset?.id)
+                .map((p) => ({ value: String(p.employee_id), label: `${p.name} (${p.number})` })),
+            ]}
             value={employee}
             onChange={setEmployee}
             searchValue={search}
@@ -260,11 +267,11 @@ function NewThread({ staff, onCreated, onCancel }: { staff: boolean; onCreated: 
 }
 
 /** Skrzynka w stylu komunikatora: lista rozmów po lewej, rozmowa po prawej (na telefonie jedno okno naraz). */
-export function Messenger({ staff }: { staff: boolean }) {
+export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }) {
   const base = staff ? "/hr-messages" : "/me/messages";
   const mobile = useMediaQuery("(max-width: 48em)");
   const [openId, setOpenId] = useState<number | null>(null);
-  const [composing, setComposing] = useState(false);
+  const [composing, setComposing] = useState(!!preset);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const list = useQuery({
@@ -367,7 +374,7 @@ export function Messenger({ staff }: { staff: boolean }) {
       {showRight && (
         <Box style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           {composing ? (
-            <NewThread staff={staff} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
+            <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
           ) : openId !== null ? (
             <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} />
           ) : (

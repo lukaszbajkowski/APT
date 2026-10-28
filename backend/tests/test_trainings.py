@@ -318,3 +318,30 @@ def test_restore_test_status(tmp_path, monkeypatch):
     assert "Ostatni udany test" in cli.restore_test_problems(now)[0]
     f.write_text(json.dumps({"at": now.isoformat(), "ok": False, "info": "baza uszkodzona"}))
     assert "nie powiódł się: baza uszkodzona" in cli.restore_test_problems(now)[0]
+
+
+def test_medical_reminder_push_without_email(admin_client, make_user, monkeypatch):
+    """Przypomnienie dociera na telefon także bez adresu e-mail i bez skonfigurowanej poczty."""
+    from app import cli, mailer, push
+    from app.models import MedicalExam, PushSubscription
+
+    hr = make_user("kadry3", Role.hr)
+    e = _emp(admin_client, "Ewa", "Pushowa", pesel=make_pesel(date(1991, 2, 2), "K"))
+    today = date.today()
+    with SessionLocal() as db:
+        db.add(
+            MedicalExam(
+                employee_id=e["id"], kind="okresowe", exam_date=today, valid_until=today + timedelta(days=5)
+            )
+        )
+        db.add(PushSubscription(user_id=hr.id, endpoint="https://push.example.com/hr3", p256dh="x", auth="y"))
+        db.commit()
+    monkeypatch.setattr(mailer, "enabled", lambda: False)
+    push.outbox = []
+    try:
+        assert cli.medical_reminders() == 0
+        mine = [m for m in push.outbox if m[0] == hr.id]
+        assert len(mine) == 1 and mine[0][1] == "Badania lekarskie"
+        assert "Pushowa" not in mine[0][2]  # treść ogólna, bez danych osobowych
+    finally:
+        push.outbox = None

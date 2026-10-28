@@ -33,6 +33,7 @@ import {
   IconRestore,
   IconUserCheck,
   IconTrash,
+  IconMessage,
 } from "@tabler/icons-react";
 
 import {
@@ -300,6 +301,16 @@ export function EmployeeProfilePage() {
                 {canEdit && (
                   <Button variant="light" leftSection={<IconPrinter size={16} />} onClick={() => setPrintOpen(true)}>
                     Drukuj kartę
+                  </Button>
+                )}
+                {staff && e.status === "active" && (
+                  <Button
+                    variant="light"
+                    component={Link}
+                    to={`/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${e.last_name} ${e.first_name} (${e.number})`)}`}
+                    leftSection={<IconMessage size={16} />}
+                  >
+                    Napisz do pracownika
                   </Button>
                 )}
                 {staff && (

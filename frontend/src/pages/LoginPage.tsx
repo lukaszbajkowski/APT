@@ -5,6 +5,7 @@ import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text
 import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { InstallApp } from "../components/InstallApp";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
@@ -193,7 +194,8 @@ export function LoginPage() {
 
   return (
     <Center mih="100vh" className="surface-subtle" p="md">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={400}>
+      <Stack align="center" w="100%" maw={400} gap="md">
+      <Paper withBorder shadow="sm" p="xl" w="100%">
         {me?.mfa_pending ? (
           <CodeStep onDone={(result) => navigate(nextPath(result, from), { replace: true })} />
         ) : (
@@ -259,6 +261,8 @@ export function LoginPage() {
           </form>
         )}
       </Paper>
+      <InstallApp compact />
+      </Stack>
     </Center>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Avatar, Badge, Button, Center, Group, Loader, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
@@ -65,7 +65,37 @@ export function DataLinkPage() {
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [validUntil]);
-  const expired = unlocked && left === 0;
+  const [finished, setFinished] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const baseline = useRef<string | null>(null);
+  // link jest jednorazowy: po pierwszym zapisie zostaje 10 minut (tak samo liczy serwer)
+  useEffect(() => {
+    const x = data.data;
+    if (!x) return;
+    const sig = JSON.stringify([x.has_photo, x.photo_version, x.phone, x.email, x.phone_verified, x.email_verified]);
+    if (baseline.current === null) baseline.current = sig;
+    else if (baseline.current !== sig) {
+      baseline.current = sig;
+      setSaved(true);
+      setValidUntil((v) => {
+        const cap = new Date(Date.now() + 10 * 60_000);
+        return v && v < cap ? v : cap;
+      });
+    }
+  }, [data.data]);
+  async function finish() {
+    setBusy(true);
+    try {
+      await api(`${base}/finish`, { method: "POST" });
+      setFinished(true);
+      setLinkAccess(null);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const expired = unlocked && left === 0 && !finished;
   const clock = left === null ? "" : `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
 
   const d = data.data;
@@ -114,7 +144,12 @@ export function DataLinkPage() {
               {errorText(data.error)}
             </Alert>
           )}
-          {unlocked && !expired && d && (
+          {finished && (
+            <Alert color="green" icon={<IconCheck size={18} />}>
+              Dziękujemy – dane zapisane, a link został zamknięty. Możesz zamknąć tę stronę.
+            </Alert>
+          )}
+          {unlocked && !expired && !finished && d && (
             <>
               <Group>
                 <Avatar size={72} radius="md" src={photoUrl}>
@@ -133,8 +168,14 @@ export function DataLinkPage() {
               <ContactEditor kind="phone" current={d.phone} verified={d.phone_verified} base={`${base}/contact`} queryKey={dataKey} />
               <ContactEditor kind="email" current={d.email} verified={d.email_verified} base={`${base}/contact`} queryKey={dataKey} />
               <Alert color="green" icon={<IconCheck size={18} />}>
-                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Pozostałe dane zmieniają kadry.
+                Zdjęcie zapisuje się od razu, telefon i e-mail po wpisaniu kodu. Pozostałe dane zmieniają kadry. Link jest
+                jednorazowy – po pierwszym zapisie masz jeszcze 10 minut.
               </Alert>
+              {saved && (
+                <Button color="green" loading={busy} onClick={finish}>
+                  Gotowe – zakończ
+                </Button>
+              )}
               <PhotoEditor
                 employee={{ id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee}
                 opened={photoOpen}

@@ -109,7 +109,7 @@ def my_list(ctx: Auth, db: DbSession) -> ListOut:
 
 
 @router.get("/count")
-def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
+def my_count(ctx: Auth, db: DbSession) -> dict[str, Any]:
     e = _employee(ctx, db)
     n = db.scalar(
         select(func.count())
@@ -123,7 +123,25 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
             DocumentSignature.status == "pending",
         )
     )
-    return {"pending": n or 0}
+    last = db.execute(
+        select(DocumentSignature, GeneratedDocument)
+        .join(GeneratedDocument, GeneratedDocument.id == DocumentSignature.document_id)
+        .where(
+            GeneratedDocument.employee_id == e.id,
+            GeneratedDocument.deleted_at.is_(None),
+            DocumentSignature.role == "pracownika",
+            DocumentSignature.channel == "konto",
+            DocumentSignature.status == "signed",
+        )
+        .order_by(DocumentSignature.signed_at.desc())
+        .limit(1)
+    ).first()
+    last_signed = (
+        {"id": last[0].id, "document": last[1].template_name, "signed_at": last[0].signed_at}
+        if last
+        else None
+    )
+    return {"pending": n or 0, "last_signed": last_signed}
 
 
 class InfoOut(BaseModel):

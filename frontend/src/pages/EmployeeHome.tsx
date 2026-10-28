@@ -1,9 +1,9 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconCamera, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
-import { api } from "../api";
+import { api, formatDate } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
 import { Messenger } from "../components/HrThreads";
 
@@ -39,7 +39,7 @@ export function EmployeeHome() {
   const [, setParams] = useSearchParams();
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const unread = useQuery({ queryKey: ["my-msg-count"], queryFn: () => api<{ unread: number }>("/me/messages/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
-  const toSign = useQuery({ queryKey: ["my-sig-count"], queryFn: () => api<{ pending: number }>("/me/signatures/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
+  const toSign = useQuery({ queryKey: ["my-sig-count"], queryFn: () => api<{ pending: number; last_signed: { id: number; document: string; signed_at: string | null } | null }>("/me/signatures/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
   return (
@@ -47,6 +47,14 @@ export function EmployeeHome() {
       <Title order={2}>{d ? `Dzień dobry, ${d.first_name}` : "Moje konto"}</Title>
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
         <Tile icon={IconSignature} title="Do podpisu" hint="Dokumenty czekające na Twój podpis" to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
+        {toSign.data?.last_signed && (
+          <Tile
+            icon={IconFileCheck}
+            title="Ostatnio podpisany"
+            hint={`${toSign.data.last_signed.document}${toSign.data.last_signed.signed_at ? ` · ${formatDate(toSign.data.last_signed.signed_at)}` : ""}`}
+            to={`/moje-konto/do-podpisu/podpisane/${toSign.data.last_signed.id}`}
+          />
+        )}
         <Tile icon={IconMessage} title="Napisz do kadr" hint="Zadaj pytanie lub zgłoś sprawę" to="/moje-konto/wiadomosci" badge={unread.data?.unread || undefined} />
         <Tile icon={IconCamera} title={d?.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"} hint="Do karty identyfikacyjnej" onClick={() => setParams({ zdjecie: "1" })} />
         <Tile

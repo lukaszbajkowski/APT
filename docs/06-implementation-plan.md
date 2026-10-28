@@ -35,7 +35,7 @@ powiadomienie (e-mail lub SMS) z odsyłaczem do konta.
 |---|---|---|
 | A ✅ | Rola `employee`, powiązanie konta z kartoteką (`users.employee_id`), zaproszenie od kadr, logowanie wyłącznie kluczem dostępu (bez hasła i 2FA) | widzi wyłącznie własny rekord; migracje 0024–0026, tabela kluczy dostępu |
 | B ✅ | „Moje dane”: podgląd własnych danych (PESEL zamaskowany, obywatelstwo) i historii zatrudnienia/stanowisk/wydziałów, własne zdjęcie, telefon i e-mail zapisywane po potwierdzeniu kodem (SMS / e-mail); kontakt szyfrowany, widoczny tylko dla administratora i kadr | migracja 0027, `routers/me.py`; imię, nazwisko, płeć, obywatelstwo zmieniają tylko kadry |
-| B+ ✅ | „Napisz do kadr” (także w drugą stronę: kadry zaczynają rozmowę z pracownikiem mającym aktywne konto, własny temat, status „w toku”, powiadomienie e-mail/push bez treści): wątki pracownik ↔ kadry w aplikacji (temat z listy, status nowa / w toku / zakończona, odpowiedzi, powiadomienie e-mail bez treści, licznik nowych w menu kadr); bez załączników | migracja 0028, `routers/hr_messages.py` |
+| B+ ✅ | „Napisz do kadr” (także w drugą stronę: kadry zaczynają rozmowę z pracownikiem mającym aktywne konto (przycisk „Napisz do pracownika” w jego karcie), własny temat, status „w toku”, powiadomienie e-mail/push bez treści): wątki pracownik ↔ kadry w aplikacji (temat z listy, status nowa / w toku / zakończona, odpowiedzi, powiadomienie e-mail bez treści, licznik nowych w menu kadr); bez załączników | migracja 0028, `routers/hr_messages.py` |
 | C ✅ | Ścieżka bez konta: kadry wysyłają link „aktualizacja danych” (e-mail / SMS / kopiowanie; czeka na użycie 7 dni, po pierwszym potwierdzeniu daty urodzenia działa 15 minut, limit 5 prób); pracownik zmienia zdjęcie, telefon i e-mail (kontakt po kodzie) | migracja 0031, `routers/data_link.py`, strona `/aktualizacja`; bez podglądu PESEL i historii, kontakt widoczny zamaskowany |
 | D ✅ | Podpis w koncie (ekran lub plik z podpisem zaufanym/kwalifikowanym, pobranie PDF): lista „Do podpisu” (z licznikiem), podgląd stron, podpis na ekranie po potwierdzeniu kluczem dostępu (Face ID / odcisk / PIN), powiadomienie e-mail lub SMS o nowym dokumencie; wyjątek kadr „wyślij link mimo konta” z wpisem w dzienniku | `routers/me_signatures.py`, `signatures.py` (kanał `konto`); osoby bez konta nadal podpisują linkiem, rola firmy zawsze linkiem |
 
@@ -89,7 +89,7 @@ Wszystkie pozycje poprzedniego backlogu są zrobione:
 | Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
 | Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
 | PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |
-| Powiadomienia push (Web Push; jedna przeglądarka obsługuje kilka kont, migracje 0035–0036): nowy dokument do podpisu, odpowiedź kadr, nowa wiadomość od pracownika dla kadr; treść ogólna, klucze VAPID generowane automatycznie (`vapid.json`, migracja 0035) | „Moje konto” → „Powiadomienia na telefonie” |
+| Powiadomienia push (Web Push; jedna przeglądarka obsługuje kilka kont, migracje 0035–0036): nowy dokument do podpisu, odpowiedź kadr, nowa wiadomość od pracownika dla kadr, cotygodniowe przypomnienia (braki, szkolenia, badania) i alerty administratora (także bez e-maila); treść ogólna, klucze VAPID generowane automatycznie (`vapid.json`, migracja 0035) | „Moje konto” → „Powiadomienia na telefonie” |
 | Cykliczny test odtwarzania kopii (niedziela, tymczasowa baza) | `deploy/restore-test.sh` |
 
 Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie ukończenia szkolenia przez opiekuna.
@@ -104,3 +104,6 @@ Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie 
 | Błędne usunięcie dokumentu | potwierdzenie; docelowo kosz |
 | Rozbieżność szablonu Word i PDF | podgląd PDF przed użyciem szablonu |
 | Błędy w zestawieniach agencji | testy na okresach i zmianach APT, kopia do kadr przy każdej wysyłce |
+
+
+**Dodatkowo (v. październik 2026):** przycisk instalacji aplikacji na ekranie logowania (tylko telefon/tablet); kafelek „Ostatnio podpisany” na stronie głównej pracownika; link „aktualizacja danych” jednorazowy – po pierwszym zapisie działa jeszcze 10 minut, a przycisk „Gotowe – zakończ” zamyka go od razu (audyt `data_link_finished`).

@@ -69,7 +69,10 @@ def test_sign_in_account_with_passkey(admin_client):
     assert roles[0]["status"] == "pending" and roles[0]["channel"] == "konto" and roles[0]["employee_account"]
 
     lst = c.get("/api/me/signatures").json()
-    assert len(lst["pending"]) == 1 and c.get("/api/me/signatures/count").json() == {"pending": 1}
+    assert len(lst["pending"]) == 1 and c.get("/api/me/signatures/count").json() == {
+        "pending": 1,
+        "last_signed": None,
+    }
     sid = lst["pending"][0]["id"]
     assert c.get(f"/api/me/signatures/{sid}").json()["pages"] >= 1
     assert c.get(f"/api/me/signatures/{sid}/page/0").status_code == 200
@@ -106,6 +109,8 @@ def test_sign_in_account_with_passkey(admin_client):
 
     assert c.get("/api/me/signatures").json()["pending"] == []
     assert len(c.get("/api/me/signatures").json()["signed"]) == 1
+    cnt = c.get("/api/me/signatures/count").json()
+    assert cnt["pending"] == 0 and cnt["last_signed"]["id"] == sid and cnt["last_signed"]["document"]
     roles = admin_client.get(f"/api/documents/{doc['id']}/signatures").json()["roles"]
     assert roles[0]["status"] == "signed" and roles[0]["device_verified"] is True
     # pracownik widzi i pobiera to, co podpisał

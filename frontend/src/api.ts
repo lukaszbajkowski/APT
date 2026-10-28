@@ -434,6 +434,7 @@ export const ACTION_LABELS: Record<string, string> = {
   data_link_created: "Wysłano link do aktualizacji danych",
   data_link_cancelled: "Unieważniono link do aktualizacji danych",
   data_link_locked: "Zablokowano link do aktualizacji danych",
+  data_link_finished: "Pracownik zakończył aktualizację danych przez link",
   contact_code_sent: "Wysłano kod potwierdzający kontakt",
   contact_changed: "Zmiana danych kontaktowych",
   hr_thread_created: "Nowa wiadomość do kadr",

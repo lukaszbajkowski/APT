@@ -738,6 +738,8 @@ class HrThread(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    staff_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    employee_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     employee: Mapped["Employee"] = relationship(lazy="joined")
     messages: Mapped[list["HrMessage"]] = relationship(
         back_populates="thread", order_by="HrMessage.id", cascade="all, delete-orphan"

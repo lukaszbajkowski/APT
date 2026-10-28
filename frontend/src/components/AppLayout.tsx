@@ -58,13 +58,23 @@ export function AppLayout() {
 
   const count = useQuery({
     queryKey: ["hr-count"],
-    queryFn: () => api<{ new: number }>("/hr-messages/count"),
+    queryFn: () => api<{ new: number; unread: number }>("/hr-messages/count"),
     enabled: hasRole("admin", "hr"),
-    refetchInterval: 60_000,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
   });
-  const newMessages = count.data?.new ?? 0;
+  const myCount = useQuery({
+    queryKey: ["my-msg-count"],
+    queryFn: () => api<{ unread: number }>("/me/messages/count"),
+    enabled: hasRole("employee"),
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
+  });
+  const newMessages = count.data?.unread ?? 0;
   const items: { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number }[] = [
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
+    { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0 },
+    { to: "/moje-konto/klucze", label: "Klucze dostępu", icon: IconFingerprint, show: hasRole("employee") },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
     { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee") },
     { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee") },
@@ -216,7 +226,7 @@ export function AppLayout() {
               key={i.to}
               component={Link}
               to={i.to}
-              active={i.to === "/" ? location.pathname === "/" : location.pathname.startsWith(i.to)}
+              active={i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to)}
               label={i.label}
               leftSection={<i.icon size={18} />}
               rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}

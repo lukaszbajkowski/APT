@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { WriteToHrCard } from "../components/HrThreads";
-import { MyDataCards } from "../components/MyDataCards";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
@@ -199,17 +197,15 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>Moje konto</Title>
+      <Title order={2}>Klucze dostępu</Title>
       {error && (
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {error}
         </Alert>
       )}
-      {hasRole("employee") && <WriteToHrCard />}
-      {hasRole("employee") && <MyDataCards />}
       <Card withBorder padding="lg">
         <Group justify="space-between" mb="sm">
-          <Title order={4}>Klucze dostępu</Title>
+          <Title order={4}>Twoje klucze</Title>
           <Button
             leftSection={<IconFingerprint size={18} />}
             loading={add.isPending || prepare.isPending}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Avatar, Badge, Button, Card, Group, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -136,9 +137,11 @@ function ContactEditor({ kind, current, verified }: { kind: "phone" | "email"; c
 
 export function MyDataCards() {
   const qc = useQueryClient();
-  const [photoOpen, setPhotoOpen] = useState(false);
-  const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee") });
-  const history = useQuery({ queryKey: ["my-history"], queryFn: () => api<History>("/me/history") });
+  const [params, setParams] = useSearchParams();
+  const photoOpen = params.get("zdjecie") === "1";
+  const setPhotoOpen = (v: boolean) => setParams(v ? { zdjecie: "1" } : {});
+  const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
+  const history = useQuery({ queryKey: ["my-history"], queryFn: () => api<History>("/me/history"), refetchInterval: 60_000, refetchOnWindowFocus: true });
   const d = mine.data;
   if (!d) return null;
   const asEmployee = { id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee;
@@ -173,7 +176,7 @@ export function MyDataCards() {
           </Stack>
         </Group>
       </Card>
-      <Card withBorder padding="lg">
+      <Card withBorder padding="lg" id="kontakt">
         <Title order={4} mb="xs">
           Dane kontaktowe
         </Title>

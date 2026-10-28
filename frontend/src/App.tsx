@@ -12,6 +12,7 @@ import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
 import { InvitePage, MyAccountPage } from "./pages/AccountPages";
+import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
 
 // Rzadziej używane strony ładują się dopiero przy wejściu (mniejszy pierwszy pakiet JS).
 const AgencyReportPage = lazy(() => import("./pages/AgencyReportPage").then((m) => ({ default: m.AgencyReportPage })));
@@ -67,11 +68,16 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: Role[] 
   if (!me.user.must_change_password && me.mfa_setup_required && location.pathname !== MFA_PATH) {
     return <Navigate to={MFA_PATH} replace />;
   }
-  if (me.user.role === "employee" && location.pathname !== "/moje-konto") {
+  if (me.user.role === "employee" && !location.pathname.startsWith("/moje-konto")) {
     return <Navigate to="/moje-konto" replace />;
   }
   if (roles && !roles.includes(me.user.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
+}
+
+function MyAccountRoot() {
+  const { hasRole } = useAuth();
+  return hasRole("employee") ? <EmployeeHome /> : <MyAccountPage />;
 }
 
 export function App() {
@@ -107,7 +113,9 @@ export function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="moje-konto" element={<MyAccountPage />} />
+        <Route path="moje-konto" element={<MyAccountRoot />} />
+        <Route path="moje-konto/klucze" element={<MyAccountPage />} />
+        <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />
         <Route
           path="pracownicy/nowy"

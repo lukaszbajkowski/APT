@@ -118,18 +118,24 @@ def test_write_to_hr_thread(me, hr, emp):  # noqa: F811
     assert r.status_code == 201, r.text
     tid = r.json()["id"]
     assert r.json()["employee_name"] is None  # pracownik nie dostaje danych kadrowych
-    assert hr.get("/api/hr-messages/count").json() == {"new": 1}
+    assert hr.get("/api/hr-messages/count").json()["new"] == 1
     row = hr.get("/api/hr-messages").json()[0]
     assert row["employee_name"] == "Nowak Anna" and row["status"] == "new"
+    assert row["unread"] is True and hr.get("/api/hr-messages/count").json()["unread"] == 1
+    assert me.get("/api/me/messages/count").json() == {"unread": 0}
+    hr.get(f"/api/hr-messages/{tid}")  # otwarcie = przeczytane
+    assert hr.get("/api/hr-messages/count").json()["unread"] == 0
     mailer.outbox = []
     r = hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "W przyszłym tygodniu."})
     assert r.status_code == 200 and r.json()["status"] == "in_progress"
+    assert me.get("/api/me/messages/count").json() == {"unread": 1}
     assert len(me.get(f"/api/me/messages/{tid}").json()["messages"]) == 2
+    assert me.get("/api/me/messages/count").json() == {"unread": 0}
     assert hr.post(f"/api/hr-messages/{tid}/status", json={"status": "done"}).json()["status"] == "done"
     # odpowiedź pracownika otwiera wątek ponownie
     r = me.post(f"/api/me/messages/{tid}/messages", json={"body": "Dziękuję, a gdzie?"})
     assert r.json()["status"] == "new"
-    assert hr.get("/api/hr-messages/count").json() == {"new": 1}
+    assert hr.get("/api/hr-messages/count").json()["new"] == 1
 
 
 def test_hr_threads_isolated(me, hr, emp, make_user):  # noqa: F811

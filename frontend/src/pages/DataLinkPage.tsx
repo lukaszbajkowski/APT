@@ -108,7 +108,7 @@ export function DataLinkPage() {
             <Title order={3} className="brand-title">
               Aktualizacja danych
             </Title>
-            {unlocked && left !== null && !expired && (
+            {unlocked && left !== null && !expired && !finished && (
               <Badge size="lg" variant="light" color={left < 120 ? "red" : "blue"} leftSection={<IconClock size={14} />} style={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }} styles={{ root: { overflow: "visible" }, label: { overflow: "visible", textOverflow: "clip" } }}>
                 {clock}
               </Badge>

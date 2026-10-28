@@ -27,6 +27,7 @@ from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
 from app.models import AuditLog, DocumentSignature, DocumentTemplate, Employee, GeneratedDocument, Role
 from app.routers.employees import format_number
+from app.routers.passkeys import employee_account
 from app.security import new_token, token_hash
 
 router = APIRouter(prefix="/api", tags=["signatures"])
@@ -183,6 +184,7 @@ class RoleState(BaseModel):
     signed_at: datetime | None = None
     method: str | None = None
     device_check: bool = False  # link wymaga potwierdzenia blokadą urządzenia
+    employee_account: bool = False  # pracownik ma aktywne konto – podpisuje po zalogowaniu
     device_verified: bool = False  # podpisano z potwierdzeniem blokadą urządzenia
     check: dict[str, Any] | None = None  # wynik weryfikacji pliku z podpisem zaufanym / kwalifikowanym
 
@@ -235,6 +237,7 @@ def _state(db: Session, doc: GeneratedDocument, user: Any = None) -> SignaturesO
                 device_verified=s.device_verified_at is not None,
                 check=s.check_result,
             )
+        st.employee_account = r == "pracownika" and employee_account(db, doc.employee_id) is not None
         roles.append(st)
     return SignaturesOut(
         roles=roles,
@@ -272,14 +275,18 @@ class RequestIn(BaseModel):
     to: str | None = Field(default=None, max_length=254)
     # wymagaj potwierdzenia blokadą urządzenia (Face ID / odcisk palca / PIN) przy podpisie na ekranie
     device_check: bool = False
+    # wyjątek: link do podpisu mimo aktywnego konta pracownika (zostaje ślad w dzienniku)
+    force_link: bool = False
 
 
 class RequestOut(BaseModel):
     id: int
     link: str
-    expires_at: datetime
+    expires_at: datetime | None
     sent: bool
     qr_svg: str
+    in_account: bool = False  # dokument trafił na listę „Do podpisu” w koncie pracownika
+    notified: str | None = None  # gdzie wysłano powiadomienie (e-mail / SMS), jeśli udało się wysłać
 
 
 def _mask(channel: str, to: str) -> str:
@@ -306,6 +313,9 @@ def request_signature(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ten podpis został już złożony.")
         if s.role == body.role and s.status == "pending":
             s.status, s.token_hash = "cancelled", None  # poprzedni link przestaje działać
+    acct = employee_account(db, e.id) if body.role == "pracownika" else None
+    if acct is not None and not body.force_link:
+        return _request_in_account(db, request, ctx, doc, e, body)
     to = (body.to or "").strip()
     if body.channel in ("email", "sms") and not to:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Podaj adres e-mail albo numer telefonu.")
@@ -360,10 +370,91 @@ def request_signature(
             "device_check": body.device_check,
         },
     )
+    if acct is not None:
+        audit(
+            db,
+            request,
+            "signature_link_despite_account",
+            user=ctx.user,
+            entity_type="employee",
+            entity_id=e.id,
+            details={"number": format_number(e.number), "document": doc.template_name},
+        )
     db.commit()
     from app.totp import qr_svg
 
     return RequestOut(id=sig.id, link=url, expires_at=expires, sent=sent, qr_svg=qr_svg(url))
+
+
+def _contact_of(e: Employee) -> dict[str, str]:
+    from app import crypto
+
+    out: dict[str, str] = {}
+    try:
+        if e.email_enc and e.email_verified_at is not None:
+            out["email"] = crypto.decrypt_contact(e.email_enc)
+        if e.phone_enc and e.phone_verified_at is not None:
+            out["sms"] = crypto.decrypt_contact(e.phone_enc)
+    except ValueError:
+        pass
+    return out
+
+
+def _request_in_account(
+    db: Session, request: Request, ctx: AuthContext, doc: GeneratedDocument, e: Employee, body: RequestIn
+) -> RequestOut:
+    """Pracownik z kontem podpisuje wyłącznie po zalogowaniu: dokument trafia na jego listę „Do podpisu”."""
+    sig = DocumentSignature(
+        document_id=doc.id,
+        role="pracownika",
+        token_hash=None,
+        expires_at=None,
+        channel="konto",
+        requested_by_name=ctx.user.full_name,
+        device_check=True,
+    )
+    db.add(sig)
+    db.flush()
+    url = mailer.link("/moje-konto/do-podpisu")
+    notified: str | None = None
+    contact = _contact_of(e)
+    try:
+        if "email" in contact and (mailer.enabled() or mailer.outbox is not None):
+            if mailer.send(contact["email"], notify.account_sign_email(e.first_name, doc.template_name, url)):
+                notified = "e-mail"
+        elif "sms" in contact and sms.enabled():
+            sms.send(
+                contact["sms"], f"APT: nowy dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
+            )
+            notified = "SMS"
+    except Exception:  # noqa: BLE001 – brak powiadomienia nie blokuje prośby; dokument i tak jest w koncie
+        notified = None
+    sig.sent_to = notified
+    audit(
+        db,
+        request,
+        "signature_requested",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "document": doc.template_name,
+            "role": "pracownika",
+            "channel": "konto",
+            "notified": notified,
+        },
+    )
+    db.commit()
+    return RequestOut(
+        id=sig.id,
+        link=url,
+        expires_at=None,
+        sent=notified is not None,
+        qr_svg="",
+        in_account=True,
+        notified=notified,
+    )
 
 
 @router.delete("/signatures/{signature_id}", status_code=status.HTTP_204_NO_CONTENT)

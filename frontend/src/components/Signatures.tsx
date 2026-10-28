@@ -51,6 +51,7 @@ interface RoleState {
   method: string | null;
   device_check: boolean;
   device_verified: boolean;
+  employee_account?: boolean;
   check: { level: "qualified" | "valid" | "unverified" | "invalid"; label: string; signer?: string | null; issuer?: string | null; notes?: string[] } | null;
 }
 interface SignaturesState {
@@ -71,9 +72,11 @@ interface SignaturesState {
 interface RequestResult {
   id: number;
   link: string;
-  expires_at: string;
+  expires_at: string | null;
   sent: boolean;
   qr_svg: string;
+  in_account?: boolean;
+  notified?: string | null;
 }
 
 const METHOD: Record<string, string> = {
@@ -115,7 +118,55 @@ export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {
   return null;
 }
 
-function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; employee: Employee; r: RoleState; st: SignaturesState; onDone: () => void }) {
+function AccountRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; employee: Employee; r: RoleState; st: SignaturesState; onDone: () => void }) {
+  const [exception, setException] = useState(false);
+  const [result, setResult] = useState<RequestResult | null>(null);
+  const send = useMutation({
+    mutationFn: () => api<RequestResult>(`/documents/${doc.id}/signatures`, { method: "POST", body: { role: r.role, channel: "link" } }),
+    onSuccess: (res) => {
+      setResult(res);
+      onDone();
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  if (result)
+    return (
+      <Alert color="teal" icon={<IconCheck size={18} />}>
+        Dokument czeka na liście „Do podpisu” w koncie pracownika.{" "}
+        {result.notified ? `Powiadomienie wysłano: ${result.notified}.` : "Pracownik nie ma potwierdzonego e-maila ani telefonu – nie dostał powiadomienia, zobaczy dokument po zalogowaniu."}
+      </Alert>
+    );
+  if (exception)
+    return (
+      <Stack gap="xs">
+        <Alert color="orange" icon={<IconAlertTriangle size={18} />}>
+          Wyjątek: link do podpisu mimo aktywnego konta. Użyj go tylko, gdy pracownik nie może się zalogować (zapis w dzienniku zdarzeń).
+        </Alert>
+        <RoleRequest doc={doc} employee={employee} r={r} st={st} onDone={onDone} force />
+        <Button size="xs" variant="subtle" onClick={() => setException(false)}>
+          Wróć
+        </Button>
+      </Stack>
+    );
+  return (
+    <Stack gap="xs">
+      <Text size="sm">
+        Pracownik ma konto – dokument podpisze po zalogowaniu (lista „Do podpisu”, potwierdzenie kluczem dostępu) i dostanie
+        powiadomienie na potwierdzony e-mail lub telefon.
+      </Text>
+      <Group>
+        <Button size="xs" loading={send.isPending} onClick={() => send.mutate()}>
+          Wyślij do konta pracownika
+        </Button>
+        <Button size="xs" variant="subtle" color="orange" onClick={() => setException(true)}>
+          Wyślij link mimo konta (wyjątek)
+        </Button>
+      </Group>
+    </Stack>
+  );
+}
+
+function RoleRequest({ doc, employee, r, st, onDone, force = false }: { doc: GeneratedDoc; employee: Employee; r: RoleState; st: SignaturesState; onDone: () => void; force?: boolean }) {
   const [channel, setChannel] = useState<string>(st.email_enabled ? "email" : "link");
   const fromRecord = (ch: string) =>
     r.role === "pracownika" ? ((ch === "email" ? employee.contact_email : ch === "sms" ? employee.contact_phone : "") ?? "") : "";
@@ -126,7 +177,7 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
     mutationFn: () =>
       api<RequestResult>(`/documents/${doc.id}/signatures`, {
         method: "POST",
-        body: { role: r.role, channel, to: channel === "link" ? null : to, device_check: deviceCheck },
+        body: { role: r.role, channel, to: channel === "link" ? null : to, device_check: deviceCheck, force_link: force },
       }),
     onSuccess: (res) => {
       setResult(res);
@@ -136,6 +187,13 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
+  if (result?.in_account)
+    return (
+      <Alert color="teal" icon={<IconCheck size={18} />}>
+        Dokument czeka na liście „Do podpisu” w koncie pracownika.{" "}
+        {result.notified ? `Powiadomienie wysłano: ${result.notified}.` : "Pracownik nie ma potwierdzonego e-maila ani telefonu – nie dostał powiadomienia, zobaczy dokument po zalogowaniu."}
+      </Alert>
+    );
   if (result)
     return (
       <Stack gap="xs">
@@ -146,7 +204,7 @@ function RoleRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; empl
               {result.sent ? "Link wysłany. " : ""}Osoba może też zeskanować kod QR telefonem albo podpisać na tym urządzeniu.
             </Text>
             <Text size="xs" c="dimmed">
-              Link jest jednorazowy, ważny do {formatDateTime(result.expires_at)}.
+              Link jest jednorazowy, ważny do {formatDateTime(result.expires_at ?? "")}.
             </Text>
             <Group gap="xs">
               <CopyButton value={result.link}>
@@ -387,14 +445,20 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                   {r.status === "pending" && (
                     <Group justify="space-between" mb="xs">
                       <Text size="xs" c="dimmed">
-                        Wysłano {r.channel === "link" ? "jako link" : `na ${r.sent_to}`} · ważny do {formatDateTime(r.expires_at)}
+                        {r.channel === "konto"
+                          ? `Czeka w koncie pracownika${r.sent_to ? ` · powiadomiono: ${r.sent_to}` : ""}`
+                          : `Wysłano ${r.channel === "link" ? "jako link" : `na ${r.sent_to}`} · ważny do ${formatDateTime(r.expires_at)}`}
                       </Text>
                       <Button size="compact-xs" variant="subtle" color="red" leftSection={<IconX size={12} />} onClick={() => r.request_id && cancel.mutate(r.request_id)}>
                         Anuluj
                       </Button>
                     </Group>
                   )}
-                  <RoleRequest key={r.role} doc={doc} employee={employee} r={r} st={st} onDone={refresh} />
+                  {r.employee_account && r.status !== "pending" ? (
+                    <AccountRequest key={r.role} doc={doc} employee={employee} r={r} st={st} onDone={refresh} />
+                  ) : (
+                    <RoleRequest key={r.role} doc={doc} employee={employee} r={r} st={st} onDone={refresh} />
+                  )}
                 </>
               )}
             </Paper>

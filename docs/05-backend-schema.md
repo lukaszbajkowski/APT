@@ -138,3 +138,7 @@ Dokumentacja interaktywna: `/api/docs` (Swagger).
 - `data_links` – link dla pracownika bez konta: `employee_id`, `token_hash` (unikalny, zerowany po unieważnieniu), `status` (`active` / `cancelled` / `used`), `failed_attempts` (blokada po 5), `created_by`, `expires_at` (7 dni), `last_used_at`. Nowy link unieważnia poprzedni; dla pracownika z aktywnym kontem link nie jest wystawiany.
 - `employees.phone_hash` / `email_hash` (migracja 0032) – unikalne skróty HMAC telefonu i e-maila: jeden kontakt należy tylko do jednego pracownika; kadry i administrator mogą kontakt usunąć (`DELETE /api/employees/{id}/contact/{phone|email}`).
 - `data_links.first_used_at` (migracja 0033) – pierwsze potwierdzenie daty urodzenia; od tej chwili link działa tylko 15 minut (potem status `used`), wcześniej czeka na użycie do 7 dni.
+
+## Podpis w koncie pracownika
+
+Bez zmian schematu: prośba o podpis pracownika z kontem to `document_signatures` z `channel = 'konto'`, bez tokenu i bez terminu ważności (`token_hash` i `expires_at` puste). Podpis składa się po zalogowaniu i potwierdzeniu kluczem dostępu; użyty klucz zapisuje się w `device_credential`, a `device_verified_at` ustawia się na chwilę podpisu. Wyjątek kadr (link mimo konta) zostawia wpis `signature_link_despite_account` w dzienniku zdarzeń.

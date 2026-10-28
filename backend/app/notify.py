@@ -157,6 +157,21 @@ def sign_request_email(person: str, document: str, url: str, expires: datetime) 
     )
 
 
+def account_sign_email(first_name: str, document: str, url: str) -> Email:
+    return Email(
+        subject=f"Nowy dokument do podpisu: {document}",
+        title="Dokument czeka na Twój podpis",
+        preheader=f"Zaloguj się do konta, aby podpisać „{document}”.",
+        greeting=f"Dzień dobry {first_name},",
+        paragraphs=[
+            f"w Twoim koncie czeka dokument „{document}”. Zaloguj się (twarzą, odciskiem palca lub PIN-em), "
+            "przeczytaj go i podpisz w zakładce „Do podpisu”.",
+        ],
+        button=("Przejdź do konta", url),
+        footer_note="Jeśli nie spodziewasz się tej wiadomości – zignoruj ją.",
+    )
+
+
 def test_email() -> Email:
     return Email(
         subject="Test – Identyfikacja pracowników APT",

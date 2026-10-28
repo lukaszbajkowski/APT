@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconCamera, IconFingerprint, IconMessage, IconPhone } from "@tabler/icons-react";
+import { IconCamera, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
@@ -39,12 +39,14 @@ export function EmployeeHome() {
   const [, setParams] = useSearchParams();
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const unread = useQuery({ queryKey: ["my-msg-count"], queryFn: () => api<{ unread: number }>("/me/messages/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
+  const toSign = useQuery({ queryKey: ["my-sig-count"], queryFn: () => api<{ pending: number }>("/me/signatures/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
   return (
     <Stack maw={760}>
       <Title order={2}>{d ? `Dzień dobry, ${d.first_name}` : "Moje konto"}</Title>
-      <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }}>
+      <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
+        <Tile icon={IconSignature} title="Do podpisu" hint="Dokumenty czekające na Twój podpis" to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
         <Tile icon={IconMessage} title="Napisz do kadr" hint="Zadaj pytanie lub zgłoś sprawę" to="/moje-konto/wiadomosci" badge={unread.data?.unread || undefined} />
         <Tile icon={IconCamera} title={d?.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"} hint="Do karty identyfikacyjnej" onClick={() => setParams({ zdjecie: "1" })} />
         <Tile

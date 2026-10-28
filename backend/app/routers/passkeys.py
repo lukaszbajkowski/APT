@@ -241,6 +241,65 @@ def login_passkey(body: PasskeyLoginIn, request: Request, response: Response, db
     return me
 
 
+# --- potwierdzenie kluczem dostępu zalogowanego użytkownika (np. przy podpisie dokumentu) -----------
+
+
+def employee_account(db: Session, employee_id: int) -> User | None:
+    """Aktywne konto pracownika z kluczem dostępu (takie, które może logować się i podpisywać)."""
+    u = db.scalar(select(User).where(User.employee_id == employee_id))
+    if u is None or not u.is_active or not _has_access(db, u):
+        return None
+    return u
+
+
+def reauth_options(db: Session, request: Request, user: User) -> dict:
+    rp_id, _ = rp_and_origin(request)
+    creds = [
+        PublicKeyCredentialDescriptor(id=_unb64(c.credential_id))
+        for c in db.scalars(select(WebauthnCredential).where(WebauthnCredential.user_id == user.id))
+    ]
+    challenge = os.urandom(32)
+    opts = generate_authentication_options(
+        rp_id=rp_id,
+        challenge=challenge,
+        timeout=120_000,
+        allow_credentials=creds,
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    cid = _store_challenge(db, challenge, "reauth", user)
+    return {"challenge_id": cid, "options": json.loads(options_to_json(opts))}
+
+
+def verify_reauth(db: Session, request: Request, user: User, challenge_id: str, credential: dict) -> str:
+    """Sprawdza odpowiedź klucza dostępu tego użytkownika; zwraca identyfikator użytego klucza."""
+    rp_id, origin = rp_and_origin(request)
+    challenge = _take_challenge(db, challenge_id, "reauth", user)
+    raw_id = str(credential.get("id") or credential.get("rawId") or "")
+    cred = db.scalar(
+        select(WebauthnCredential).where(
+            WebauthnCredential.credential_id == raw_id, WebauthnCredential.user_id == user.id
+        )
+    )
+    if cred is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR)
+    try:
+        res = verify_authentication_response(
+            credential=credential,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=cred.public_key,
+            credential_current_sign_count=cred.sign_count,
+            require_user_verification=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.commit()  # wyzwanie jest zużyte
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=_ERR) from exc
+    cred.sign_count = res.new_sign_count
+    cred.last_used_at = utcnow()
+    return cred.credential_id
+
+
 # --- zarządzanie kluczami zalogowanego użytkownika --------------------------------
 
 

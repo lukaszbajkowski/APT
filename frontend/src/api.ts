@@ -429,6 +429,7 @@ export const ACTION_LABELS: Record<string, string> = {
   employee_restored: "Przywrócenie z archiwum",
   pesel_viewed: "Odczyt PESEL",
   photo_uploaded: "Zmiana zdjęcia",
+  signature_link_despite_account: "Link do podpisu mimo konta pracownika",
   data_link_created: "Wysłano link do aktualizacji danych",
   data_link_cancelled: "Unieważniono link do aktualizacji danych",
   data_link_locked: "Zablokowano link do aktualizacji danych",

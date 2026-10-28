@@ -24,6 +24,7 @@ import {
   IconDeviceDesktop,
   IconFingerprint,
   IconMessage,
+  IconSignature,
   IconSwitchHorizontal,
   IconHome,
   IconMoon,
@@ -70,9 +71,17 @@ export function AppLayout() {
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
   });
+  const sigCount = useQuery({
+    queryKey: ["my-sig-count"],
+    queryFn: () => api<{ pending: number }>("/me/signatures/count"),
+    enabled: hasRole("employee"),
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
+  });
   const newMessages = count.data?.unread ?? 0;
   const items: { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number }[] = [
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
+    { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0 },
     { to: "/moje-konto/klucze", label: "Klucze dostępu", icon: IconFingerprint, show: hasRole("employee") },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },

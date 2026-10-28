@@ -132,7 +132,7 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Pt[][], scale: numb
  * telefonu lub zmianie rozmiaru okna podpis jest przerysowywany, a nie czyszczony. Na ekranie tusz jest dobrany do
  * motywu (jasny na ciemnym tle), a zapisywany obraz zawsze ma granatowy tusz na przezroczystym tle.
  */
-function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Pt[][]>([]);
   const drawing = useRef(false);

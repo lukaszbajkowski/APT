@@ -19,6 +19,7 @@ from app.routers import (
     imports,
     lifecycle,
     me,
+    me_signatures,
     passkeys,
     quality,
     reports,
@@ -58,6 +59,7 @@ def _apply_planned_changes() -> None:
 app.include_router(auth.router)
 app.include_router(passkeys.router)
 app.include_router(me.router)
+app.include_router(me_signatures.router)
 app.include_router(data_link.staff_router)
 app.include_router(data_link.public_router)
 app.include_router(hr_messages.me_router)

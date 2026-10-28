@@ -184,7 +184,7 @@ def test_stale_conversation_closes_itself(me, hr, emp):  # noqa: F811
     hr.post(f"/api/hr-messages/{tid}/messages", json={"body": "Odpowiedź"})
     # świeża rozmowa zostaje otwarta
     assert hr.get("/api/hr-messages").json()[0]["status"] == "in_progress"
-    old = utcnow() - timedelta(days=8)
+    old = utcnow() - timedelta(days=4)
     with SessionLocal() as db:
         t = db.get(HrThread, tid)
         t.updated_at = old

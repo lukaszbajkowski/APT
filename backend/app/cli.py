@@ -127,6 +127,17 @@ def refresh_trustlist() -> int:
     return 0
 
 
+def close_stale_threads() -> int:
+    """Zamyka rozmowy „Napisz do kadr”, w których pracownik nie odpowiada na odpowiedź kadr."""
+    from app.db import SessionLocal
+    from app.routers.hr_messages import AUTO_CLOSE_DAYS, close_stale
+
+    with SessionLocal() as db:
+        n = close_stale(db)
+    print(f"Rozmowy zamknięte automatycznie (brak odpowiedzi {AUTO_CLOSE_DAYS} dni): {n}.")
+    return 0
+
+
 def stamp_pending() -> int:
     """Dodaje zaufane znaczniki czasu do podpisanych dokumentów, które ich jeszcze nie mają."""
     from app import timestamp
@@ -250,6 +261,7 @@ def notify_daily() -> int:
     from app.routers.dashboard import read_backup_status
     from app.routers.retention import count_due
 
+    close_stale_threads()
     problems: list[str] = []
     status = read_backup_status()
     now = datetime.now(UTC)
@@ -311,6 +323,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-trainings", help="Wyślij teraz przypomnienia o kończących się szkoleniach")
     sub.add_parser("agency-reports", help="Wyślij teraz zestawienia za poprzedni miesiąc do agencji")
+    sub.add_parser("close-stale-threads", help="Zamknij rozmowy bez odpowiedzi pracownika")
     sub.add_parser("stamp-pending", help="Dodaj zaufane znaczniki czasu do podpisanych dokumentów")
     sub.add_parser("encrypt-files", help="Zaszyfruj pliki z danymi osobowymi na dysku (idempotentne)")
     sub.add_parser("refresh-trustlist", help="Pobierz unijną listę zaufania do weryfikacji podpisów")
@@ -331,6 +344,8 @@ def main(argv: list[str] | None = None) -> int:
         return training_reminders()
     if args.command == "agency-reports":
         return agency_reports()
+    if args.command == "close-stale-threads":
+        return close_stale_threads()
     if args.command == "stamp-pending":
         return stamp_pending()
     if args.command == "encrypt-files":

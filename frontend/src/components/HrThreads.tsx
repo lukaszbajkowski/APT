@@ -129,7 +129,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
             if (m.kind === "status") {
               const label = THREAD_STATUS[m.body as ThreadRow["status"]]?.label ?? m.body;
               const text = m.body === "done_auto"
-                ? "Rozmowa zamknięta automatycznie – brak odpowiedzi przez 7 dni"
+                ? "Rozmowa zamknięta automatycznie – brak odpowiedzi przez 3 dni"
                 : m.from_staff
                 ? `Status rozmowy zmieniono na: ${label}${staff && m.author_name ? ` (${m.author_name})` : ""}`
                 : "Rozmowa została otwarta ponownie";

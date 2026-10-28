@@ -28,7 +28,7 @@ SUBJECTS = [
     "Inne",
 ]
 Status = Literal["new", "in_progress", "done"]
-AUTO_CLOSE_DAYS = 7  # rozmowa „w toku”, w której po odpowiedzi kadr pracownik milczy, zamyka się sama
+AUTO_CLOSE_DAYS = 3  # rozmowa „w toku”, w której po odpowiedzi kadr pracownik milczy, zamyka się sama
 MAX_OPEN = 10
 MAX_PER_HOUR = 10
 

@@ -108,6 +108,14 @@ def test_sign_in_account_with_passkey(admin_client):
     assert len(c.get("/api/me/signatures").json()["signed"]) == 1
     roles = admin_client.get(f"/api/documents/{doc['id']}/signatures").json()["roles"]
     assert roles[0]["status"] == "signed" and roles[0]["device_verified"] is True
+    # pracownik widzi i pobiera to, co podpisał
+    done = c.get("/api/me/signatures").json()["signed"][0]
+    assert c.get(f"/api/me/signatures/signed/{done['id']}").json()["pages"] >= 1
+    assert c.get(f"/api/me/signatures/signed/{done['id']}/page/0").status_code == 200
+    pdf = c.get(f"/api/me/signatures/signed/{done['id']}/pdf")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    assert c.get(f"/api/me/signatures/signed/{sid}/pdf").status_code == 200
+    assert c.get("/api/me/signatures/signed/99999").status_code == 404
 
 
 def test_staff_can_force_link_despite_account(admin_client):

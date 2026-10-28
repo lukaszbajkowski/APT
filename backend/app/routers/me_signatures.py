@@ -13,7 +13,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app import signing, storage
+from app import signing, storage, templating
+from app.audit import audit
 from app.deps import Auth, DbSession, utcnow
 from app.models import DocumentSignature, Employee, GeneratedDocument, Role
 from app.routers.passkeys import reauth_options, verify_reauth
@@ -53,6 +54,7 @@ class ToSign(BaseModel):
 
 
 class Signed(BaseModel):
+    id: int
     document: str
     signed_at: datetime | None
 
@@ -99,7 +101,7 @@ def my_list(ctx: Auth, db: DbSession) -> ListOut:
             )
             for s, d in _pending(db, e)
         ],
-        signed=[Signed(document=d.template_name, signed_at=s.signed_at) for s, d in signed],
+        signed=[Signed(id=s.id, document=d.template_name, signed_at=s.signed_at) for s, d in signed],
     )
 
 
@@ -195,3 +197,71 @@ def sign(sig_id: int, body: SignIn, ctx: Auth, request: Request, db: DbSession) 
         {"signature_png_sha256": signing.sha256(png), "account": True},
     )
     return {"ok": True}
+
+
+# --- podgląd i pobranie własnych podpisanych dokumentów -----------------------------------------
+
+
+def _mine_signed(db: DbSession, e: Employee, sig_id: int) -> tuple[DocumentSignature, GeneratedDocument]:
+    sig, doc = _mine(db, e, sig_id)
+    if sig.status != "signed":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono podpisanego dokumentu.")
+    return sig, doc
+
+
+class SignedInfo(BaseModel):
+    id: int
+    document: str
+    pages: int
+    signed_at: datetime | None
+    complete: bool  # dokument ma już wszystkie podpisy (np. także firmy)
+
+
+@router.get("/signed/{sig_id}", response_model=SignedInfo)
+def signed_info(sig_id: int, ctx: Auth, db: DbSession) -> SignedInfo:
+    import pypdfium2 as pdfium
+
+    sig, doc = _mine_signed(db, _employee(ctx, db), sig_id)
+    return SignedInfo(
+        id=sig.id,
+        document=doc.template_name,
+        pages=len(pdfium.PdfDocument(current_pdf(doc))),
+        signed_at=sig.signed_at,
+        complete=doc.signed_at is not None,
+    )
+
+
+@router.get("/signed/{sig_id}/page/{n}")
+def signed_page(sig_id: int, n: int, ctx: Auth, db: DbSession) -> Response:
+    import pypdfium2 as pdfium
+
+    sig, doc = _mine_signed(db, _employee(ctx, db), sig_id)
+    pdf = pdfium.PdfDocument(current_pdf(doc))
+    if not 0 <= n < len(pdf):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
+    img = pdf[n].render(scale=1.6).to_pil()
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, "PNG", optimize=True)
+    return Response(buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/signed/{sig_id}/pdf")
+def signed_pdf(sig_id: int, ctx: Auth, request: Request, db: DbSession) -> Response:
+    e = _employee(ctx, db)
+    sig, doc = _mine_signed(db, e, sig_id)
+    audit(
+        db,
+        request,
+        "document_downloaded",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"template": doc.template_name, "format": "signed", "own": True},
+    )
+    db.commit()
+    name = templating.safe_filename(f"{doc.template_name}_podpisany") + ".pdf"
+    return Response(
+        current_pdf(doc),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
+    )

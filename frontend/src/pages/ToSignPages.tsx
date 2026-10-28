@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, Checkbox, Group, Image, Loader, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconCheck, IconFingerprint } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconDownload, IconFingerprint } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
@@ -11,7 +11,7 @@ import { SignaturePad } from "./SignPage";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
-  signed: { document: string; signed_at: string | null }[];
+  signed: { id: number; document: string; signed_at: string | null }[];
 }
 interface Challenge {
   challenge_id: string;
@@ -52,12 +52,16 @@ export function ToSignListPage() {
             Podpisane
           </Title>
           {list.data.signed.map((s, i) => (
-            <Group key={i} justify="space-between">
-              <Text size="sm">{s.document}</Text>
-              <Badge color="teal" variant="light" leftSection={<IconCheck size={10} />}>
-                {s.signed_at ? formatDateTime(s.signed_at) : "podpisano"}
-              </Badge>
-            </Group>
+            <Card key={i} withBorder padding="sm" component={Link} to={`/moje-konto/do-podpisu/podpisane/${s.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+              <Group justify="space-between" wrap="nowrap">
+                <Text size="sm" fw={500}>
+                  {s.document}
+                </Text>
+                <Badge color="teal" variant="light" leftSection={<IconCheck size={10} />}>
+                  {s.signed_at ? formatDateTime(s.signed_at) : "podpisano"}
+                </Badge>
+              </Group>
+            </Card>
           ))}
         </>
       )}
@@ -168,6 +172,58 @@ export function ToSignPage() {
               <Text size="xs" c="dimmed">
                 Po dotknięciu potwierdzisz podpis twarzą, odciskiem palca lub PIN-em urządzenia. Zapiszemy podpis, datę i godzinę oraz adres IP.
               </Text>
+            </Stack>
+          </Card>
+        </>
+      )}
+    </Stack>
+  );
+}
+
+/** Podgląd własnego podpisanego dokumentu z możliwością pobrania. */
+export function SignedDocPage() {
+  const { id } = useParams();
+  const base = `/me/signatures/signed/${id}`;
+  const info = useQuery({
+    queryKey: ["my-signed", id],
+    queryFn: () => api<{ document: string; pages: number; signed_at: string | null; complete: boolean }>(base),
+    retry: false,
+  });
+  if (info.isError)
+    return (
+      <Stack maw={640}>
+        <Alert color="red" icon={<IconAlertCircle size={18} />}>
+          {errorText(info.error)}
+        </Alert>
+        <Button component={Link} to="/moje-konto/do-podpisu" variant="default">
+          Wróć do listy
+        </Button>
+      </Stack>
+    );
+  const d = info.data;
+  return (
+    <Stack maw={640}>
+      <Button component={Link} to="/moje-konto/do-podpisu" variant="subtle" w="fit-content">
+        ← Do podpisu
+      </Button>
+      <Title order={2}>{d?.document ?? "Dokument"}</Title>
+      {!d && <Loader />}
+      {d && (
+        <>
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">
+              Podpisano {d.signed_at ? formatDateTime(d.signed_at) : ""}
+              {d.complete ? " · dokument ma wszystkie podpisy" : " · czeka jeszcze na pozostałe podpisy"}
+            </Text>
+            <Button component="a" href={withAcct(`/api${base}/pdf`)} leftSection={<IconDownload size={16} />}>
+              Pobierz PDF
+            </Button>
+          </Group>
+          <Card withBorder padding="xs">
+            <Stack gap="xs">
+              {Array.from({ length: d.pages }, (_, i) => (
+                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={`Strona ${i + 1}`} style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+              ))}
             </Stack>
           </Card>
         </>

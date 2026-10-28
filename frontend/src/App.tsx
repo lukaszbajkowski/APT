@@ -12,7 +12,7 @@ import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
 import { InvitePage, MyAccountPage } from "./pages/AccountPages";
-import { ToSignListPage, ToSignPage } from "./pages/ToSignPages";
+import { SignedDocPage, ToSignListPage, ToSignPage } from "./pages/ToSignPages";
 import { DataLinkPage } from "./pages/DataLinkPage";
 import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
 
@@ -118,6 +118,7 @@ export function App() {
         <Route index element={<Home />} />
         <Route path="moje-konto" element={<MyAccountRoot />} />
         <Route path="moje-konto/do-podpisu" element={<ToSignListPage />} />
+        <Route path="moje-konto/do-podpisu/podpisane/:id" element={<SignedDocPage />} />
         <Route path="moje-konto/do-podpisu/:id" element={<ToSignPage />} />
         <Route path="moje-konto/klucze" element={<MyAccountPage />} />
         <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />

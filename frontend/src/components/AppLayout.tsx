@@ -212,7 +212,7 @@ export function AppLayout() {
                 </>
               )}
               <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate("/moje-konto")}>
-                Klucze dostępu
+                Klucze i powiadomienia
               </Menu.Item>
               <Menu.Item
                 color="red"

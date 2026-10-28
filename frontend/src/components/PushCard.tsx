@@ -83,10 +83,10 @@ export function PushCard() {
   return (
     <Card withBorder padding="lg">
       <Title order={4} mb={4}>
-        Powiadomienia na telefonie
+        Powiadomienia na tym urządzeniu
       </Title>
       <Text size="sm" c="dimmed" mb="sm">
-        Dostaniesz krótkie powiadomienie, gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest
+        Dostaniesz krótkie powiadomienie na tym urządzeniu (telefonie, tablecie lub komputerze), gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest
         ogólna – bez nazwisk i szczegółów.
       </Text>
       {on === null && <Loader size="sm" />}

@@ -41,3 +41,8 @@ export const isStandalone = () =>
   (navigator as unknown as { standalone?: boolean }).standalone === true;
 
 export const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/** Telefon lub tablet – tylko tu proponujemy dodanie aplikacji do ekranu głównego. */
+export const isMobile = () =>
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPad w trybie „komputer”

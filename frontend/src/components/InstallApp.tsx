@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, Group, List, Modal, Text, Title } from "@mantine/core";
 import { IconDeviceMobile, IconDownload } from "@tabler/icons-react";
 
-import { clearInstallPrompt, getInstallPrompt, isIos, isStandalone, onInstallChange } from "../lib/install";
+import { clearInstallPrompt, getInstallPrompt, isIos, isMobile, isStandalone, onInstallChange } from "../lib/install";
 
 /**
  * Instalacja aplikacji na telefonie lub komputerze. Chrome / Edge / Android: przycisk uruchamia systemowe okno
@@ -13,6 +13,7 @@ export function InstallApp() {
   const [help, setHelp] = useState(false);
   useEffect(() => onInstallChange(() => force((n) => n + 1)), []);
 
+  if (!isMobile() && !isStandalone()) return null; // na komputerze nie ma „ekranu głównego”
   if (isStandalone()) {
     return (
       <Card withBorder padding="md">

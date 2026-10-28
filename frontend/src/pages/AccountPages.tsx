@@ -199,7 +199,7 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>Moje konto</Title>
+      <Title order={2}>Klucze i powiadomienia</Title>
       <InstallApp />
       <PushCard />
       {error && (

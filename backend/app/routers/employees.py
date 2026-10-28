@@ -778,7 +778,7 @@ PhotoAuth = Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Ro
 
 
 async def store_uploaded_photo(
-    db: Session, request: Request, actor: User, e: Employee, file: UploadFile
+    db: Session, request: Request, actor: User | None, e: Employee, file: UploadFile, who: str | None = None
 ) -> None:
     """Sprawdza, przetwarza i zapisuje zdjęcie pracownika (kadry, agencja albo sam pracownik)."""
     limit = get_settings().photo_max_upload_mb * 1024 * 1024
@@ -811,6 +811,7 @@ async def store_uploaded_photo(
         request,
         "photo_uploaded",
         user=actor,
+        username=who,
         entity_type="employee",
         entity_id=e.id,
         details={"number": format_number(e.number), "size": len(processed.data)},

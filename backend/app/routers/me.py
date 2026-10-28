@@ -13,12 +13,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app import crypto, mailer, photos, sms, storage
 from app.audit import audit
 from app.deps import Auth, DbSession, utcnow
 from app.emails import Email
-from app.models import ContactVerification, Employee, Role
+from app.models import ContactVerification, Employee, Role, User
 from app.routers.employees import format_number, store_uploaded_photo
 from app.routers.lifecycle import AssignmentOut, PeriodOut, build_timeline
 from app.security import token_hash
@@ -180,12 +181,10 @@ class ContactStartOut(BaseModel):
     expires_minutes: int
 
 
-@router.post("/contact/{kind}/start", response_model=ContactStartOut)
-def contact_start(
-    kind: Kind, body: ContactStartIn, ctx: Auth, request: Request, db: DbSession
+def start_contact(
+    db: Session, request: Request, e: Employee, kind: Kind, raw_value: str, user: User | None, who: str
 ) -> ContactStartOut:
-    e = _me_employee(ctx, db)
-    value = _normalize(kind, body.value)
+    value = _normalize(kind, raw_value)
     now = utcnow()
     sent_last_hour = db.scalar(
         select(func.count())
@@ -252,7 +251,8 @@ def contact_start(
         db,
         request,
         "contact_code_sent",
-        user=ctx.user,
+        user=user,
+        username=who,
         entity_type="employee",
         entity_id=e.id,
         details={"kind": kind},
@@ -261,15 +261,20 @@ def contact_start(
     return ContactStartOut(sent_to=_masked(kind, value), expires_minutes=CODE_MINUTES)
 
 
+@router.post("/contact/{kind}/start", response_model=ContactStartOut)
+def contact_start(
+    kind: Kind, body: ContactStartIn, ctx: Auth, request: Request, db: DbSession
+) -> ContactStartOut:
+    return start_contact(db, request, _me_employee(ctx, db), kind, body.value, ctx.user, ctx.user.username)
+
+
 class ContactConfirmIn(BaseModel):
     code: str = Field(min_length=4, max_length=10)
 
 
-@router.post("/contact/{kind}/confirm", response_model=MyEmployeeOut)
-def contact_confirm(
-    kind: Kind, body: ContactConfirmIn, ctx: Auth, request: Request, db: DbSession
-) -> MyEmployeeOut:
-    e = _me_employee(ctx, db)
+def confirm_contact(
+    db: Session, request: Request, e: Employee, kind: Kind, raw_code: str, user: User | None, who: str
+) -> None:
     now = utcnow()
     v = db.scalar(
         select(ContactVerification)
@@ -282,7 +287,7 @@ def contact_confirm(
     )
     if v is None or v.expires_at <= now or v.attempts >= MAX_ATTEMPTS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Kod wygasł. Poproś o nowy.")
-    code = re.sub(r"\D", "", body.code)
+    code = re.sub(r"\D", "", raw_code)
     if not secrets.compare_digest(v.code_hash, _code_hash(e.id, kind, code)):
         v.attempts += 1
         db.commit()
@@ -296,18 +301,26 @@ def contact_confirm(
         db,
         request,
         "contact_changed",
-        user=ctx.user,
+        user=user,
+        username=who,
         entity_type="employee",
         entity_id=e.id,
         details={"kind": kind},
     )
     db.commit()
+
+
+@router.post("/contact/{kind}/confirm", response_model=MyEmployeeOut)
+def contact_confirm(
+    kind: Kind, body: ContactConfirmIn, ctx: Auth, request: Request, db: DbSession
+) -> MyEmployeeOut:
+    confirm_contact(db, request, _me_employee(ctx, db), kind, body.code, ctx.user, ctx.user.username)
     return my_employee(ctx, db)
 
 
-@router.delete("/contact/{kind}", response_model=MyEmployeeOut)
-def contact_remove(kind: Kind, ctx: Auth, request: Request, db: DbSession) -> MyEmployeeOut:
-    e = _me_employee(ctx, db)
+def remove_contact(
+    db: Session, request: Request, e: Employee, kind: Kind, user: User | None, who: str
+) -> None:
     if kind == "phone":
         e.phone_enc = e.phone_verified_at = None
     else:
@@ -316,10 +329,16 @@ def contact_remove(kind: Kind, ctx: Auth, request: Request, db: DbSession) -> My
         db,
         request,
         "contact_removed",
-        user=ctx.user,
+        user=user,
+        username=who,
         entity_type="employee",
         entity_id=e.id,
         details={"kind": kind},
     )
     db.commit()
+
+
+@router.delete("/contact/{kind}", response_model=MyEmployeeOut)
+def contact_remove(kind: Kind, ctx: Auth, request: Request, db: DbSession) -> MyEmployeeOut:
+    remove_contact(db, request, _me_employee(ctx, db), kind, ctx.user, ctx.user.username)
     return my_employee(ctx, db)

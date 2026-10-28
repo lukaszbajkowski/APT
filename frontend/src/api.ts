@@ -316,6 +316,16 @@ function errorMessage(
   return { message: `Błąd serwera (${status}).` };
 }
 
+let linkAccess: string | null = null;
+
+/** Klucz dostępu strony „aktualizacja danych” (po potwierdzeniu daty urodzenia) – tylko w pamięci. */
+export function setLinkAccess(key: string | null): void {
+  linkAccess = key;
+}
+export function getLinkAccess(): string | null {
+  return linkAccess;
+}
+
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; form?: FormData } = {},
@@ -323,6 +333,7 @@ export async function api<T>(
   const method = options.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
   if (accountId !== null) headers["X-APT-Account"] = String(accountId);
+  if (linkAccess && path.startsWith("/data-link/")) headers["X-Link-Access"] = linkAccess;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
@@ -418,6 +429,9 @@ export const ACTION_LABELS: Record<string, string> = {
   employee_restored: "Przywrócenie z archiwum",
   pesel_viewed: "Odczyt PESEL",
   photo_uploaded: "Zmiana zdjęcia",
+  data_link_created: "Wysłano link do aktualizacji danych",
+  data_link_cancelled: "Unieważniono link do aktualizacji danych",
+  data_link_locked: "Zablokowano link do aktualizacji danych",
   contact_code_sent: "Wysłano kod potwierdzający kontakt",
   contact_changed: "Zmiana danych kontaktowych",
   hr_thread_created: "Nowa wiadomość do kadr",

@@ -54,6 +54,7 @@ import { DocumentsCard } from "../components/DocumentsCard";
 import { TrainingsCard } from "../components/TrainingsCard";
 import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
+import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 
 const PESEL_VISIBLE_SECONDS = 30;
@@ -349,6 +350,8 @@ export function EmployeeProfilePage() {
       {!isAgency && <TrainingsCard employee={e} />}
 
       {!isAgency && <MentorProgramsCard employee={e} />}
+
+      {staff && <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />}
 
       {staff && <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />}
 

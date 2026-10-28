@@ -12,6 +12,7 @@ import { MfaPage } from "./pages/MfaPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { HomePage } from "./pages/HomePage";
 import { InvitePage, MyAccountPage } from "./pages/AccountPages";
+import { DataLinkPage } from "./pages/DataLinkPage";
 import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
 
 // Rzadziej używane strony ładują się dopiero przy wejściu (mniejszy pierwszy pakiet JS).
@@ -89,6 +90,7 @@ export function App() {
       <Route path="/ustaw-haslo" element={<SetPasswordPage />} />
       <Route path="/podpis/:token" element={<SignPage />} />
       <Route path="/zaproszenie" element={<InvitePage />} />
+      <Route path="/aktualizacja" element={<DataLinkPage />} />
       <Route
         path="/zmiana-hasla"
         element={

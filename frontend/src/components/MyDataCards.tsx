@@ -49,22 +49,34 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   );
 }
 
-function ContactEditor({ kind, current, verified }: { kind: "phone" | "email"; current: string | null; verified: boolean }) {
+export function ContactEditor({
+  kind,
+  current,
+  verified,
+  base = "/me/contact",
+  queryKey = ["my-employee"],
+}: {
+  kind: "phone" | "email";
+  current: string | null;
+  verified: boolean;
+  base?: string;
+  queryKey?: unknown[];
+}) {
   const qc = useQueryClient();
   const [value, setValue] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isMail = kind === "email";
-  const done = (data: MyEmployee) => {
-    qc.setQueryData(["my-employee"], data);
+  const done = (data: unknown) => {
+    qc.setQueryData(queryKey, data);
     setSentTo(null);
     setValue("");
     setCode("");
     setError(null);
   };
   const start = useMutation({
-    mutationFn: () => api<{ sent_to: string }>(`/me/contact/${kind}/start`, { method: "POST", body: { value } }),
+    mutationFn: () => api<{ sent_to: string }>(`${base}/${kind}/start`, { method: "POST", body: { value } }),
     onSuccess: (r) => {
       setError(null);
       setSentTo(r.sent_to);
@@ -72,7 +84,7 @@ function ContactEditor({ kind, current, verified }: { kind: "phone" | "email"; c
     onError: (e) => setError(errorText(e)),
   });
   const confirm = useMutation({
-    mutationFn: () => api<MyEmployee>(`/me/contact/${kind}/confirm`, { method: "POST", body: { code } }),
+    mutationFn: () => api<unknown>(`${base}/${kind}/confirm`, { method: "POST", body: { code } }),
     onSuccess: (d) => {
       done(d);
       notifications.show({ color: "green", message: isMail ? "Zapisano adres e-mail." : "Zapisano numer telefonu." });
@@ -80,7 +92,7 @@ function ContactEditor({ kind, current, verified }: { kind: "phone" | "email"; c
     onError: (e) => setError(errorText(e)),
   });
   const remove = useMutation({
-    mutationFn: () => api<MyEmployee>(`/me/contact/${kind}`, { method: "DELETE" }),
+    mutationFn: () => api<unknown>(`${base}/${kind}`, { method: "DELETE" }),
     onSuccess: done,
     onError: (e) => setError(errorText(e)),
   });

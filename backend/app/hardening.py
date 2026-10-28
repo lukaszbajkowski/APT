@@ -11,8 +11,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 
-_TOKEN_IN_PATH = re.compile(r"(/api/sign/)[^/?\s\"]+")
-_TOKEN_IN_QUERY = re.compile(r"([?&](?:token|v|view)=)[^&\s\"]+")
+_TOKEN_IN_PATH = re.compile(r"(/api/(?:sign|data-link)/)[^/?\s\"]+")
+_TOKEN_IN_QUERY = re.compile(r"([?&](?:token|v|view|k)=)[^&\s\"]+")
 
 
 def mask_tokens(text: str) -> str:
@@ -70,7 +70,7 @@ limiter = RateLimiter()
 
 async def sign_rate_limit(request: Request, call_next):  # noqa: ANN001, ANN201
     """Publiczne adresy /api/sign/* – limit żądań na adres IP (osobno odczyt i zapis)."""
-    if request.url.path.startswith("/api/sign/"):
+    if request.url.path.startswith(("/api/sign/", "/api/data-link/")):
         s = get_settings()
         kind = "post" if request.method == "POST" else "get"
         limit = s.sign_rate_post if kind == "post" else s.sign_rate_get

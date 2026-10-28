@@ -132,3 +132,7 @@ Dokumentacja interaktywna: `/api/docs` (Swagger).
 - `hr_messages` – wiadomości wątku: `thread_id`, `from_staff`, `author_id`, `body` (do 2000 znaków), `created_at`. Bez załączników.
 - `hr_threads.staff_seen_at` / `employee_seen_at` (migracja 0029) – znaczniki przeczytania; nieprzeczytana = ostatnia wiadomość od drugiej strony, nowsza niż znacznik.
 - `hr_messages.kind` (migracja 0030) – `message` albo `status` (zdarzenie zmiany statusu, `body` = nowy status; nie liczy się do podglądu ani nieprzeczytanych).
+
+## Link „aktualizacja danych” (migracja 0031)
+
+- `data_links` – link dla pracownika bez konta: `employee_id`, `token_hash` (unikalny, zerowany po unieważnieniu), `status` (`active` / `cancelled`), `failed_attempts` (blokada po 5), `created_by`, `expires_at` (7 dni), `last_used_at`. Nowy link unieważnia poprzedni; dla pracownika z aktywnym kontem link nie jest wystawiany.

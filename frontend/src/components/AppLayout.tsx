@@ -21,6 +21,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronDown,
+  IconChevronRight,
   IconBook,
   IconFileSpreadsheet,
   IconUserPlus,
@@ -60,6 +61,23 @@ export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("apt-nav-collapsed") ?? "[]") as string[];
+    } catch {
+      return [];
+    }
+  });
+  const toggleGroup = (g: string) =>
+    setCollapsed((c) => {
+      const next = c.includes(g) ? c.filter((x) => x !== g) : [...c, g];
+      try {
+        localStorage.setItem("apt-nav-collapsed", JSON.stringify(next));
+      } catch {
+        /* pamięć przeglądarki niedostępna – zwijanie działa do odświeżenia */
+      }
+      return next;
+    });
   const navigate = useNavigate();
   const location = useLocation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -259,24 +277,51 @@ export function AppLayout() {
         <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize={8}>
         {items
           .filter((i) => i.show)
-          .map((i, idx, arr) => (
-            <Fragment key={i.to + i.label}>
-              {i.group && i.group !== arr[idx - 1]?.group && (
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm" pt={idx === 0 ? 0 : "md"} pb={4}>
-                  {t(i.group)}
-                </Text>
-              )}
-              <NavLink
-                component={Link}
-                to={i.to}
-                active={i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to)}
-                label={t(i.label)}
-                leftSection={<i.icon size={18} />}
-                rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
-                onClick={close}
-              />
-            </Fragment>
-          ))}
+          .map((i, idx, arr) => {
+            const isActive = i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to);
+            const closed = !!i.group && collapsed.includes(i.group);
+            const first = !!i.group && i.group !== arr[idx - 1]?.group;
+            const groupBadge = first && closed ? arr.filter((x) => x.group === i.group).reduce((n, x) => n + (x.badge ?? 0), 0) : 0;
+            return (
+              <Fragment key={i.to + i.label}>
+                {first && i.group && (
+                  <UnstyledButton
+                    onClick={() => toggleGroup(i.group as string)}
+                    aria-expanded={!closed}
+                    w="100%"
+                    px="sm"
+                    pt={idx === 0 ? 0 : "md"}
+                    pb={4}
+                  >
+                    <Group gap={4} justify="space-between" wrap="nowrap">
+                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                        {t(i.group)}
+                      </Text>
+                      <Group gap={4} wrap="nowrap">
+                        {groupBadge > 0 && (
+                          <Badge size="xs" circle color="red">
+                            {groupBadge}
+                          </Badge>
+                        )}
+                        {closed ? <IconChevronRight size={14} /> : <IconChevronDown size={14} />}
+                      </Group>
+                    </Group>
+                  </UnstyledButton>
+                )}
+                {(!closed || isActive) && (
+                  <NavLink
+                    component={Link}
+                    to={i.to}
+                    active={isActive}
+                    label={t(i.label)}
+                    leftSection={<i.icon size={18} />}
+                    rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
+                    onClick={close}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
         </AppShell.Section>
       </AppShell.Navbar>
 

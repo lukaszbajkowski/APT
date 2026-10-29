@@ -339,6 +339,8 @@ export function BroadcastsPage() {
 
 interface Mine {
   id: number;
+  archived: boolean;
+  own_archived: boolean;
   files: FileRef[];
   kind: "info" | "document";
   subject: string;
@@ -354,9 +356,10 @@ export function MyBroadcastsPage() {
   const lang = me?.user.language ?? "pl";
   const [speaking, setSpeaking] = useState<number | null>(null);
   const [noVoice, setNoVoice] = useState(false);
+  const [view, setView] = useState<"active" | "archive">("active");
   const q = useQuery({
-    queryKey: ["my-broadcasts", lang],
-    queryFn: () => api<Mine[]>("/me/broadcasts"),
+    queryKey: ["my-broadcasts", lang, view],
+    queryFn: () => api<Mine[]>(`/me/broadcasts?archived=${view === "archive"}`),
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
@@ -375,11 +378,33 @@ export function MyBroadcastsPage() {
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
+  const arch = useMutation({
+    mutationFn: (v: { id: number; on: boolean }) => api(`/me/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
+      qc.invalidateQueries({ queryKey: ["my-bc-count"] });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
   return (
     <Stack maw={760}>
-      <Title order={2}>{t("Komunikaty")}</Title>
+      <Group justify="space-between">
+        <Title order={2}>{t("Komunikaty")}</Title>
+        <SegmentedControl
+          value={view}
+          onChange={(v) => {
+            stopSpeaking();
+            setSpeaking(null);
+            setView(v as "active" | "archive");
+          }}
+          data={[
+            { value: "active", label: t("Aktualne") },
+            { value: "archive", label: t("Archiwum") },
+          ]}
+        />
+      </Group>
       {q.isLoading && <Loader size="sm" />}
-      {q.data && q.data.length === 0 && <Text c="dimmed">{t("Brak komunikatów.")}</Text>}
+      {q.data && q.data.length === 0 && <Text c="dimmed">{view === "archive" ? t("Archiwum jest puste.") : t("Brak komunikatów.")}</Text>}
       {(q.data ?? []).map((m) => (
         <Card key={m.id} withBorder padding="md">
           <Group justify="space-between" mb={4}>
@@ -418,6 +443,11 @@ export function MyBroadcastsPage() {
             <Text size="xs" c="dimmed">
               {t("Brak głosu dla tego języka w tym urządzeniu.")}
             </Text>
+          )}
+          {m.read_at && (!m.archived || m.own_archived) && (
+            <Button mt="sm" ml="xs" size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
+              {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
+            </Button>
           )}
           {!m.read_at ? (
             <Button mt="sm" size="xs" loading={read.isPending} onClick={() => read.mutate(m.id)}>

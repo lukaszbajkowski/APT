@@ -124,3 +124,16 @@ def test_manual_archive_and_document_only(me, hr, emp, minimal_pdf):  # noqa: F8
     assert me.get("/api/me/broadcasts/count").json() == {"unread": 0}
     assert hr.post(f"/api/broadcasts/{bid}/archive?on=false").json() == {"archived": False}
     assert bid in [x["id"] for x in hr.get("/api/broadcasts").json()]
+
+
+def test_employee_archive(me, hr, emp, minimal_pdf):  # noqa: F811
+    r = hr.post("/api/broadcasts", data={"subject": "Info", "body": "Tekst", "everyone": "true"})
+    bid = r.json()["id"]
+    assert me.post(f"/api/me/broadcasts/{bid}/archive").status_code == 400  # jeszcze nieprzeczytany
+    me.post(f"/api/me/broadcasts/{bid}/read")
+    assert me.post(f"/api/me/broadcasts/{bid}/archive").json() == {"archived": True}
+    assert me.get("/api/me/broadcasts").json() == []
+    arch = me.get("/api/me/broadcasts?archived=true").json()
+    assert [x["id"] for x in arch] == [bid] and arch[0]["own_archived"] is True
+    assert me.post(f"/api/me/broadcasts/{bid}/archive?on=false").json() == {"archived": False}
+    assert [x["id"] for x in me.get("/api/me/broadcasts").json()] == [bid]

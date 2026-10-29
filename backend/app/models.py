@@ -750,6 +750,7 @@ class BroadcastRecipient(Base):
         ForeignKey("employees.id", ondelete="CASCADE"), primary_key=True, index=True
     )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # archiwum pracownika
     broadcast: Mapped[Broadcast] = relationship(back_populates="recipients")
 
 

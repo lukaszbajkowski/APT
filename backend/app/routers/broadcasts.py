@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, not_, or_, select
 
 from app import crypto, i18n, mailer, push, storage, translate
 from app.audit import audit
@@ -440,6 +440,8 @@ class MyBroadcast(BaseModel):
     id: int
     kind: str
     files: list[FileOut]
+    archived: bool
+    own_archived: bool
     subject: str
     body: str
     sent_at: datetime
@@ -453,12 +455,13 @@ def _my_employee_id(ctx) -> int:
 
 
 @me_router.get("", response_model=list[MyBroadcast])
-def my_list(ctx: Auth, db: DbSession) -> list[MyBroadcast]:
+def my_list(ctx: Auth, db: DbSession, archived: bool = False) -> list[MyBroadcast]:
     eid = _my_employee_id(ctx)
+    is_arch = or_(Broadcast.archived_at.is_not(None), BroadcastRecipient.archived_at.is_not(None))
     rows = db.execute(
         select(BroadcastRecipient, Broadcast)
         .join(Broadcast, Broadcast.id == BroadcastRecipient.broadcast_id)
-        .where(BroadcastRecipient.employee_id == eid, Broadcast.archived_at.is_(None))
+        .where(BroadcastRecipient.employee_id == eid, is_arch if archived else not_(is_arch))
         .order_by(Broadcast.id.desc())
         .limit(50)
     ).all()
@@ -476,6 +479,8 @@ def my_list(ctx: Auth, db: DbSession) -> list[MyBroadcast]:
             id=b.id,
             kind=b.kind,
             files=_files(b),
+            archived=archived,
+            own_archived=r.archived_at is not None,
             subject=tr.get(b.subject, b.subject),
             body=tr.get(b.body, b.body),
             sent_at=b.created_at,
@@ -496,6 +501,7 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
             BroadcastRecipient.employee_id == eid,
             BroadcastRecipient.read_at.is_(None),
             Broadcast.archived_at.is_(None),
+            BroadcastRecipient.archived_at.is_(None),
         )
     )
     return {"unread": n or 0}
@@ -521,3 +527,17 @@ def my_read(broadcast_id: int, ctx: Auth, request: Request, db: DbSession) -> No
         r.read_at = utcnow()
         audit(db, request, "broadcast_read", user=ctx.user, entity_type="broadcast", entity_id=broadcast_id)
         db.commit()
+
+
+@me_router.post("/{broadcast_id}/archive")
+def my_archive(broadcast_id: int, ctx: Auth, db: DbSession, on: bool = True) -> dict[str, bool]:
+    """Archiwum pracownika: przeczytany komunikat można schować (i przywrócić)."""
+    eid = _my_employee_id(ctx)
+    r = db.get(BroadcastRecipient, (broadcast_id, eid))
+    if r is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono komunikatu.")
+    if on and r.read_at is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Najpierw potwierdź przeczytanie.")
+    r.archived_at = utcnow() if on else None
+    db.commit()
+    return {"archived": on}

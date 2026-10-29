@@ -98,6 +98,13 @@ export function AppLayout() {
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
   });
+  const bcCount = useQuery({
+    queryKey: ["my-bc-count"],
+    queryFn: () => api<{ unread: number }>("/me/broadcasts/count"),
+    enabled: hasRole("employee"),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
   const sigCount = useQuery({
     queryKey: ["my-sig-count"],
     queryFn: () => api<{ pending: number }>("/me/signatures/count"),
@@ -110,8 +117,9 @@ export function AppLayout() {
   const items: NavItem[] = [
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
-    { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0 },
     { to: "/moje-konto/klucze", label: "Klucze i powiadomienia", icon: IconFingerprint, show: hasRole("employee") },
+    { to: "/moje-konto/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: hasRole("employee"), badge: bcCount.data?.unread ?? 0, group: "Komunikacja" },
+    { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
     { to: "/do-zrobienia", label: "Do zrobienia", icon: IconListCheck, show: hasRole("admin", "hr") },
 

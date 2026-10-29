@@ -16,6 +16,7 @@ import { EmployeeArea, LinkedAccount } from "./components/LinkedAccount";
 import { SignedDocPage, ToSignListPage, ToSignPage } from "./pages/ToSignPages";
 import { DataLinkPage } from "./pages/DataLinkPage";
 import { EmployeeHome, EmployeeMessagesPage } from "./pages/EmployeeHome";
+import { BroadcastsPage, MyBroadcastsPage } from "./pages/BroadcastsPages";
 
 // Rzadziej używane strony ładują się dopiero przy wejściu (mniejszy pierwszy pakiet JS).
 const AgencyReportPage = lazy(() => import("./pages/AgencyReportPage").then((m) => ({ default: m.AgencyReportPage })));
@@ -135,6 +136,7 @@ export function App() {
           <Route path="moje-konto/do-podpisu/podpisane/:id" element={<SignedDocPage />} />
           <Route path="moje-konto/do-podpisu/:id" element={<ToSignPage />} />
           <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />
+          <Route path="moje-konto/komunikaty" element={<MyBroadcastsPage />} />
         </Route>
         <Route path="moje-konto/klucze" element={<MyAccountPage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />
@@ -290,6 +292,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <PermitsReportPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="komunikaty"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <BroadcastsPage />
             </RequireAuth>
           }
         />

@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
@@ -41,6 +41,7 @@ export function EmployeeHome() {
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const unread = useQuery({ queryKey: ["my-msg-count"], queryFn: () => api<{ unread: number }>("/me/messages/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
   const toSign = useQuery({ queryKey: ["my-sig-count"], queryFn: () => api<{ pending: number; last_signed: { id: number; document: string; signed_at: string | null } | null }>("/me/signatures/count"), refetchInterval: 8000, refetchOnWindowFocus: true });
+  const bc = useQuery({ queryKey: ["my-bc-count"], queryFn: () => api<{ unread: number }>("/me/broadcasts/count"), refetchInterval: 15000, refetchOnWindowFocus: true });
   const t = useT();
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
@@ -57,6 +58,7 @@ export function EmployeeHome() {
             to={`/moje-konto/do-podpisu/podpisane/${toSign.data.last_signed.id}`}
           />
         )}
+        <Tile icon={IconSpeakerphone} title={t("Komunikaty")} hint={t("Ważne informacje od kadr")} to="/moje-konto/komunikaty" badge={bc.data?.unread || undefined} />
         <Tile icon={IconMessage} title={t("Napisz do kadr")} hint={t("Zadaj pytanie lub zgłoś sprawę")} to="/moje-konto/wiadomosci" badge={unread.data?.unread || undefined} />
         <Tile icon={IconCamera} title={d?.has_photo ? t("Zmień zdjęcie") : t("Dodaj zdjęcie")} hint={t("Do karty identyfikacyjnej")} onClick={() => setParams({ zdjecie: "1" })} />
         <Tile

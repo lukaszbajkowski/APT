@@ -700,6 +700,38 @@ class WorkPermit(Base):
     )
 
 
+class Broadcast(Base):
+    """Komunikat kadr do grupy pracowników (agencja / wydział) z potwierdzeniem przeczytania."""
+
+    __tablename__ = "broadcasts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    subject: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    agency_id: Mapped[int | None] = mapped_column(ForeignKey("agencies.id"))
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"))
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    recipients: Mapped[list["BroadcastRecipient"]] = relationship(
+        back_populates="broadcast", cascade="all, delete-orphan"
+    )
+
+
+class BroadcastRecipient(Base):
+    __tablename__ = "broadcast_recipients"
+
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), primary_key=True
+    )
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    broadcast: Mapped[Broadcast] = relationship(back_populates="recipients")
+
+
 class EmployeeRequest(Base):
     """Zgłoszenie nowej osoby przez agencję – kadry zatwierdzają (powstaje pracownik) albo odrzucają."""
 

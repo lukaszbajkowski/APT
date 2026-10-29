@@ -12,6 +12,7 @@ from app.routers import (
     agency_reports,
     audit_log,
     auth,
+    broadcasts,
     cards,
     competence,
     dashboard,
@@ -99,6 +100,8 @@ app.include_router(access_review.router)
 app.include_router(permits.router)
 app.include_router(system_status.router)
 app.include_router(work_queue.router)
+app.include_router(broadcasts.router)
+app.include_router(broadcasts.me_router)
 app.include_router(dashboard.router)
 app.include_router(retention.router)
 app.include_router(reports.router)

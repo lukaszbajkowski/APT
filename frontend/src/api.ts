@@ -419,6 +419,8 @@ export const ACTION_LABELS: Record<string, string> = {
   agency_report_sent: "Wysłanie zestawienia do agencji",
   agency_report_downloaded: "Pobranie zestawienia dla agencji",
   medical_exam_added: "Dodanie badania lekarskiego",
+  broadcast_sent: "Wysłanie komunikatu do grupy",
+  broadcast_read: "Potwierdzenie przeczytania komunikatu",
   permit_added: "Dodanie dokumentu pobytowego",
   permit_deleted: "Usunięcie dokumentu pobytowego",
   medical_exam_viewed: "Podgląd badania lekarskiego",

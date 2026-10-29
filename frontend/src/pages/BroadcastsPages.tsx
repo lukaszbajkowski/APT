@@ -80,23 +80,6 @@ function Recipients({ id, onClose }: { id: number; onClose: () => void }) {
   );
 }
 
-const SAMPLE = {
-  subject: "Zasady BHP na stanowisku pracy (przykład)",
-  body: `ZASADY BEZPIECZEŃSTWA I HIGIENY PRACY – PRZYKŁADOWY DOKUMENT
-
-1. Przed rozpoczęciem pracy sprawdź swoje stanowisko oraz sprawność maszyn i urządzeń. Usterki zgłoś od razu przełożonemu.
-2. Używaj środków ochrony indywidualnej wymaganych na stanowisku: obuwia ochronnego, rękawic, okularów, ochronników słuchu.
-3. Nie wyłączaj ani nie omijaj osłon i zabezpieczeń maszyn.
-4. Drogi ewakuacyjne, gaśnice i wyjścia awaryjne muszą być zawsze wolne.
-5. W razie wypadku, pożaru lub zagrożenia zachowaj spokój, wezwij pomoc i powiadom przełożonego.
-6. Nie pracuj pod wpływem alkoholu ani środków odurzających.
-7. Zasady dotyczące przerw, noszenia kart identyfikacyjnych i wejść na halę wynikają z regulaminu pracy.
-
-Potwierdzając zapoznanie się z dokumentem, oświadczasz, że rozumiesz powyższe zasady i będziesz ich przestrzegać. W razie wątpliwości zapytaj kadry lub przełożonego.
-
-(To jest przykład. Zastąp go treścią swojego regulaminu lub instrukcji.)`,
-};
-
 /** Dokument pokazany jak w podglądzie: strony jako obrazy ze znakiem wodnym, bez pobierania pliku. */
 function InlineDoc({ base }: { base: string }) {
   const info = useQuery({ queryKey: ["bc-doc", base], queryFn: () => api<{ pages: number; title: string }>(base), gcTime: 0 });
@@ -236,18 +219,6 @@ export function BroadcastsPage() {
                 { value: "document", label: "Dokument do zapoznania się" },
               ]}
             />
-            {kind === "document" && (
-              <Button
-                size="compact-sm"
-                variant="default"
-                onClick={() => {
-                  setSubject(SAMPLE.subject);
-                  setBody(SAMPLE.body);
-                }}
-              >
-                Wstaw przykładowy dokument
-              </Button>
-            )}
           </Group>
           <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
           <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />

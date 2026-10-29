@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconArchive, IconArchiveOff, IconArrowLeft, IconPlus, IconSearch, IconSend } from "@tabler/icons-react";
+import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
+import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 
 export interface ThreadRow {
   id: number;
@@ -57,6 +58,39 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+/** Mikrofon: dyktowanie treści do pola (dopisuje do tego, co już wpisano). */
+function DictateButton({ lang, value, onChange }: { lang: string; value: string; onChange: (v: string) => void }) {
+  const T = useT();
+  const [on, setOn] = useState(false);
+  const stop = useRef<(() => void) | null>(null);
+  const base = useRef("");
+  useEffect(() => () => stop.current?.(), []);
+  if (!canDictate()) return null;
+  function toggle() {
+    if (on) {
+      stop.current?.();
+      return;
+    }
+    base.current = value ? value.replace(/\s+$/, "") + " " : "";
+    setOn(true);
+    stop.current = dictate(
+      speechLang(lang),
+      (text) => onChange((base.current + text).slice(0, 2000)),
+      () => {
+        setOn(false);
+        stop.current = null;
+      },
+    );
+  }
+  return (
+    <Tooltip label={T("Dyktuj głosem (dźwięk może być przetwarzany przez dostawcę przeglądarki: Google lub Apple)")} multiline w={260}>
+      <ActionIcon size="lg" radius="xl" variant={on ? "filled" : "light"} color={on ? "red" : "blue"} onClick={toggle} aria-label={on ? T("Zatrzymaj dyktowanie") : T("Dyktuj głosem")}>
+        {on ? <IconPlayerStop size={18} /> : <IconMicrophone size={18} />}
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
 function Conversation({ base, id, staff, onBack, showBack }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean }) {
   const T = useT();
   const qc = useQueryClient();
@@ -88,6 +122,39 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   };
   const [tr, setTr] = useState<Record<number, { text: string; source: string | null; target: string } | "loading">>({});
   const langName = (code: string | null) => cfg.data?.languages.find((l) => l.code === code)?.name ?? code ?? "?";
+  // „Odsłuchaj”: wiadomość kadr czytana w języku pracownika (przetłumaczona, gdy jest tłumacz)
+  const ownLang = account?.user.language ?? null;
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [speechNote, setSpeechNote] = useState<string | null>(null);
+  const heard = useRef<Record<number, string>>({});
+  useEffect(() => () => stopSpeaking(), []);
+  async function listen(m: { id: number; body: string; from_staff: boolean }) {
+    if (speakingId === m.id) {
+      stopSpeaking();
+      setSpeakingId(null);
+      return;
+    }
+    setSpeechNote(null);
+    setSpeakingId(m.id);
+    let text = m.body;
+    if (ownLang && m.from_staff && cfg.data?.enabled && !cfg.data.exhausted) {
+      if (heard.current[m.id] === undefined) {
+        try {
+          const r = await api<{ text: string }>("/translate/message", { method: "POST", body: { message_id: m.id, target: ownLang } });
+          heard.current[m.id] = r.text;
+        } catch {
+          heard.current[m.id] = m.body;
+        }
+      }
+      text = heard.current[m.id];
+    }
+    const spoken = ownLang && m.from_staff && text !== m.body ? ownLang : m.from_staff ? "pl" : (ownLang ?? "pl");
+    const res = speak(text, speechLang(spoken), () => setSpeakingId((x) => (x === m.id ? null : x)));
+    if (res === "no-voice") {
+      setSpeakingId(null);
+      setSpeechNote(T("To urządzenie nie ma głosu w tym języku. Zainstaluj go w ustawieniach telefonu (Mowa / Czytanie na głos)."));
+    }
+  }
   async function translateMessage(id: number) {
     setTr((x) => ({ ...x, [id]: "loading" }));
     try {
@@ -241,6 +308,14 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
                       <Text style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{(tr[m.id] as { text: string }).text}</Text>
                     </Box>
                   )}
+                  {!staff && canSpeak() && (
+                    <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => listen(m)}>
+                      <Group gap={3} wrap="nowrap">
+                        {speakingId === m.id ? <IconPlayerStop size={11} /> : <IconVolume size={11} />}
+                        {speakingId === m.id ? T("Zatrzymaj") : T("Odsłuchaj")}
+                      </Group>
+                    </Anchor>
+                  )}
                   <Group justify="space-between" gap="xs" wrap="nowrap">
                     {cfg.data?.enabled && !cfg.data.exhausted ? (
                       tr[m.id] === "loading" ? (
@@ -268,6 +343,11 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
           <div ref={bottom} />
         </Stack>
       </ScrollArea>
+      {speechNote && (
+        <Alert color="orange" m="xs" p="xs" withCloseButton onClose={() => setSpeechNote(null)}>
+          {speechNote}
+        </Alert>
+      )}
       {error && (
         <Alert color="red" m="xs" p="xs">
           {error}
@@ -290,6 +370,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
             }
           }}
         />
+        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
         <ActionIcon size="lg" radius="xl" loading={send.isPending} disabled={!body.trim()} onClick={submit} aria-label={T("Wyślij")}>
           <IconSend size={18} />
         </ActionIcon>
@@ -302,6 +383,7 @@ type Preset = { id: string; name: string };
 
 function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; preset?: Preset; onCreated: (id: number) => void; onCancel: () => void }) {
   const T = useT();
+  const { me: account } = useAuth();
   const qc = useQueryClient();
   const [subject, setSubject] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
@@ -355,7 +437,10 @@ function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; pre
       ) : (
         <Select label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
       )}
-      <Textarea label={T("Treść")} autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+      <Group align="flex-end" wrap="nowrap">
+        <Textarea style={{ flex: 1 }} label={T("Treść")} autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+        <DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />
+      </Group>
       {staff && (
         <Text size="xs" c="dimmed">
           Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.

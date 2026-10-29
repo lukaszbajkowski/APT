@@ -86,6 +86,7 @@ Wszystkie pozycje poprzedniego backlogu są zrobione:
 | Cotygodniowy e-mail o badaniach lekarskich (nieważne i kończące się w 30 dni) | `app.cli notify-medical`, poniedziałki |
 | Wysyłka dokumentu e-mailem (wersja podpisana, jeśli jest; limit 20/h; wpis w dzienniku) | przycisk „E-mail” przy dokumencie |
 | Przegląd uprawnień (role, zakres, ostatnie logowanie, 2FA, uwagi) | menu „Przegląd dostępu” (admin) |
+| Kwartalne przypomnienie o przeglądzie uprawnień (1. dnia stycznia, kwietnia, lipca, października) | e-mail i powiadomienie admina z `notify-daily` |
 | Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
 | Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
 | PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |

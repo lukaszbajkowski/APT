@@ -377,6 +377,10 @@ def notify_daily() -> int:
         refresh_trustlist()
     if local.day == 1:
         agency_reports()
+        if local.month in (1, 4, 7, 10):
+            problems.append(
+                "Kwartalny przegląd uprawnień: sprawdź konta, role i zakresy w menu „Przegląd dostępu”."
+            )
     if not problems:
         print("Brak problemów – nie wysyłam.")
         return 0

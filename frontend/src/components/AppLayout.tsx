@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Alert } from "@mantine/core";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -87,33 +87,38 @@ export function AppLayout() {
     refetchOnWindowFocus: true,
   });
   const newMessages = count.data?.unread ?? 0;
-  const items: { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number }[] = [
+  type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
+  const items: NavItem[] = [
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0 },
     { to: "/moje-konto/klucze", label: "Klucze i powiadomienia", icon: IconFingerprint, show: hasRole("employee") },
     { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
-    { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee") },
-    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee") },
     { to: "/do-zrobienia", label: "Do zrobienia", icon: IconListCheck, show: hasRole("admin", "hr") },
-    { to: "/komunikaty", label: "Komunikaty do grup", icon: IconSpeakerphone, show: hasRole("admin", "hr") },
-    { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager") },
-    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager") },
-    { to: "/szkolenia", label: "Szkolenia", icon: IconCertificate, show: hasRole("admin", "hr", "manager") },
-    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager") },
-    { to: "/zgloszenia", label: "Zgłoszenia agencji", icon: IconUserPlus, show: hasRole("admin", "hr") },
-    { to: "/zgloszenia", label: "Zgłoszenia osób", icon: IconUserPlus, show: hasRole("agency") },
-    { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconId, show: hasRole("admin", "hr") },
-    { to: "/zestawienia", label: "Zestawienie dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency") },
-    { to: "/wiadomosci", label: "Wiadomości od pracowników", icon: IconMessage, show: hasRole("admin", "hr"), badge: newMessages },
-    { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconFingerprint, show: hasRole("admin", "hr") },
-    { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr") },
-    { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin") },
-    { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin") },
-    { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin") },
-    { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin") },
-    { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin") },
-    { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin") },
+
+    { to: "/pracownicy", label: "Pracownicy", icon: IconId, show: !hasRole("employee"), group: "Ludzie" },
+    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee"), group: "Ludzie" },
+    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
+    { to: "/szkolenia", label: "Szkolenia", icon: IconCertificate, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
+    { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconId, show: hasRole("admin", "hr"), group: "Ludzie" },
+    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
+
+    { to: "/wiadomosci", label: "Wiadomości od pracowników", icon: IconMessage, show: hasRole("admin", "hr"), badge: newMessages, group: "Komunikacja" },
+    { to: "/komunikaty", label: "Komunikaty do grup", icon: IconSpeakerphone, show: hasRole("admin", "hr"), group: "Komunikacja" },
+    { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconFingerprint, show: hasRole("admin", "hr"), group: "Komunikacja" },
+
+    { to: "/zgloszenia", label: "Zgłoszenia agencji", icon: IconUserPlus, show: hasRole("admin", "hr"), group: "Agencje i raporty" },
+    { to: "/zgloszenia", label: "Zgłoszenia osób", icon: IconUserPlus, show: hasRole("agency"), group: "Agencje i raporty" },
+    { to: "/zestawienia", label: "Zestawienie dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency"), group: "Agencje i raporty" },
+    { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager"), group: "Agencje i raporty" },
+
+    { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr"), group: "Administracja" },
+    { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin"), group: "Administracja" },
+    { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUsers, show: hasRole("admin"), group: "Administracja" },
+    { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: "Administracja" },
+    { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin"), group: "Administracja" },
+    { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin"), group: "Administracja" },
+    { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: "Administracja" },
   ];
 
   const initials = (me?.user.full_name ?? "?")
@@ -252,17 +257,23 @@ export function AppLayout() {
       <AppShell.Navbar p="xs">
         {items
           .filter((i) => i.show)
-          .map((i) => (
-            <NavLink
-              key={i.to}
-              component={Link}
-              to={i.to}
-              active={i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to)}
-              label={t(i.label)}
-              leftSection={<i.icon size={18} />}
-              rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
-              onClick={close}
-            />
+          .map((i, idx, arr) => (
+            <Fragment key={i.to + i.label}>
+              {i.group && i.group !== arr[idx - 1]?.group && (
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm" pt={idx === 0 ? 0 : "md"} pb={4}>
+                  {t(i.group)}
+                </Text>
+              )}
+              <NavLink
+                component={Link}
+                to={i.to}
+                active={i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to)}
+                label={t(i.label)}
+                leftSection={<i.icon size={18} />}
+                rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
+                onClick={close}
+              />
+            </Fragment>
           ))}
       </AppShell.Navbar>
 

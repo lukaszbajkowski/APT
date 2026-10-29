@@ -96,10 +96,9 @@ def _eyes(gray: np.ndarray, face: tuple[int, int, int, int]) -> list[tuple[float
 
 
 def _edge_color(img: np.ndarray) -> tuple[int, int, int]:
-    """Kolor do dopełnienia kadru: mediana górnego brzegu zdjęcia, gdy jest jasny, inaczej jasna szarość."""
+    """Kolor do dopełnienia kadru: mediana górnego brzegu zdjęcia (zastane tło)."""
     t = max(4, img.shape[0] // 25)
-    med = np.median(img[:t, :].reshape(-1, 3), axis=0)
-    return tuple(int(v) for v in med) if float(med.mean()) > 170 else BG_COLOR[::-1]
+    return tuple(int(v) for v in np.median(img[:t, :].reshape(-1, 3), axis=0))
 
 
 def _border_stats(img: np.ndarray) -> tuple[float, float]:
@@ -154,6 +153,18 @@ def _crown_y(alpha: np.ndarray, face: tuple[int, int, int, int]) -> int | None:
     x0, x1 = max(0, int(fx - 0.2 * fw)), min(alpha.shape[1], int(fx + 1.2 * fw))
     rows = np.where(alpha[: fy + fh // 2, x0:x1].max(axis=1) > 0.5)[0]
     return int(rows[0]) if len(rows) else None
+
+
+def _background_color(img: np.ndarray, alpha: np.ndarray) -> tuple[int, int, int]:
+    """Kolor tła z oryginału: mediana pikseli spoza postaci (przy bardzo ciemnym – lekko rozjaśniona)."""
+    bgpx = img[alpha < 0.03]
+    if len(bgpx) < 500:
+        return _edge_color(img)
+    med = np.median(bgpx.reshape(-1, 3), axis=0).astype(np.float32)
+    lum = float(med.mean())
+    if lum < 140:
+        med = med + (140 - lum) * (255 - med) / max(float((255 - med).mean()), 1.0)
+    return tuple(int(v) for v in np.clip(med, 0, 255))
 
 
 def _eyes_glasses(gray: np.ndarray, face: tuple[int, int, int, int]) -> list[tuple[float, float]]:
@@ -230,13 +241,9 @@ def enhance(raw: bytes) -> Result:
             )
         )
 
-    # tło: wymieniane tylko wtedy, gdy obecne nie jest jednolite, jasne i neutralne
-    mean, spread = _border_stats(img)
-    border = (
-        np.concatenate([img[: max(4, img.shape[0] // 25), :].reshape(-1, 3)]).astype(np.float32).mean(axis=0)
-    )
-    tinted = float(border.max() - border.min()) > 14
-    want_bg = spread > 14 or mean < 165 or tinted
+    # tło: ujednolicane tylko wtedy, gdy obecne jest nierówne (kolor bierzemy z oryginału)
+    _, spread = _border_stats(img)
+    want_bg = spread > 14
     alpha = None
     if want_bg:
         alpha = _segment(img)
@@ -265,12 +272,12 @@ def enhance(raw: bytes) -> Result:
     cx = fx + fw / 2
 
     if alpha is not None:
+        fill = _background_color(img, alpha)
         a = alpha[..., None]
         bg = np.empty_like(img)
-        bg[:] = BG_COLOR[::-1]
+        bg[:] = fill
         img = (img * a + bg * (1 - a)).astype(np.uint8)
-        fill = BG_COLOR[::-1]
-        changed.append("zastąpiono tło jednolitym jasnym")
+        changed.append("ujednolicono tło (kolor z oryginału)")
     else:
         fill = _edge_color(img)
 
@@ -329,7 +336,7 @@ def enhance(raw: bytes) -> Result:
             )
 
     if not want_bg:
-        notes.append(Note("ok", "Tło jest jednolite i jasne."))
+        notes.append(Note("ok", "Tło jest jednolite."))
     notes.append(Note("ok", "Wykryto jedną twarz, kadr zgodny z zasadami zdjęcia do dowodu."))
     notes.append(
         Note(

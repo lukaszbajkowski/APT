@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     # Katalog na pliki (zdjęcia). W Dockerze: wolumen /app/data.
     data_dir: str = "./data"
     photo_max_upload_mb: int = 10
+    # model do wycinania postaci przy automatycznej poprawie zdjęcia (pobierany przy budowie obrazu)
+    photo_seg_model: str = "/opt/models/u2net_human_seg.onnx"
 
 
 @lru_cache

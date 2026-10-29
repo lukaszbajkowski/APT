@@ -9,10 +9,13 @@ bezpiecznie poprawić (brak twarzy, kilka osób), są odrzucane z komunikatem. W
 
 import io
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cv2
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+from app.config import get_settings
 
 OUT_W, OUT_H = 600, 800
 HEAD_RATIO = 0.75  # wysokość głowy (czubek – broda) w stosunku do wysokości zdjęcia; norma: 70–80%
@@ -108,39 +111,71 @@ def _border_stats(img: np.ndarray) -> tuple[float, float]:
     return float(px.mean()), float(px.std(axis=0).mean())
 
 
-def _replace_background(img: np.ndarray, face: tuple[int, int, int, int]) -> np.ndarray | None:
+_sess = None
+_sess_failed = False
+
+
+def _session():
+    """Sieć do wycinania postaci (U2-Net human seg, ONNX). Brak pliku lub błąd – zwraca None."""
+    global _sess, _sess_failed
+    if _sess is None and not _sess_failed:
+        path = Path(get_settings().photo_seg_model)
+        try:
+            import onnxruntime as ort
+
+            opts = ort.SessionOptions()
+            opts.intra_op_num_threads = 2
+            _sess = ort.InferenceSession(str(path), sess_options=opts, providers=["CPUExecutionProvider"])
+        except Exception:  # noqa: BLE001 – brak modelu nie może zepsuć reszty poprawy
+            _sess_failed = True
+    return _sess
+
+
+def _segment(img: np.ndarray) -> np.ndarray | None:
+    """Maska osoby 0..1 w rozmiarze zdjęcia albo None, gdy sieć jest niedostępna."""
+    sess = _session()
+    if sess is None:
+        return None
     h, w = img.shape[:2]
-    sw, sh = 300, 400
-    small = cv2.resize(img, (sw, sh), interpolation=cv2.INTER_AREA)
-    fx, fy, fw, fh = (int(v * sw / w) if i % 2 == 0 else int(v * sh / h) for i, v in enumerate(face))
-    mask = np.full((sh, sw), cv2.GC_PR_BGD, np.uint8)
-    b = max(3, sw // 40)
-    mask[:b, :] = mask[:, :b] = mask[:, -b:] = cv2.GC_BGD
-    # głowa i ramiona: prawdopodobny pierwszy plan; środek twarzy: pewny
-    cv2.ellipse(
-        mask, (fx + fw // 2, fy + fh // 2), (int(fw * 0.85), int(fh * 1.05)), 0, 0, 360, cv2.GC_PR_FGD, -1
-    )
-    body_top = fy + fh
-    cv2.rectangle(mask, (max(0, fx - fw // 2), body_top), (min(sw, fx + fw + fw // 2), sh), cv2.GC_PR_FGD, -1)
-    cv2.ellipse(
-        mask, (fx + fw // 2, fy + fh // 2), (int(fw * 0.35), int(fh * 0.45)), 0, 0, 360, cv2.GC_FGD, -1
-    )
-    bgd, fgd = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
-    try:
-        cv2.grabCut(small, mask, None, bgd, fgd, 4, cv2.GC_INIT_WITH_MASK)
-    except cv2.error:
-        return None
-    fg = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
-    share = float((fg > 0).mean())
-    if not 0.2 < share < 0.8:
-        return None
-    fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-    alpha = cv2.GaussianBlur(cv2.resize(fg, (w, h), interpolation=cv2.INTER_LINEAR), (0, 0), 2.0)
-    a = (alpha.astype(np.float32) / 255.0)[..., None]
-    bg = np.empty_like(img)
-    bg[:] = BG_COLOR[::-1]
-    return (img * a + bg * (1 - a)).astype(np.uint8)
+    rgb = cv2.cvtColor(cv2.resize(img, (320, 320), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
+    x = rgb.astype(np.float32) / max(float(rgb.max()), 1.0)
+    x = (x - np.array([0.485, 0.456, 0.406], np.float32)) / np.array([0.229, 0.224, 0.225], np.float32)
+    x = x.transpose(2, 0, 1)[None].astype(np.float32)
+    pred = sess.run(None, {sess.get_inputs()[0].name: x})[0][0, 0]
+    pred = (pred - pred.min()) / max(float(pred.max() - pred.min()), 1e-6)
+    alpha = cv2.resize(pred, (w, h), interpolation=cv2.INTER_CUBIC)
+    alpha = np.clip((alpha - 0.3) / 0.4, 0.0, 1.0)  # wyostrzenie krawędzi
+    return cv2.GaussianBlur(alpha, (0, 0), 0.8)
+
+
+def _crown_y(alpha: np.ndarray, face: tuple[int, int, int, int]) -> int | None:
+    """Wysokość czubka głowy (włosów) z maski – nad twarzą, w jej zakresie poziomym."""
+    fx, fy, fw, fh = face
+    x0, x1 = max(0, int(fx - 0.2 * fw)), min(alpha.shape[1], int(fx + 1.2 * fw))
+    rows = np.where(alpha[: fy + fh // 2, x0:x1].max(axis=1) > 0.5)[0]
+    return int(rows[0]) if len(rows) else None
+
+
+def _eyes_glasses(gray: np.ndarray, face: tuple[int, int, int, int]) -> list[tuple[float, float]]:
+    """Oczy szukane kaskadą „w okularach” – używane, gdy zwykła ich nie znajduje."""
+    x, y, w, h = face
+    c = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye_tree_eyeglasses.xml")
+    roi = gray[y : y + int(h * 0.6), x : x + w]
+    found = c.detectMultiScale(roi, scaleFactor=1.08, minNeighbors=6, minSize=(w // 8, w // 8))
+    centers = [(x + ex + ew / 2, y + ey + eh / 2) for ex, ey, ew, eh in found if ey + eh / 2 < h * 0.5]
+    left = [c for c in centers if c[0] < x + w / 2]
+    right = [c for c in centers if c[0] >= x + w / 2]
+    if not left or not right:
+        return []
+    return [min(left, key=lambda c: c[1]), min(right, key=lambda c: c[1])]
+
+
+def _transform(cx: float, mid: float, head_h: float, angle: float, ratio: float) -> tuple[np.ndarray, float]:
+    scale = OUT_H * ratio / head_h
+    m = cv2.getRotationMatrix2D((cx, mid), angle, scale)
+    m[0, 2] += OUT_W / 2 - cx
+    m[1, 2] += OUT_H * HEAD_CENTER - mid
+    return m, scale
 
 
 def enhance(raw: bytes) -> Result:
@@ -159,9 +194,14 @@ def enhance(raw: bytes) -> Result:
     if len(faces) > 1 and faces[1][2] * faces[1][3] > 0.35 * faces[0][2] * faces[0][3]:
         raise FixError("Na zdjęciu jest więcej niż jedna osoba. Na zdjęciu ma być tylko Twoja twarz.")
     face = faces[0]
+    fx, fy, fw, fh = face
 
-    # wyprostowanie głowy wg linii oczu
+    # wyprostowanie głowy wg linii oczu (przy okularach drugą kaskadą)
     eyes = _eyes(gray, face)
+    glasses = False
+    if len(eyes) != 2:
+        eyes = _eyes_glasses(gray, face)
+        glasses = len(eyes) == 2
     angle = 0.0
     if len(eyes) == 2:
         (x1, y1), (x2, y2) = eyes
@@ -175,6 +215,13 @@ def enhance(raw: bytes) -> Result:
             changed.append("wyprostowano głowę")
         else:
             angle = 0.0
+        if glasses:
+            notes.append(
+                Note(
+                    "warn",
+                    "Wygląda na to, że masz okulary. Do dowodu najlepiej bez okularów albo bez odblasków na szkłach.",
+                )
+            )
     else:
         notes.append(
             Note(
@@ -183,22 +230,67 @@ def enhance(raw: bytes) -> Result:
             )
         )
 
-    fx, fy, fw, fh = face
+    # tło: wymieniane tylko wtedy, gdy obecne nie jest jednolite, jasne i neutralne
+    mean, spread = _border_stats(img)
+    border = (
+        np.concatenate([img[: max(4, img.shape[0] // 25), :].reshape(-1, 3)]).astype(np.float32).mean(axis=0)
+    )
+    tinted = float(border.max() - border.min()) > 14
+    want_bg = spread > 14 or mean < 165 or tinted
+    alpha = None
+    if want_bg:
+        alpha = _segment(img)
+        if alpha is not None:
+            share = float((alpha > 0.5).mean())
+            face_cov = float((alpha[fy : fy + fh, fx : fx + fw] > 0.5).mean())
+            if not 0.08 < share < 0.85 or face_cov < 0.85:
+                alpha = None
+        if alpha is None:
+            notes.append(
+                Note(
+                    "warn",
+                    "Tło nie jest jednolite, a nie udało się go bezpiecznie zastąpić. Zrób zdjęcie na tle jasnej ściany.",
+                )
+            )
+
+    # czubek głowy z maski (albo z proporcji), broda z dołu ramki twarzy
+    chin = fy + fh * 1.02
+    crown = _crown_y(alpha, face) if alpha is not None else None
+    head_h = (chin - crown) if crown is not None else fh * (1 + CROWN_ABOVE_BOX)
+    if not 1.2 * fh <= head_h <= 1.75 * fh:
+        head_h = fh * (1 + CROWN_ABOVE_BOX)
+        crown = chin - head_h
+    top = chin - head_h
+    mid = top + head_h / 2
     cx = fx + fw / 2
-    head_h = fh * (1 + CROWN_ABOVE_BOX)
-    scale = OUT_H * HEAD_RATIO / head_h
-    head_mid = fy - fh * CROWN_ABOVE_BOX + head_h / 2
-    # jedno przekształcenie: obrót wokół twarzy + skala + przesunięcie na środek kadru (brzeg: kolor tła)
-    m = cv2.getRotationMatrix2D((cx, head_mid), angle, scale)
-    m[0, 2] += OUT_W / 2 - cx
-    m[1, 2] += OUT_H * HEAD_CENTER - head_mid
+
+    if alpha is not None:
+        a = alpha[..., None]
+        bg = np.empty_like(img)
+        bg[:] = BG_COLOR[::-1]
+        img = (img * a + bg * (1 - a)).astype(np.uint8)
+        fill = BG_COLOR[::-1]
+        changed.append("zastąpiono tło jednolitym jasnym")
+    else:
+        fill = _edge_color(img)
+
+    # głowa 70–80% wysokości: bierzemy największą, przy której kadr nie wychodzi poza zdjęcie
+    ones = np.full(img.shape[:2], 255, np.uint8)
+    best = None
+    for ratio in (0.75, 0.72, 0.70):
+        m, scale = _transform(cx, mid, head_h, angle, ratio)
+        cover = cv2.warpAffine(ones, m, (OUT_W, OUT_H), flags=cv2.INTER_NEAREST, borderValue=0)
+        missing = float((cover == 0).mean())
+        if best is None or missing < best[0]:
+            best = (missing, m, scale)
+        if missing < 0.01:
+            break
+    missing, m, scale = best
     interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC
-    fill = _edge_color(img)
     out = cv2.warpAffine(
         img, m, (OUT_W, OUT_H), flags=interp, borderMode=cv2.BORDER_CONSTANT, borderValue=fill
     )
     changed.append("kadr 3:4, głowa na środku")
-
     if fw < 110 or scale > 2.2:
         notes.append(
             Note(
@@ -206,10 +298,7 @@ def enhance(raw: bytes) -> Result:
                 "Zdjęcie ma niską rozdzielczość – po powiększeniu może być nieostre. Najlepiej zrobić nowe, z bliska.",
             )
         )
-    # za ciasny kadr: część wyniku pochodzi z powielonych brzegów
-    ones = np.full(img.shape[:2], 255, np.uint8)
-    cover = cv2.warpAffine(ones, m, (OUT_W, OUT_H), flags=cv2.INTER_NEAREST, borderValue=0)
-    if float((cover == 0).mean()) > 0.02:
+    if missing > 0.02:
         notes.append(
             Note(
                 "warn",
@@ -217,12 +306,11 @@ def enhance(raw: bytes) -> Result:
             )
         )
 
-    # twarz w nowym kadrze: obszar do oceny światła i ostrości
+    # światło i ostrość oceniane na twarzy w nowym kadrze
     nx0, ny0 = int(OUT_W * 0.5 - fw * scale * 0.4), int(OUT_H * HEAD_CENTER - fh * scale * 0.4)
     roi = out[max(0, ny0) : ny0 + int(fh * scale * 0.8), max(0, nx0) : nx0 + int(fw * scale * 0.8)]
     g = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY) if roi.size else cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
-    sharp = float(cv2.Laplacian(g, cv2.CV_64F).var())
-    if sharp < 40:
+    if float(cv2.Laplacian(g, cv2.CV_64F).var()) < 40:
         notes.append(
             Note("warn", "Zdjęcie jest nieostre lub poruszone. Zrób nowe, trzymając telefon nieruchomo.")
         )
@@ -240,31 +328,8 @@ def enhance(raw: bytes) -> Result:
                 )
             )
 
-    # tło: wymieniane tylko wtedy, gdy obecne nie jest jednolite i jasne
-    mean, spread = _border_stats(out)
-    if spread > 22 or mean < 150:
-        replaced = _replace_background(
-            out,
-            (
-                int(OUT_W / 2 - fw * scale / 2),
-                int(OUT_H * HEAD_CENTER - head_h * scale / 2 + CROWN_ABOVE_BOX * fh * scale),
-                int(fw * scale),
-                int(fh * scale),
-            ),
-        )
-        if replaced is None:
-            notes.append(
-                Note(
-                    "warn",
-                    "Tło nie jest jednolite, a nie udało się go bezpiecznie zastąpić. Zrób zdjęcie na tle jasnej ściany.",
-                )
-            )
-        else:
-            out = replaced
-            changed.append("zastąpiono tło jednolitym jasnym")
-    else:
+    if not want_bg:
         notes.append(Note("ok", "Tło jest jednolite i jasne."))
-
     notes.append(Note("ok", "Wykryto jedną twarz, kadr zgodny z zasadami zdjęcia do dowodu."))
     notes.append(
         Note(

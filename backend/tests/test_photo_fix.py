@@ -95,3 +95,33 @@ def test_data_link_enhance_needs_access(monkeypatch, hr, emp):  # noqa: F811
     assert pub.post(url, files={"file": ("a.jpg", _jpeg(), "image/jpeg")}).status_code == 403
     h = _verify(pub, token)
     assert pub.post(url, files={"file": ("a.jpg", _jpeg(), "image/jpeg")}, headers=h).status_code == 200
+
+
+def test_background_replaced_using_mask_and_crown(monkeypatch):
+    """Kolorowe tło + maska osoby: tło jest zastępowane, a czubek głowy bierze się z maski."""
+    _fake_face(monkeypatch, [(250, 300, 300, 360)], [(330, 420), (470, 420)])
+    h, w = 1000, 800
+    alpha = np.zeros((h, w), np.float32)
+    alpha[180:, 200:600] = 1.0  # „postać”: czubek głowy na wysokości 180
+    monkeypatch.setattr(photo_fix, "_segment", lambda img: alpha)
+    seen = {}
+    real = photo_fix._transform
+
+    def spy(cx, mid, head_h, angle, ratio):
+        seen["head_h"] = head_h
+        return real(cx, mid, head_h, angle, ratio)
+
+    monkeypatch.setattr(photo_fix, "_transform", spy)
+    res = photo_fix.enhance(_jpeg(color=(200, 150, 120)))
+    assert "zastąpiono tło jednolitym jasnym" in res.changed
+    assert abs(seen["head_h"] - (300 + 360 * 1.02 - 180)) < 1
+    im = np.asarray(Image.open(io.BytesIO(res.jpeg)).convert("RGB"))
+    assert im[5, 5].min() > 225  # lewy górny róg: jasne, jednolite tło
+
+
+def test_mask_rejected_when_it_misses_the_face(monkeypatch):
+    _fake_face(monkeypatch, [(250, 300, 300, 360)], [(330, 420), (470, 420)])
+    monkeypatch.setattr(photo_fix, "_segment", lambda img: np.zeros(img.shape[:2], np.float32))
+    res = photo_fix.enhance(_jpeg(color=(200, 150, 120)))
+    assert "zastąpiono tło jednolitym jasnym" not in res.changed
+    assert any("nie udało się go bezpiecznie zastąpić" in n.text for n in res.notes)

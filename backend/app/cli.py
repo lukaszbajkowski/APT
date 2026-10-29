@@ -307,6 +307,47 @@ def medical_reminders() -> int:
     return 0
 
 
+def permit_reminders() -> int:
+    """Cotygodniowe przypomnienie o dokumentach pobytowych (nieważne i kończące się w 60 dni)."""
+    from sqlalchemy import select
+
+    from app import notify
+    from app.models import Role, User
+    from app.routers.employees import format_number
+    from app.routers.permits import KINDS, latest_permits, permit_state
+
+    sent = 0
+    with SessionLocal() as db:
+        users = db.scalars(
+            select(User).where(User.role.in_([Role.admin, Role.hr]), User.is_active).order_by(User.username)
+        ).unique()
+        for u in users:
+            late: list[str] = []
+            soon: list[tuple[object, str]] = []
+            for x, e in latest_permits(db, u):
+                st = permit_state(x.valid_until)
+                if st == "valid":
+                    continue
+                kind = KINDS.get(x.kind, x.kind)
+                who = f"{e.last_name} {e.first_name} (nr {format_number(e.number)}) – {kind}"
+                if st == "expired":
+                    late.append(f"{who}: nieważne od {x.valid_until:%d.%m.%Y}")
+                else:
+                    soon.append((x.valid_until, f"{who}: ważne do {x.valid_until:%d.%m.%Y}"))
+            if not late and not soon:
+                continue
+            items = late + [t for _, t in sorted(soon, key=lambda p: p[0])]
+            total = len(items)
+            if total > 50:
+                items = items[:50] + [f"… i {total - 50} więcej w aplikacji"]
+            msg = notify.permits_email(u, items, len(late), len(soon))
+            body = f"Dokumenty nieważne: {len(late)}, kończą się w 60 dni: {len(soon)}"
+            if _remind(db, u, "Dokumenty pobytowe i zezwolenia", body, "/dokumenty-pobytowe", msg):
+                sent += 1
+    print(f"Przypomnienia o dokumentach pobytowych wysłane: {sent}.")
+    return 0
+
+
 def restore_test_problems(now) -> list[str]:
     """Wynik cotygodniowego testu odtwarzania kopii (restore-test.sh); brak pliku = test nie ruszył."""
     import json
@@ -374,6 +415,7 @@ def notify_daily() -> int:
         quality_reminders()
         training_reminders()
         medical_reminders()
+        permit_reminders()
         refresh_trustlist()
     if local.day == 1:
         agency_reports()
@@ -410,6 +452,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--username", required=True)
     p = sub.add_parser("send-test-mail", help="Wyślij e-mail testowy")
     p.add_argument("--to", required=True)
+    sub.add_parser("notify-permits", help="Przypomnienie o dokumentach pobytowych i zezwoleniach")
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
     sub.add_parser("notify-medical", help="Wyślij teraz przypomnienia o badaniach lekarskich")
@@ -428,6 +471,8 @@ def main(argv: list[str] | None = None) -> int:
         return reset_mfa(args.username)
     if args.command == "send-test-mail":
         return send_test_mail(args.to)
+    if args.command == "notify-permits":
+        return permit_reminders()
     if args.command == "notify-daily":
         return notify_daily()
     if args.command == "notify-quality":

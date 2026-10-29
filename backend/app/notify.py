@@ -163,6 +163,24 @@ def medical_email(user: User, items: list[str], expired: int, expiring: int) -> 
     )
 
 
+def permits_email(user: User, items: list[str], expired: int, expiring: int) -> Email:
+    parts = []
+    if expired:
+        parts.append(f"{expired} dokumentów pobytowych lub zezwoleń jest już nieważnych")
+    if expiring:
+        parts.append(f"{expiring} kończy się w ciągu 60 dni")
+    return Email(
+        subject=f"Identyfikacja APT – dokumenty pobytowe wymagające uwagi ({expired + expiring})",
+        title="Dokumenty pobytowe i zezwolenia",
+        preheader="; ".join(parts),
+        paragraphs=[f"Dzień dobry {user.full_name},", "w Twoim zakresie: " + "; ".join(parts) + "."],
+        items=items,
+        button=("Otwórz zestawienie", _for("/dokumenty-pobytowe", user)),
+        tone="danger" if expired else "warning",
+        footer_note="Przypomnienie wysyłane w poniedziałki, gdy coś wymaga uwagi.",
+    )
+
+
 def sign_request_email(person: str, document: str, url: str, expires: datetime) -> Email:
     when = expires.astimezone(ZoneInfo("Europe/Warsaw")).strftime("%d.%m.%Y, %H:%M")
     return Email(

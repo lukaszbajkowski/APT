@@ -30,7 +30,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 
 interface UpcomingEvent {
   date: string;
-  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "transfer" | "task" | "task_overdue";
+  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "transfer" | "task" | "task_overdue" | "permit" | "permit_expired";
   title: string;
   employee_id: number;
   employee: string;
@@ -45,6 +45,8 @@ const EVENT_COLOR: Record<UpcomingEvent["kind"], string> = {
   transfer: "indigo",
   task: "gray",
   task_overdue: "red",
+  permit: "orange",
+  permit_expired: "red",
 };
 const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   exam: "egzamin",
@@ -55,6 +57,8 @@ const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   transfer: "przeniesienie",
   task: "zadanie",
   task_overdue: "zaległe",
+  permit: "dokument pobytu",
+  permit_expired: "nieważny dokument",
 };
 
 function dayLabel(iso: string): string {

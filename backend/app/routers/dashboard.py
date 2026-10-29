@@ -142,6 +142,31 @@ def upcoming(ctx: Auth, db: DbSession, days: int = UPCOMING_DAYS) -> list[Upcomi
             )
         else:
             add(x.valid_until, "medical", "Kończą się badania lekarskie", e)
+    if ctx.user.role in (Role.admin, Role.hr):
+        from app.routers.permits import KINDS, latest_permits
+
+        for x, e in latest_permits(db, ctx.user):
+            what = KINDS.get(x.kind, x.kind)
+            if x.valid_until < today:
+                out.append(
+                    UpcomingEvent(
+                        date=today,
+                        kind="permit_expired",
+                        title=f"Nieważny dokument: {what}",
+                        employee_id=e.id,
+                        employee=f"{e.last_name} {e.first_name}",
+                    )  # fmt: skip
+                )
+            elif x.valid_until <= end + timedelta(days=46):  # alert z wyprzedzeniem ok. 60 dni
+                out.append(
+                    UpcomingEvent(
+                        date=x.valid_until,
+                        kind="permit",
+                        title=f"Kończy się ważność: {what}",
+                        employee_id=e.id,
+                        employee=f"{e.last_name} {e.first_name}",
+                    )  # fmt: skip
+                )
     if ctx.user.role == Role.agency:  # agencja: tylko badania
         return sorted(out, key=lambda x: (x.date, x.kind, x.employee))[:100]
 

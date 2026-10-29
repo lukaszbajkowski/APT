@@ -30,6 +30,7 @@ const TemplateEditPage = lazy(() => import("./pages/TemplateEditPage").then((m) 
 const HrMessagesPage = lazy(() => import("./pages/HrMessagesPage").then((m) => ({ default: m.HrMessagesPage })));
 const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").then((m) => ({ default: m.EmployeeAccountsPage })));
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
+const PermitsReportPage = lazy(() => import("./pages/PermitsReportPage").then((m) => ({ default: m.PermitsReportPage })));
 const AccessReviewPage = lazy(() => import("./pages/AccessReviewPage").then((m) => ({ default: m.AccessReviewPage })));
 const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const RetentionPage = lazy(() => import("./pages/RetentionPage").then((m) => ({ default: m.RetentionPage })));
@@ -279,6 +280,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin"]}>
               <RetentionPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="dokumenty-pobytowe"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <PermitsReportPage />
             </RequireAuth>
           }
         />

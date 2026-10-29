@@ -48,6 +48,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import { MedicalExamsCard } from "../components/MedicalExams";
+import { PermitsCard } from "../components/Permits";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
@@ -386,6 +387,8 @@ export function EmployeeProfilePage() {
       {canEdit && <ChecklistsCard employee={e} />}
 
       {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
+
+      {hasRole("admin", "hr") && <PermitsCard employee={e} />}
 
       {!isAgency && <TrainingsCard employee={e} />}
 

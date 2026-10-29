@@ -681,6 +681,25 @@ class MedicalExam(Base):
     )
 
 
+class WorkPermit(Base):
+    """Dokument pobytowy lub uprawniający do pracy cudzoziemca (karta pobytu, zezwolenie, wiza)."""
+
+    __tablename__ = "work_permits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_until: Mapped[date] = mapped_column(Date, index=True, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(500))
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class EmployeeRequest(Base):
     """Zgłoszenie nowej osoby przez agencję – kadry zatwierdzają (powstaje pracownik) albo odrzucają."""
 

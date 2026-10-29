@@ -98,6 +98,7 @@ export function AppLayout() {
     { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager") },
     { to: "/zgloszenia", label: "Zgłoszenia agencji", icon: IconUserPlus, show: hasRole("admin", "hr") },
     { to: "/zgloszenia", label: "Zgłoszenia osób", icon: IconUserPlus, show: hasRole("agency") },
+    { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconId, show: hasRole("admin", "hr") },
     { to: "/zestawienia", label: "Zestawienie dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency") },
     { to: "/wiadomosci", label: "Wiadomości od pracowników", icon: IconMessage, show: hasRole("admin", "hr"), badge: newMessages },
     { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconFingerprint, show: hasRole("admin", "hr") },

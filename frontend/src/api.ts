@@ -419,6 +419,8 @@ export const ACTION_LABELS: Record<string, string> = {
   agency_report_sent: "Wysłanie zestawienia do agencji",
   agency_report_downloaded: "Pobranie zestawienia dla agencji",
   medical_exam_added: "Dodanie badania lekarskiego",
+  permit_added: "Dodanie dokumentu pobytowego",
+  permit_deleted: "Usunięcie dokumentu pobytowego",
   medical_exam_viewed: "Podgląd badania lekarskiego",
   medical_exam_deleted: "Usunięcie badania lekarskiego",
   employee_request_created: "Zgłoszenie nowej osoby (agencja)",
@@ -690,6 +692,29 @@ export interface MedicalExam {
   created_by_name: string | null;
   created_at: string;
   can_delete: boolean;
+}
+
+export interface Permit {
+  id: number;
+  kind: string;
+  kind_label: string;
+  valid_from: string | null;
+  valid_until: string;
+  state: "valid" | "expiring" | "expired";
+  days_left: number;
+  notes: string | null;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+export interface PermitRow {
+  employee_id: number;
+  number: string;
+  employee: string;
+  kind_label: string;
+  valid_until: string;
+  days_left: number;
+  state: "valid" | "expiring" | "expired";
 }
 
 export interface EmployeeRequest {

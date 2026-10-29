@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, Card, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconFileText, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconFileText, IconPlus, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -40,45 +40,6 @@ interface Recipient {
   employee_id: number;
   name: string;
   read_at: string | null;
-}
-
-function Recipients({ id, onClose }: { id: number; onClose: () => void }) {
-  const remind = useMutation({
-    mutationFn: () => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
-    onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane na ${r.pushed} z ${r.unread} kont.` }),
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
-  });
-  const q = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
-  return (
-    <Modal opened onClose={onClose} title="Kto przeczytał" size="md">
-      {q.isLoading && <Loader size="sm" />}
-      <Group justify="flex-end" mb="xs">
-        <Button size="compact-sm" variant="light" loading={remind.isPending} onClick={() => remind.mutate()}>
-          Przypomnij tym, którzy nie przeczytali
-        </Button>
-      </Group>
-      <Table verticalSpacing={4} fz="sm">
-        <Table.Tbody>
-          {(q.data ?? []).map((r) => (
-            <Table.Tr key={r.employee_id}>
-              <Table.Td>{r.name}</Table.Td>
-              <Table.Td ta="right">
-                {r.read_at ? (
-                  <Badge variant="light" color="teal">
-                    {formatDateTime(r.read_at)}
-                  </Badge>
-                ) : (
-                  <Badge variant="light" color="gray">
-                    nie przeczytał(a)
-                  </Badge>
-                )}
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Modal>
-  );
 }
 
 /** Dokument pokazany jak w podglądzie: strony jako obrazy ze znakiem wodnym, bez pobierania pliku. */
@@ -137,12 +98,55 @@ function FileDocs({ files, staff }: { files: FileRef[]; staff?: boolean }) {
   );
 }
 
+/** Lista odbiorców w panelu szczegółów (zamiast okna): kto przeczytał + przypomnienie. */
+function RecipientsPane({ id }: { id: number }) {
+  const remind = useMutation({
+    mutationFn: () => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
+    onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane na ${r.pushed} z ${r.unread} kont.` }),
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  const q = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
+  return (
+    <Stack gap="xs">
+      <Group justify="space-between">
+        <Text fw={600} size="sm">Kto przeczytał</Text>
+        <Button size="compact-sm" variant="light" loading={remind.isPending} onClick={() => remind.mutate()}>
+          Przypomnij tym, którzy nie przeczytali
+        </Button>
+      </Group>
+      {q.isLoading && <Loader size="sm" />}
+      <Table verticalSpacing={4} fz="sm">
+        <Table.Tbody>
+          {(q.data ?? []).map((r) => (
+            <Table.Tr key={r.employee_id}>
+              <Table.Td>{r.name}</Table.Td>
+              <Table.Td ta="right">
+                <Badge variant="light" color={r.read_at ? "teal" : "gray"}>
+                  {r.read_at ? formatDateTime(r.read_at) : "nie przeczytał(a)"}
+                </Badge>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Stack>
+  );
+}
+
+/** Komunikaty do grup w stylu „Napisz do kadr”: lista po lewej („+” = nowy), szczegóły lub formularz po prawej. */
 export function BroadcastsPage() {
   const qc = useQueryClient();
+  const mobile = useMediaQuery("(max-width: 48em)");
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
   const [archive, setArchive] = useState(false);
-  const list = useQuery({ queryKey: ["broadcasts", archive], queryFn: () => api<Broadcast[]>(`/broadcasts?archived=${archive}`) });
+  const list = useQuery({
+    queryKey: ["broadcasts", archive],
+    queryFn: () => api<Broadcast[]>(`/broadcasts?archived=${archive}`),
+    refetchInterval: 15_000,
+  });
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [composing, setComposing] = useState(false);
   const [agency, setAgency] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
   const [everyone, setEveryone] = useState(false);
@@ -151,11 +155,12 @@ export function BroadcastsPage() {
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
-  const [docOf, setDocOf] = useState<Broadcast | null>(null);
   const arch = useMutation({
     mutationFn: (v: { id: number; on: boolean }) => api(`/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcasts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcasts"] });
+      setOpenId(null);
+    },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const target = { agency_id: agency ? Number(agency) : null, department_id: dept ? Number(dept) : null, everyone };
@@ -163,7 +168,7 @@ export function BroadcastsPage() {
   const preview = useQuery({
     queryKey: ["bc-preview", agency, dept, everyone],
     queryFn: () => api<Preview>("/broadcasts/preview", { method: "POST", body: target }),
-    enabled: hasTarget,
+    enabled: hasTarget && composing,
   });
   const send = useMutation({
     mutationFn: () => {
@@ -177,136 +182,217 @@ export function BroadcastsPage() {
       files.forEach((x) => f.append("files", x));
       return api<Broadcast>("/broadcasts", { method: "POST", form: f });
     },
-    onSuccess: () => {
+    onSuccess: (b) => {
       qc.invalidateQueries({ queryKey: ["broadcasts"] });
       notifications.show({ color: "green", message: "Komunikat wysłany." });
       setSubject("");
       setBody("");
       setFiles([]);
       setError(null);
+      setArchive(false);
+      setComposing(false);
+      setOpenId(b.id);
     },
     onError: (e) => setError(errorText(e)),
   });
   const opts = (d?: DictionaryItem[]) => (d ?? []).filter((x) => x.is_active).map((x) => ({ value: String(x.id), label: x.name }));
+  const rows = list.data ?? [];
+  const b = rows.find((x) => x.id === openId) ?? null;
+  const hasRight = composing || b !== null;
+  const showList = !mobile || !hasRight;
+  const showRight = !mobile || hasRight;
+  const back = () => {
+    setComposing(false);
+    setOpenId(null);
+  };
   return (
-    <Stack maw={900}>
-      <div>
-        <Title order={2}>Komunikaty do grup</Title>
-        <Text c="dimmed" size="sm">
-          Wiadomość do wszystkich aktywnych pracowników agencji lub wydziału. Pracownik dostaje powiadomienie i e-mail w swoim języku,
-          czyta komunikat w aplikacji i potwierdza przeczytanie.
-        </Text>
-      </div>
-      <Card withBorder padding="lg">
-        <Stack>
-          {error && <Alert color="red">{error}</Alert>}
-          <Group grow align="flex-end">
-            <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
-            <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
-          </Group>
-          <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
-          {preview.data && (
-            <Text size="sm">
-              Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
-              {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
-            </Text>
-          )}
-          <Group justify="space-between">
+    <Paper withBorder radius="md" style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}>
+      {showList && (
+        <Stack gap={0} w={mobile ? "100%" : 340} style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}>
+          <Stack p="sm" gap="xs">
+            <Group justify="space-between">
+              <Title order={4}>Komunikaty do grup</Title>
+              <ActionIcon variant="filled" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Group>
             <SegmentedControl
-              value={kind}
-              onChange={(v) => setKind(v as "info" | "document")}
+              size="xs"
+              fullWidth
+              value={archive ? "a" : "w"}
+              onChange={(v) => {
+                setArchive(v === "a");
+                back();
+              }}
               data={[
-                { value: "info", label: "Komunikat" },
-                { value: "document", label: "Dokument do zapoznania się" },
+                { value: "w", label: "Aktualne" },
+                { value: "a", label: "Archiwum" },
               ]}
             />
-          </Group>
-          <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
-          <FileInput
-            label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
-            placeholder="Dodaj pliki"
-            accept="application/pdf,image/jpeg,image/png"
-            multiple
-            clearable
-            value={files}
-            onChange={(v) => setFiles((v ?? []).slice(0, 5))}
-          />
-          <Group justify="flex-end">
-            <Button
-              disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
-              loading={send.isPending}
-              onClick={() => {
-                if (window.confirm(`Wysłać komunikat do ${preview.data?.total ?? 0} osób?`)) send.mutate();
-              }}
-            >
-              Wyślij
-            </Button>
-          </Group>
-        </Stack>
-      </Card>
-      <Group justify="space-between">
-        <Title order={4}>{archive ? "Archiwum" : "Wysłane"}</Title>
-        <SegmentedControl
-          size="xs"
-          value={archive ? "a" : "w"}
-          onChange={(v) => setArchive(v === "a")}
-          data={[
-            { value: "w", label: "Aktualne" },
-            { value: "a", label: "Archiwum" },
-          ]}
-        />
-      </Group>
-      {!archive && (
-        <Text size="xs" c="dimmed">
-          Jak przy wiadomościach do kadr: komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
-        </Text>
-      )}
-      {list.isLoading && <Loader size="sm" />}
-      <Table verticalSpacing={6} fz="sm">
-        <Table.Tbody>
-          {(list.data ?? []).map((b) => (
-            <Table.Tr key={b.id}>
-              <Table.Td>
-                <Text fw={500}>
-                  {b.subject}{" "}
-                  {b.kind === "document" && (
-                    <Badge size="xs" variant="light">
-                      dokument
-                    </Badge>
-                  )}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
-                </Text>
-                
-              </Table.Td>
-              <Table.Td ta="right">
-                <Group gap={6} justify="flex-end" wrap="nowrap">
-                  {b.files.length > 0 && (
-                    <Button size="compact-xs" variant="default" onClick={() => setDocOf(b)}>
-                      Dokument
-                    </Button>
-                  )}
-                  <Button size="compact-xs" variant="light" onClick={() => setOpen(b.id)}>
-                    Przeczytało {b.read} z {b.total}
-                  </Button>
-                  <Button size="compact-xs" variant="subtle" color="gray" loading={arch.isPending} disabled={!archive && !b.finished} title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined} onClick={() => arch.mutate({ id: b.id, on: !archive })}>
-                    {archive ? "Przywróć" : "Archiwizuj"}
-                  </Button>
+          </Stack>
+          <ScrollArea style={{ flex: 1 }}>
+            {list.isLoading && <Loader size="sm" m="md" />}
+            {!list.isLoading && rows.length === 0 && (
+              <Text size="sm" c="dimmed" p="md">
+                {archive ? "Archiwum jest puste." : "Brak komunikatów. Użyj „+”, aby wysłać pierwszy."}
+              </Text>
+            )}
+            {rows.map((x) => (
+              <UnstyledButton
+                key={x.id}
+                w="100%"
+                p="sm"
+                onClick={() => {
+                  setComposing(false);
+                  setOpenId(x.id);
+                }}
+                bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
+              >
+                <Group wrap="nowrap" align="flex-start">
+                  <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
+                    {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
+                  </Avatar>
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Group justify="space-between" wrap="nowrap" gap={4}>
+                      <Text size="sm" fw={600} lineClamp={1}>
+                        {x.subject}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {shortTime(x.created_at)}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap" gap={4}>
+                      <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                        {x.target}
+                      </Text>
+                      <Badge size="xs" variant="light" color={x.read >= x.total ? "teal" : "gray"}>
+                        {x.read}/{x.total}
+                      </Badge>
+                    </Group>
+                  </Box>
                 </Group>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-      {docOf && (
-        <Modal opened onClose={() => setDocOf(null)} title={docOf.subject} size="xl">
-          <FileDocs files={docOf.files} staff />
-        </Modal>
+              </UnstyledButton>
+            ))}
+          </ScrollArea>
+        </Stack>
       )}
-      {open !== null && <Recipients id={open} onClose={() => setOpen(null)} />}
-    </Stack>
+      {showRight && (
+        <Box style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {composing ? (
+            <>
+              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+                {mobile && (
+                  <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
+                    <IconArrowLeft size={18} />
+                  </ActionIcon>
+                )}
+                <Text fw={600}>Nowy komunikat</Text>
+              </Group>
+              <ScrollArea style={{ flex: 1 }} p="md">
+                <Stack pb="md">
+                  <Text c="dimmed" size="sm">
+                    Wiadomość do wszystkich aktywnych pracowników agencji lub wydziału. Pracownik dostaje powiadomienie i e-mail w swoim
+                    języku, czyta komunikat w aplikacji i potwierdza przeczytanie.
+                  </Text>
+                  {error && <Alert color="red">{error}</Alert>}
+                  <Group grow align="flex-end">
+                    <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
+                    <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
+                  </Group>
+                  <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
+                  {preview.data && (
+                    <Text size="sm">
+                      Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
+                      {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
+                    </Text>
+                  )}
+                  <SegmentedControl
+                    value={kind}
+                    onChange={(v) => setKind(v as "info" | "document")}
+                    data={[
+                      { value: "info", label: "Komunikat" },
+                      { value: "document", label: "Dokument do zapoznania się" },
+                    ]}
+                  />
+                  <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+                  <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+                  <FileInput
+                    label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
+                    placeholder="Dodaj pliki"
+                    accept="application/pdf,image/jpeg,image/png"
+                    multiple
+                    clearable
+                    value={files}
+                    onChange={(v) => setFiles((v ?? []).slice(0, 5))}
+                  />
+                </Stack>
+              </ScrollArea>
+              <Group p="sm" justify="flex-end" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+                <Button
+                  disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
+                  loading={send.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Wysłać komunikat do ${preview.data?.total ?? 0} osób?`)) send.mutate();
+                  }}
+                >
+                  Wyślij
+                </Button>
+              </Group>
+            </>
+          ) : b === null ? (
+            <Stack h="100%" align="center" justify="center">
+              <Text c="dimmed">Wybierz komunikat lub dodaj nowy („+”)</Text>
+            </Stack>
+          ) : (
+            <>
+              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+                {mobile && (
+                  <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
+                    <IconArrowLeft size={18} />
+                  </ActionIcon>
+                )}
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={600} lineClamp={2}>
+                    {b.subject}{" "}
+                    {b.kind === "document" && (
+                      <Badge size="xs" variant="light">
+                        dokument
+                      </Badge>
+                    )}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
+                  </Text>
+                </Box>
+                <Button
+                  size="xs"
+                  variant="default"
+                  loading={arch.isPending}
+                  disabled={!archive && !b.finished}
+                  title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined}
+                  onClick={() => arch.mutate({ id: b.id, on: !archive })}
+                >
+                  {archive ? "Przywróć" : "Archiwizuj"}
+                </Button>
+              </Group>
+              <ScrollArea style={{ flex: 1 }} p="md">
+                <Stack gap="md" pb="md">
+                  {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
+                  <FileDocs files={b.files} staff />
+                  <RecipientsPane id={b.id} />
+                  {!archive && (
+                    <Text size="xs" c="dimmed">
+                      Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
+                      (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
+                    </Text>
+                  )}
+                </Stack>
+              </ScrollArea>
+            </>
+          )}
+        </Box>
+      )}
+    </Paper>
   );
 }
 

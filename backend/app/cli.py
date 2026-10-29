@@ -501,6 +501,12 @@ def notify_daily() -> int:
     from app.routers.retention import count_due
 
     close_stale_threads()
+    from app.routers.broadcasts import archive_due
+
+    with SessionLocal() as db:
+        archived = archive_due(db)
+    if archived:
+        print(f"Zarchiwizowano komunikaty do grup: {archived}.")
     from app.routers.documents import purge_trash
 
     with SessionLocal() as db:

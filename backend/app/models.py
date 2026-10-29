@@ -715,9 +715,29 @@ class Broadcast(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    files: Mapped[list["BroadcastFile"]] = relationship(
+        back_populates="broadcast", cascade="all, delete-orphan", order_by="BroadcastFile.id"
+    )
     recipients: Mapped[list["BroadcastRecipient"]] = relationship(
         back_populates="broadcast", cascade="all, delete-orphan"
     )
+
+
+class BroadcastFile(Base):
+    """Załącznik komunikatu (PDF / JPG / PNG); plik w katalogu danych: broadcasts/<id>/<plik>."""
+
+    __tablename__ = "broadcast_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    file_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    broadcast: Mapped[Broadcast] = relationship(back_populates="files")
 
 
 class BroadcastRecipient(Base):

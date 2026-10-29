@@ -1,22 +1,52 @@
 """Komunikaty kadr do grupy pracowników (agencja / wydział): push i e-mail w języku odbiorcy,
 treść w aplikacji pracownika i potwierdzenie przeczytania."""
 
-from datetime import datetime
-from typing import Literal
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app import crypto, i18n, mailer, push, translate
+from app import crypto, i18n, mailer, push, storage, translate
 from app.audit import audit
+from app.config import get_settings
 from app.db import SessionLocal
 from app.deps import Auth, DbSession, StaffAuth, utcnow
 from app.emails import Email
-from app.models import Broadcast, BroadcastRecipient, Employee, EmployeeStatus, Role, User
+from app.models import Broadcast, BroadcastFile, BroadcastRecipient, Employee, EmployeeStatus, Role, User
 
 router = APIRouter(prefix="/api/broadcasts", tags=["broadcasts"])
 me_router = APIRouter(prefix="/api/me/broadcasts", tags=["me"])
+
+
+MAX_FILES = 5
+MAX_MB = 15
+ALLOWED = {
+    b"%PDF": ("pdf", "application/pdf"),
+    b"\xff\xd8\xff": ("jpg", "image/jpeg"),
+    b"\x89PNG": ("png", "image/png"),
+}
+ARCHIVE_AFTER_ALL_READ = timedelta(days=2)  # po przeczytaniu przez wszystkich
+ARCHIVE_AFTER_SENT = timedelta(days=7)  # gdy nie wszyscy przeczytali
+
+
+def _dir(broadcast_id: int) -> Path:
+    p = Path(get_settings().data_dir) / "broadcasts" / str(broadcast_id)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+class FileOut(BaseModel):
+    id: int
+    name: str
+    size: int
+
+
+def _files(b: Broadcast) -> list[FileOut]:
+    return [FileOut(id=f.id, name=f.original_name, size=f.size) for f in b.files]
 
 
 class TargetIn(BaseModel):
@@ -84,6 +114,8 @@ class BroadcastOut(BaseModel):
     created_at: datetime
     total: int
     read: int
+    files: list[FileOut]
+    archived: bool
 
 
 def _out(db, b: Broadcast) -> BroadcastOut:
@@ -114,6 +146,8 @@ def _out(db, b: Broadcast) -> BroadcastOut:
         created_at=b.created_at,
         total=total or 0,
         read=read or 0,
+        files=_files(b),
+        archived=b.archived_at is not None,
     )
 
 
@@ -166,25 +200,57 @@ def _deliver(broadcast_id: int) -> None:
 
 
 @router.post("", response_model=BroadcastOut, status_code=201)
-def create(
-    body: BroadcastIn, ctx: StaffAuth, request: Request, db: DbSession, tasks: BackgroundTasks
+async def create(
+    ctx: StaffAuth,
+    request: Request,
+    db: DbSession,
+    tasks: BackgroundTasks,
+    subject: Annotated[str, Form(min_length=1, max_length=120)],
+    body: Annotated[str, Form(min_length=1, max_length=20000)],
+    kind: Annotated[Literal["info", "document"], Form()] = "info",
+    agency_id: Annotated[int | None, Form()] = None,
+    department_id: Annotated[int | None, Form()] = None,
+    everyone: Annotated[bool, Form()] = False,
+    files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> BroadcastOut:
-    if body.kind == "info" and len(body.body) > 2000:
+    if kind == "info" and len(body) > 2000:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Komunikat może mieć do 2000 znaków.")
-    emps = _recipients(db, body)
+    emps = _recipients(db, TargetIn(agency_id=agency_id, department_id=department_id, everyone=everyone))
     if not emps:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="W tej grupie nie ma aktywnych pracowników.")
+    uploads = [f for f in (files or []) if f.filename]
+    if len(uploads) > MAX_FILES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Najwyżej {MAX_FILES} załączników.")
+    blobs: list[tuple[str, str, str, bytes]] = []
+    for f in uploads:
+        data = await f.read(MAX_MB * 1024 * 1024 + 1)
+        if len(data) > MAX_MB * 1024 * 1024:
+            raise HTTPException(
+                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=f"Plik za duży (max {MAX_MB} MB)."
+            )
+        kind_file = next((v for k, v in ALLOWED.items() if data.startswith(k)), None)
+        if kind_file is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Dozwolone pliki: PDF, JPG, PNG.")
+        blobs.append(((f.filename or "plik")[:255], kind_file[0], kind_file[1], data))
     b = Broadcast(
-        kind=body.kind,
-        subject=body.subject.strip(),
-        body=body.body.strip(),
-        agency_id=body.agency_id,
-        department_id=body.department_id,
+        kind=kind,
+        subject=subject.strip(),
+        body=body.strip(),
+        agency_id=agency_id,
+        department_id=department_id,
         created_by_name=ctx.user.full_name,
         recipients=[BroadcastRecipient(employee_id=e.id) for e in emps],
     )
     db.add(b)
     db.flush()
+    for name, ext, ctype, data in blobs:
+        bf = BroadcastFile(
+            broadcast_id=b.id, file_name="tmp", original_name=name, content_type=ctype, size=len(data)
+        )
+        db.add(bf)
+        db.flush()
+        bf.file_name = f"{bf.id}.{ext}"
+        storage.write(_dir(b.id) / bf.file_name, data)
     audit(
         db,
         request,
@@ -192,7 +258,12 @@ def create(
         user=ctx.user,
         entity_type="broadcast",
         entity_id=b.id,
-        details={"recipients": len(emps), "agency_id": body.agency_id, "department_id": body.department_id},
+        details={
+            "recipients": len(emps),
+            "agency_id": agency_id,
+            "department_id": department_id,
+            "files": len(blobs),
+        },
     )
     db.commit()
     db.refresh(b)
@@ -201,8 +272,54 @@ def create(
 
 
 @router.get("", response_model=list[BroadcastOut])
-def list_all(ctx: StaffAuth, db: DbSession) -> list[BroadcastOut]:
-    return [_out(db, b) for b in db.scalars(select(Broadcast).order_by(Broadcast.id.desc()).limit(100))]
+def list_all(ctx: StaffAuth, db: DbSession, archived: bool = False) -> list[BroadcastOut]:
+    cond = Broadcast.archived_at.is_not(None) if archived else Broadcast.archived_at.is_(None)
+    return [
+        _out(db, b)
+        for b in db.scalars(select(Broadcast).where(cond).order_by(Broadcast.id.desc()).limit(100))
+    ]
+
+
+@router.get("/files/{file_id}")
+def staff_file(file_id: int, ctx: StaffAuth, db: DbSession) -> Response:
+    return _send_file(db, file_id)
+
+
+def _send_file(db, file_id: int, employee_id: int | None = None) -> Response:
+    f = db.get(BroadcastFile, file_id)
+    if f is None or (
+        employee_id is not None and db.get(BroadcastRecipient, (f.broadcast_id, employee_id)) is None
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pliku.")
+    path = _dir(f.broadcast_id) / f.file_name
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku.")
+    safe = f.original_name.replace('"', "").replace("\n", " ").replace("\r", " ")
+    return Response(
+        storage.read(path),
+        media_type=f.content_type,
+        headers={"Content-Disposition": f'inline; filename="{safe}"', "Cache-Control": "no-store"},
+    )
+
+
+def archive_due(db, now=None) -> int:
+    """Archiwizuje komunikaty: 2 dni po przeczytaniu przez wszystkich albo 7 dni po wysłaniu."""
+    now = now or utcnow()
+    n = 0
+    for b in db.scalars(select(Broadcast).where(Broadcast.archived_at.is_(None))):
+        unread, last = db.execute(
+            select(
+                func.count().filter(BroadcastRecipient.read_at.is_(None)),
+                func.max(BroadcastRecipient.read_at),
+            ).where(BroadcastRecipient.broadcast_id == b.id)
+        ).one()
+        if (unread == 0 and last is not None and now - last >= ARCHIVE_AFTER_ALL_READ) or (
+            now - b.created_at >= ARCHIVE_AFTER_SENT
+        ):
+            b.archived_at = now
+            n += 1
+    db.commit()
+    return n
 
 
 class RecipientOut(BaseModel):
@@ -271,6 +388,7 @@ def remind(broadcast_id: int, ctx: StaffAuth, request: Request, db: DbSession) -
 class MyBroadcast(BaseModel):
     id: int
     kind: str
+    files: list[FileOut]
     subject: str
     body: str
     sent_at: datetime
@@ -289,7 +407,7 @@ def my_list(ctx: Auth, db: DbSession) -> list[MyBroadcast]:
     rows = db.execute(
         select(BroadcastRecipient, Broadcast)
         .join(Broadcast, Broadcast.id == BroadcastRecipient.broadcast_id)
-        .where(BroadcastRecipient.employee_id == eid)
+        .where(BroadcastRecipient.employee_id == eid, Broadcast.archived_at.is_(None))
         .order_by(Broadcast.id.desc())
         .limit(50)
     ).all()
@@ -306,6 +424,7 @@ def my_list(ctx: Auth, db: DbSession) -> list[MyBroadcast]:
         MyBroadcast(
             id=b.id,
             kind=b.kind,
+            files=_files(b),
             subject=tr.get(b.subject, b.subject),
             body=tr.get(b.body, b.body),
             sent_at=b.created_at,
@@ -321,9 +440,19 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
     n = db.scalar(
         select(func.count())
         .select_from(BroadcastRecipient)
-        .where(BroadcastRecipient.employee_id == eid, BroadcastRecipient.read_at.is_(None))
+        .join(Broadcast, Broadcast.id == BroadcastRecipient.broadcast_id)
+        .where(
+            BroadcastRecipient.employee_id == eid,
+            BroadcastRecipient.read_at.is_(None),
+            Broadcast.archived_at.is_(None),
+        )
     )
     return {"unread": n or 0}
+
+
+@me_router.get("/files/{file_id}")
+def my_file(file_id: int, ctx: Auth, db: DbSession) -> Response:
+    return _send_file(db, file_id, _my_employee_id(ctx))
 
 
 @me_router.post("/{broadcast_id}/read", status_code=204)

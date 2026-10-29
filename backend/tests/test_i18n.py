@@ -133,7 +133,7 @@ def test_broadcast_email_and_list_translated(me, hr, emp):  # noqa: F811
         db.commit()
     mailer.outbox = []
     r = hr.post(
-        "/api/broadcasts", json={"subject": "Zmiana godzin", "body": "Od jutra {6:00}.", "everyone": True}
+        "/api/broadcasts", data={"subject": "Zmiana godzin", "body": "Od jutra {6:00}.", "everyone": True}
     )
     assert r.status_code == 201, r.text
     sent = [m for m in mailer.outbox if m[0] == "anna@example.com"]

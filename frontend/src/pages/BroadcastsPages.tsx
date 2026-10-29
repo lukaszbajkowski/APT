@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, Anchor, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlayerStop, IconVolume } from "@tabler/icons-react";
+import { IconFileText, IconPlayerStop, IconVolume } from "@tabler/icons-react";
 
-import { api, errorText, formatDateTime, type DictionaryItem } from "../api";
+import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 
+interface FileRef {
+  id: number;
+  name: string;
+  size: number;
+}
 interface Broadcast {
   id: number;
+  files: FileRef[];
+  archived: boolean;
   kind: "info" | "document";
   subject: string;
   body: string;
@@ -88,17 +95,34 @@ Potwierdzając zapoznanie się z dokumentem, oświadczasz, że rozumiesz powyżs
 (To jest przykład. Zastąp go treścią swojego regulaminu lub instrukcji.)`,
 };
 
+function FileLinks({ files, staff }: { files: FileRef[]; staff?: boolean }) {
+  if (!files.length) return null;
+  return (
+    <Group gap="sm" mt={4}>
+      {files.map((f) => (
+        <Anchor key={f.id} href={withAcct(staff ? `/api/broadcasts/files/${f.id}` : `/api/me/broadcasts/files/${f.id}`)} target="_blank" size="sm">
+          <Group gap={4} wrap="nowrap">
+            <IconFileText size={14} /> {f.name}
+          </Group>
+        </Anchor>
+      ))}
+    </Group>
+  );
+}
+
 export function BroadcastsPage() {
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
-  const list = useQuery({ queryKey: ["broadcasts"], queryFn: () => api<Broadcast[]>("/broadcasts") });
+  const [archive, setArchive] = useState(false);
+  const list = useQuery({ queryKey: ["broadcasts", archive], queryFn: () => api<Broadcast[]>(`/broadcasts?archived=${archive}`) });
   const [agency, setAgency] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
   const [everyone, setEveryone] = useState(false);
   const [kind, setKind] = useState<"info" | "document">("info");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const target = { agency_id: agency ? Number(agency) : null, department_id: dept ? Number(dept) : null, everyone };
@@ -109,12 +133,23 @@ export function BroadcastsPage() {
     enabled: hasTarget,
   });
   const send = useMutation({
-    mutationFn: () => api<Broadcast>("/broadcasts", { method: "POST", body: { ...target, kind, subject, body } }),
+    mutationFn: () => {
+      const f = new FormData();
+      f.append("kind", kind);
+      f.append("subject", subject);
+      f.append("body", body);
+      if (agency) f.append("agency_id", agency);
+      if (dept) f.append("department_id", dept);
+      if (everyone) f.append("everyone", "true");
+      files.forEach((x) => f.append("files", x));
+      return api<Broadcast>("/broadcasts", { method: "POST", form: f });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broadcasts"] });
       notifications.show({ color: "green", message: "Komunikat wysłany." });
       setSubject("");
       setBody("");
+      setFiles([]);
       setError(null);
     },
     onError: (e) => setError(errorText(e)),
@@ -167,6 +202,15 @@ export function BroadcastsPage() {
           </Group>
           <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
           <Textarea label="Treść" autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <FileInput
+            label="Załączniki (PDF, JPG, PNG – do 5 plików, po 15 MB)"
+            placeholder="Dodaj pliki"
+            accept="application/pdf,image/jpeg,image/png"
+            multiple
+            clearable
+            value={files}
+            onChange={(v) => setFiles((v ?? []).slice(0, 5))}
+          />
           <Group justify="flex-end">
             <Button
               disabled={!hasTarget || !subject.trim() || !body.trim() || !preview.data?.total}
@@ -180,7 +224,23 @@ export function BroadcastsPage() {
           </Group>
         </Stack>
       </Card>
-      <Title order={4}>Wysłane</Title>
+      <Group justify="space-between">
+        <Title order={4}>{archive ? "Archiwum" : "Wysłane"}</Title>
+        <SegmentedControl
+          size="xs"
+          value={archive ? "a" : "w"}
+          onChange={(v) => setArchive(v === "a")}
+          data={[
+            { value: "w", label: "Aktualne" },
+            { value: "a", label: "Archiwum" },
+          ]}
+        />
+      </Group>
+      {!archive && (
+        <Text size="xs" c="dimmed">
+          Komunikat trafia do archiwum 2 dni po przeczytaniu przez wszystkich adresatów albo po 7 dniach od wysłania.
+        </Text>
+      )}
       {list.isLoading && <Loader size="sm" />}
       <Table verticalSpacing={6} fz="sm">
         <Table.Tbody>
@@ -198,6 +258,7 @@ export function BroadcastsPage() {
                 <Text size="xs" c="dimmed">
                   {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
                 </Text>
+                <FileLinks files={b.files} staff />
               </Table.Td>
               <Table.Td ta="right">
                 <Button size="compact-xs" variant="light" onClick={() => setOpen(b.id)}>
@@ -215,6 +276,7 @@ export function BroadcastsPage() {
 
 interface Mine {
   id: number;
+  files: FileRef[];
   kind: "info" | "document";
   subject: string;
   body: string;
@@ -264,6 +326,7 @@ export function MyBroadcastsPage() {
             </Text>
           </Group>
           <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>
+          <FileLinks files={m.files} />
           {canSpeak() && (
             <Button
               mt="xs"

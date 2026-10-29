@@ -348,6 +348,103 @@ def permit_reminders() -> int:
     return 0
 
 
+def employee_reminders() -> int:
+    """Cotygodniowe przypomnienie dla pracownika o jego terminach (badania, szkolenia, dokumenty pobytowe).
+
+    Push na jego konto i/lub e-mail na potwierdzony adres – w języku pracownika."""
+    from datetime import date, timedelta
+
+    from sqlalchemy import select
+
+    from app import crypto, i18n, mailer, push
+    from app.emails import Email
+    from app.models import Employee, EmployeeStatus, MedicalExam, Role, Training, User, WorkPermit
+
+    today = date.today()
+    sent = 0
+    with SessionLocal() as db:
+        accounts = {
+            u.employee_id: u
+            for u in db.scalars(
+                select(User).where(User.role == Role.employee, User.is_active, User.employee_id.is_not(None))
+            ).unique()
+        }
+        emps = db.scalars(
+            select(Employee).where(
+                Employee.status == EmployeeStatus.active,
+                (Employee.id.in_(list(accounts))) | (Employee.email_verified_at.is_not(None)),
+            )
+        ).unique()
+        for e in emps:
+            acct = accounts.get(e.id)
+            lang = acct.language if acct else None
+            due: list[tuple[date, str, str]] = []  # (termin, szablon tekstu, nazwa)
+
+            def add(until: date, label: str, name: str, days: int, due=due) -> None:
+                if until <= today + timedelta(days=days):
+                    due.append((until, label, name))
+
+            exam = db.scalar(
+                select(MedicalExam)
+                .where(MedicalExam.employee_id == e.id, MedicalExam.valid_until.is_not(None))
+                .order_by(MedicalExam.exam_date.desc())
+                .limit(1)
+            )
+            if exam is not None:
+                add(exam.valid_until, "Badania lekarskie", "", 30)
+            for tr in db.scalars(
+                select(Training).where(Training.employee_id == e.id, Training.valid_until.is_not(None))
+            ).unique():
+                add(tr.valid_until, "Szkolenie", tr.name or tr.type.name, 30)
+            seen_kinds: set[str] = set()
+            for pm in db.scalars(
+                select(WorkPermit)
+                .where(WorkPermit.employee_id == e.id)
+                .order_by(WorkPermit.valid_until.desc())
+            ):
+                if pm.kind in seen_kinds:
+                    continue
+                seen_kinds.add(pm.kind)
+                add(pm.valid_until, "Dokument pobytowy lub zezwolenie", "", 60)
+            if not due:
+                continue
+            items = []
+            for until, label, name in sorted(due):
+                text = i18n.t(db, label, lang) + (f" – {name}" if name else "")
+                if until < today:
+                    text += ": " + i18n.t(db, "nieważne od {d}", lang, d=f"{until:%d.%m.%Y}")
+                else:
+                    text += ": " + i18n.t(db, "ważne do {d}", lang, d=f"{until:%d.%m.%Y}")
+                items.append(text)
+            title = i18n.t(db, "Zbliżają się Twoje terminy", lang)
+            ok = False
+            if acct is not None:
+                try:
+                    ok = "ok" in push.send_now(db, acct.id, title, "; ".join(items)[:200], "/moje-konto")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"- pracownik {e.id}: błąd push: {exc}", file=sys.stderr)
+            if e.email_enc and e.email_verified_at is not None and mailer.enabled():
+                raw = Email(
+                    subject="Zbliżają się Twoje terminy – Identyfikacja pracowników APT",
+                    title="Zbliżają się Twoje terminy",
+                    greeting="Dzień dobry {first_name},",
+                    paragraphs=[
+                        "poniższe terminy wkrótce się kończą albo już minęły. Skontaktuj się z kadrami."
+                    ],
+                    items=items,
+                    tone="warning",
+                )
+                try:
+                    em = i18n.tr_email(db, raw, lang, first_name=e.first_name)
+                    mailer.send_now(crypto.decrypt_contact(e.email_enc), em)
+                    ok = True
+                except Exception as exc:  # noqa: BLE001
+                    print(f"- pracownik {e.id}: błąd e-mail: {exc}", file=sys.stderr)
+            sent += ok
+    print(f"Przypomnienia dla pracowników wysłane: {sent}.")
+    return 0
+
+
 def restore_test_problems(now) -> list[str]:
     """Wynik cotygodniowego testu odtwarzania kopii (restore-test.sh); brak pliku = test nie ruszył."""
     import json
@@ -416,6 +513,7 @@ def notify_daily() -> int:
         training_reminders()
         medical_reminders()
         permit_reminders()
+        employee_reminders()
         refresh_trustlist()
     if local.day == 1:
         agency_reports()
@@ -452,6 +550,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--username", required=True)
     p = sub.add_parser("send-test-mail", help="Wyślij e-mail testowy")
     p.add_argument("--to", required=True)
+    sub.add_parser("notify-employees", help="Przypomnienie dla pracowników o ich terminach")
     sub.add_parser("notify-permits", help="Przypomnienie o dokumentach pobytowych i zezwoleniach")
     sub.add_parser("notify-daily", help="Ostrzeżenia dla administratorów (kopie, retencja)")
     sub.add_parser("notify-quality", help="Wyślij teraz przypomnienia o brakach w danych")
@@ -471,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
         return reset_mfa(args.username)
     if args.command == "send-test-mail":
         return send_test_mail(args.to)
+    if args.command == "notify-employees":
+        return employee_reminders()
     if args.command == "notify-permits":
         return permit_reminders()
     if args.command == "notify-daily":

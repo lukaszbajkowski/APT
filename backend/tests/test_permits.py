@@ -56,3 +56,27 @@ def test_permit_reminders(admin_client, make_user):
     finally:
         s.smtp_host = ""
         mailer.outbox = None
+
+
+def test_employee_reminders(admin_client, monkeypatch):
+    from datetime import UTC, datetime
+
+    from app import cli, crypto, mailer
+    from app.db import SessionLocal
+    from app.models import Employee
+
+    c = admin_client
+    eid = _emp(c)
+    soon = (date.today() + timedelta(days=15)).isoformat()
+    c.post(f"/api/employees/{eid}/permits", json={"kind": "karta_pobytu", "valid_until": soon})
+    with SessionLocal() as db:
+        e = db.get(Employee, eid)
+        e.email_enc = crypto.encrypt_contact("oleh@example.com")
+        e.email_verified_at = datetime.now(UTC)
+        db.commit()
+    sent = []
+    monkeypatch.setattr(mailer, "enabled", lambda: True)
+    monkeypatch.setattr(mailer, "send_now", lambda to, msg: sent.append((to, msg)))
+    assert cli.employee_reminders() == 0
+    to, msg = sent[0]
+    assert to == "oleh@example.com" and "ważne do" in msg.items[0] and "Oleh" in msg.greeting

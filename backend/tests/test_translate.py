@@ -57,7 +57,7 @@ def test_disabled_without_key(me, hr, monkeypatch):  # noqa: F811
 
 def test_staff_and_employee_translate_their_thread(me, hr):  # noqa: F811
     cfg = hr.get("/api/translate/config").json()
-    assert cfg["enabled"] is True and {"code": "uk", "name": "ukraiński"} in cfg["languages"]
+    assert cfg["enabled"] is True and {"code": "uk", "name": "Ukraiński"} in cfg["languages"]
     assert me.get("/api/translate/config").json()["enabled"] is True
     tid, mid = _thread(me, hr)
     r = hr.post("/api/translate/message", json={"message_id": mid, "target": "pl"})

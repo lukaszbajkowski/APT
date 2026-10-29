@@ -20,7 +20,7 @@ log = logging.getLogger("apt.translate")
 
 API = "https://translation.googleapis.com/language/translate/v2"
 LANGS_TTL = 24 * 3600
-_langs: tuple[float, list[dict[str, str]]] | None = None
+_langs: dict[str, tuple[float, list[dict[str, str]]]] | None = None  # nazwy języków per język wyświetlania
 
 # W testach podmieniane na funkcję zwracającą gotowe odpowiedzi (bez sieci).
 transport = None
@@ -52,19 +52,26 @@ def _call(path: str, payload: dict) -> dict:
         raise TranslateError("Usługa tłumaczenia jest chwilowo niedostępna.") from exc
 
 
-def languages() -> list[dict[str, str]]:
-    """Języki obsługiwane przez usługę (nazwy po polsku), zapamiętywane na dobę."""
+def _upper_first(name: str) -> str:
+    return name[:1].upper() + name[1:]
+
+
+def languages(display: str = "pl") -> list[dict[str, str]]:
+    """Języki usługi z nazwami w języku `display` (od wielkiej litery); pamięć podręczna na dobę."""
     global _langs
-    if _langs and time.monotonic() - _langs[0] < LANGS_TTL:
-        return _langs[1]
-    data = _call("/languages", {"target": "pl"})
+    if _langs is None:
+        _langs = {}
+    hit = _langs.get(display)
+    if hit and time.monotonic() - hit[0] < LANGS_TTL:
+        return hit[1]
+    data = _call("/languages", {"target": display})
     items = [
-        {"code": x["language"], "name": x.get("name") or x["language"]}
+        {"code": x["language"], "name": _upper_first(x.get("name") or x["language"])}
         for x in data.get("data", {}).get("languages", [])
         if x.get("language")
     ]
     items.sort(key=lambda x: x["name"].casefold())
-    _langs = (time.monotonic(), items)
+    _langs[display] = (time.monotonic(), items)
     return items
 
 

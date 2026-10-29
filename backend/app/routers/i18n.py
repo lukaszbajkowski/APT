@@ -59,7 +59,7 @@ class LanguagesOut(BaseModel):
 
 
 @router.get("/languages", response_model=LanguagesOut)
-def languages(request: Request) -> LanguagesOut:
+def languages(request: Request, lang: str = "pl") -> LanguagesOut:
     """Lista języków do wyboru (też dla stron bez logowania). Bez klucza tłumacza: wyłączone."""
     if not translate.enabled():
         return LanguagesOut(enabled=False)
@@ -67,7 +67,13 @@ def languages(request: Request) -> LanguagesOut:
     if not limiter.allow((ip, "i18n-langs"), 120, 3600.0):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail="Zbyt wiele żądań. Spróbuj za godzinę.")
     try:
-        return LanguagesOut(enabled=True, languages=translate.languages())
+        shown = lang if i18n.valid_lang(lang) else "pl"
+        try:
+            return LanguagesOut(enabled=True, languages=translate.languages(shown))
+        except translate.TranslateError:
+            if shown == "pl":
+                raise
+            return LanguagesOut(enabled=True, languages=translate.languages())  # język bez nazw – po polsku
     except translate.TranslateError:
         return LanguagesOut(enabled=True, languages=[])
 

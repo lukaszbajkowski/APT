@@ -90,7 +90,7 @@ def test_translation_failure_keeps_polish(monkeypatch):
 
 def test_languages_public(client, monkeypatch):
     r = client.get("/api/i18n/languages").json()
-    assert r["enabled"] is True and {"code": "uk", "name": "ukraiński"} in r["languages"]
+    assert r["enabled"] is True and {"code": "uk", "name": "Ukraiński"} in r["languages"]
     monkeypatch.setattr(get_settings(), "google_translate_key", "")
     assert client.get("/api/i18n/languages").json() == {"enabled": False, "languages": []}
 
@@ -166,3 +166,15 @@ def test_email_template_texts_translated():
     html = em.html()
     assert "[uk] Jeśli przycisk nie działa" in html and "[uk] Wiadomość wysłana automatycznie" in html
     assert "Marek," in em.greeting and "Marek ," not in em.greeting
+
+
+def test_language_names_capitalized_and_localized(client):
+    r = client.get("/api/i18n/languages").json()
+    assert r["languages"] == [{"code": "uk", "name": "Ukraiński"}]
+    assert calls[-1]["target"] == "pl"
+    r = client.get("/api/i18n/languages?lang=uk").json()
+    assert calls[-1]["target"] == "uk" and r["languages"][0]["code"] == "uk"
+    translate._langs = None
+    calls.clear()
+    client.get("/api/i18n/languages?lang=zły kod")
+    assert calls[-1]["target"] == "pl"

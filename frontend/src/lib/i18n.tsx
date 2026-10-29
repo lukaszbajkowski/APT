@@ -156,14 +156,17 @@ export function LanguagePicker({ size = "sm" }: { size?: "xs" | "sm" }) {
   const { lang: current, setPublicLang } = useContext(Ctx);
   const t = useT();
   const cfg = useQuery({
-    queryKey: ["i18n-languages"],
-    queryFn: () => api<{ enabled: boolean; languages: { code: string; name: string }[] }>("/i18n/languages"),
+    // nazwy języków w wybranym języku strony
+    queryKey: ["i18n-languages", current ?? "pl"],
+    queryFn: () =>
+      api<{ enabled: boolean; languages: { code: string; name: string }[] }>(`/i18n/languages?lang=${encodeURIComponent(current ?? "pl")}`),
     staleTime: 3600_000,
+    placeholderData: (prev) => prev,
   });
   if (!cfg.data?.enabled || cfg.data.languages.length === 0) return null;
   const COMMON = ["pl", "uk", "ru", "en", "be", "ka", "hi"];
   const all = new Map(cfg.data.languages.map((l) => [l.code, l.name]));
-  all.set("pl", "Polski");
+  if (!all.has("pl")) all.set("pl", "Polski");
   const data = [
     { group: t("Najczęstsze"), items: COMMON.filter((c) => all.has(c)).map((c) => ({ value: c, label: all.get(c) as string })) },
     {

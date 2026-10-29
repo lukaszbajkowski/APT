@@ -45,6 +45,75 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
   const T = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [good, setGood] = useState(false);
+
+  // prowadnica: co pół sekundy oceniamy podgląd (światło, odległość, ostrość) i podpowiadamy, co poprawić
+  useEffect(() => {
+    const canvas = document.createElement("canvas");
+    const timer = setInterval(async () => {
+      const v = videoRef.current;
+      if (!v || !v.videoWidth) return;
+      const W = 160;
+      const H = Math.round((W * v.videoHeight) / v.videoWidth);
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(v, 0, 0, W, H);
+      const px = ctx.getImageData(0, 0, W, H).data;
+      const lum = (x: number, y: number) => {
+        const i = (y * W + x) * 4;
+        return 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      };
+      const x0 = Math.round(W * 0.3), x1 = Math.round(W * 0.7), y0 = Math.round(H * 0.15), y1 = Math.round(H * 0.85);
+      let sum = 0, left = 0, right = 0, n = 0, nl = 0, nr = 0, lap = 0, lapN = 0, lapSum = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const l = lum(x, y);
+          sum += l;
+          n++;
+          if (x < (x0 + x1) / 2) { left += l; nl++; } else { right += l; nr++; }
+          if (x > x0 && y > y0 && x < x1 - 1 && y < y1 - 1) {
+            const d = 4 * l - lum(x - 1, y) - lum(x + 1, y) - lum(x, y - 1) - lum(x, y + 1);
+            lapSum += d;
+            lap += d * d;
+            lapN++;
+          }
+        }
+      }
+      const mean = sum / n;
+      const sharp = lap / lapN - (lapSum / lapN) ** 2;
+      let msg: string | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const FD = (window as any).FaceDetector;
+      if (FD) {
+        try {
+          const faces = await new FD({ fastMode: true, maxDetectedFaces: 2 }).detect(v);
+          if (faces.length === 0) msg = T("Nie widzę twarzy – ustaw się na wprost aparatu.");
+          else if (faces.length > 1) msg = T("Na zdjęciu ma być tylko jedna osoba.");
+          else {
+            const b = faces[0].boundingBox;
+            const frac = b.height / v.videoHeight;
+            const cx = (b.x + b.width / 2) / v.videoWidth;
+            if (frac < 0.3) msg = T("Podejdź bliżej.");
+            else if (frac > 0.52) msg = T("Odsuń się trochę.");
+            else if (Math.abs(cx - 0.5) > 0.12) msg = T("Ustaw twarz na środku owalu.");
+          }
+        } catch {
+          /* detektor niedostępny – zostają podpowiedzi o świetle i ostrości */
+        }
+      }
+      if (!msg && mean < 70) msg = T("Za ciemno – stań twarzą do okna lub włącz światło.");
+      else if (!msg && mean > 200) msg = T("Za jasno – odsuń się od mocnego światła.");
+      else if (!msg && Math.abs(left / nl - right / nr) > 35) msg = T("Światło pada z boku – obróć się twarzą do źródła światła.");
+      else if (!msg && sharp < 25) msg = T("Trzymaj telefon nieruchomo – obraz jest nieostry.");
+      setHint(msg);
+      setGood(msg === null);
+    }, 500);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -74,7 +143,18 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
       {error ? (
         <Alert color="red">{error}</Alert>
       ) : (
-        <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", borderRadius: 8, background: "#000" }} />
+        <Box pos="relative">
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", display: "block", borderRadius: 8, background: "#000" }} />
+          <svg viewBox="0 0 100 75" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+            <path fillRule="evenodd" fill="rgba(0,0,0,0.35)" d="M0 0H100V75H0Z M33 38 a17 27.5 0 1 0 34 0 a17 27.5 0 1 0 -34 0Z" />
+            <ellipse cx="50" cy="38" rx="17" ry="27.5" fill="none" stroke={good ? "#37b24d" : "#ffffff"} strokeWidth="0.8" strokeDasharray={good ? undefined : "2 1.5"} />
+          </svg>
+          <Box pos="absolute" bottom={8} left={8} right={8} ta="center" style={{ pointerEvents: "none" }}>
+            <Text size="sm" fw={600} c="white" style={{ textShadow: "0 1px 4px rgba(0,0,0,.8)" }}>
+              {hint ?? T("Świetnie – możesz zrobić zdjęcie.")}
+            </Text>
+          </Box>
+        </Box>
       )}
       <Group justify="flex-end">
         <Button variant="default" onClick={onCancel}>

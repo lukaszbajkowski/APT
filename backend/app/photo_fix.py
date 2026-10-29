@@ -189,6 +189,50 @@ def _transform(cx: float, mid: float, head_h: float, angle: float, ratio: float)
     return m, scale
 
 
+SKIN_AB = (
+    143.0,
+    148.0,
+)  # typowy odcień skóry w LAB (a, b w skali OpenCV); punkt odniesienia dla balansu bieli
+
+
+def _polish(
+    out: np.ndarray,
+    face_box: tuple[int, int, int, int],
+    person: np.ndarray | None,
+    fill: tuple[int, int, int],
+) -> tuple[np.ndarray, list[str]]:
+    """Łagodna „obróbka fotograficzna”: odszumienie, balans bieli wg skóry, kontrast lokalny, wyostrzenie."""
+    done: list[str] = []
+    out = cv2.fastNlMeansDenoisingColored(out, None, 2, 2, 5, 15)
+    lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB).astype(np.float32)
+    x, y, w, h = face_box
+    roi = lab[y : y + h, x : x + w]
+    if roi.size:
+        dev = roi[..., 1:].reshape(-1, 2).mean(axis=0) - np.array(SKIN_AB, np.float32)
+        shift = np.clip(-0.5 * dev, -6, 6)
+        if float(np.abs(shift).max()) >= 1.5:
+            lab[..., 1] += shift[0]
+            lab[..., 2] += shift[1]
+            done.append("poprawiono kolory (balans bieli)")
+    lab = np.clip(lab, 0, 255).astype(np.uint8)
+    l_chan = lab[..., 0]
+    if person is not None:
+        # kontrast lokalny tylko na postaci; tło zostaje idealnie równe (kładziemy je z powrotem po obróbce)
+        clahe = cv2.createCLAHE(clipLimit=1.4, tileGridSize=(6, 8)).apply(l_chan)
+        lab[..., 0] = cv2.addWeighted(l_chan, 0.5, clahe, 0.5, 0)
+        done.append("wyrównano kontrast i cienie")
+    out = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    blur = cv2.GaussianBlur(out, (0, 0), 1.4)
+    out = cv2.addWeighted(out, 1.3, blur, -0.3, 0)
+    if person is not None:
+        a = person[..., None]
+        bg = np.empty_like(out)
+        bg[:] = fill
+        out = (out * a + bg * (1 - a)).astype(np.uint8)
+    done.append("odszumiono i wyostrzono")
+    return out, done
+
+
 def enhance(raw: bytes) -> Result:
     """Zwraca poprawione zdjęcie 600×800 (JPEG) i listę uwag. Rzuca FixError, gdy nie da się go poprawić."""
     img = _load(raw)
@@ -334,6 +378,19 @@ def enhance(raw: bytes) -> Result:
                     "Twarz jest bardzo ciemna lub prześwietlona – lepiej zrobić zdjęcie przy dobrym, równym świetle.",
                 )
             )
+
+    person = None
+    if alpha is not None:
+        person = np.clip(
+            cv2.warpAffine(alpha, m, (OUT_W, OUT_H), flags=cv2.INTER_LINEAR, borderValue=0), 0.0, 1.0
+        )
+    out, done = _polish(
+        out,
+        (max(0, nx0), max(0, ny0), int(fw * scale * 0.8), int(fh * scale * 0.8)),
+        person,
+        fill,
+    )
+    changed += done
 
     if not want_bg:
         notes.append(Note("ok", "Tło jest jednolite."))

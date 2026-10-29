@@ -115,9 +115,10 @@ def tr_email(db: Session | None, em: Any, lang: str | None, **vars: Any) -> Any:
     from dataclasses import replace
 
     def fmt(x: str) -> str:
-        return x.format(**vars)
+        # tłumacz bywa wstawia spację przed przecinkiem po zmiennej („Marek ,”)
+        return x.format(**vars).replace(" ,", ",")
 
-    fields = ["subject", "title", "preheader", "greeting", "notice", "footer_note"]
+    fields = ["subject", "title", "preheader", "greeting", "notice", "footer_note", "link_hint", "auto_note"]
     texts = [getattr(em, f) for f in fields if getattr(em, f)] + list(em.paragraphs)
     if em.button:
         texts.append(em.button[0])

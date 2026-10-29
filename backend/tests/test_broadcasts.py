@@ -75,12 +75,12 @@ def test_broadcast_files_and_archive(me, hr, emp):  # noqa: F811
         files=[("files", ("a.exe", b"MZ....", "application/octet-stream"))],
     )
     assert bad.status_code == 400
-    # pobranie: kadry i adresat
-    assert hr.get(f"/api/broadcasts/files/{fid}").content == pdf
+    # dokument jest widoczny w aplikacji (strony jako obrazy), bez pobierania pliku
+    assert hr.get(f"/api/broadcasts/files/{fid}").status_code in (404, 405)
+    assert me.get(f"/api/me/broadcasts/files/{fid}").status_code in (404, 405)
     mine = me.get("/api/me/broadcasts").json()[0]
     assert mine["files"][0]["id"] == fid
-    assert me.get(f"/api/me/broadcasts/files/{fid}").content == pdf
-    assert me.get("/api/me/broadcasts/files/99999").status_code == 404
+    assert me.get("/api/me/broadcasts/files/99999/preview").status_code == 404
 
     # archiwum: nieprzeczytany – po 7 dniach; przeczytany przez wszystkich – 2 dni po przeczytaniu
     now = datetime.now(UTC)
@@ -100,3 +100,27 @@ def test_broadcast_files_and_archive(me, hr, emp):  # noqa: F811
     assert [x["id"] for x in hr.get("/api/broadcasts?archived=true").json()] == [bid]
     assert bid not in [x["id"] for x in hr.get("/api/broadcasts").json()]
     assert all(x["id"] != bid for x in me.get("/api/me/broadcasts").json())
+
+
+def test_manual_archive_and_document_only(me, hr, emp, minimal_pdf):  # noqa: F811
+    r = hr.post(
+        "/api/broadcasts",
+        data={"subject": "Regulamin", "everyone": "true"},
+        files=[("files", ("regulamin.pdf", minimal_pdf, "application/pdf"))],
+    )
+    assert r.status_code == 201, r.text  # sam dokument, bez treści
+    bid, fid = r.json()["id"], r.json()["files"][0]["id"]
+    assert hr.post("/api/broadcasts", data={"subject": "x", "everyone": "true"}).status_code == 400
+    info = me.get(f"/api/me/broadcasts/files/{fid}/preview").json()
+    assert info["pages"] == 1 and info["title"] == "regulamin.pdf"
+    png = me.get(f"/api/me/broadcasts/files/{fid}/preview/page/0")
+    assert png.status_code == 200 and png.headers["content-type"] == "image/png"
+    assert me.get(f"/api/me/broadcasts/files/{fid}/preview/page/5").status_code == 404
+    assert hr.get(f"/api/broadcasts/files/{fid}/preview").json()["pages"] == 1
+    # ręczna archiwizacja i przywrócenie
+    assert hr.post(f"/api/broadcasts/{bid}/archive").json() == {"archived": True}
+    assert bid not in [x["id"] for x in hr.get("/api/broadcasts").json()]
+    assert bid in [x["id"] for x in hr.get("/api/broadcasts?archived=true").json()]
+    assert me.get("/api/me/broadcasts/count").json() == {"unread": 0}
+    assert hr.post(f"/api/broadcasts/{bid}/archive?on=false").json() == {"archived": False}
+    assert bid in [x["id"] for x in hr.get("/api/broadcasts").json()]

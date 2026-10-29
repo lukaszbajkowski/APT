@@ -44,6 +44,9 @@ class Email:
     footer_note: str | None = None
     preheader: str | None = None  # podgląd w skrzynce (pod tematem)
     attachments: list[tuple[str, bytes, str]] = field(default_factory=list)  # (nazwa, dane, typ MIME)
+    # stałe teksty szablonu – po polsku, tłumaczone razem z resztą (i18n.tr_email)
+    link_hint: str = "Jeśli przycisk nie działa, skopiuj ten adres do przeglądarki:"
+    auto_note: str = "Wiadomość wysłana automatycznie. Nie odpowiadaj na nią."
 
     # --- wersja tekstowa ---------------------------------------------------------
 
@@ -67,7 +70,7 @@ class Email:
             lines += [self.notice, ""]
         if self.footer_note:
             lines += [self.footer_note, ""]
-        lines += ["—", APP_NAME, "Wiadomość wysłana automatycznie, nie odpowiadaj na nią."]
+        lines += ["—", APP_NAME, self.auto_note]
         return "\n".join(lines)
 
     # --- wersja HTML ---------------------------------------------------------------
@@ -118,7 +121,7 @@ class Email:
             )
             body.append(
                 f'<p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:{MUTED};">'
-                "Jeśli przycisk nie działa, skopiuj ten adres do przeglądarki:<br>"
+                f"{e(self.link_hint)}<br>"
                 f'<a href="{e(url, quote=True)}" style="color:{NAVY};word-break:break-all;">{e(url)}</a></p>'
             )
 
@@ -161,7 +164,7 @@ class Email:
 {"".join(body)}
 </td></tr>
 <tr><td style="background:{NAVY_LIGHT};padding:14px 28px;font-size:12px;line-height:1.5;color:{MUTED};">
-Wiadomość wysłana automatycznie przez aplikację {APP_NAME}. Nie odpowiadaj na nią.
+{APP_NAME}. {e(self.auto_note)}
 </td></tr>
 </table>
 </td></tr>

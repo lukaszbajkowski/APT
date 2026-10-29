@@ -145,7 +145,24 @@ def test_broadcast_email_and_list_translated(me, hr, emp):  # noqa: F811
         and "[uk] Od jutra {6:00}." in text
         and "[uk] Otwórz w aplikacji" in text
     )
+    assert "[uk] Wiadomość wysłana automatycznie" in text
     mine = me.get("/api/me/broadcasts").json()[0]
     assert mine["subject"] == "[uk] Zmiana godzin"
     me.put("/api/i18n/language", json={"language": None})
     assert me.get("/api/me/broadcasts").json()[0]["subject"] == "Zmiana godzin"
+
+
+def test_email_template_texts_translated():
+    from app.emails import Email
+
+    raw = Email(
+        subject="s",
+        title="t",
+        greeting="Dzień dobry {first_name},",
+        button=("Otwórz", "https://x.pl/a"),
+    )
+    with SessionLocal() as db:
+        em = i18n.tr_email(db, raw, "uk", first_name="Marek")
+    html = em.html()
+    assert "[uk] Jeśli przycisk nie działa" in html and "[uk] Wiadomość wysłana automatycznie" in html
+    assert "Marek," in em.greeting and "Marek ," not in em.greeting

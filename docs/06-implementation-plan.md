@@ -95,7 +95,7 @@ Wszystkie pozycje poprzedniego backlogu są zrobione:
 | Kolejka „Do zrobienia” kadr: wiadomości bez odpowiedzi, zgłoszenia agencji, zaległe zadania, dokumenty pobytowe, szkolenia, braki w danych | menu „Do zrobienia” (admin, kadry) |
 | Komunikaty do grup (agencja / wydział / wszyscy): push i e-mail w języku odbiorcy, treść w aplikacji pracownika (z „Odsłuchaj”), potwierdzenie przeczytania, lista kto nie przeczytał, przypomnienie | menu „Komunikaty do grup”, „Moje konto” → „Komunikaty” (migracja 0040) |
 | Dokument do zapoznania się (regulamin, BHP): ten sam mechanizm co komunikat, do 20 000 znaków, z przykładowym dokumentem BHP do wstawienia | „Komunikaty do grup” → „Dokument do zapoznania się” (migracja 0041) |
-| Załączniki do komunikatów (do 5 plików PDF/JPG/PNG po 15 MB, szyfrowane na dysku) i automatyczne archiwum: 2 dni po przeczytaniu przez wszystkich adresatów albo 7 dni po wysłaniu (zakładka „Archiwum”; w aplikacji pracownika komunikat znika po archiwizacji) | „Komunikaty do grup”, `notify-daily` (migracja 0042) |
+| Dokumenty w komunikatach (do 5 plików PDF/JPG/PNG po 15 MB, szyfrowane na dysku): pracownik widzi je otwarte w aplikacji (strony jako obrazy ze znakiem wodnym, bez pobierania), treść może być pusta. Archiwum: automatyczne (2 dni po przeczytaniu przez wszystkich adresatów albo 7 dni po wysłaniu) i ręczne („Archiwizuj” / „Przywróć”) | „Komunikaty do grup”, `notify-daily` (migracja 0042) |
 | Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
 | Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
 | PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |

@@ -173,11 +173,11 @@ def _deliver(broadcast_id: int) -> None:
             try:
                 tr = {}
                 if lang and i18n.valid_lang(lang) and translate.enabled():
-                    tr = i18n.translate_many(db, [b.subject, b.body], lang)
+                    tr = i18n.translate_many(db, [b.subject, b.body] if b.body else [b.subject], lang)
                 subject = tr.get(b.subject, b.subject)
-                body = tr.get(b.body, b.body)
+                body = tr.get(b.body, b.body) if b.body else ""
                 if acct is not None:
-                    push.notify_users(db, [acct.id], subject, body[:180], "/moje-konto/komunikaty")
+                    push.notify_users(db, [acct.id], subject, body[:180] or subject, "/moje-konto/komunikaty")
                 if e.email_enc and e.email_verified_at is not None:
                     from dataclasses import replace
 
@@ -193,7 +193,12 @@ def _deliver(broadcast_id: int) -> None:
                         footer_note="Potwierdź przeczytanie w aplikacji.",
                     )
                     em = i18n.tr_email(db, raw, lang, first_name=e.first_name)
-                    em = replace(em, subject=f"{subject} – {em.subject}", title=subject, paragraphs=[body])
+                    em = replace(
+                        em,
+                        subject=f"{subject} – {em.subject}",
+                        title=subject,
+                        paragraphs=[body] if body else [],
+                    )
                     mailer.send(crypto.decrypt_contact(e.email_enc), em)
             except Exception:  # noqa: BLE001 – błąd jednego odbiorcy nie zatrzymuje reszty
                 continue
@@ -206,7 +211,7 @@ async def create(
     db: DbSession,
     tasks: BackgroundTasks,
     subject: Annotated[str, Form(min_length=1, max_length=120)],
-    body: Annotated[str, Form(min_length=1, max_length=20000)],
+    body: Annotated[str, Form(max_length=20000)] = "",
     kind: Annotated[Literal["info", "document"], Form()] = "info",
     agency_id: Annotated[int | None, Form()] = None,
     department_id: Annotated[int | None, Form()] = None,
@@ -219,6 +224,8 @@ async def create(
     if not emps:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="W tej grupie nie ma aktywnych pracowników.")
     uploads = [f for f in (files or []) if f.filename]
+    if not body.strip() and not uploads:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz treść albo dodaj dokument.")
     if len(uploads) > MAX_FILES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"Najwyżej {MAX_FILES} załączników.")
     blobs: list[tuple[str, str, str, bytes]] = []
@@ -280,12 +287,7 @@ def list_all(ctx: StaffAuth, db: DbSession, archived: bool = False) -> list[Broa
     ]
 
 
-@router.get("/files/{file_id}")
-def staff_file(file_id: int, ctx: StaffAuth, db: DbSession) -> Response:
-    return _send_file(db, file_id)
-
-
-def _send_file(db, file_id: int, employee_id: int | None = None) -> Response:
+def _file_source(db, file_id: int, employee_id: int | None = None) -> tuple[bytes, str, str]:
     f = db.get(BroadcastFile, file_id)
     if f is None or (
         employee_id is not None and db.get(BroadcastRecipient, (f.broadcast_id, employee_id)) is None
@@ -294,12 +296,61 @@ def _send_file(db, file_id: int, employee_id: int | None = None) -> Response:
     path = _dir(f.broadcast_id) / f.file_name
     if not path.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Brak pliku.")
-    safe = f.original_name.replace('"', "").replace("\n", " ").replace("\r", " ")
-    return Response(
-        storage.read(path),
-        media_type=f.content_type,
-        headers={"Content-Disposition": f'inline; filename="{safe}"', "Cache-Control": "no-store"},
+    return storage.read(path), f.file_name.rsplit(".", 1)[-1], f.original_name
+
+
+class PagesOut(BaseModel):
+    pages: int
+    signed: bool = False
+    title: str
+
+
+def _preview_info(db, file_id: int, employee_id: int | None) -> PagesOut:
+    from app import preview
+
+    data, ext, name = _file_source(db, file_id, employee_id)
+    return PagesOut(pages=preview.page_count(data, ext), title=name)
+
+
+def _preview_page(db, file_id: int, page: int, viewer: str, employee_id: int | None) -> Response:
+    from app import preview
+
+    data, ext, _ = _file_source(db, file_id, employee_id)
+    if not 0 <= page < preview.page_count(data, ext):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
+    png = preview.render_page(data, ext, page, viewer)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
+
+
+@router.get("/files/{file_id}/preview", response_model=PagesOut)
+def staff_preview(file_id: int, ctx: StaffAuth, db: DbSession) -> PagesOut:
+    return _preview_info(db, file_id, None)
+
+
+@router.get("/files/{file_id}/preview/page/{page}")
+def staff_preview_page(file_id: int, page: int, ctx: StaffAuth, db: DbSession) -> Response:
+    return _preview_page(db, file_id, page, ctx.user.full_name or ctx.user.username, None)
+
+
+@router.post("/{broadcast_id}/archive")
+def set_archived(
+    broadcast_id: int, ctx: StaffAuth, request: Request, db: DbSession, on: bool = True
+) -> dict[str, bool]:
+    """Ręczna archiwizacja komunikatu (lub przywrócenie z archiwum)."""
+    b = db.get(Broadcast, broadcast_id)
+    if b is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono komunikatu.")
+    b.archived_at = utcnow() if on else None
+    audit(
+        db,
+        request,
+        "broadcast_archived" if on else "broadcast_unarchived",
+        user=ctx.user,
+        entity_type="broadcast",
+        entity_id=b.id,
     )
+    db.commit()
+    return {"archived": on}
 
 
 def archive_due(db, now=None) -> int:
@@ -450,9 +501,14 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
     return {"unread": n or 0}
 
 
-@me_router.get("/files/{file_id}")
-def my_file(file_id: int, ctx: Auth, db: DbSession) -> Response:
-    return _send_file(db, file_id, _my_employee_id(ctx))
+@me_router.get("/files/{file_id}/preview", response_model=PagesOut)
+def my_preview(file_id: int, ctx: Auth, db: DbSession) -> PagesOut:
+    return _preview_info(db, file_id, _my_employee_id(ctx))
+
+
+@me_router.get("/files/{file_id}/preview/page/{page}")
+def my_preview_page(file_id: int, page: int, ctx: Auth, db: DbSession) -> Response:
+    return _preview_page(db, file_id, page, ctx.user.full_name or ctx.user.username, _my_employee_id(ctx))
 
 
 @me_router.post("/{broadcast_id}/read", status_code=204)

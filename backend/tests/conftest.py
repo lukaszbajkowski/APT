@@ -162,3 +162,16 @@ def make_pesel(born: "date", sex: str, serial: int = 123) -> str:
     digits = [int(c) for c in base] + [sex_digit]
     check = (10 - sum(d * w for d, w in zip(digits, WEIGHTS, strict=True)) % 10) % 10
     return base + str(sex_digit) + str(check)
+
+
+@pytest.fixture
+def minimal_pdf() -> bytes:
+    import io
+
+    from reportlab.pdfgen import canvas
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf)
+    c.drawString(100, 700, "Regulamin testowy")
+    c.save()
+    return buf.getvalue()

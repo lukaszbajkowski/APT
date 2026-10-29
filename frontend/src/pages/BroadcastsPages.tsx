@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Anchor, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Alert, Badge, Box, Button, Card, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileText, IconPlayerStop, IconVolume } from "@tabler/icons-react";
+import { IconPlayerStop, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
+import { DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../lib/i18n";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 
@@ -95,18 +96,59 @@ Potwierdzając zapoznanie się z dokumentem, oświadczasz, że rozumiesz powyżs
 (To jest przykład. Zastąp go treścią swojego regulaminu lub instrukcji.)`,
 };
 
-function FileLinks({ files, staff }: { files: FileRef[]; staff?: boolean }) {
-  if (!files.length) return null;
+/** Dokument pokazany jak w podglądzie: strony jako obrazy ze znakiem wodnym, bez pobierania pliku. */
+function InlineDoc({ base }: { base: string }) {
+  const info = useQuery({ queryKey: ["bc-doc", base], queryFn: () => api<{ pages: number; title: string }>(base), gcTime: 0 });
+  const [full, setFull] = useState(false);
+  if (info.isLoading) return <Loader size="sm" mt="xs" />;
+  if (info.error || !info.data) return <Alert color="red">{errorText(info.error)}</Alert>;
   return (
-    <Group gap="sm" mt={4}>
+    <Stack gap="xs" mt="xs">
+      <Group justify="space-between">
+        <Text size="sm" fw={500}>
+          {info.data.title}
+        </Text>
+        <Button size="compact-xs" variant="light" onClick={() => setFull(true)}>
+          Pełny ekran
+        </Button>
+      </Group>
+      <Stack
+        gap="sm"
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
+        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--mantine-color-gray-1)", padding: 8, borderRadius: 6 }}
+      >
+        {Array.from({ length: info.data.pages }, (_, i) => (
+          <Box
+            key={i}
+            role="img"
+            aria-label={`Strona ${i + 1}`}
+            w="100%"
+            style={{
+              aspectRatio: "210 / 297",
+              backgroundImage: `url(${withAcct(`/api${base}/page/${i}`)})`,
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center top",
+              backgroundColor: "#fff",
+              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+      </Stack>
+      {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} />}
+    </Stack>
+  );
+}
+
+function FileDocs({ files, staff }: { files: FileRef[]; staff?: boolean }) {
+  return (
+    <>
       {files.map((f) => (
-        <Anchor key={f.id} href={withAcct(staff ? `/api/broadcasts/files/${f.id}` : `/api/me/broadcasts/files/${f.id}`)} target="_blank" size="sm">
-          <Group gap={4} wrap="nowrap">
-            <IconFileText size={14} /> {f.name}
-          </Group>
-        </Anchor>
+        <InlineDoc key={f.id} base={staff ? `/broadcasts/files/${f.id}/preview` : `/me/broadcasts/files/${f.id}/preview`} />
       ))}
-    </Group>
+    </>
   );
 }
 
@@ -125,6 +167,12 @@ export function BroadcastsPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<number | null>(null);
+  const [docOf, setDocOf] = useState<Broadcast | null>(null);
+  const arch = useMutation({
+    mutationFn: (v: { id: number; on: boolean }) => api(`/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcasts"] }),
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
   const target = { agency_id: agency ? Number(agency) : null, department_id: dept ? Number(dept) : null, everyone };
   const hasTarget = !!(agency || dept || everyone);
   const preview = useQuery({
@@ -201,9 +249,9 @@ export function BroadcastsPage() {
             )}
           </Group>
           <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-          <Textarea label="Treść" autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
           <FileInput
-            label="Załączniki (PDF, JPG, PNG – do 5 plików, po 15 MB)"
+            label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
             placeholder="Dodaj pliki"
             accept="application/pdf,image/jpeg,image/png"
             multiple
@@ -213,7 +261,7 @@ export function BroadcastsPage() {
           />
           <Group justify="flex-end">
             <Button
-              disabled={!hasTarget || !subject.trim() || !body.trim() || !preview.data?.total}
+              disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
               loading={send.isPending}
               onClick={() => {
                 if (window.confirm(`Wysłać komunikat do ${preview.data?.total ?? 0} osób?`)) send.mutate();
@@ -258,17 +306,32 @@ export function BroadcastsPage() {
                 <Text size="xs" c="dimmed">
                   {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
                 </Text>
-                <FileLinks files={b.files} staff />
+                
               </Table.Td>
               <Table.Td ta="right">
-                <Button size="compact-xs" variant="light" onClick={() => setOpen(b.id)}>
-                  Przeczytało {b.read} z {b.total}
-                </Button>
+                <Group gap={6} justify="flex-end" wrap="nowrap">
+                  {b.files.length > 0 && (
+                    <Button size="compact-xs" variant="default" onClick={() => setDocOf(b)}>
+                      Dokument
+                    </Button>
+                  )}
+                  <Button size="compact-xs" variant="light" onClick={() => setOpen(b.id)}>
+                    Przeczytało {b.read} z {b.total}
+                  </Button>
+                  <Button size="compact-xs" variant="subtle" color="gray" loading={arch.isPending} onClick={() => arch.mutate({ id: b.id, on: !archive })}>
+                    {archive ? "Przywróć" : "Archiwizuj"}
+                  </Button>
+                </Group>
               </Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
       </Table>
+      {docOf && (
+        <Modal opened onClose={() => setDocOf(null)} title={docOf.subject} size="xl">
+          <FileDocs files={docOf.files} staff />
+        </Modal>
+      )}
       {open !== null && <Recipients id={open} onClose={() => setOpen(null)} />}
     </Stack>
   );
@@ -326,7 +389,7 @@ export function MyBroadcastsPage() {
             </Text>
           </Group>
           <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>
-          <FileLinks files={m.files} />
+          <FileDocs files={m.files} />
           {canSpeak() && (
             <Button
               mt="xs"

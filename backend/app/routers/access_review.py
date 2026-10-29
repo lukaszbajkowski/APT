@@ -158,3 +158,30 @@ def pesel_access(
             for r in recent
         ],
     )
+
+
+PESEL_ALERT = 30  # tylu różnych numerów PESEL odsłoniętych przez jedno konto w dobie
+EXPORT_ALERT = 5  # tyle eksportów danych przez jedno konto w dobie
+
+
+def unusual_activity(db, hours: int = 24) -> list[str]:
+    """Opisy nietypowej aktywności z dziennika: masowe odsłanianie PESEL i częste eksporty."""
+    since = utcnow() - timedelta(hours=hours)
+    out: list[str] = []
+    rows = db.execute(
+        select(AuditLog.username, func.count(func.distinct(AuditLog.entity_id)))
+        .where(AuditLog.action == "pesel_viewed", AuditLog.ts >= since)
+        .group_by(AuditLog.username)
+        .having(func.count(func.distinct(AuditLog.entity_id)) >= PESEL_ALERT)
+    ).all()
+    for name, n in rows:
+        out.append(f"Konto {name or '?'} odsłoniło numery PESEL {n} osób w ciągu {hours} godz.")
+    rows = db.execute(
+        select(AuditLog.username, func.count())
+        .where(AuditLog.action.in_(["employees_exported", "report_exported"]), AuditLog.ts >= since)
+        .group_by(AuditLog.username)
+        .having(func.count() >= EXPORT_ALERT)
+    ).all()
+    for name, n in rows:
+        out.append(f"Konto {name or '?'} wykonało {n} eksportów danych w ciągu {hours} godz.")
+    return out

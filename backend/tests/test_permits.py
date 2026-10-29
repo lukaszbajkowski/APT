@@ -100,3 +100,19 @@ def test_stale_accounts(make_user):
         new.last_login_at = datetime.now(UTC)
         db.commit()
     assert stale_accounts() == 1
+
+
+def test_unusual_activity():
+    from app.audit import audit
+    from app.db import SessionLocal
+    from app.routers.access_review import unusual_activity
+
+    with SessionLocal() as db:
+        for i in range(31):
+            audit(db, None, "pesel_viewed", username="ktos", entity_type="employee", entity_id=i)
+        for _ in range(5):
+            audit(db, None, "report_exported", username="ktos")
+        audit(db, None, "pesel_viewed", username="inny", entity_type="employee", entity_id=1)
+        db.commit()
+        out = unusual_activity(db)
+    assert len(out) == 2 and all("ktos" in x for x in out)

@@ -526,6 +526,10 @@ def notify_daily() -> int:
             problems.append(
                 f"Dane {due} os. mają za sobą okres przechowywania – usuń je w zakładce Retencja danych."
             )
+    from app.routers.access_review import unusual_activity
+
+    with SessionLocal() as db:
+        problems.extend(unusual_activity(db))
     from app import lifecycle
 
     with SessionLocal() as db:

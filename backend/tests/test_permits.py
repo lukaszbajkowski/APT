@@ -80,3 +80,23 @@ def test_employee_reminders(admin_client, monkeypatch):
     assert cli.employee_reminders() == 0
     to, msg = sent[0]
     assert to == "oleh@example.com" and "ważne do" in msg.items[0] and "Oleh" in msg.greeting
+
+
+def test_stale_accounts(make_user):
+    from datetime import UTC, datetime
+
+    from app.cli import stale_accounts
+    from app.db import SessionLocal
+    from app.models import User
+
+    make_user("stary", Role.hr)
+    make_user("swiezy", Role.hr)
+    with SessionLocal() as db:
+        from sqlalchemy import select
+
+        old = db.scalar(select(User).where(User.username == "stary"))
+        old.last_login_at = datetime.now(UTC) - timedelta(days=120)
+        new = db.scalar(select(User).where(User.username == "swiezy"))
+        new.last_login_at = datetime.now(UTC)
+        db.commit()
+    assert stale_accounts() == 1

@@ -162,6 +162,9 @@ def encrypt_files() -> int:
     return 0
 
 
+STALE_DAYS = 90
+
+
 def _remind(db, u, title: str, body: str, url: str, msg=None) -> bool:
     """Przypomnienie dla konta: push na jego urządzenia i/lub e-mail (każde niezależnie od drugiego)."""
     from app import mailer, push
@@ -445,6 +448,29 @@ def employee_reminders() -> int:
     return 0
 
 
+def stale_accounts() -> int:
+    """Liczba aktywnych kont funkcyjnych bez logowania od STALE_DAYS dni (albo bez żadnego logowania)."""
+    from datetime import timedelta
+
+    from sqlalchemy import func, select
+
+    from app.deps import utcnow
+    from app.models import Role, User
+
+    limit = utcnow() - timedelta(days=STALE_DAYS)
+    with SessionLocal() as db:
+        return (
+            db.scalar(
+                select(func.count()).where(
+                    User.role != Role.employee,
+                    User.is_active,
+                    (User.last_login_at.is_(None) & (User.created_at < limit)) | (User.last_login_at < limit),
+                )
+            )
+            or 0
+        )
+
+
 def restore_test_problems(now) -> list[str]:
     """Wynik cotygodniowego testu odtwarzania kopii (restore-test.sh); brak pliku = test nie ruszył."""
     import json
@@ -514,6 +540,11 @@ def notify_daily() -> int:
         medical_reminders()
         permit_reminders()
         employee_reminders()
+        stale = stale_accounts()
+        if stale:
+            problems.append(
+                f"Konta bez logowania od {STALE_DAYS} dni: {stale} – wyłącz je w „Przeglądzie dostępu”."
+            )
         refresh_trustlist()
     if local.day == 1:
         agency_reports()

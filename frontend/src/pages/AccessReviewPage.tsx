@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Title } from "@mantine/core";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, Badge, Button, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Title } from "@mantine/core";
 
+import { notifications } from "@mantine/notifications";
+
+import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
 
 interface UserReview {
@@ -27,7 +30,17 @@ interface PeselReport {
 }
 
 function UsersTab() {
+  const qc = useQueryClient();
+  const { me } = useAuth();
   const q = useQuery({ queryKey: ["access-users"], queryFn: () => api<UserReview[]>("/access-review/users") });
+  const disable = useMutation({
+    mutationFn: (id: number) => api(`/users/${id}`, { method: "PATCH", body: { is_active: false } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["access-users"] });
+      notifications.show({ color: "green", message: "Konto wyłączone." });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
   if (q.isLoading) return <Loader />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
@@ -47,6 +60,7 @@ function UsersTab() {
               <Table.Th>Ostatnie logowanie</Table.Th>
               <Table.Th>Zabezpieczenia</Table.Th>
               <Table.Th>Uwagi</Table.Th>
+              <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -88,6 +102,13 @@ function UsersTab() {
                       </Badge>
                     ))}
                   </Group>
+                </Table.Td>
+                <Table.Td>
+                  {r.is_active && r.id !== me?.user.id && r.flags.some((f) => f.startsWith("brak logowania od") || f.startsWith("nigdy")) && (
+                    <Button size="compact-xs" color="red" variant="light" loading={disable.isPending} onClick={() => disable.mutate(r.id)}>
+                      Wyłącz konto
+                    </Button>
+                  )}
                 </Table.Td>
               </Table.Tr>
             ))}

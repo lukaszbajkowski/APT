@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -229,11 +229,23 @@ export function MyBroadcastsPage() {
   const lang = me?.user.language ?? "pl";
   const [speaking, setSpeaking] = useState<number | null>(null);
   const [noVoice, setNoVoice] = useState(false);
-  const q = useQuery({ queryKey: ["my-broadcasts"], queryFn: () => api<Mine[]>("/me/broadcasts") });
+  const q = useQuery({
+    queryKey: ["my-broadcasts", lang],
+    queryFn: () => api<Mine[]>("/me/broadcasts"),
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
+  });
+  // zmiana języka: przerwij odczyt i pokaż komunikaty od nowa w nowym języku (treść tłumaczy serwer)
+  useEffect(() => {
+    stopSpeaking();
+    setSpeaking(null);
+    setNoVoice(false);
+  }, [lang]);
+  useEffect(() => () => stopSpeaking(), []);
   const read = useMutation({
     mutationFn: (id: number) => api(`/me/broadcasts/${id}/read`, { method: "POST" }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-broadcasts"] });
+      qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
       qc.invalidateQueries({ queryKey: ["my-bc-count"] });
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),

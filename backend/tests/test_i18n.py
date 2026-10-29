@@ -117,3 +117,35 @@ def test_push_from_hr_in_employee_language(me, hr):  # noqa: F811
     finally:
         push.outbox = None
     assert eid
+
+
+def test_broadcast_email_and_list_translated(me, hr, emp):  # noqa: F811
+    from app import crypto, mailer
+    from app.models import Employee
+
+    me.put("/api/i18n/language", json={"language": "uk"})
+    with SessionLocal() as db:
+        e = db.get(Employee, emp)
+        e.email_enc = crypto.encrypt_contact("anna@example.com")
+        from datetime import UTC, datetime
+
+        e.email_verified_at = datetime.now(UTC)
+        db.commit()
+    mailer.outbox = []
+    r = hr.post(
+        "/api/broadcasts", json={"subject": "Zmiana godzin", "body": "Od jutra {6:00}.", "everyone": True}
+    )
+    assert r.status_code == 201, r.text
+    sent = [m for m in mailer.outbox if m[0] == "anna@example.com"]
+    assert sent, mailer.outbox
+    subject, text = sent[0][1], sent[0][2]
+    assert subject.startswith("[uk] Zmiana godzin") and "[uk] Identyfikacja pracowników APT" in subject
+    assert (
+        "[uk] Dzień dobry Anna" in text
+        and "[uk] Od jutra {6:00}." in text
+        and "[uk] Otwórz w aplikacji" in text
+    )
+    mine = me.get("/api/me/broadcasts").json()[0]
+    assert mine["subject"] == "[uk] Zmiana godzin"
+    me.put("/api/i18n/language", json={"language": None})
+    assert me.get("/api/me/broadcasts").json()[0]["subject"] == "Zmiana godzin"

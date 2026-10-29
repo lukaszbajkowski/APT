@@ -145,13 +145,21 @@ def _deliver(broadcast_id: int) -> None:
                 if acct is not None:
                     push.notify_users(db, [acct.id], subject, body[:180], "/moje-konto/komunikaty")
                 if e.email_enc and e.email_verified_at is not None:
+                    from dataclasses import replace
+
+                    from app import notify
+
+                    # stałe teksty (powitanie, przycisk, stopka) tłumaczy tr_email; temat i treść są już
+                    # przetłumaczone, więc podstawiamy je po tym kroku (bez .format na tekście kadr)
                     raw = Email(
-                        subject=f"{subject} – Identyfikacja pracowników APT",
-                        title=subject,
+                        subject="Identyfikacja pracowników APT",
+                        title="Komunikat od kadr",
                         greeting="Dzień dobry {first_name},",
-                        paragraphs=[body],
+                        button=("Otwórz w aplikacji", notify._for("/moje-konto/komunikaty", acct)),
+                        footer_note="Potwierdź przeczytanie w aplikacji.",
                     )
-                    em = i18n.tr_email(db, raw, None, first_name=e.first_name)
+                    em = i18n.tr_email(db, raw, lang, first_name=e.first_name)
+                    em = replace(em, subject=f"{subject} – {em.subject}", title=subject, paragraphs=[body])
                     mailer.send(crypto.decrypt_contact(e.email_enc), em)
             except Exception:  # noqa: BLE001 – błąd jednego odbiorcy nie zatrzymuje reszty
                 continue
@@ -238,7 +246,10 @@ def remind(broadcast_id: int, ctx: StaffAuth, request: Request, db: DbSession) -
         lang = acct.language
         title = i18n.t(db, "Przypomnienie: potwierdź przeczytanie", lang)
         try:
-            sent += push.notify_users(db, [acct.id], title, b.subject, "/moje-konto/komunikaty") > 0
+            sent += (
+                push.notify_users(db, [acct.id], title, i18n.t(db, b.subject, lang), "/moje-konto/komunikaty")
+                > 0
+            )
         except Exception:  # noqa: BLE001
             continue
     audit(

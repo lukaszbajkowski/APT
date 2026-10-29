@@ -132,3 +132,13 @@ def test_system_status(admin_client, client, make_user):
     c = TestClient(app)
     login(c, "kadry")
     assert c.get("/api/system/status").status_code == 403
+
+
+def test_work_queue(admin_client):
+    c = admin_client
+    eid = _emp(c)
+    past = (date.today() - timedelta(days=2)).isoformat()
+    c.post(f"/api/employees/{eid}/permits", json={"kind": "wiza", "valid_until": past})
+    d = c.get("/api/work-queue").json()
+    keys = {g["key"] for g in d["groups"]}
+    assert "permits" in keys and d["total"] >= 1

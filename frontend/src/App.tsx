@@ -32,6 +32,7 @@ const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").t
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const PermitsReportPage = lazy(() => import("./pages/PermitsReportPage").then((m) => ({ default: m.PermitsReportPage })));
 const SystemStatusPage = lazy(() => import("./pages/SystemStatusPage").then((m) => ({ default: m.SystemStatusPage })));
+const WorkQueuePage = lazy(() => import("./pages/WorkQueuePage").then((m) => ({ default: m.WorkQueuePage })));
 const AccessReviewPage = lazy(() => import("./pages/AccessReviewPage").then((m) => ({ default: m.AccessReviewPage })));
 const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const RetentionPage = lazy(() => import("./pages/RetentionPage").then((m) => ({ default: m.RetentionPage })));
@@ -289,6 +290,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <PermitsReportPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="do-zrobienia"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <WorkQueuePage />
             </RequireAuth>
           }
         />

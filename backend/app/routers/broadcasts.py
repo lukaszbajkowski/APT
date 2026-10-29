@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, not_, or_, select
+from sqlalchemy import func, not_, select
 
 from app import crypto, i18n, mailer, push, storage, translate
 from app.audit import audit
@@ -17,6 +17,7 @@ from app.db import SessionLocal
 from app.deps import Auth, DbSession, StaffAuth, utcnow
 from app.emails import Email
 from app.models import Broadcast, BroadcastFile, BroadcastRecipient, Employee, EmployeeStatus, Role, User
+from app.routers.hr_messages import ARCHIVE_DAYS, AUTO_CLOSE_DAYS
 
 router = APIRouter(prefix="/api/broadcasts", tags=["broadcasts"])
 me_router = APIRouter(prefix="/api/me/broadcasts", tags=["me"])
@@ -29,8 +30,11 @@ ALLOWED = {
     b"\xff\xd8\xff": ("jpg", "image/jpeg"),
     b"\x89PNG": ("png", "image/png"),
 }
-ARCHIVE_AFTER_ALL_READ = timedelta(days=2)  # po przeczytaniu przez wszystkich
-ARCHIVE_AFTER_SENT = timedelta(days=7)  # gdy nie wszyscy przeczytali
+# Zasady jak przy wiadomościach „Napisz do kadr”: komunikat jest „zakończony”, gdy przeczytali go wszyscy
+# albo minęło AUTO_CLOSE_DAYS dni od wysłania; zakończony można zarchiwizować ręcznie (osobno po stronie kadr
+# i pracownika), a po ARCHIVE_DAYS dniach bez ruchu trafia do archiwum obu stron.
+CLOSE_AFTER = timedelta(days=AUTO_CLOSE_DAYS)
+ARCHIVE_AFTER = timedelta(days=ARCHIVE_DAYS)
 
 
 def _dir(broadcast_id: int) -> Path:
@@ -116,6 +120,20 @@ class BroadcastOut(BaseModel):
     read: int
     files: list[FileOut]
     archived: bool
+    finished: bool
+
+
+def _state(db, b: Broadcast, now=None) -> tuple[bool, datetime]:
+    """(czy zakończony, czas ostatniego ruchu: ostatnie przeczytanie albo wysłanie)."""
+    now = now or utcnow()
+    unread, last = db.execute(
+        select(
+            func.count().filter(BroadcastRecipient.read_at.is_(None)),
+            func.max(BroadcastRecipient.read_at),
+        ).where(BroadcastRecipient.broadcast_id == b.id)
+    ).one()
+    activity = max(b.created_at, last) if last else b.created_at
+    return (unread == 0 or now - b.created_at >= CLOSE_AFTER), activity
 
 
 def _out(db, b: Broadcast) -> BroadcastOut:
@@ -148,6 +166,7 @@ def _out(db, b: Broadcast) -> BroadcastOut:
         read=read or 0,
         files=_files(b),
         archived=b.archived_at is not None,
+        finished=_state(db, b)[0],
     )
 
 
@@ -340,6 +359,10 @@ def set_archived(
     b = db.get(Broadcast, broadcast_id)
     if b is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono komunikatu.")
+    if on and not _state(db, b)[0]:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Archiwizować można tylko zakończone komunikaty."
+        )
     b.archived_at = utcnow() if on else None
     audit(
         db,
@@ -354,20 +377,18 @@ def set_archived(
 
 
 def archive_due(db, now=None) -> int:
-    """Archiwizuje komunikaty: 2 dni po przeczytaniu przez wszystkich albo 7 dni po wysłaniu."""
+    """Zakończone komunikaty bez ruchu od ARCHIVE_DAYS dni trafiają do archiwum obu stron."""
     now = now or utcnow()
     n = 0
-    for b in db.scalars(select(Broadcast).where(Broadcast.archived_at.is_(None))):
-        unread, last = db.execute(
-            select(
-                func.count().filter(BroadcastRecipient.read_at.is_(None)),
-                func.max(BroadcastRecipient.read_at),
-            ).where(BroadcastRecipient.broadcast_id == b.id)
-        ).one()
-        if (unread == 0 and last is not None and now - last >= ARCHIVE_AFTER_ALL_READ) or (
-            now - b.created_at >= ARCHIVE_AFTER_SENT
-        ):
-            b.archived_at = now
+    for b in db.scalars(select(Broadcast)):
+        finished, activity = _state(db, b, now)
+        if not finished or now - activity < ARCHIVE_AFTER:
+            continue
+        pending = [r for r in b.recipients if r.archived_at is None]
+        if b.archived_at is None or pending:
+            b.archived_at = b.archived_at or now
+            for r in pending:
+                r.archived_at = now
             n += 1
     db.commit()
     return n
@@ -457,7 +478,7 @@ def _my_employee_id(ctx) -> int:
 @me_router.get("", response_model=list[MyBroadcast])
 def my_list(ctx: Auth, db: DbSession, archived: bool = False) -> list[MyBroadcast]:
     eid = _my_employee_id(ctx)
-    is_arch = or_(Broadcast.archived_at.is_not(None), BroadcastRecipient.archived_at.is_not(None))
+    is_arch = BroadcastRecipient.archived_at.is_not(None)
     rows = db.execute(
         select(BroadcastRecipient, Broadcast)
         .join(Broadcast, Broadcast.id == BroadcastRecipient.broadcast_id)
@@ -500,7 +521,6 @@ def my_count(ctx: Auth, db: DbSession) -> dict[str, int]:
         .where(
             BroadcastRecipient.employee_id == eid,
             BroadcastRecipient.read_at.is_(None),
-            Broadcast.archived_at.is_(None),
             BroadcastRecipient.archived_at.is_(None),
         )
     )

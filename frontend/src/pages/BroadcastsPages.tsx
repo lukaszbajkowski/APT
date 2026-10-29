@@ -17,6 +17,7 @@ interface FileRef {
 }
 interface Broadcast {
   id: number;
+  finished: boolean;
   files: FileRef[];
   archived: boolean;
   kind: "info" | "document";
@@ -286,7 +287,7 @@ export function BroadcastsPage() {
       </Group>
       {!archive && (
         <Text size="xs" c="dimmed">
-          Komunikat trafia do archiwum 2 dni po przeczytaniu przez wszystkich adresatów albo po 7 dniach od wysłania.
+          Jak przy wiadomościach do kadr: komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
         </Text>
       )}
       {list.isLoading && <Loader size="sm" />}
@@ -318,7 +319,7 @@ export function BroadcastsPage() {
                   <Button size="compact-xs" variant="light" onClick={() => setOpen(b.id)}>
                     Przeczytało {b.read} z {b.total}
                   </Button>
-                  <Button size="compact-xs" variant="subtle" color="gray" loading={arch.isPending} onClick={() => arch.mutate({ id: b.id, on: !archive })}>
+                  <Button size="compact-xs" variant="subtle" color="gray" loading={arch.isPending} disabled={!archive && !b.finished} title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined} onClick={() => arch.mutate({ id: b.id, on: !archive })}>
                     {archive ? "Przywróć" : "Archiwizuj"}
                   </Button>
                 </Group>

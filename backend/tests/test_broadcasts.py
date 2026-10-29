@@ -82,24 +82,25 @@ def test_broadcast_files_and_archive(me, hr, emp):  # noqa: F811
     assert mine["files"][0]["id"] == fid
     assert me.get("/api/me/broadcasts/files/99999/preview").status_code == 404
 
-    # archiwum: nieprzeczytany – po 7 dniach; przeczytany przez wszystkich – 2 dni po przeczytaniu
+    # archiwum jak przy wiadomościach: zakończony (wszyscy przeczytali albo 3 dni) i 30 dni bez ruchu
     now = datetime.now(UTC)
     with SessionLocal() as db:
         b = db.get(Broadcast, bid)
         assert archive_due(db, now) == 0
-        b.created_at = now - timedelta(days=3)
+        b.created_at = now - timedelta(days=40)  # niezakończony? – 3 dni minęły, więc zakończony
+        db.commit()
+        rec = db.scalar(select(BroadcastRecipient).where(BroadcastRecipient.broadcast_id == bid))
+        rec.read_at = now - timedelta(days=10)  # ostatni ruch 10 dni temu – za wcześnie
         db.commit()
         assert archive_due(db, now) == 0
-        rec = db.scalar(select(BroadcastRecipient).where(BroadcastRecipient.broadcast_id == bid))
-        rec.read_at = now - timedelta(days=1)
-        db.commit()
-        assert archive_due(db, now) == 0  # przeczytane, ale minął tylko 1 dzień
-        rec.read_at = now - timedelta(days=2, minutes=1)
+        rec.read_at = now - timedelta(days=31)
         db.commit()
         assert archive_due(db, now) == 1
-    assert [x["id"] for x in hr.get("/api/broadcasts?archived=true").json()] == [bid]
+        assert archive_due(db, now) == 0
+    assert [x["id"] for x in hr.get("/api/broadcasts?archived=true").json()][:1] == [bid]
     assert bid not in [x["id"] for x in hr.get("/api/broadcasts").json()]
-    assert all(x["id"] != bid for x in me.get("/api/me/broadcasts").json())
+    assert all(x["id"] != bid for x in me.get("/api/me/broadcasts").json())  # archiwum także u pracownika
+    assert bid in [x["id"] for x in me.get("/api/me/broadcasts?archived=true").json()]
 
 
 def test_manual_archive_and_document_only(me, hr, emp, minimal_pdf):  # noqa: F811
@@ -117,11 +118,13 @@ def test_manual_archive_and_document_only(me, hr, emp, minimal_pdf):  # noqa: F8
     assert png.status_code == 200 and png.headers["content-type"] == "image/png"
     assert me.get(f"/api/me/broadcasts/files/{fid}/preview/page/5").status_code == 404
     assert hr.get(f"/api/broadcasts/files/{fid}/preview").json()["pages"] == 1
-    # ręczna archiwizacja i przywrócenie
+    # ręczna archiwizacja kadr: tylko zakończony komunikat; strony archiwizują się osobno
+    assert hr.post(f"/api/broadcasts/{bid}/archive").status_code == 400  # nikt jeszcze nie przeczytał
+    assert me.post(f"/api/me/broadcasts/{bid}/read").status_code == 204
     assert hr.post(f"/api/broadcasts/{bid}/archive").json() == {"archived": True}
     assert bid not in [x["id"] for x in hr.get("/api/broadcasts").json()]
     assert bid in [x["id"] for x in hr.get("/api/broadcasts?archived=true").json()]
-    assert me.get("/api/me/broadcasts/count").json() == {"unread": 0}
+    assert bid in [x["id"] for x in me.get("/api/me/broadcasts").json()]  # pracownik nadal go widzi
     assert hr.post(f"/api/broadcasts/{bid}/archive?on=false").json() == {"archived": False}
     assert bid in [x["id"] for x in hr.get("/api/broadcasts").json()]
 

@@ -128,7 +128,7 @@ def test_security_notice_on_lock(client: TestClient, make_user, _mail):
     _set_email("jan", "jan@firma.pl")
     for _ in range(5):
         client.post("/api/auth/login", json={"username": "jan", "password": "zle-haslo-123"})
-    assert any("zablokowano" in m[2] for m in _mail)
+    assert any("wstrzymano" in m[2] for m in _mail)
 
 
 def test_mail_disabled(client: TestClient, make_user):

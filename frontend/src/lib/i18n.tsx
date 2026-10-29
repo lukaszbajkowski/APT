@@ -161,7 +161,16 @@ export function LanguagePicker({ size = "sm" }: { size?: "xs" | "sm" }) {
     staleTime: 3600_000,
   });
   if (!cfg.data?.enabled || cfg.data.languages.length === 0) return null;
-  const data = [{ value: "pl", label: "Polski" }, ...cfg.data.languages.filter((l) => l.code !== "pl").map((l) => ({ value: l.code, label: l.name }))];
+  const COMMON = ["pl", "uk", "ru", "en", "be", "ka", "hi"];
+  const all = new Map(cfg.data.languages.map((l) => [l.code, l.name]));
+  all.set("pl", "Polski");
+  const data = [
+    { group: t("Najczęstsze"), items: COMMON.filter((c) => all.has(c)).map((c) => ({ value: c, label: all.get(c) as string })) },
+    {
+      group: t("Pozostałe"),
+      items: [...all.entries()].filter(([c]) => !COMMON.includes(c)).map(([c, n]) => ({ value: c, label: n })),
+    },
+  ].filter((g) => g.items.length > 0);
   async function choose(v: string | null) {
     const next = !v || v === "pl" ? null : v;
     if (me && me.user.role === "employee") {

@@ -40,11 +40,11 @@ Zakres: kod backendu (FastAPI) i frontendu (React), konfiguracja wdrożenia (Doc
 
 ## Zalecenia (niepilne)
 
-1. Dodać do CI `pip-audit` i `npm audit --omit=dev`. Na serwerze `npm` nie jest zainstalowany – audyt uruchamia się w
-   kontenerze: `docker run --rm -v /opt/apt/frontend:/app -w /app node:22-alpine npm audit --omit=dev`.
-2. Rozważyć blokadę konta także po adresie IP lub CAPTCHA – obecnie obcy może zablokować cudze konto na 15 min
-   (dla admina i kadr mitigowane drugim składnikiem, ale blokada nadal działa).
-3. Komunikat „konto zablokowane” ujawnia, że login istnieje (enumeracja loginów) – można ujednolicić z komunikatem
-   o błędnych danych.
-4. `defusedxml` do parsowania listy zaufania UE (dane z oficjalnego, stałego adresu – ryzyko niskie).
+1. ~~CI: `pip-audit` i `npm audit`~~ – **zrobione** (kroki w `.github/workflows/ci.yml`; build zatrzyma się na lukach `high`).
+2. ~~Blokada konta cudzymi próbami~~ – **zrobione**: błędne hasła liczone są per (adres IP, login) i globalnie per login
+   (30/h), a nie blokują konta; odpowiedź 429 jest identyczna dla loginów istniejących i nieistniejących.
+   Blokada konta zostaje tylko po błędnych kodach 2FA i widzi ją wyłącznie osoba znająca hasło.
+   Ryzyko resztkowe: atak rozproszony z ≥ 6 adresów IP może przejściowo utrudnić logowanie jednemu loginowi.
+3. ~~Enumeracja loginów przez komunikat blokady~~ – **zrobione** (patrz wyżej).
+4. ~~`defusedxml` przy liście zaufania UE~~ – **zrobione**.
 5. Raz na kwartał: aktualizacja zależności (`aptid-aktualizuj` przebudowuje obraz) i przegląd kont w „Przeglądzie dostępu”.

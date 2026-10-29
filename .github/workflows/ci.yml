@@ -29,6 +29,7 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
+      - run: pip-audit
       - run: pytest -q
         env:
           APT_DATABASE_URL: postgresql+psycopg://apt:apt@localhost:5432/apt_test
@@ -46,4 +47,5 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run build

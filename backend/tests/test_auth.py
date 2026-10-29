@@ -44,17 +44,22 @@ def test_wrong_password_and_unknown_user_same_message(client, make_user):
     assert actions() == ["login_failed", "login_failed"]
 
 
-def test_lockout_after_five_failures(client, make_user):
+def test_throttle_after_five_failures_is_generic(client, make_user):
     make_user("jan")
     for _ in range(5):
         r = client.post("/api/auth/login", json={"username": "jan", "password": "zle"})
         assert r.status_code == 401
-    # Nawet poprawne hasło nie działa, dopóki konto jest zablokowane.
     r = client.post("/api/auth/login", json={"username": "jan", "password": PASSWORD})
-    assert r.status_code == 423
+    assert r.status_code == 429
+    # nieistniejący login zachowuje się identycznie
+    for _ in range(5):
+        client.post("/api/auth/login", json={"username": "nikt", "password": "zle"})
+    r2 = client.post("/api/auth/login", json={"username": "nikt", "password": "zle"})
+    assert r2.status_code == 429 and r2.json() == r.json()
+    # konto nie zostało zablokowane – obcy nie odetnie użytkownika
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.username == "jan"))
-        assert user.locked_until is not None
+        assert user.locked_until is None
 
 
 def test_lock_expires(client, make_user):
@@ -63,6 +68,15 @@ def test_lock_expires(client, make_user):
         db.execute(update(User).values(locked_until=datetime.now(UTC) - timedelta(seconds=1)))
         db.commit()
     login(client, "jan")
+
+
+def test_mfa_lock_hidden_without_password(client, make_user):
+    make_user("jan")
+    with SessionLocal() as db:
+        db.execute(update(User).values(locked_until=datetime.now(UTC) + timedelta(minutes=10)))
+        db.commit()
+    assert client.post("/api/auth/login", json={"username": "jan", "password": "zle"}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "jan", "password": PASSWORD}).status_code == 423
 
 
 def test_inactive_user_cannot_login(client, make_user):

@@ -22,7 +22,7 @@ from app.deps import (
     simulated,
     utcnow,
 )
-from app.models import PasswordToken, Role, User, UserSession
+from app.models import AuditLog, PasswordToken, Role, User, UserSession
 from app.schemas import ChangePasswordIn, LoginIn, MeOut, UserOut
 from app.security import (
     hash_password,
@@ -82,6 +82,31 @@ def _register_failure(db: Session, user: User, request: Request, action: str, **
     return locked
 
 
+THROTTLED = "Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za kilkanaście minut."
+GLOBAL_FAILURES = 30  # nieudane próby na jeden login z wielu adresów w ciągu godziny
+
+
+def _throttled(db: Session, username: str, request: Request) -> bool:
+    """Czy logowanie jest wstrzymane: za dużo porażek z tego adresu IP dla tego loginu albo bardzo dużo
+    z wielu adresów. Działa tak samo dla loginów istniejących i nieistniejących, a cudze próby
+    nie blokują konta samego użytkownika (osobny licznik na adres IP)."""
+    s = get_settings()
+    now = utcnow()
+    ip = client_ip(request)
+    base = (AuditLog.action == "login_failed", AuditLog.username == username)
+    per_ip = db.scalar(
+        select(func.count()).where(
+            *base,
+            AuditLog.ip.is_not_distinct_from(ip),
+            AuditLog.ts > now - timedelta(minutes=s.login_lock_minutes),
+        )
+    )
+    if (per_ip or 0) >= s.login_max_failures:
+        return True
+    total = db.scalar(select(func.count()).where(*base, AuditLog.ts > now - timedelta(hours=1)))
+    return (total or 0) >= GLOBAL_FAILURES
+
+
 @router.post("/login", response_model=MeOut)
 def login(body: LoginIn, request: Request, response: Response, db: DbSession) -> MeOut:
     settings = get_settings()
@@ -90,16 +115,11 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession) ->
 
     user = db.scalar(select(User).where(User.username == username))
 
-    if user is not None and user.locked_until is not None and user.locked_until > now:
-        audit(db, request, "login_blocked", user=user)
+    if _throttled(db, username, request):
+        audit(db, request, "login_blocked", user=user, username=username[:64], details={"reason": "throttle"})
         db.commit()
-        minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
         raise HTTPException(
-            status.HTTP_423_LOCKED,
-            detail=(
-                "Konto jest tymczasowo zablokowane po zbyt wielu nieudanych próbach logowania. "
-                f"Spróbuj ponownie za {minutes} min albo poproś administratora o odblokowanie."
-            ),
+            status.HTTP_429_TOO_MANY_REQUESTS, detail=THROTTLED, headers={"Retry-After": "900"}
         )
 
     # konta pracowników logują się wyłącznie kluczem dostępu – hasłem nigdy
@@ -109,13 +129,32 @@ def login(body: LoginIn, request: Request, response: Response, db: DbSession) ->
 
     if user is None or not password_ok or not user.is_active:
         if user is not None and not password_ok:
-            _register_failure(db, user, request, "login_failed")
+            audit(db, request, "login_failed", user=user)
+            db.flush()
+            if _throttled(db, username, request):
+                notify.security_notice(
+                    user,
+                    f"wstrzymano logowanie na {settings.login_lock_minutes} min po kilku nieudanych próbach",
+                )
         elif user is not None:
             audit(db, request, "login_failed", user=user, details={"reason": "inactive"})
         else:
             audit(db, request, "login_failed", username=username[:64], details={"reason": "unknown"})
         db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS)
+
+    # blokada po błędnych kodach 2FA: widoczna tylko dla kogoś, kto zna poprawne hasło
+    if user.locked_until is not None and user.locked_until > now:
+        audit(db, request, "login_blocked", user=user)
+        db.commit()
+        minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
+        raise HTTPException(
+            status.HTTP_423_LOCKED,
+            detail=(
+                "Konto jest tymczasowo zablokowane po zbyt wielu błędnych kodach. "
+                f"Spróbuj ponownie za {minutes} min albo poproś administratora o odblokowanie."
+            ),
+        )
 
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)

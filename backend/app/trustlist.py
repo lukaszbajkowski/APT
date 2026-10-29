@@ -9,8 +9,9 @@ import base64
 import json
 import time
 import urllib.request
-import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import defusedxml.ElementTree as ET
 
 from app.config import get_settings
 
@@ -32,7 +33,7 @@ def _fetch(url: str, timeout: float = 10) -> bytes:
 
 def tsl_locations(lotl: bytes, countries: list[str]) -> list[str]:
     """Adresy krajowych list zaufania z unijnej listy list."""
-    root = ET.fromstring(lotl)  # noqa: S314
+    root = ET.fromstring(lotl)
     out = []
     for ptr in root.iter():
         if _local(ptr.tag) != "OtherTSLPointer":
@@ -46,7 +47,7 @@ def tsl_locations(lotl: bytes, countries: list[str]) -> list[str]:
 
 def qualified_cas(tsl: bytes) -> list[bytes]:
     """Certyfikaty (DER) urzędów wystawiających certyfikaty kwalifikowane, z aktualnym statusem."""
-    root = ET.fromstring(tsl)  # noqa: S314
+    root = ET.fromstring(tsl)
     out = []
     for svc in root.iter():
         if _local(svc.tag) != "ServiceInformation":

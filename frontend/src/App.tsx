@@ -31,6 +31,7 @@ const HrMessagesPage = lazy(() => import("./pages/HrMessagesPage").then((m) => (
 const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").then((m) => ({ default: m.EmployeeAccountsPage })));
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const PermitsReportPage = lazy(() => import("./pages/PermitsReportPage").then((m) => ({ default: m.PermitsReportPage })));
+const SystemStatusPage = lazy(() => import("./pages/SystemStatusPage").then((m) => ({ default: m.SystemStatusPage })));
 const AccessReviewPage = lazy(() => import("./pages/AccessReviewPage").then((m) => ({ default: m.AccessReviewPage })));
 const AuditPage = lazy(() => import("./pages/AuditPage").then((m) => ({ default: m.AuditPage })));
 const RetentionPage = lazy(() => import("./pages/RetentionPage").then((m) => ({ default: m.RetentionPage })));
@@ -288,6 +289,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <PermitsReportPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="stan-systemu"
+          element={
+            <RequireAuth roles={["admin"]}>
+              <SystemStatusPage />
             </RequireAuth>
           }
         />

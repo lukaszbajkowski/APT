@@ -116,3 +116,19 @@ def test_unusual_activity():
         db.commit()
         out = unusual_activity(db)
     assert len(out) == 2 and all("ktos" in x for x in out)
+
+
+def test_system_status(admin_client, client, make_user):
+    r = admin_client.get("/api/system/status")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["version"] and "translation" in d and d["disk"] is not None
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from tests.conftest import login
+
+    make_user("kadry", Role.hr)
+    c = TestClient(app)
+    login(c, "kadry")
+    assert c.get("/api/system/status").status_code == 403

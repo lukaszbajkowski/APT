@@ -32,6 +32,7 @@ from app.routers import (
     reports,
     retention,
     signatures,
+    system_status,
     training_import,
     trainings,
     translate,
@@ -95,6 +96,7 @@ app.include_router(i18n.router)
 app.include_router(translate.router)
 app.include_router(access_review.router)
 app.include_router(permits.router)
+app.include_router(system_status.router)
 app.include_router(dashboard.router)
 app.include_router(retention.router)
 app.include_router(reports.router)

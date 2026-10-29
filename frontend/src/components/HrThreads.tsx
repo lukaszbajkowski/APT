@@ -103,23 +103,8 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   // tłumaczenie na żądanie (Google Cloud Translation); funkcja ukryta, gdy serwer nie ma klucza
   const { me: account } = useAuth();
   const cfg = useQuery({ queryKey: ["translate-config"], queryFn: () => api<{ enabled: boolean; exhausted: boolean; languages: { code: string; name: string }[] }>("/translate/config"), staleTime: 3_600_000 });
-  const langKey = `apt-translate-${account?.user.id ?? 0}`;
-  const [lang, setLangState] = useState<string>(() => {
-    try {
-      return localStorage.getItem(langKey) || (staff ? "pl" : (account?.user.language ?? (navigator.language || "pl").slice(0, 2)));
-    } catch {
-      return "pl";
-    }
-  });
-  const setLang = (v: string | null) => {
-    if (!v) return;
-    setLangState(v);
-    try {
-      localStorage.setItem(langKey, v);
-    } catch {
-      /* brak pamięci przeglądarki – wybór obowiązuje do odświeżenia */
-    }
-  };
+  // język tłumaczenia wynika ze strony: pracownik – język jego konta, kadry – polski (bez osobnego wyboru)
+  const lang = staff ? "pl" : (account?.user.language ?? "pl");
   const [tr, setTr] = useState<Record<number, { text: string; source: string | null; target: string } | "loading">>({});
   const langName = (code: string | null) => cfg.data?.languages.find((l) => l.code === code)?.name ?? code ?? "?";
   // „Odsłuchaj”: wiadomość kadr czytana w języku pracownika (przetłumaczona, gdy jest tłumacz)
@@ -253,23 +238,12 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
         )}
       </Group>
       {cfg.data?.enabled && (
-        <Group px="sm" py={4} gap="xs" justify="flex-end" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        <Group px="sm" py={4} gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
           <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={2}>
             {cfg.data.exhausted
               ? T("Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca.")
               : T("„Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.")}
           </Text>
-          <Select
-            size="xs"
-            w={150}
-            searchable
-            allowDeselect={false}
-            aria-label={T("Język tłumaczenia")}
-            placeholder={T("Tłumacz na…")}
-            value={lang}
-            onChange={setLang}
-            data={(cfg.data.languages.length ? cfg.data.languages : [{ code: "pl", name: "polski" }]).map((l) => ({ value: l.code, label: l.name }))}
-          />
         </Group>
       )}
       <ScrollArea style={{ flex: 1 }} px="sm" type="auto">

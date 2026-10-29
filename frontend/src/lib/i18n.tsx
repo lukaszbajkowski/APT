@@ -172,7 +172,6 @@ export function LanguagePicker({ size = "sm" }: { size?: "xs" | "sm" }) {
   return (
     <Select
       size={size}
-      searchable
       allowDeselect={false}
       data={data}
       value={current ?? "pl"}

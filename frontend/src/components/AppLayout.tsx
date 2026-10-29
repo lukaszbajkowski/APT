@@ -9,6 +9,7 @@ import {
   Burger,
   Group,
   Menu,
+  ScrollArea,
   Badge,
   NavLink,
   SegmentedControl,
@@ -255,6 +256,7 @@ export function AppLayout() {
       </AppShell.Header>
 
       <AppShell.Navbar p="xs">
+        <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize={8}>
         {items
           .filter((i) => i.show)
           .map((i, idx, arr) => (
@@ -275,6 +277,7 @@ export function AppLayout() {
               />
             </Fragment>
           ))}
+        </AppShell.Section>
       </AppShell.Navbar>
 
       <AppShell.Main>

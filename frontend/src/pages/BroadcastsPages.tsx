@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Box, Button, Card, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, Card, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconPlayerStop, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconFileText, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -321,19 +322,29 @@ interface Mine {
   read_at: string | null;
 }
 
+function shortTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
+}
+
+/** Komunikaty pracownika w stylu „Napisz do kadr”: lista po lewej, treść po prawej (na telefonie jedno okno naraz). */
 export function MyBroadcastsPage() {
   const t = useT();
   const qc = useQueryClient();
   const { me } = useAuth();
   const lang = me?.user.language ?? "pl";
+  const mobile = useMediaQuery("(max-width: 48em)");
+  const [view, setView] = useState<"active" | "archive">("active");
+  const [openId, setOpenId] = useState<number | null>(null);
   const [speaking, setSpeaking] = useState<number | null>(null);
   const [noVoice, setNoVoice] = useState(false);
-  const [view, setView] = useState<"active" | "archive">("active");
   const q = useQuery({
     queryKey: ["my-broadcasts", lang, view],
     queryFn: () => api<Mine[]>(`/me/broadcasts?archived=${view === "archive"}`),
     refetchOnWindowFocus: true,
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
   // zmiana języka: przerwij odczyt i pokaż komunikaty od nowa w nowym języku (treść tłumaczy serwer)
   useEffect(() => {
@@ -342,96 +353,180 @@ export function MyBroadcastsPage() {
     setNoVoice(false);
   }, [lang]);
   useEffect(() => () => stopSpeaking(), []);
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
+    qc.invalidateQueries({ queryKey: ["my-bc-count"] });
+  };
   const read = useMutation({
     mutationFn: (id: number) => api(`/me/broadcasts/${id}/read`, { method: "POST" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
-      qc.invalidateQueries({ queryKey: ["my-bc-count"] });
-    },
+    onSuccess: refresh,
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const arch = useMutation({
     mutationFn: (v: { id: number; on: boolean }) => api(`/me/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
-      qc.invalidateQueries({ queryKey: ["my-bc-count"] });
+    onSuccess: (_d, v) => {
+      refresh();
+      if (v.on || view === "archive") setOpenId(null);
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
+  const rows = q.data ?? [];
+  const m = rows.find((x) => x.id === openId) ?? null;
+  const showList = !mobile || m === null;
+  const showRight = !mobile || m !== null;
+  const stop = () => {
+    stopSpeaking();
+    setSpeaking(null);
+  };
   return (
-    <Stack maw={760}>
-      <Group justify="space-between">
-        <Title order={2}>{t("Komunikaty")}</Title>
-        <SegmentedControl
-          value={view}
-          onChange={(v) => {
-            stopSpeaking();
-            setSpeaking(null);
-            setView(v as "active" | "archive");
-          }}
-          data={[
-            { value: "active", label: t("Aktualne") },
-            { value: "archive", label: t("Archiwum") },
-          ]}
-        />
-      </Group>
-      {q.isLoading && <Loader size="sm" />}
-      {q.data && q.data.length === 0 && <Text c="dimmed">{view === "archive" ? t("Archiwum jest puste.") : t("Brak komunikatów.")}</Text>}
-      {(q.data ?? []).map((m) => (
-        <Card key={m.id} withBorder padding="md">
-          <Group justify="space-between" mb={4}>
-            <Text fw={600}>{m.subject}</Text>
-            <Text size="xs" c="dimmed">
-              {formatDateTime(m.sent_at)}
-            </Text>
-          </Group>
-          <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>
-          <FileDocs files={m.files} />
-          {canSpeak() && (
-            <Button
-              mt="xs"
-              size="compact-xs"
-              variant="subtle"
-              leftSection={speaking === m.id ? <IconPlayerStop size={14} /> : <IconVolume size={14} />}
-              onClick={() => {
-                if (speaking === m.id) {
-                  stopSpeaking();
-                  setSpeaking(null);
-                  return;
-                }
-                stopSpeaking();
-                setNoVoice(false);
-                setSpeaking(m.id);
-                if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(null)) === "no-voice") {
-                  setNoVoice(true);
-                  setSpeaking(null);
-                }
+    <Paper withBorder radius="md" style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}>
+      {showList && (
+        <Stack gap={0} w={mobile ? "100%" : 340} style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}>
+          <Stack p="sm" gap="xs">
+            <Title order={4}>{t("Komunikaty")}</Title>
+            <SegmentedControl
+              size="xs"
+              fullWidth
+              value={view}
+              onChange={(v) => {
+                stop();
+                setView(v as "active" | "archive");
+                setOpenId(null);
               }}
-            >
-              {speaking === m.id ? t("Zatrzymaj") : t("Odsłuchaj")}
-            </Button>
-          )}
-          {noVoice && (
-            <Text size="xs" c="dimmed">
-              {t("Brak głosu dla tego języka w tym urządzeniu.")}
-            </Text>
-          )}
-          {m.read_at && (!m.archived || m.own_archived) && (
-            <Button mt="sm" ml="xs" size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
-              {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
-            </Button>
-          )}
-          {!m.read_at ? (
-            <Button mt="sm" size="xs" loading={read.isPending} onClick={() => read.mutate(m.id)}>
-              {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
-            </Button>
+              data={[
+                { value: "active", label: t("Aktywne") },
+                { value: "archive", label: t("Archiwum") },
+              ]}
+            />
+          </Stack>
+          <ScrollArea style={{ flex: 1 }}>
+            {q.isLoading && <Loader size="sm" m="md" />}
+            {!q.isLoading && rows.length === 0 && (
+              <Text size="sm" c="dimmed" p="md">
+                {view === "archive" ? t("Archiwum jest puste.") : t("Brak komunikatów.")}
+              </Text>
+            )}
+            {rows.map((x) => (
+              <UnstyledButton
+                key={x.id}
+                w="100%"
+                p="sm"
+                onClick={() => {
+                  stop();
+                  setOpenId(x.id);
+                }}
+                bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
+              >
+                <Group wrap="nowrap" align="flex-start">
+                  <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
+                    {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
+                  </Avatar>
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Group justify="space-between" wrap="nowrap" gap={4}>
+                      <Text size="sm" fw={x.read_at ? 500 : 700} lineClamp={1}>
+                        {x.subject}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {shortTime(x.sent_at)}
+                      </Text>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap" gap={4}>
+                      <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                        {x.body || (x.files.length ? x.files[0].name : "")}
+                      </Text>
+                      {!x.read_at ? (
+                        <Badge size="xs" circle color="red" />
+                      ) : (
+                        <Badge size="xs" variant="light" color="teal">
+                          {t("Potwierdzone")}
+                        </Badge>
+                      )}
+                    </Group>
+                  </Box>
+                </Group>
+              </UnstyledButton>
+            ))}
+          </ScrollArea>
+        </Stack>
+      )}
+      {showRight && (
+        <Box style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {m === null ? (
+            <Stack h="100%" align="center" justify="center">
+              <Text c="dimmed">{t("Wybierz komunikat")}</Text>
+            </Stack>
           ) : (
-            <Badge mt="sm" variant="light" color="teal">
-              {t("Potwierdzone")}
-            </Badge>
+            <>
+              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+                {mobile && (
+                  <ActionIcon variant="subtle" onClick={() => { stop(); setOpenId(null); }} aria-label={t("Wróć")}>
+                    <IconArrowLeft size={18} />
+                  </ActionIcon>
+                )}
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={600} lineClamp={2}>
+                    {m.subject}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {t("Kadry")} · {formatDateTime(m.sent_at)}
+                  </Text>
+                </Box>
+                {m.read_at && (!m.archived || m.own_archived) && (
+                  <Button size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
+                    {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
+                  </Button>
+                )}
+              </Group>
+              <ScrollArea style={{ flex: 1 }} p="md">
+                <Stack gap="sm" pb="md">
+                  {m.body && <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>}
+                  <FileDocs files={m.files} />
+                  {canSpeak() && (
+                    <Group>
+                      <Button
+                        size="compact-sm"
+                        variant="light"
+                        leftSection={speaking === m.id ? <IconPlayerStop size={14} /> : <IconVolume size={14} />}
+                        onClick={() => {
+                          if (speaking === m.id) {
+                            stop();
+                            return;
+                          }
+                          stopSpeaking();
+                          setNoVoice(false);
+                          setSpeaking(m.id);
+                          if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(null)) === "no-voice") {
+                            setNoVoice(true);
+                            setSpeaking(null);
+                          }
+                        }}
+                      >
+                        {speaking === m.id ? t("Zatrzymaj") : t("Odsłuchaj")}
+                      </Button>
+                    </Group>
+                  )}
+                  {noVoice && (
+                    <Text size="xs" c="dimmed">
+                      {t("Brak głosu dla tego języka w tym urządzeniu.")}
+                    </Text>
+                  )}
+                </Stack>
+              </ScrollArea>
+              <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+                {!m.read_at ? (
+                  <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
+                    {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
+                  </Button>
+                ) : (
+                  <Badge variant="light" color="teal">
+                    {t("Potwierdzone")} · {formatDateTime(m.read_at)}
+                  </Badge>
+                )}
+              </Box>
+            </>
           )}
-        </Card>
-      ))}
-    </Stack>
+        </Box>
+      )}
+    </Paper>
   );
 }

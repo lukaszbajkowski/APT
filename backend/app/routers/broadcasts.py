@@ -2,6 +2,7 @@
 treść w aplikacji pracownika i potwierdzenie przeczytania."""
 
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -25,8 +26,9 @@ class TargetIn(BaseModel):
 
 
 class BroadcastIn(TargetIn):
+    kind: Literal["info", "document"] = "info"
     subject: str = Field(min_length=1, max_length=120)
-    body: str = Field(min_length=1, max_length=2000)
+    body: str = Field(min_length=1, max_length=20000)
 
 
 def _recipients(db, t: TargetIn) -> list[Employee]:
@@ -74,6 +76,7 @@ def preview(body: TargetIn, ctx: StaffAuth, db: DbSession) -> PreviewOut:
 
 class BroadcastOut(BaseModel):
     id: int
+    kind: str
     subject: str
     body: str
     target: str
@@ -103,6 +106,7 @@ def _out(db, b: Broadcast) -> BroadcastOut:
     )
     return BroadcastOut(
         id=b.id,
+        kind=b.kind,
         subject=b.subject,
         body=b.body,
         target=" · ".join(parts) or "wszyscy",
@@ -157,10 +161,13 @@ def _deliver(broadcast_id: int) -> None:
 def create(
     body: BroadcastIn, ctx: StaffAuth, request: Request, db: DbSession, tasks: BackgroundTasks
 ) -> BroadcastOut:
+    if body.kind == "info" and len(body.body) > 2000:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Komunikat może mieć do 2000 znaków.")
     emps = _recipients(db, body)
     if not emps:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="W tej grupie nie ma aktywnych pracowników.")
     b = Broadcast(
+        kind=body.kind,
         subject=body.subject.strip(),
         body=body.body.strip(),
         agency_id=body.agency_id,
@@ -212,11 +219,47 @@ def recipients(broadcast_id: int, ctx: StaffAuth, db: DbSession) -> list[Recipie
     ]
 
 
+@router.post("/{broadcast_id}/remind")
+def remind(broadcast_id: int, ctx: StaffAuth, request: Request, db: DbSession) -> dict[str, int]:
+    """Przypomnienie (push) tym, którzy jeszcze nie potwierdzili; w języku każdego."""
+    b = db.get(Broadcast, broadcast_id)
+    if b is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono komunikatu.")
+    ids = list(
+        db.scalars(
+            select(BroadcastRecipient.employee_id).where(
+                BroadcastRecipient.broadcast_id == b.id, BroadcastRecipient.read_at.is_(None)
+            )
+        )
+    )
+    emps = list(db.scalars(select(Employee).where(Employee.id.in_(ids))).unique()) if ids else []
+    sent = 0
+    for acct in _accounts(db, emps).values():
+        lang = acct.language
+        title = i18n.t(db, "Przypomnienie: potwierdź przeczytanie", lang)
+        try:
+            sent += push.notify_users(db, [acct.id], title, b.subject, "/moje-konto/komunikaty") > 0
+        except Exception:  # noqa: BLE001
+            continue
+    audit(
+        db,
+        request,
+        "broadcast_reminded",
+        user=ctx.user,
+        entity_type="broadcast",
+        entity_id=b.id,
+        details={"unread": len(ids), "pushed": sent},
+    )
+    db.commit()
+    return {"unread": len(ids), "pushed": sent}
+
+
 # ---------- strona pracownika ----------
 
 
 class MyBroadcast(BaseModel):
     id: int
+    kind: str
     subject: str
     body: str
     sent_at: datetime
@@ -251,6 +294,7 @@ def my_list(ctx: Auth, db: DbSession) -> list[MyBroadcast]:
     return [
         MyBroadcast(
             id=b.id,
+            kind=b.kind,
             subject=tr.get(b.subject, b.subject),
             body=tr.get(b.body, b.body),
             sent_at=b.created_at,

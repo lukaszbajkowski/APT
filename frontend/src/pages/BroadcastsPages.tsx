@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Modal, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Modal, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconPlayerStop, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, type DictionaryItem } from "../api";
+import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
+import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 
 interface Broadcast {
   id: number;
+  kind: "info" | "document";
   subject: string;
   body: string;
   target: string;
@@ -29,10 +33,20 @@ interface Recipient {
 }
 
 function Recipients({ id, onClose }: { id: number; onClose: () => void }) {
+  const remind = useMutation({
+    mutationFn: () => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
+    onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane na ${r.pushed} z ${r.unread} kont.` }),
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
   const q = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
   return (
     <Modal opened onClose={onClose} title="Kto przeczytał" size="md">
       {q.isLoading && <Loader size="sm" />}
+      <Group justify="flex-end" mb="xs">
+        <Button size="compact-sm" variant="light" loading={remind.isPending} onClick={() => remind.mutate()}>
+          Przypomnij tym, którzy nie przeczytali
+        </Button>
+      </Group>
       <Table verticalSpacing={4} fz="sm">
         <Table.Tbody>
           {(q.data ?? []).map((r) => (
@@ -57,6 +71,23 @@ function Recipients({ id, onClose }: { id: number; onClose: () => void }) {
   );
 }
 
+const SAMPLE = {
+  subject: "Zasady BHP na stanowisku pracy (przykład)",
+  body: `ZASADY BEZPIECZEŃSTWA I HIGIENY PRACY – PRZYKŁADOWY DOKUMENT
+
+1. Przed rozpoczęciem pracy sprawdź swoje stanowisko oraz sprawność maszyn i urządzeń. Usterki zgłoś od razu przełożonemu.
+2. Używaj środków ochrony indywidualnej wymaganych na stanowisku: obuwia ochronnego, rękawic, okularów, ochronników słuchu.
+3. Nie wyłączaj ani nie omijaj osłon i zabezpieczeń maszyn.
+4. Drogi ewakuacyjne, gaśnice i wyjścia awaryjne muszą być zawsze wolne.
+5. W razie wypadku, pożaru lub zagrożenia zachowaj spokój, wezwij pomoc i powiadom przełożonego.
+6. Nie pracuj pod wpływem alkoholu ani środków odurzających.
+7. Zasady dotyczące przerw, noszenia kart identyfikacyjnych i wejść na halę wynikają z regulaminu pracy.
+
+Potwierdzając zapoznanie się z dokumentem, oświadczasz, że rozumiesz powyższe zasady i będziesz ich przestrzegać. W razie wątpliwości zapytaj kadry lub przełożonego.
+
+(To jest przykład. Zastąp go treścią swojego regulaminu lub instrukcji.)`,
+};
+
 export function BroadcastsPage() {
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
@@ -65,6 +96,7 @@ export function BroadcastsPage() {
   const [agency, setAgency] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
   const [everyone, setEveryone] = useState(false);
+  const [kind, setKind] = useState<"info" | "document">("info");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +109,7 @@ export function BroadcastsPage() {
     enabled: hasTarget,
   });
   const send = useMutation({
-    mutationFn: () => api<Broadcast>("/broadcasts", { method: "POST", body: { ...target, subject, body } }),
+    mutationFn: () => api<Broadcast>("/broadcasts", { method: "POST", body: { ...target, kind, subject, body } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broadcasts"] });
       notifications.show({ color: "green", message: "Komunikat wysłany." });
@@ -111,8 +143,30 @@ export function BroadcastsPage() {
               {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
             </Text>
           )}
+          <Group justify="space-between">
+            <SegmentedControl
+              value={kind}
+              onChange={(v) => setKind(v as "info" | "document")}
+              data={[
+                { value: "info", label: "Komunikat" },
+                { value: "document", label: "Dokument do zapoznania się" },
+              ]}
+            />
+            {kind === "document" && (
+              <Button
+                size="compact-sm"
+                variant="default"
+                onClick={() => {
+                  setSubject(SAMPLE.subject);
+                  setBody(SAMPLE.body);
+                }}
+              >
+                Wstaw przykładowy dokument
+              </Button>
+            )}
+          </Group>
           <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-          <Textarea label="Treść" autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <Textarea label="Treść" autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
           <Group justify="flex-end">
             <Button
               disabled={!hasTarget || !subject.trim() || !body.trim() || !preview.data?.total}
@@ -133,7 +187,14 @@ export function BroadcastsPage() {
           {(list.data ?? []).map((b) => (
             <Table.Tr key={b.id}>
               <Table.Td>
-                <Text fw={500}>{b.subject}</Text>
+                <Text fw={500}>
+                  {b.subject}{" "}
+                  {b.kind === "document" && (
+                    <Badge size="xs" variant="light">
+                      dokument
+                    </Badge>
+                  )}
+                </Text>
                 <Text size="xs" c="dimmed">
                   {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
                 </Text>
@@ -154,6 +215,7 @@ export function BroadcastsPage() {
 
 interface Mine {
   id: number;
+  kind: "info" | "document";
   subject: string;
   body: string;
   sent_at: string;
@@ -163,6 +225,10 @@ interface Mine {
 export function MyBroadcastsPage() {
   const t = useT();
   const qc = useQueryClient();
+  const { me } = useAuth();
+  const lang = me?.user.language ?? "pl";
+  const [speaking, setSpeaking] = useState<number | null>(null);
+  const [noVoice, setNoVoice] = useState(false);
   const q = useQuery({ queryKey: ["my-broadcasts"], queryFn: () => api<Mine[]>("/me/broadcasts") });
   const read = useMutation({
     mutationFn: (id: number) => api(`/me/broadcasts/${id}/read`, { method: "POST" }),
@@ -186,9 +252,38 @@ export function MyBroadcastsPage() {
             </Text>
           </Group>
           <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>
+          {canSpeak() && (
+            <Button
+              mt="xs"
+              size="compact-xs"
+              variant="subtle"
+              leftSection={speaking === m.id ? <IconPlayerStop size={14} /> : <IconVolume size={14} />}
+              onClick={() => {
+                if (speaking === m.id) {
+                  stopSpeaking();
+                  setSpeaking(null);
+                  return;
+                }
+                stopSpeaking();
+                setNoVoice(false);
+                setSpeaking(m.id);
+                if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(null)) === "no-voice") {
+                  setNoVoice(true);
+                  setSpeaking(null);
+                }
+              }}
+            >
+              {speaking === m.id ? t("Zatrzymaj") : t("Odsłuchaj")}
+            </Button>
+          )}
+          {noVoice && (
+            <Text size="xs" c="dimmed">
+              {t("Brak głosu dla tego języka w tym urządzeniu.")}
+            </Text>
+          )}
           {!m.read_at ? (
             <Button mt="sm" size="xs" loading={read.isPending} onClick={() => read.mutate(m.id)}>
-              {t("Przeczytałem(-am)")}
+              {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
             </Button>
           ) : (
             <Badge mt="sm" variant="light" color="teal">

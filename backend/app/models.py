@@ -706,6 +706,7 @@ class Broadcast(Base):
     __tablename__ = "broadcasts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(10), default="info", server_default="info", nullable=False)
     subject: Mapped[str] = mapped_column(String(120), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     agency_id: Mapped[int | None] = mapped_column(ForeignKey("agencies.id"))

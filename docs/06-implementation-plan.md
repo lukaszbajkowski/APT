@@ -87,6 +87,14 @@ Wszystkie pozycje poprzedniego backlogu są zrobione:
 | Wysyłka dokumentu e-mailem (wersja podpisana, jeśli jest; limit 20/h; wpis w dzienniku) | przycisk „E-mail” przy dokumencie |
 | Przegląd uprawnień (role, zakres, ostatnie logowanie, 2FA, uwagi) | menu „Przegląd dostępu” (admin) |
 | Kwartalne przypomnienie o przeglądzie uprawnień (1. dnia stycznia, kwietnia, lipca, października) | e-mail i powiadomienie admina z `notify-daily` |
+| Dokumenty pobytowe i zezwolenia cudzoziemców (karta pobytu, zezwolenie, wiza, oświadczenie): terminy, zestawienie, alert w „Nadchodzących”, poniedziałkowy e-mail dla admina i kadr | kartoteka → „Dokumenty pobytowe…”, menu „Dokumenty pobytowe”, `app.cli notify-permits` (migracja 0039) |
+| Przypomnienia dla pracownika o jego terminach (badania, szkolenia – 30 dni; dokumenty pobytowe – 60 dni): push i e-mail w jego języku, poniedziałki | `app.cli notify-employees` |
+| Konta bez logowania od 90 dni: przycisk „Wyłącz konto” w przeglądzie i poniedziałkowe ostrzeżenie admina | „Przegląd dostępu” |
+| Alert o nietypowej aktywności: ≥ 30 numerów PESEL odsłoniętych lub ≥ 5 eksportów przez jedno konto w dobie (w e-mailu admina i na ekranie „Stan systemu”) | `notify-daily` |
+| Ekran „Stan systemu” (kopie, test odtwarzania, dysk, limit tłumaczeń, retencja, e-mail, wersja) | menu „Stan systemu” (admin) |
+| Kolejka „Do zrobienia” kadr: wiadomości bez odpowiedzi, zgłoszenia agencji, zaległe zadania, dokumenty pobytowe, szkolenia, braki w danych | menu „Do zrobienia” (admin, kadry) |
+| Komunikaty do grup (agencja / wydział / wszyscy): push i e-mail w języku odbiorcy, treść w aplikacji pracownika (z „Odsłuchaj”), potwierdzenie przeczytania, lista kto nie przeczytał, przypomnienie | menu „Komunikaty do grup”, „Moje konto” → „Komunikaty” (migracja 0040) |
+| Dokument do zapoznania się (regulamin, BHP): ten sam mechanizm co komunikat, do 20 000 znaków, z przykładowym dokumentem BHP do wstawienia | „Komunikaty do grup” → „Dokument do zapoznania się” (migracja 0041) |
 | Raport dostępu do PESEL (kto, ile razy, ostatnie odsłonięcia) | menu „Przegląd dostępu” → „Dostęp do PESEL” |
 | Zapisane filtry listy pracowników (w przeglądarce, osobno dla konta) | lista pracowników → „Zapisane filtry” |
 | PWA: instalacja na telefonie (manifest, ikony, service worker bez cache) | – |

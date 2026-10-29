@@ -33,5 +33,18 @@ def test_broadcast_flow(me, hr, emp):  # noqa: F811
     assert me.get("/api/me/broadcasts/count").json() == {"unread": 0}
     assert hr.get("/api/broadcasts").json()[0]["read"] == 1
     assert hr.get(f"/api/broadcasts/{bid}/recipients").json()[0]["read_at"] is not None
+    # dokument do zapoznania się + przypomnienie
+    d = hr.post(
+        "/api/broadcasts",
+        json={"kind": "document", "subject": "Regulamin", "body": "x" * 5000, "agency_id": ag["id"]},
+    )
+    assert d.status_code == 201 and d.json()["kind"] == "document"
+    assert (
+        hr.post(
+            "/api/broadcasts", json={"subject": "a", "body": "x" * 2001, "agency_id": ag["id"]}
+        ).status_code
+        == 400
+    )
+    assert hr.post(f"/api/broadcasts/{d.json()['id']}/remind").json()["unread"] == 1
     # pracownik nie ma dostępu do funkcji kadr
     assert me.post("/api/broadcasts/preview", json={"everyone": True}).status_code == 403

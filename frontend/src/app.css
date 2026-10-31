@@ -356,7 +356,12 @@ html, body { background: var(--apt-ground); }
 .ui-row-chevron { flex: none; color: var(--mantine-color-dimmed); }
 .ui-sheet { padding: 8px 12px calc(16px + env(safe-area-inset-bottom)); height: auto !important; max-height: 85dvh; flex: none !important; width: 100% !important; }
 .ui-sheet .mantine-Drawer-body { padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.ui-sheet-grip { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--mantine-color-default-border); margin: 4px 0 10px; }
+.ui-sheet-drag { display: flex; flex-direction: column; touch-action: none; }
+.ui-sheet-grip {
+  align-self: center; width: 64px; height: 24px; margin: -4px 0 6px; padding: 0; border: 0; cursor: grab;
+  background: linear-gradient(var(--mantine-color-default-border), var(--mantine-color-default-border)) center / 40px 5px no-repeat;
+  border-radius: 3px;
+}
 .ui-sheet-head { padding: 0 8px 10px; }
 .ui-sheet-title { font-size: 18px; font-weight: 800; }
 .ui-sheet-action {

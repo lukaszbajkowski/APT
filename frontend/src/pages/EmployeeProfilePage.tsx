@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -67,7 +67,7 @@ import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
-import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, type SheetAction } from "../components/Mobile";
+import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, useSwipe, type SheetAction } from "../components/Mobile";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -197,6 +197,14 @@ export function EmployeeProfilePage() {
   const [moreSheet, setMoreSheet] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [tab, setTab] = useState("dane");
+  const tabOrder = useRef<string[]>([]);
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.profile-tabs [role="tab"][aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [tab]);
+  const swipe = useSwipe(
+    () => { const o = tabOrder.current; const i = o.indexOf(tab); if (i >= 0 && i < o.length - 1) setTab(o[i + 1]); },
+    () => { const o = tabOrder.current; const i = o.indexOf(tab); if (i > 0) setTab(o[i - 1]); },
+  );
   const navigate = useNavigate();
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -357,6 +365,7 @@ export function EmployeeProfilePage() {
       { v: "konto", l: "Konto", show: staff },
       { v: "historia", l: "Historia", show: !isAgency },
     ].filter((t) => t.show);
+    tabOrder.current = tabs.map((t) => t.v);
     return (
       <Stack gap="md">
         <Group gap="md" wrap="nowrap" align="center">
@@ -426,6 +435,7 @@ export function EmployeeProfilePage() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
+          <div {...swipe} style={{ minHeight: "50vh" }}>
 
           <Tabs.Panel value="dane" pt="md">
             <Stack gap="lg">
@@ -511,6 +521,7 @@ export function EmployeeProfilePage() {
               {historyCard}
             </Stack>
           </Tabs.Panel>
+          </div>
         </Tabs>
 
         <ActionSheet opened={moreSheet} onClose={() => setMoreSheet(false)} title={`${e.last_name} ${e.first_name}`} actions={moreActions} />

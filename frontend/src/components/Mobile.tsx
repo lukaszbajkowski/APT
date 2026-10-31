@@ -4,7 +4,7 @@
  * linia opisu + strzałka, akcje wiersza w arkuszu od dołu z podpisami, pusta sekcja = jeden wiersz,
  * akcje nieodwracalne osobno w ramce z opisem skutku, stan zawsze z ikoną i słowem.
  */
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Link } from "react-router-dom";
 import { Drawer, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
@@ -143,6 +143,66 @@ export function CompactEmpty({ title, text, action }: { title: string; text?: st
   );
 }
 
+/* ——— przeciąganie arkusza w dół, żeby go zamknąć (jak w iOS) ——— */
+export function useDragToClose(onClose: () => void) {
+  const st = useRef<{ y: number; dy: number; el: HTMLElement | null }>({ y: 0, dy: 0, el: null });
+  return {
+    onTouchStart: (e: TouchEvent) => {
+      st.current = { y: e.touches[0].clientY, dy: 0, el: (e.currentTarget as HTMLElement).closest(".mantine-Drawer-content") };
+      if (st.current.el) st.current.el.style.transition = "none";
+    },
+    onTouchMove: (e: TouchEvent) => {
+      const dy = Math.max(0, e.touches[0].clientY - st.current.y);
+      st.current.dy = dy;
+      if (st.current.el) st.current.el.style.transform = `translateY(${dy}px)`;
+    },
+    onTouchEnd: () => {
+      const { el, dy } = st.current;
+      if (!el) return;
+      el.style.transition = "transform 180ms ease-out";
+      if (dy > 80) {
+        el.style.transform = "translateY(100%)";
+        window.setTimeout(() => {
+          onClose();
+          el.style.transform = "";
+          el.style.transition = "";
+        }, 170);
+      } else el.style.transform = "";
+    },
+  };
+}
+
+/** Przesunięcie palcem w bok (np. między zakładkami). Ignoruje ruchy pionowe i przewijane w bok elementy. */
+export function useSwipe(onLeft: () => void, onRight: () => void) {
+  const st = useRef<{ x: number; y: number; skip: boolean }>({ x: 0, y: 0, skip: false });
+  return {
+    onTouchStart: (e: TouchEvent) => {
+      const t = e.target as HTMLElement;
+      const skip = !!t.closest("input, textarea, select, .mantine-Tabs-list, .mantine-ScrollArea-root, [data-no-swipe], .mantine-TableScrollContainer-scrollContainer");
+      st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, skip };
+    },
+    onTouchEnd: (e: TouchEvent) => {
+      if (st.current.skip) return;
+      const dx = e.changedTouches[0].clientX - st.current.x;
+      const dy = e.changedTouches[0].clientY - st.current.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx < 0) onLeft();
+      else onRight();
+    },
+  };
+}
+
+/** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć. */
+export function SheetHandle({ onClose, children }: { onClose: () => void; children?: ReactNode }) {
+  const drag = useDragToClose(onClose);
+  return (
+    <div className="ui-sheet-drag" {...drag}>
+      <button type="button" className="ui-sheet-grip" aria-label="Zamknij" onClick={onClose} />
+      {children}
+    </div>
+  );
+}
+
 /* ——— arkusz akcji od dołu, każda akcja z podpisem ——— */
 export interface SheetAction {
   label: string;
@@ -176,11 +236,12 @@ export function ActionSheet({
       classNames={{ content: "ui-sheet" }}
       aria-label={title}
     >
-      <span className="ui-sheet-grip" aria-hidden />
-      <div className="ui-sheet-head">
-        <div className="ui-sheet-title">{title}</div>
-        {subtitle && <div className="ui-row-desc">{subtitle}</div>}
-      </div>
+      <SheetHandle onClose={onClose}>
+        <div className="ui-sheet-head">
+          <div className="ui-sheet-title">{title}</div>
+          {subtitle && <div className="ui-row-desc">{subtitle}</div>}
+        </div>
+      </SheetHandle>
       {actions.map((a) => (
         <UnstyledButton
           key={a.label}

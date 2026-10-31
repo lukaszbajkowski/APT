@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { ListRow, Section, SheetHandle } from "./Mobile";
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 
@@ -49,6 +50,7 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
     onSuccess: (s) => {
       setResult(null);
       qc.setQueryData(key, s);
+      notifications.show({ color: "green", message: "Link do aktualizacji danych unieważniony." });
     },
     onError: (e) => setError(errorText(e)),
   });
@@ -164,7 +166,13 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
                 fullWidth
                 variant="default"
                 loading={cancel.isPending}
-                onClick={() => confirm({ title: "Unieważnić link?", message: "Pracownik nie otworzy już swojej strony z danymi.", confirmLabel: "Unieważnij", danger: true }).then((ok) => ok && cancel.mutate())}
+                onClick={() => {
+                  // najpierw chowamy arkusz, żeby pytanie nie wisiało nad nim
+                  setSheet(false);
+                  confirm({ title: "Unieważnić link?", message: "Pracownik nie otworzy już swojej strony z danymi.", confirmLabel: "Unieważnij", danger: true }).then(
+                    (ok) => ok && cancel.mutate(),
+                  );
+                }}
               >
                 Unieważnij link
               </Button>

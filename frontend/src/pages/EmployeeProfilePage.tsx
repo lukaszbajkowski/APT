@@ -67,7 +67,7 @@ import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
-import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, InfoRow, ListRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -298,7 +298,24 @@ export function EmployeeProfilePage() {
       </Modal>
     </>
   );
-  const historyCard = (
+  const historyCard = mobile ? (
+    staff ? (
+      <Section
+        title="Historia zmian"
+        action={history.data && history.data.length > HISTORY_SHORT ? { label: historyAll ? "Zwiń" : `Wszystkie (${history.data.length})`, onClick: () => setHistoryAll((v) => !v) } : undefined}
+      >
+        {history.isLoading && <Loading rows={2} />}
+        {history.data?.length === 0 && <CompactEmpty title="Brak wpisów" text="Zmiany danych pojawią się po pierwszej edycji." />}
+        {(historyAll ? history.data ?? [] : (history.data ?? []).slice(0, HISTORY_SHORT)).map((h) => (
+          <ListRow
+            key={h.id}
+            title={ACTION_LABELS[h.action] ?? h.action}
+            description={[formatDateTime(h.ts), h.username ?? "—", historyText(h)].filter(Boolean).join(" · ")}
+          />
+        ))}
+      </Section>
+    ) : null
+  ) : (
     <>
       {staff && (
         <Card withBorder padding="lg">
@@ -529,7 +546,7 @@ export function EmployeeProfilePage() {
                 )}
                 {t.v === "historia" && (
                   <>
-            <Stack gap="md">
+            <Stack gap="lg">
               <TimelineCard employee={e} />
               {historyCard}
             </Stack>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, Section } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -128,12 +128,42 @@ function PlannedList({ employee }: { employee: Employee }) {
 }
 
 export function TimelineCard({ employee }: { employee: Employee }) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const q = useQuery({
     queryKey: ["employee-timeline", employee.id],
     queryFn: () => api<{ periods: Period[]; assignments: AssignmentRow[] }>(`/employees/${employee.id}/timeline`),
   });
   if (!q.data) return null;
   const { periods, assignments } = q.data;
+  if (mobile)
+    return (
+      <Stack gap="lg">
+        <PlannedList employee={employee} />
+        <Section title="Okresy zatrudnienia">
+          {periods.map((p, i) => (
+            <ListRow
+              key={i}
+              title={`${formatDate(p.hire_date)} – ${p.termination_date ? formatDate(p.termination_date) : "obecnie"}`}
+              description={place(p)}
+              trailing={p.current && !p.termination_date ? <StatusBadge tone="ok">Aktualny</StatusBadge> : undefined}
+            />
+          ))}
+        </Section>
+        <Section title="Wydział, stanowisko, APT">
+          {assignments.length === 0 ? (
+            <CompactEmpty title="Brak zmian" />
+          ) : (
+            assignments.map((a, i) => (
+              <ListRow
+                key={i}
+                title={`od ${formatDate(a.valid_from)}${i > 0 ? ` do ${dayBefore(assignments[i - 1].valid_from)}` : ""}`}
+                description={[place(a), a.reason, a.changed_by].filter(Boolean).join(" · ")}
+              />
+            ))
+          )}
+        </Section>
+      </Stack>
+    );
   return (
     <Card withBorder padding="lg">
       <Title order={5} mb="md">

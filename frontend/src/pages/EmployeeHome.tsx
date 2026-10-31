@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { Badge, Card, Group, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
 import { IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
@@ -17,9 +17,10 @@ function Tile({ icon: Icon, title, hint, badge, to, onClick }: { icon: typeof Ic
     <Card withBorder padding="md" h="100%">
       <Stack gap={4} align="flex-start">
         <Icon size={26} />
-        <Text fw={600}>
-          {title} {badge ? <Badge color="red">{badge}</Badge> : null}
-        </Text>
+        <Group gap={8} wrap="nowrap" align="center">
+          <Text fw={600}>{title}</Text>
+          {badge ? <Badge color="red">{badge}</Badge> : null}
+        </Group>
         <Text size="xs" c="dimmed">
           {hint}
         </Text>

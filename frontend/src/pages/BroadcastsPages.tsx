@@ -399,14 +399,16 @@ export function BroadcastsPage() {
                   </ActionIcon>
                 )}
                 <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw={600} lineClamp={2}>
-                    {b.subject}{" "}
+                  <Group gap={8} wrap="nowrap" align="center">
+                    <Text fw={600} lineClamp={2}>
+                      {b.subject}
+                    </Text>
                     {b.kind === "document" && (
-                      <Badge size="xs" variant="light">
+                      <Badge size="sm" variant="light" style={{ flexShrink: 0 }}>
                         dokument
                       </Badge>
                     )}
-                  </Text>
+                  </Group>
                   <Text size="xs" c="dimmed">
                     {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
                   </Text>

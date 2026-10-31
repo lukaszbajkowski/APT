@@ -1,12 +1,13 @@
 import { useEffect, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Center, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Button, Center, Stack, Text } from "@mantine/core";
 import { IconUserExclamation } from "@tabler/icons-react";
 
 import { api, setAccountId } from "../api";
 import { useAuth, type Account } from "../auth";
 import { useT } from "../lib/i18n";
+import { Loading } from "./States";
 
 /**
  * Linki z e-maili i SMS-ów mają `?u=<konto adresata>`. Gdy w tej karcie jest aktywne inne konto
@@ -39,7 +40,7 @@ export function LinkedAccount({ children }: { children: ReactNode }) {
   if (accounts.isLoading || target) {
     return (
       <Center h="50vh">
-        <Loader />
+        <Loading />
       </Center>
     );
   }

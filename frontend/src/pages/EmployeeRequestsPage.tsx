@@ -9,7 +9,6 @@ import {
   Card,
   Checkbox,
   Group,
-  Loader,
   Modal,
   SegmentedControl,
   Select,
@@ -27,6 +26,7 @@ import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
+import { Loading } from "../components/States";
 
 const STATUS: Record<EmployeeRequest["status"], { label: string; color: string }> = {
   pending: { label: "czeka na kadry", color: "orange" },
@@ -322,7 +322,7 @@ export function EmployeeRequestsPage() {
           )}
         </Group>
       </Group>
-      {q.isLoading && <Loader />}
+      {q.isLoading && <Loading />}
       {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
       {q.data && rows.length === 0 && <Text c="dimmed">{show === "pending" ? "Brak oczekujących zgłoszeń." : "Brak zgłoszeń."}</Text>}
       {rows.length > 0 && (

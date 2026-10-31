@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Group, Loader, SegmentedControl, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
+import { Loading } from "../components/States";
 
 interface Row {
   employee_id: number;
@@ -62,7 +63,7 @@ export function EmployeeAccountsPage() {
         />
       </Group>
       {list.isError && <Alert color="red">{errorText(list.error)}</Alert>}
-      {list.isLoading && <Loader />}
+      {list.isLoading && <Loading />}
       {list.data && (
         <Table.ScrollContainer minWidth={640}>
           <Table striped highlightOnHover>

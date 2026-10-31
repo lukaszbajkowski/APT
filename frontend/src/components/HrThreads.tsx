@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
 
+import { EmptyState } from "./States";
 import { api, errorText, formatDateTime } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
@@ -76,9 +78,17 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
     stop.current = dictate(
       speechLang(lang),
       (text) => onChange((base.current + text).slice(0, 2000)),
-      () => {
+      (err) => {
         setOn(false);
         stop.current = null;
+        if (err === "not-allowed" || err === "service-not-allowed") {
+          notifications.show({
+            color: "yellow",
+            title: T("Brak dostępu do mikrofonu"),
+            message: T("Mikrofon służy tylko do dyktowania treści wiadomości. Zezwól na niego w ustawieniach przeglądarki (ikona kłódki przy adresie strony) albo wpisz tekst ręcznie."),
+            autoClose: 10000,
+          });
+        }
       },
     );
   }
@@ -511,13 +521,25 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           </Stack>
           <ScrollArea style={{ flex: 1 }}>
             {rows.length === 0 && (
-              <Text size="sm" c="dimmed" p="md">
-                {view === "archive"
-                  ? T("Archiwum jest puste. Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")
-                  : staff
-                  ? T("Brak wiadomości.")
-                  : T("Nie masz jeszcze wiadomości. Kliknij +, aby napisać do kadr.")}
-              </Text>
+              q.trim() || status ? (
+                <EmptyState
+                  search
+                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak wiadomości w tym filtrze"}
+                  text="Sprawdź pisownię albo pokaż wszystkie wiadomości."
+                  action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
+                />
+              ) : view === "archive" ? (
+                <EmptyState
+                  title={T("Archiwum jest puste")}
+                  text={T("Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")}
+                />
+              ) : (
+                <EmptyState
+                  title={staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
+                  text={staff ? "Pracownicy nie napisali jeszcze do kadr. Możesz też sam zacząć rozmowę." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
+                  action={{ label: T("Nowa wiadomość"), onClick: () => { setComposing(true); setOpenId(null); } }}
+                />
+              )
             )}
             {rows.map((t) => {
               const name = staff ? (t.employee_name ?? "") : T("Kadry");

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Box, Button, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Box, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
+import { Loading } from "../components/States";
 
 function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
@@ -80,7 +81,7 @@ export function ReportsPage() {
     }
   }
 
-  if (data.isLoading) return <Loader />;
+  if (data.isLoading) return <Loading />;
   if (!data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const s = data.data;
   const maxMonth = Math.max(1, ...s.months.flatMap((m) => [m.hired, m.terminated]));

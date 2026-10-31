@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Card, Grid, Group, Loader, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Card, Grid, Group, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
   IconCalendarEvent,
@@ -27,6 +27,7 @@ import { api, errorText, formatDate, formatDateTime, type BackupStatus, type Das
 import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
+import { Loading } from "../components/States";
 
 interface UpcomingEvent {
   date: string;
@@ -94,7 +95,7 @@ function UpcomingCard() {
         </Group>}
       </Group>
       {q.isLoading ? (
-        <Loader size="sm" />
+        <Loading />
       ) : events.length === 0 ? (
         <Text size="sm" c="dimmed">
           Brak zaplanowanych egzaminów, końców ważności ani nowych osób.
@@ -255,7 +256,7 @@ export function HomePage() {
         </Text>
       </div>
 
-      {data.isLoading && <Loader />}
+      {data.isLoading && <Loading />}
       {data.error && <Alert color="red">{errorText(data.error)}</Alert>}
 
       {data.data && (

@@ -3,13 +3,14 @@ import { PushCard } from "../components/PushCard";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+import { Loading } from "../components/States";
 
 interface Options {
   challenge_id: string;
@@ -81,7 +82,7 @@ export function InvitePage() {
             {t("Załóż swoje konto")}
           </Title>
           <LanguagePicker />
-          {info.isLoading && <Loader />}
+          {info.isLoading && <Loading />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
               {t("Zaproszenie wygasło albo zostało już wykorzystane. Poproś kadry o nowe.")}

@@ -54,6 +54,7 @@ import {
 
 import { useAuth } from "../auth";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
+import { NetworkBanner } from "./States";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -335,6 +336,7 @@ export function AppLayout() {
 
       <AppShell.Main>
         <SimulationBanner />
+        <NetworkBanner />
         {lang && hasRole("employee") && (
           <Alert variant="light" color="gray" p="xs" mb="sm">
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}

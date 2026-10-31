@@ -9,7 +9,6 @@ import {
   Card,
   FileButton,
   Group,
-  Loader,
   Menu,
   Modal,
   NumberInput,
@@ -48,6 +47,7 @@ import {
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
+import { Loading } from "./States";
 
 interface Form {
   type_id: string | null;
@@ -479,7 +479,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
         )}
       </Group>
       <EmployeeRequirements employeeId={employee.id} />
-      {list.isLoading && <Loader size="sm" />}
+      {list.isLoading && <Loading />}
       {list.data && list.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
       <Stack gap="xs">
         {list.data?.map((t) => {

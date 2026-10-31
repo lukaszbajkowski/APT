@@ -14,7 +14,6 @@ import {
   Group,
   Image,
   List,
-  Loader,
   Stack,
   Tabs,
   Text,
@@ -25,6 +24,7 @@ import { IconCircleCheck, IconDownload, IconEraser, IconFileUpload, IconFingerpr
 
 import { api, errorText } from "../api";
 import { LanguagePicker, useT } from "../lib/i18n";
+import { Loading } from "../components/States";
 
 interface Info {
   document: string;
@@ -347,7 +347,7 @@ export function SignPage() {
         <Box mb="md" maw={240}>
           <LanguagePicker />
         </Box>
-        {info.isLoading && <Loader />}
+        {info.isLoading && <Loading />}
         {info.error && (
           <Alert color="red" title={T("Nie można otworzyć dokumentu")}>
             {errorText(info.error)}

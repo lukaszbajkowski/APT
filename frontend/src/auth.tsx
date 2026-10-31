@@ -42,6 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // też dostaje 401 z /auth/me – wyczyszczenie pamięci zapytań zawiesiłoby jego stronę.
   const clear = useCallback(() => {
     if (meRef.current === null) return;
+    try {
+      sessionStorage.setItem("apt-session-expired", "1");
+    } catch {
+      /* tryb prywatny */
+    }
     setMe(null);
     queryClient.clear();
   }, [setMe, queryClient]);

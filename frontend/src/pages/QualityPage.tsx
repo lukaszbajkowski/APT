@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, Loader, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from "@mantine/core";
 import { IconCircleCheck } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
+import { Loading } from "../components/States";
 
 interface QualityCheck {
   key: string;
@@ -39,7 +40,7 @@ export function QualityPage() {
   const q = useQuery({ queryKey: ["quality"], queryFn: () => api<Quality>("/quality") });
   const [filter, setFilter] = useState<string | null>(null);
 
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const data = q.data!;
   const rows = filter ? data.rows.filter((r) => r.missing.includes(filter)) : data.rows;

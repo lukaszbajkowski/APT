@@ -10,7 +10,6 @@ import {
   Divider,
   FileButton,
   Group,
-  Loader,
   Modal,
   Paper,
   SegmentedControl,
@@ -37,6 +36,7 @@ import {
 } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
+import { Loading } from "./States";
 
 interface RoleState {
   role: string;
@@ -356,7 +356,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
   return (
     <Modal opened={opened} onClose={onClose} title={`Podpis: ${doc.template_name}`} size="lg">
       {!st ? (
-        <Loader />
+        <Loading />
       ) : (
         <Stack>
           {st.integrity === "mismatch" && (

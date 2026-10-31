@@ -11,7 +11,6 @@ import {
   FileButton,
   Grid,
   Group,
-  Loader,
   SegmentedControl,
   Select,
   Stack,
@@ -34,6 +33,7 @@ import {
 import { FieldsEditor } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
+import { Loading } from "../components/States";
 
 export function TemplateEditPage() {
   const { id } = useParams();
@@ -97,7 +97,7 @@ export function TemplateEditPage() {
     onError: (e) => setError(errorText(e)),
   });
 
-  if (template.isLoading) return <Loader />;
+  if (template.isLoading) return <Loading />;
   if (!template.data) return <Alert color="red">Nie znaleziono szablonu.</Alert>;
   const t = template.data;
   const builtinLabel = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;

@@ -8,7 +8,6 @@ import {
   ActionIcon,
   Checkbox,
   Group,
-  Loader,
   Modal,
   NumberInput,
   Select,
@@ -30,6 +29,7 @@ import { SignButton, SignatureBadge, SignaturesModal } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
+import { Loading } from "./States";
 
 export type Values = Record<string, string | boolean | number | null>;
 
@@ -389,7 +389,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
           Brak dostępnych szablonów. Administrator dodaje je w zakładce „Szablony”.
         </Text>
       )}
-      {docs.isLoading && <Loader size="sm" />}
+      {docs.isLoading && <Loading />}
       {docs.data && docs.data.length === 0 && templates.data?.length !== 0 && (
         <Text size="sm" c="dimmed">
           Nie wygenerowano jeszcze żadnego dokumentu.

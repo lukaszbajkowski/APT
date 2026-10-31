@@ -6,7 +6,6 @@ import {
   Badge,
   Button,
   Group,
-  Loader,
   Modal,
   Select,
   Stack,
@@ -22,6 +21,7 @@ import { IconPencil, IconPlus } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
+import { Loading } from "../components/States";
 
 interface Item {
   id: number;
@@ -103,7 +103,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
           Dodaj {cfg.noun}
         </Button>
       </Group>
-      {query.isLoading && <Loader />}
+      {query.isLoading && <Loading />}
       {query.error && <Alert color="red">{errorText(query.error)}</Alert>}
       {query.data && query.data.length === 0 && (
         <Text c="dimmed">Słownik jest pusty. Dodaj pierwszą pozycję przyciskiem powyżej.</Text>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
@@ -10,6 +10,7 @@ import { useAuth } from "../auth";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../lib/i18n";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
+import { EmptyState, Loading } from "../components/States";
 
 interface FileRef {
   id: number;
@@ -46,7 +47,7 @@ interface Recipient {
 function InlineDoc({ base }: { base: string }) {
   const info = useQuery({ queryKey: ["bc-doc", base], queryFn: () => api<{ pages: number; title: string }>(base), gcTime: 0 });
   const [full, setFull] = useState(false);
-  if (info.isLoading) return <Loader size="sm" mt="xs" />;
+  if (info.isLoading) return <Loading />;
   if (info.error || !info.data) return <Alert color="red">{errorText(info.error)}</Alert>;
   return (
     <Stack gap="xs" mt="xs">
@@ -134,7 +135,7 @@ function RecipientsPane({ id }: { id: number }) {
         />
       </Group>
       <ScrollArea style={{ flex: 1 }}>
-        {data.isLoading && <Loader size="sm" m="md" />}
+        {data.isLoading && <Loading />}
         {!data.isLoading && rows.length === 0 && (
           <Text size="sm" c="dimmed" p="md">
             Brak osób dla tego filtra.
@@ -212,7 +213,12 @@ export function BroadcastsPage() {
     },
     onSuccess: (b) => {
       qc.invalidateQueries({ queryKey: ["broadcasts"] });
-      notifications.show({ color: "green", message: "Komunikat wysłany." });
+      notifications.show({
+        color: "green",
+        title: "Komunikat wysłany",
+        message: `Trafił do ${b.total} osób. Pracownicy dostają powiadomienie i e-mail; w zakładce „Kto przeczytał” zobaczysz, kto go otworzył.`,
+        autoClose: 8000,
+      });
       setSubject("");
       setBody("");
       setFiles([]);
@@ -278,11 +284,24 @@ export function BroadcastsPage() {
             />
           </Stack>
           <ScrollArea style={{ flex: 1 }}>
-            {list.isLoading && <Loader size="sm" m="md" />}
+            {list.isLoading && <Loading />}
             {!list.isLoading && rows.length === 0 && (
-              <Text size="sm" c="dimmed" p="md">
-                {archive ? "Archiwum jest puste." : "Brak komunikatów. Użyj „+”, aby wysłać pierwszy."}
-              </Text>
+              q.trim() || status ? (
+                <EmptyState
+                  search
+                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak komunikatów w tym filtrze"}
+                  text="Sprawdź pisownię albo pokaż wszystkie komunikaty."
+                  action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
+                />
+              ) : archive ? (
+                <EmptyState title="Archiwum jest puste" text="Zakończone komunikaty trafiają tu po archiwizacji albo po 30 dniach bez ruchu." />
+              ) : (
+                <EmptyState
+                  title="Nie wysłano jeszcze komunikatów"
+                  text="Komunikat trafia do wszystkich aktywnych pracowników wybranej agencji lub wydziału."
+                  action={{ label: "Nowy komunikat", onClick: () => { setOpenId(null); setComposing(true); } }}
+                />
+              )
             )}
             {rows.map((x) => (
               <UnstyledButton
@@ -374,7 +393,18 @@ export function BroadcastsPage() {
                   />
                 </Stack>
               </ScrollArea>
-              <Group p="sm" justify="flex-end" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+              <Group p="sm" justify="space-between" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+                <Text size="xs" c="dimmed">
+                  {!hasTarget
+                    ? "Wybierz agencję, wydział albo „Wszyscy”."
+                    : preview.data && preview.data.total === 0
+                    ? "Brak aktywnych pracowników w tej grupie – wybierz inną."
+                    : !subject.trim()
+                    ? "Wpisz temat komunikatu."
+                    : !body.trim() && files.length === 0
+                    ? "Dodaj treść albo dokument."
+                    : ""}
+                </Text>
                 <Button
                   disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
                   loading={send.isPending}
@@ -544,11 +574,16 @@ export function MyBroadcastsPage() {
             />
           </Stack>
           <ScrollArea style={{ flex: 1 }}>
-            {q.isLoading && <Loader size="sm" m="md" />}
+            {q.isLoading && <Loading />}
             {!q.isLoading && rows.length === 0 && (
-              <Text size="sm" c="dimmed" p="md">
-                {view === "archive" ? t("Archiwum jest puste.") : t("Brak komunikatów.")}
-              </Text>
+              <EmptyState
+                title={view === "archive" ? t("Archiwum jest puste") : t("Brak komunikatów")}
+                text={
+                  view === "archive"
+                    ? t("Zarchiwizowane komunikaty pojawią się tutaj.")
+                    : t("Kadry nie wysłały jeszcze komunikatu. Gdy coś się pojawi, dostaniesz powiadomienie.")
+                }
+              />
             )}
             {rows.map((x) => (
               <UnstyledButton

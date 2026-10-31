@@ -136,6 +136,15 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   const [params] = useSearchParams();
   const idleLogout = params.get("powod") === "bezczynnosc";
+  const [expired] = useState(() => {
+    try {
+      const v = sessionStorage.getItem("apt-session-expired") === "1";
+      sessionStorage.removeItem("apt-session-expired");
+      return v;
+    } catch {
+      return false;
+    }
+  });
   const adding = params.get("dodaj") === "1"; // kolejne konto obok już zalogowanego
   const config = useQuery({
     queryKey: ["auth-config"],
@@ -215,6 +224,11 @@ export function LoginPage() {
               {adding && me && (
                 <Alert color="blue" variant="light">
                   {T("Dodajesz drugie konto. Konto {name} pozostaje zalogowane i przełączysz się na nie z menu użytkownika.", { name: me.user.full_name })}
+                </Alert>
+              )}
+              {expired && !idleLogout && !error && (
+                <Alert color="blue" variant="light">
+                  {T("Twoja sesja wygasła ze względów bezpieczeństwa. Zaloguj się ponownie – wrócisz na stronę, na której byłeś(-aś). Zapisane dane są bezpieczne.")}
                 </Alert>
               )}
               {idleLogout && !error && (

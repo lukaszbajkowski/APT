@@ -9,7 +9,6 @@ import {
   Checkbox,
   Paper,
   Group,
-  Loader,
   Menu,
   MultiSelect,
   Pagination,
@@ -32,6 +31,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
+import { Loading } from "../components/States";
 
 const PAGE_SIZE = 50;
 
@@ -342,7 +342,7 @@ export function EmployeesPage() {
         </Paper>
       )}
 
-      {list.isLoading && <Loader />}
+      {list.isLoading && <Loading />}
       {list.error && <Alert color="red">{errorText(list.error)}</Alert>}
 
       {list.data && list.data.items.length > 0 && (

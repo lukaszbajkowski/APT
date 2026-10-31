@@ -9,7 +9,6 @@ import {
   Card,
   Checkbox,
   Group,
-  Loader,
   Modal,
   Stack,
   Table,
@@ -22,6 +21,7 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type RetentionItem, type RetentionOverview } from "../api";
+import { Loading } from "../components/States";
 
 const CONFIRM = "USUŃ";
 
@@ -122,7 +122,7 @@ export function RetentionPage() {
     },
   });
 
-  if (data.isLoading) return <Loader />;
+  if (data.isLoading) return <Loading />;
   if (data.error || !data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const d = data.data;
   const allDue = d.due.map((i) => i.id);

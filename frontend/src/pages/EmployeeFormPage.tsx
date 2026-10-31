@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Group,
-  Loader,
   Modal,
   SegmentedControl,
   Select,
@@ -26,6 +25,7 @@ import { api, ApiError, errorText, type DuplicateRef, type Employee } from "../a
 import { useAuth } from "../auth";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { parsePesel } from "../pesel";
+import { Loading } from "../components/States";
 
 interface FormState {
   last_name: string;
@@ -214,7 +214,7 @@ export function EmployeeFormPage() {
     save.mutate(false);
   }
 
-  if (editing && employee.isLoading) return <Loader />;
+  if (editing && employee.isLoading) return <Loading />;
   if (editing && employee.error) return <Alert color="red">{errorText(employee.error)}</Alert>;
 
   const personalLocked = !staff;

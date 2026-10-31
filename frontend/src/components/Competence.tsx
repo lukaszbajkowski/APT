@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   Group,
-  Loader,
   MultiSelect,
   Paper,
   Select,
@@ -30,6 +29,7 @@ import {
 
 import { api, errorText, formatDate, type DictionaryItem, type TrainingType } from "../api";
 import { useAuth } from "../auth";
+import { Loading } from "./States";
 
 export type ReqState = "ok" | "expiring" | "in_progress" | "expired" | "missing";
 
@@ -165,7 +165,7 @@ export function PositionRequirements() {
   const staff = hasRole("admin", "hr");
   const list = useQuery({ queryKey: ["position-requirements"], queryFn: () => api<PositionReqs[]>("/position-requirements") });
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
-  if (list.isLoading || types.isLoading) return <Loader />;
+  if (list.isLoading || types.isLoading) return <Loading />;
   if (list.error) return <Alert color="red">{errorText(list.error)}</Alert>;
   return (
     <Stack gap="xs">
@@ -361,7 +361,7 @@ export function CompetenceMatrix() {
         </Text>
       </Group>
       {m.error && <Alert color="red">{errorText(m.error)}</Alert>}
-      {!data && m.isLoading && <Loader />}
+      {!data && m.isLoading && <Loading />}
       {data && data.columns.length === 0 && (
         <Text c="dimmed">
           Brak szkoleń do pokazania. Dodaj pozycje do katalogu szkoleń stanowiskowych albo włącz zwykłe szkolenia.

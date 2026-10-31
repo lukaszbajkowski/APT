@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Badge, Button, Center, Group, Loader, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Avatar, Badge, Button, Center, Group, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconCamera, IconCheck, IconClock } from "@tabler/icons-react";
 
 import { api, errorText, getLinkAccess, setLinkAccess } from "../api";
@@ -9,6 +9,7 @@ import { LanguagePicker, useT } from "../lib/i18n";
 import { ContactEditor } from "../components/MyDataCards";
 import { PhotoEditor } from "../components/PhotoEditor";
 import type { Employee } from "../api";
+import { Loading } from "../components/States";
 
 interface Data {
   first_name: string;
@@ -122,7 +123,7 @@ export function DataLinkPage() {
               {T("Czas na aktualizację minął. Poproś kadry o nowy link.")}
             </Alert>
           )}
-          {info.isLoading && <Loader />}
+          {info.isLoading && <Loading />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
               {info.error ? errorText(info.error) : T("Link jest nieprawidłowy.")} {T("Poproś kadry o nowy.")}

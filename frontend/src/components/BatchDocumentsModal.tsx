@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Badge, Button, Checkbox, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconArrowRight, IconFileZip } from "@tabler/icons-react";
 
@@ -8,6 +8,7 @@ import { api, apiDownload, errorText, LANGUAGES, type DocTemplate, type Employee
 import { useAuth } from "../auth";
 import { FieldInput, useFieldFormats, type Values } from "./DocumentsCard";
 import { fieldProblem, peselProblem } from "../masks";
+import { Loading } from "./States";
 
 const MAX = 50;
 
@@ -159,7 +160,7 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
       {ids.length > MAX ? (
         <Alert color="orange">Naraz można wygenerować dokumenty dla najwyżej {MAX} osób. Zawęź zaznaczenie.</Alert>
       ) : templates.isLoading || people.isLoading ? (
-        <Loader />
+        <Loading />
       ) : (
         <Stack>
           {error && <Alert color="red">{error}</Alert>}

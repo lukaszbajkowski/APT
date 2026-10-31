@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Checkbox, Group, Loader, SegmentedControl, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCircleCheck } from "@tabler/icons-react";
 
 import { api, errorText, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
+import { Loading } from "../components/States";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -84,7 +85,7 @@ function OpenTasks() {
           </Text>
         )}
       </Group>
-      {q.isLoading && <Loader />}
+      {q.isLoading && <Loading />}
       {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
       {q.data && rows.length === 0 && (
         <Alert color="green" icon={<IconCircleCheck />}>

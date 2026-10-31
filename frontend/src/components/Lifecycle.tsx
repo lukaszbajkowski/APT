@@ -9,7 +9,6 @@ import {
   Checkbox,
   Grid,
   Group,
-  Loader,
   Modal,
   MultiSelect,
   NumberInput,
@@ -41,6 +40,7 @@ import {
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
 import { useAuth } from "../auth";
+import { Loading } from "./States";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -723,7 +723,7 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
 export function ChecklistTemplates() {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
   return (
     <Stack>

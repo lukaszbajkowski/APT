@@ -9,7 +9,6 @@ import {
   Code,
   CopyButton,
   Group,
-  Loader,
   Menu,
   Modal,
   MultiSelect,
@@ -26,6 +25,7 @@ import { IconDots, IconPlus } from "@tabler/icons-react";
 
 import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
 import { useAuth } from "../auth";
+import { Loading } from "../components/States";
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => r !== "employee").map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 
@@ -194,7 +194,7 @@ export function UsersPage() {
         </Tabs.List>
       </Tabs>
 
-      {users.isLoading && <Loader />}
+      {users.isLoading && <Loading />}
       {users.error && <Alert color="red">{errorText(users.error)}</Alert>}
 
       {users.data && visible.length === 0 && (

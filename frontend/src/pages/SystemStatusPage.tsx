@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Card, Group, Loader, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 
 import { api, errorText, formatDateTime } from "../api";
+import { Loading } from "../components/States";
 
 interface Run {
   at: string;
@@ -43,7 +44,7 @@ function RunLine({ label, run, staleHours }: { label: string; run: Run | null | 
 
 export function SystemStatusPage() {
   const q = useQuery({ queryKey: ["system-status"], queryFn: () => api<Status>("/system/status"), refetchInterval: 60_000 });
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const s = q.data!;
   const tPct = s.translation.limit > 0 ? Math.min(100, Math.round((100 * s.translation.used) / s.translation.limit)) : 0;

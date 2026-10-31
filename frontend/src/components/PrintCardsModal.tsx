@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Anchor, Button, Checkbox, Group, Modal, SegmentedControl, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPrinter } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText } from "../api";
+import { Loading } from "./States";
 
 interface PersonRef {
   id: number;
@@ -96,7 +97,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
     <Modal opened={opened} onClose={onClose} title={ids.length === 1 ? "Druk karty" : `Druk kart (${ids.length})`}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
-        {check.isLoading && <Loader size="sm" />}
+        {check.isLoading && <Loading />}
         {check.data && check.data.without_photo.length > 0 && (
           <Alert color="orange" title={`Bez zdjęcia: ${check.data.without_photo.length}`}>
             <Text size="sm" mb={4}>

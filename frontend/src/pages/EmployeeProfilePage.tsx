@@ -9,7 +9,6 @@ import {
   Card,
   Code,
   Group,
-  Loader,
   Menu,
   Modal,
   SimpleGrid,
@@ -58,6 +57,7 @@ import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecyc
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
+import { Loading } from "../components/States";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -221,7 +221,7 @@ export function EmployeeProfilePage() {
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
 
-  if (employee.isLoading) return <Loader />;
+  if (employee.isLoading) return <Loading />;
   if (employee.error || !employee.data)
     return <Alert color="red">{employee.error ? errorText(employee.error) : "Brak danych."}</Alert>;
   const e = employee.data;
@@ -405,7 +405,7 @@ export function EmployeeProfilePage() {
           <Title order={5} mb="md">
             Historia zmian
           </Title>
-          {history.isLoading && <Loader size="sm" />}
+          {history.isLoading && <Loading />}
           {history.data && history.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
           {history.data && history.data.length > 0 && (
             <Timeline bulletSize={12} lineWidth={2}>

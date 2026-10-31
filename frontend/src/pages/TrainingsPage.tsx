@@ -10,7 +10,6 @@ import {
   Button,
   Card,
   Group,
-  Loader,
   Modal,
   NumberInput,
   Paper,
@@ -45,10 +44,11 @@ import { useAuth } from "../auth";
 import { ProgramMentorsButton } from "../components/MentorPrograms";
 import { TrainingsReport } from "../components/TrainingsReport";
 import { CompetenceMatrix, PositionRequirements } from "../components/Competence";
+import { Loading } from "../components/States";
 
 function Expiring() {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
   if (rows.length === 0)
@@ -225,7 +225,7 @@ function ProgramsEditor({ type }: { type: TrainingType }) {
 
 function InProgress() {
   const q = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress") });
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
   if (rows.length === 0)
@@ -438,7 +438,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
 function Types() {
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
   const [modal, setModal] = useState<{ open: boolean; editing: TrainingType | null }>({ open: false, editing: null });
-  if (types.isLoading) return <Loader />;
+  if (types.isLoading) return <Loading />;
   return (
     <Stack>
       <Group justify="flex-end">

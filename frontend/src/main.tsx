@@ -8,12 +8,13 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { MantineProvider, createTheme, type MantineColorsTuple } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { App } from "./App";
 import { AuthProvider } from "./auth";
 import { I18nProvider } from "./lib/i18n";
 import { ApiError } from "./api";
+import { notifications } from "@mantine/notifications";
 
 // Granat – ten sam kolor co pasek na karcie identyfikacyjnej.
 const navy: MantineColorsTuple = [
@@ -37,10 +38,25 @@ const theme = createTheme({
   fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
 });
 
+// Błąd wczytywania: jedno czytelne powiadomienie (co się stało, czyja to wina, co zrobić), bez dublowania.
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (!(error instanceof ApiError) || error.status === 401 || (error.status >= 400 && error.status < 500 && error.status !== 0)) return;
+      notifications.show({
+        id: "query-error",
+        color: "red",
+        title: error.status === 0 ? "Brak połączenia z serwerem" : "Nie udało się wczytać danych",
+        message:
+          error.status === 0
+            ? "Problem jest po stronie sieci. Nic nie zostało zmienione – sprawdź internet i odśwież stronę."
+            : "To błąd po stronie serwera, nie Twój. Spróbuj za chwilę; jeśli się powtarza, zgłoś to administratorowi.",
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
-      retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+      retry: (count, error) => !(error instanceof ApiError && error.status < 500 && error.status !== 0) && count < 2,
       refetchOnWindowFocus: false,
     },
   },

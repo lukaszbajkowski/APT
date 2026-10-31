@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, errorText } from "../api";
+import { Loading } from "../components/States";
 
 interface Item {
   title: string;
@@ -23,7 +24,7 @@ interface Queue {
 
 export function WorkQueuePage() {
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<Queue>("/work-queue"), refetchInterval: 60_000 });
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const d = q.data!;
   return (

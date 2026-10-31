@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Group, Loader, Modal, Select, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Card, Group, Modal, Select, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
+import { Loading } from "./States";
 
 export const PERMIT_KINDS = [
   { value: "karta_pobytu", label: "karta pobytu" },
@@ -105,7 +106,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
           Dodaj dokument
         </Button>
       </Group>
-      {q.isLoading && <Loader size="sm" />}
+      {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak dokumentów (dotyczy cudzoziemców).

@@ -327,6 +327,43 @@ export function getLinkAccess(): string | null {
   return linkAccess;
 }
 
+// Licznik żądań trwających dłużej niż 4 s – pokazuje komunikat o wolnym łączu.
+let slowCount = 0;
+const slowListeners = new Set<() => void>();
+export const slowStore = {
+  subscribe(fn: () => void) {
+    slowListeners.add(fn);
+    return () => slowListeners.delete(fn);
+  },
+  get: () => slowCount > 0,
+};
+function trackSlow(): () => void {
+  let counted = false;
+  const timer = window.setTimeout(() => {
+    counted = true;
+    slowCount++;
+    slowListeners.forEach((f) => f());
+  }, 4000);
+  return () => {
+    window.clearTimeout(timer);
+    if (counted) {
+      slowCount--;
+      slowListeners.forEach((f) => f());
+    }
+  };
+}
+
+async function request(input: string, init: RequestInit): Promise<Response> {
+  const done = trackSlow();
+  try {
+    return await fetch(input, init);
+  } catch {
+    throw new ApiError(0, "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie – nic nie zostało zmienione.");
+  } finally {
+    done();
+  }
+}
+
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; form?: FormData } = {},
@@ -338,7 +375,7 @@ export async function api<T>(
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (method !== "GET" && csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
-  const res = await fetch(`/api${path}`, {
+  const res = await request(`/api${path}`, {
     method,
     headers,
     credentials: "same-origin",
@@ -365,7 +402,7 @@ export async function apiDownload(path: string, body: unknown, fallbackName: str
   if (accountId !== null) headers["X-APT-Account"] = String(accountId);
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
-  const res = await fetch(`/api${path}`, {
+  const res = await request(`/api${path}`, {
     method: body === undefined ? "GET" : "POST",
     headers,
     credentials: "same-origin",

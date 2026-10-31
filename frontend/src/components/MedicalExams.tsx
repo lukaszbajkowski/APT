@@ -9,7 +9,6 @@ import {
   Card,
   FileInput,
   Group,
-  Loader,
   Modal,
   Select,
   SimpleGrid,
@@ -25,6 +24,7 @@ import { IconFileText, IconPlus, IconStethoscope, IconTrash } from "@tabler/icon
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
+import { Loading } from "./States";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
   valid: { label: "ważne", color: "teal" },
@@ -165,7 +165,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
           </Button>
         )}
       </Group>
-      {q.isLoading && <Loader size="sm" />}
+      {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak badań.

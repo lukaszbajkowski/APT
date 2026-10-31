@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Badge, Button, Group, SegmentedControl, Select, Stack, Table, Text, Title } from "@mantine/core";
 
 import { notifications } from "@mantine/notifications";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
+import { Loading } from "../components/States";
 
 interface UserReview {
   id: number;
@@ -41,7 +42,7 @@ function UsersTab() {
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
-  if (q.isLoading) return <Loader />;
+  if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
   const attention = rows.filter((r) => r.flags.some((f) => f !== "pełne uprawnienia")).length;
@@ -139,7 +140,7 @@ function PeselTab() {
           ]}
         />
       </Group>
-      {q.isLoading && <Loader />}
+      {q.isLoading && <Loading />}
       {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
       {q.data && (
         <>

@@ -1,11 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Center, List, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Center, List, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconMailCheck } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
+import { Loading } from "../components/States";
 
 function Shell({ children }: { children: ReactNode }) {
   return (
@@ -120,7 +121,7 @@ export function SetPasswordPage() {
     return (
       <Shell>
         <Center>
-          <Loader />
+          <Loading />
         </Center>
       </Shell>
     );

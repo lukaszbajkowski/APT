@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Group, Loader, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Group, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconDownload, IconMail } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
+import { Loading } from "../components/States";
 
 interface Row {
   employee_id: number;
@@ -118,7 +119,7 @@ export function AgencyReportPage() {
       </Group>
 
       {staff && agencies.data?.length === 0 && <Alert color="blue">Dodaj APT w Słownikach, żeby przygotować zestawienie.</Alert>}
-      {report.isLoading && <Loader />}
+      {report.isLoading && <Loading />}
       {report.error && <Alert color="red">{errorText(report.error)}</Alert>}
       {r && (
         <>

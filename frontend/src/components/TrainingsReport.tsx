@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   Group,
-  Loader,
   MultiSelect,
   Paper,
   SegmentedControl,
@@ -32,6 +31,7 @@ import {
   type TrainingStatus,
   type TrainingType,
 } from "../api";
+import { Loading } from "./States";
 
 interface Row {
   training_id: number;
@@ -230,7 +230,7 @@ export function TrainingsReport() {
       </Paper>
 
       {report.error && <Alert color="red">{errorText(report.error)}</Alert>}
-      {!data && report.isLoading && <Loader />}
+      {!data && report.isLoading && <Loading />}
       {data && (
         <>
           <Group gap="xs">

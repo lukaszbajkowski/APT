@@ -2,7 +2,7 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, Image, List, Loader, Stack, Tabs, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, Image, List, Stack, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconCheck, IconDownload, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
 
@@ -11,6 +11,7 @@ import { useAuth } from "../auth";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
+import { Loading } from "../components/States";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -30,7 +31,7 @@ export function ToSignListPage() {
   return (
     <Stack maw={640}>
       <Title order={2}>{t("Do podpisu")}</Title>
-      {list.isLoading && <Loader />}
+      {list.isLoading && <Loading />}
       {list.data && list.data.pending.length === 0 && (
         <Text c="dimmed">{t("Nie masz dokumentów do podpisu. O nowym dokumencie dostaniesz powiadomienie.")}</Text>
       )}
@@ -170,7 +171,7 @@ export function ToSignPage() {
           {t("W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako:")} <b>{me?.user.full_name}</b>.
         </Alert>
       )}
-      {!info.data && <Loader />}
+      {!info.data && <Loading />}
       {info.data && (
         <>
           <Group justify="flex-end">

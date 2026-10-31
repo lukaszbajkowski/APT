@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Alert, Code, Group, Loader, Pagination, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Code, Group, Pagination, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 
 import { ACTION_LABELS, api, ApiError, formatDateTime, type AuditEntry, type Page } from "../api";
+import { Loading } from "../components/States";
 
 const PAGE_SIZE = 50;
 
@@ -85,7 +86,7 @@ export function AuditPage() {
         <TextInput label="Do" type="date" value={dateTo} onChange={(e) => resetPage(setDateTo)(e.currentTarget.value)} />
       </Group>
 
-      {log.isLoading && <Loader />}
+      {log.isLoading && <Loading />}
       {log.error && <Alert color="red">{log.error instanceof ApiError ? log.error.message : "Błąd"}</Alert>}
 
       {log.data && (

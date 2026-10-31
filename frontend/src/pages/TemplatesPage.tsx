@@ -8,7 +8,6 @@ import {
   Card,
   FileInput,
   Group,
-  Loader,
   Modal,
   Select,
   SimpleGrid,
@@ -21,6 +20,7 @@ import {
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
+import { Loading } from "../components/States";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -77,7 +77,7 @@ export function TemplatesPage() {
         </Button>
       </Group>
 
-      {templates.isLoading && <Loader />}
+      {templates.isLoading && <Loading />}
       {templates.error && <Alert color="red">{errorText(templates.error)}</Alert>}
       {templates.data && templates.data.length === 0 && (
         <Alert color="blue">

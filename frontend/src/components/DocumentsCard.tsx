@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  Collapse,
   Badge,
   Button,
   Card,
@@ -22,7 +23,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
@@ -333,6 +334,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [pesel, setPesel] = useState("");
   const [done, setDone] = useState<GeneratedDoc | null>(null);
   const [signDoc, setSignDoc] = useState<GeneratedDoc | null>(null);
+  const [moreFields, setMoreFields] = useState(false);
   const [sheetDoc, setSheetDoc] = useState<GeneratedDoc | null>(null);
   const [viewDoc, setViewDoc] = useState<GeneratedDoc | null>(null);
   const [mailDoc, setMailDoc] = useState<GeneratedDoc | null>(null);
@@ -470,12 +472,38 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)", letterSpacing: 1 } }}
               />
             )}
-            {template && template.fields.length > 0 && (
+            {template && template.fields.some((f) => !f.collapsed || f.required) && (
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                {template.fields.map((f) => (
-                  <FieldInput key={f.key} field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-                ))}
+                {template.fields
+                  .filter((f) => !f.collapsed || f.required)
+                  .map((f) => (
+                    <FieldInput key={f.key} field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                  ))}
               </SimpleGrid>
+            )}
+            {template && template.fields.some((f) => f.collapsed && !f.required) && (
+              <>
+                <Button
+                  variant="subtle"
+                  size="sm"
+                  w="fit-content"
+                  px={4}
+                  leftSection={moreFields ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                  onClick={() => setMoreFields((v) => !v)}
+                  aria-expanded={moreFields}
+                >
+                  {moreFields ? "Ukryj dodatkowe pola" : `Więcej pól (${template.fields.filter((f) => f.collapsed && !f.required).length})`}
+                </Button>
+                <Collapse in={moreFields}>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                    {template.fields
+                      .filter((f) => f.collapsed && !f.required)
+                      .map((f) => (
+                        <FieldInput key={f.key} field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                      ))}
+                  </SimpleGrid>
+                </Collapse>
+              </>
             )}
             {warnMasked && (
               <Alert color="blue" variant="light">

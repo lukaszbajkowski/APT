@@ -125,6 +125,15 @@ export function FieldsEditor({
                   onChange={(e) => update(i, { ...f, required: e.currentTarget.checked })}
                   aria-label={`Wymagane: ${f.label}`}
                 />
+                <Switch
+                  size="sm"
+                  label="Zwinięte"
+                  disabled={f.required}
+                  checked={!!f.collapsed && !f.required}
+                  onChange={(e) => update(i, { ...f, collapsed: e.currentTarget.checked })}
+                  aria-label={`Zwinięte przy generowaniu: ${f.label}`}
+                  title="Przy generowaniu pole będzie schowane pod „Więcej pól”. Pola wymagane są zawsze widoczne."
+                />
                 <Group gap={0} wrap="nowrap">
                   <ActionIcon variant="subtle" color="gray" disabled={i === 0} onClick={() => move(i, -1)} aria-label="W górę">
                     <IconArrowUp size={14} />

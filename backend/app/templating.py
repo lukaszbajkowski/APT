@@ -182,6 +182,8 @@ class FieldDef(BaseModel):
     # format pola tekstowego: klucz z masks.PRESETS albo "custom" (wtedy pattern = maska, np. "99-999")
     format: str | None = Field(default=None, max_length=20)
     pattern: str | None = Field(default=None, max_length=60)
+    # pole schowane przy generowaniu pod „Więcej pól” (rzadko wypełniane); wymagane pola zawsze widoczne
+    collapsed: bool = False
 
     @field_validator("format")
     @classmethod

@@ -118,6 +118,7 @@ export interface TemplateField {
   help: string | null;
   format?: string | null;
   pattern?: string | null;
+  collapsed?: boolean;
 }
 
 export interface DocTemplate {

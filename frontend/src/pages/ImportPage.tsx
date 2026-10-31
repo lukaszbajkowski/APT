@@ -75,9 +75,9 @@ interface CommitResult {
 
 const DICT_LABELS: Record<string, string> = { agencies: "APT", departments: "Wydziały", positions: "Stanowiska" };
 const STATUS: Record<PreviewRow["status"], { color: string; label: string }> = {
-  ok: { color: "green", label: "do importu" },
-  skip: { color: "yellow", label: "pominięty" },
-  error: { color: "red", label: "błąd" },
+  ok: { color: "green", label: "Do importu" },
+  skip: { color: "yellow", label: "Pominięty" },
+  error: { color: "red", label: "Błąd" },
 };
 
 function colLetter(i: number) {

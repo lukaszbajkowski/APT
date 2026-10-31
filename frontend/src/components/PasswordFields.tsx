@@ -6,9 +6,9 @@ import { IconCheck, IconCircle } from "@tabler/icons-react";
 export function passwordRules(pw: string, username?: string | null) {
   const classes = [/[a-ząćęłńóśźż]/.test(pw), /[A-ZĄĆĘŁŃÓŚŹŻ]/.test(pw), /\d/.test(pw), /[^\p{L}\p{N}]/u.test(pw)].filter(Boolean).length;
   return [
-    { ok: pw.length >= 12, label: "co najmniej 12 znaków" },
-    { ok: classes >= 3, label: "co najmniej 3 z 4 grup: małe litery, wielkie litery, cyfry, znaki specjalne" },
-    { ok: !username || !pw.toLowerCase().includes(username.toLowerCase()), label: "nie zawiera loginu" },
+    { ok: pw.length >= 12, label: "Co najmniej 12 znaków" },
+    { ok: classes >= 3, label: "Co najmniej 3 z 4 grup: małe litery, wielkie litery, cyfry, znaki specjalne" },
+    { ok: !username || !pw.toLowerCase().includes(username.toLowerCase()), label: "Nie zawiera loginu" },
   ];
 }
 

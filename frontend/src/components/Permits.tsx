@@ -1,5 +1,5 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Card, Group, Modal, Select, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
@@ -11,17 +11,17 @@ import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
 
 export const PERMIT_KINDS = [
-  { value: "karta_pobytu", label: "karta pobytu" },
-  { value: "zezwolenie_na_prace", label: "zezwolenie na pracę" },
-  { value: "wiza", label: "wiza" },
-  { value: "oswiadczenie", label: "oświadczenie o powierzeniu pracy" },
-  { value: "inne", label: "inny dokument" },
+  { value: "karta_pobytu", label: "Karta pobytu" },
+  { value: "zezwolenie_na_prace", label: "Zezwolenie na pracę" },
+  { value: "wiza", label: "Wiza" },
+  { value: "oswiadczenie", label: "Oświadczenie o powierzeniu pracy" },
+  { value: "inne", label: "Inny dokument" },
 ];
 
 export const PERMIT_STATE: Record<Permit["state"], { label: string; color: string }> = {
-  valid: { label: "ważny", color: "teal" },
-  expiring: { label: "kończy się", color: "orange" },
-  expired: { label: "nieważny", color: "red" },
+  valid: { label: "Ważny", color: "teal" },
+  expiring: { label: "Kończy się", color: "orange" },
+  expired: { label: "Nieważny", color: "red" },
 };
 
 function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: boolean; onClose: () => void }) {
@@ -106,7 +106,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
           {q.data?.map((x) => (
             <ListRow
               key={x.id}
-              title={x.kind_label}
+              title={cap(x.kind_label)}
               description={
                 <StatusBadge tone={x.state === "valid" ? "ok" : x.state === "expired" ? "error" : "warn"}>
                   {PERMIT_STATE[x.state].label} do {formatDate(x.valid_until)}
@@ -119,7 +119,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
         <ActionSheet
           opened={!!sheet}
           onClose={() => setSheet(null)}
-          title={sheet?.kind_label ?? ""}
+          title={cap(sheet?.kind_label)}
           subtitle={sheet?.notes ?? undefined}
           actions={sheet ? [{ label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => del.mutate(sheet.id) }] : []}
         />
@@ -155,7 +155,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
               <Table.Tr key={x.id}>
                 <Table.Td>
                   <Text size="sm" fw={500}>
-                    {x.kind_label}
+                    {cap(x.kind_label)}
                   </Text>
                   <Text size="xs" c="dimmed">
                     {x.valid_from ? `od ${formatDate(x.valid_from)}` : ""}

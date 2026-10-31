@@ -364,7 +364,7 @@ export function ActionSheet({
 }
 
 /* ——— akcje nieodwracalne ——— */
-export function DangerZone({ title = "Zmiany, których nie da się cofnąć", children }: { title?: string; children: ReactNode }) {
+export function DangerZone({ title = "Działania wymagające ostrożności", children }: { title?: string; children: ReactNode }) {
   return (
     <section className="ui-danger">
       <h2 className="ui-danger-title">{title}</h2>
@@ -389,7 +389,10 @@ export function StatusBadge({ tone, children }: { tone: Tone; children: ReactNod
   return (
     <span className="ui-status" data-tone={tone}>
       <Icon size={12} stroke={3} aria-hidden />
-      {children}
+      <span className="ui-cap">{children}</span>
     </span>
   );
 }
+
+/** Pierwsza litera wielka (etykiety z serwera bywają pisane małą literą). */
+export const cap = (s: string | null | undefined) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");

@@ -11,6 +11,13 @@ export function useResponsiveTables() {
     let frame = 0;
     const label = () => {
       frame = 0;
+      // telefon: listy wyboru bez wpisywania (bez klawiatury) – wybór tylko z listy
+      if (window.matchMedia("(max-width: 48em)").matches) {
+        document.querySelectorAll<HTMLInputElement>(".mantine-Select-input:not([readonly]):not([data-allow-typing])").forEach((el) => {
+          el.readOnly = true;
+          el.inputMode = "none";
+        });
+      }
       document.querySelectorAll<HTMLTableElement>("table.mantine-Table-table:not([data-keep-table])").forEach((table) => {
         const head = table.tHead?.rows[0];
         if (!head) return;

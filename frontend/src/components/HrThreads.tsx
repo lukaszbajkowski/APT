@@ -36,9 +36,9 @@ interface Thread {
 }
 
 export const THREAD_STATUS: Record<ThreadRow["status"], { label: string; color: string }> = {
-  new: { label: "nowa", color: "blue" },
-  in_progress: { label: "w toku", color: "yellow" },
-  done: { label: "zakończona", color: "green" },
+  new: { label: "Nowa", color: "blue" },
+  in_progress: { label: "W toku", color: "yellow" },
+  done: { label: "Zakończona", color: "green" },
 };
 
 // Odświeżanie „na żywo”: odpytywanie co kilka sekund, tylko gdy karta jest widoczna.

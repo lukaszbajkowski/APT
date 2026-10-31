@@ -710,14 +710,14 @@ export interface ExpiringTraining {
 }
 
 export const TRAINING_STATUS: Record<TrainingStatus, { label: string; color: string }> = {
-  valid: { label: "ważne", color: "teal" },
-  expiring: { label: "kończy się", color: "orange" },
-  expired: { label: "wygasło", color: "red" },
-  none: { label: "bez daty", color: "gray" },
-  completed: { label: "ukończone", color: "teal" },
-  planned: { label: "zaplanowane", color: "gray" },
-  in_progress: { label: "w trakcie", color: "blue" },
-  overdue: { label: "ponad standard", color: "red" },
+  valid: { label: "Ważne", color: "teal" },
+  expiring: { label: "Kończy się", color: "orange" },
+  expired: { label: "Wygasło", color: "red" },
+  none: { label: "Bez daty", color: "gray" },
+  completed: { label: "Ukończone", color: "teal" },
+  planned: { label: "Zaplanowane", color: "gray" },
+  in_progress: { label: "W trakcie", color: "blue" },
+  overdue: { label: "Ponad standard", color: "red" },
 };
 
 export interface InProgressTraining {

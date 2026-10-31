@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { ListRow, Section } from "./Mobile";
+import { ListRow, Section, SheetHandle } from "./Mobile";
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
@@ -124,8 +124,67 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
             onClick={() => setSheet(true)}
           />
         </Section>
-        <Drawer opened={sheet} onClose={() => setSheet(false)} position="bottom" size="auto" radius="lg" title="Aktualizacja danych bez konta">
-          {body}
+        <Drawer
+          opened={sheet}
+          onClose={() => setSheet(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          classNames={{ content: "ui-sheet" }}
+          aria-label="Link do aktualizacji danych"
+        >
+          <SheetHandle onClose={() => setSheet(false)}>
+            <div className="ui-sheet-head">
+              <div className="ui-sheet-title">Link do aktualizacji danych</div>
+              <div className="ui-row-desc">Pracownik bez konta zmieni zdjęcie, telefon i e-mail po potwierdzeniu daty urodzenia. Link działa 7 dni.</div>
+            </div>
+          </SheetHandle>
+          <Stack gap="md" px={8} pb="md">
+            {!s.has_birth_date && (
+              <Alert color="orange" icon={<IconAlertCircle size={18} />}>
+                Uzupełnij datę urodzenia w kartotece – bez niej nie da się potwierdzić tożsamości.
+              </Alert>
+            )}
+            {error && <Alert color="red">{error}</Alert>}
+            {s.active && (
+              <Text size="sm">
+                Aktywny link do {s.expires_at ? formatDateTime(s.expires_at) : ""}
+                {s.last_used_at ? ` · otwarty ${formatDateTime(s.last_used_at)}` : " · jeszcze nie otwarty"}
+              </Text>
+            )}
+            <TextInput size="md" label="E-mail (opcjonalnie)" type="email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
+            <TextInput size="md" label="Telefon do SMS (opcjonalnie)" type="tel" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
+            <Button size="md" fullWidth loading={create.isPending} disabled={!s.has_birth_date} onClick={() => create.mutate()}>
+              {s.active ? "Wyślij nowy link" : "Utwórz i wyślij link"}
+            </Button>
+            {s.active && (
+              <Button
+                size="md"
+                fullWidth
+                variant="default"
+                loading={cancel.isPending}
+                onClick={() => confirm({ title: "Unieważnić link?", message: "Pracownik nie otworzy już swojej strony z danymi.", confirmLabel: "Unieważnij", danger: true }).then((ok) => ok && cancel.mutate())}
+              >
+                Unieważnij link
+              </Button>
+            )}
+            {result && (
+              <Alert color="green" icon={<IconCheck size={18} />}>
+                {result.sent.length ? `Wysłano: ${result.sent.join(", ")}.` : "Link utworzony – nic nie wysłano."}
+                <Text size="xs" mt={6} style={{ wordBreak: "break-all" }}>
+                  {result.link}
+                </Text>
+                <CopyButton value={result.link}>
+                  {({ copied, copy }) => (
+                    <Button mt="xs" size="sm" variant="default" leftSection={<IconCopy size={14} />} onClick={copy}>
+                      {copied ? "Skopiowano" : "Kopiuj link"}
+                    </Button>
+                  )}
+                </CopyButton>
+              </Alert>
+            )}
+          </Stack>
         </Drawer>
       </>
     );

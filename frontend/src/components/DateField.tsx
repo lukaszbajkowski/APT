@@ -25,6 +25,14 @@ type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
 export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const [text, setText] = useState(toDisplay(value));
   const picker = useRef<HTMLInputElement>(null);
+  const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  const openPicker = () => {
+    try {
+      picker.current?.showPicker?.();
+    } catch {
+      picker.current?.focus();
+    }
+  };
   useEffect(() => {
     // zmiana z zewnątrz (np. wczytanie formularza); nie nadpisujemy tego, co użytkownik właśnie wpisuje
     if (value !== (toIso(text) ?? "")) setText(toDisplay(value));
@@ -43,7 +51,7 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const invalid = text.length === 10 && toIso(text) === null;
   const outOfRange = value && ((min && value < min) || (max && value > max));
   return (
-    <>
+    <div style={{ position: "relative" }}>
       <TextInput
         {...rest}
         inputMode="numeric"
@@ -52,13 +60,19 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         value={text}
         error={rest.error ?? (invalid ? "Nieprawidłowa data – wpisz dd.mm.rrrr." : outOfRange ? "Data poza dozwolonym zakresem." : undefined)}
         onChange={(e) => typed(e.currentTarget.value)}
+        // kliknięcie w pole od razu otwiera kalendarz; na telefonie bez klawiatury (tylko kalendarz)
+        readOnly={touch || rest.readOnly}
+        onClick={(e) => {
+          rest.onClick?.(e);
+          if (!rest.disabled && !rest.readOnly) openPicker();
+        }}
         rightSection={
           <ActionIcon
             variant="subtle"
             color="gray"
             aria-label="Wybierz z kalendarza"
             disabled={rest.disabled}
-            onClick={() => picker.current?.showPicker?.()}
+            onClick={openPicker}
           >
             <IconCalendar size={16} />
           </ActionIcon>
@@ -76,8 +90,13 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
           setText(toDisplay(e.target.value));
           onChange({ currentTarget: { value: e.target.value } });
         }}
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
+        // telefon: przezroczyste natywne pole nad całym polem – stuknięcie otwiera systemowy kalendarz (niezawodne w Safari)
+        style={
+          touch && !rest.disabled && !rest.readOnly
+            ? { position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", zIndex: 2, fontSize: 16 }
+            : { position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }
+        }
       />
-    </>
+    </div>
   );
 }

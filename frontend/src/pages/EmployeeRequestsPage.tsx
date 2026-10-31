@@ -30,9 +30,9 @@ import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 
 const STATUS: Record<EmployeeRequest["status"], { label: string; color: string }> = {
-  pending: { label: "czeka na kadry", color: "orange" },
-  approved: { label: "zatwierdzone", color: "teal" },
-  rejected: { label: "odrzucone", color: "red" },
+  pending: { label: "Czeka na kadry", color: "orange" },
+  approved: { label: "Zatwierdzone", color: "teal" },
+  rejected: { label: "Odrzucone", color: "red" },
 };
 
 interface FormValues {

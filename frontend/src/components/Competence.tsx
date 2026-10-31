@@ -34,11 +34,11 @@ import { ErrorState, EmptyState, Loading } from "./States";
 export type ReqState = "ok" | "expiring" | "in_progress" | "expired" | "missing";
 
 export const REQ_STATE: Record<ReqState, { label: string; color: string }> = {
-  ok: { label: "ma", color: "teal" },
-  expiring: { label: "kończy się", color: "orange" },
-  in_progress: { label: "w trakcie", color: "blue" },
-  expired: { label: "wygasło", color: "orange" },
-  missing: { label: "brak", color: "orange" },
+  ok: { label: "Ma", color: "teal" },
+  expiring: { label: "Kończy się", color: "orange" },
+  in_progress: { label: "W trakcie", color: "blue" },
+  expired: { label: "Wygasło", color: "orange" },
+  missing: { label: "Brak", color: "orange" },
 };
 
 // ---------- wymagania stanowisk ----------

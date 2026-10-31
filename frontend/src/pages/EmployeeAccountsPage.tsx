@@ -19,9 +19,9 @@ interface Row {
 }
 
 const STATUS: Record<Row["status"], { label: string; color: string }> = {
-  active: { label: "aktywne", color: "green" },
-  pending: { label: "czeka na aktywację", color: "yellow" },
-  disabled: { label: "wyłączone", color: "gray" },
+  active: { label: "Aktywne", color: "green" },
+  pending: { label: "Czeka na aktywację", color: "yellow" },
+  disabled: { label: "Wyłączone", color: "gray" },
 };
 
 export function EmployeeAccountsPage() {
@@ -98,7 +98,7 @@ export function EmployeeAccountsPage() {
                     )}
                   </Table.Td>
                   <Table.Td>
-                    {r.has_passkey ? "klucz dostępu" : "—"}
+                    {r.has_passkey ? "Klucz dostępu" : "—"}
                   </Table.Td>
                   <Table.Td>{r.last_login_at ? formatDateTime(r.last_login_at) : "—"}</Table.Td>
                 </Table.Tr>

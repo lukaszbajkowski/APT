@@ -1,5 +1,5 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,10 +30,10 @@ import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
-  valid: { label: "ważne", color: "teal" },
-  expiring: { label: "kończą się", color: "orange" },
-  expired: { label: "nieważne", color: "red" },
-  none: { label: "bez terminu", color: "gray" },
+  valid: { label: "Ważne", color: "teal" },
+  expiring: { label: "Kończą się", color: "orange" },
+  expired: { label: "Nieważne", color: "red" },
+  none: { label: "Bez terminu", color: "gray" },
 };
 
 function addMonths(iso: string, months: number): string {
@@ -88,15 +88,15 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
             label="Rodzaj"
             allowDeselect={false}
             data={[
-              { value: "wstepne", label: "wstępne" },
-              { value: "okresowe", label: "okresowe" },
-              { value: "kontrolne", label: "kontrolne" },
+              { value: "wstepne", label: "Wstępne" },
+              { value: "okresowe", label: "Okresowe" },
+              { value: "kontrolne", label: "Kontrolne" },
             ]}
             value={kind}
             onChange={(v) => v && setKind(v)}
           />
           <SimpleGrid cols={2}>
-            <DateField label="Data badania"  required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
+            <DateField label="Ważne od"  required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
             <DateField label="Ważne do"  min={date} value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
           </SimpleGrid>
           <Group gap={6}>
@@ -163,21 +163,20 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
           {q.data?.map((x, i) => (
             <ListRow
               key={x.id}
-              title={x.kind_label}
+              title={cap(x.kind_label)}
               muted={i > 0}
               description={
                 <>
-                  {i === 0 && x.valid_until ? (
-                    <StatusBadge tone={x.state === "valid" ? "ok" : x.state === "expired" ? "error" : "warn"}>do {formatDate(x.valid_until)}</StatusBadge>
-                  ) : null}{" "}
-                  badanie {formatDate(x.exam_date)}
+                  {i === 0 && <StatusBadge tone={x.state === "valid" ? "ok" : x.state === "expired" ? "error" : x.state === "none" ? "neutral" : "warn"}>{STATE[x.state].label}</StatusBadge>}{" "}
+                  od {formatDate(x.exam_date)}
+                  {x.valid_until ? ` do ${formatDate(x.valid_until)}` : ""}
                 </>
               }
               onClick={x.has_file || x.can_delete ? () => setSheet(x) : undefined}
             />
           ))}
         </Section>
-        <ActionSheet opened={!!sheet} onClose={() => setSheet(null)} title={sheet?.kind_label ?? ""} actions={acts} />
+        <ActionSheet opened={!!sheet} onClose={() => setSheet(null)} title={cap(sheet?.kind_label)} actions={acts} />
         {canAdd && <AddExam employee={employee} opened={open} onClose={() => setOpen(false)} />}
       </>
     );
@@ -212,14 +211,14 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
               <Table.Tr key={x.id} opacity={i === 0 ? 1 : 0.7}>
                 <Table.Td>
                   <Text size="sm" fw={500}>
-                    {x.kind_label}
+                    {cap(x.kind_label)}
                   </Text>
                   <Text size="xs" c="dimmed">
                     dodał(a) {x.created_by_name ?? "—"}
                     {x.notes ? ` · ${x.notes}` : ""}
                   </Text>
                 </Table.Td>
-                <Table.Td>{formatDate(x.exam_date)}</Table.Td>
+                <Table.Td>od {formatDate(x.exam_date)}</Table.Td>
                 <Table.Td>
                   {x.valid_until ? (
                     <Text size="sm" c={i === 0 ? STATE[x.state].color : undefined}>

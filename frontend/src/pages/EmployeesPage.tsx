@@ -38,13 +38,13 @@ import { EmptyState, ErrorState, Loading } from "../components/States";
 const PAGE_SIZE = 50;
 
 const MISSING = [
-  { value: "photo", label: "brak zdjęcia" },
-  { value: "pesel", label: "brak PESEL" },
-  { value: "birth_date", label: "brak daty urodzenia" },
-  { value: "country", label: "brak obywatelstwa" },
-  { value: "agency", label: "brak APT" },
-  { value: "department", label: "brak wydziału" },
-  { value: "position", label: "brak stanowiska" },
+  { value: "photo", label: "Brak zdjęcia" },
+  { value: "pesel", label: "Brak PESEL" },
+  { value: "birth_date", label: "Brak daty urodzenia" },
+  { value: "country", label: "Brak obywatelstwa" },
+  { value: "agency", label: "Brak APT" },
+  { value: "department", label: "Brak wydziału" },
+  { value: "position", label: "Brak stanowiska" },
 ];
 
 export function EmployeesPage() {

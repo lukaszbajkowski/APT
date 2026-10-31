@@ -98,11 +98,16 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
             {!a?.exists ? <StatusBadge tone="neutral">brak konta</StatusBadge> : !a.active ? <StatusBadge tone="neutral">wyłączone</StatusBadge> : a.has_passkey ? <StatusBadge tone="ok">aktywne</StatusBadge> : <StatusBadge tone="wait">czeka na aktywację</StatusBadge>}
           </InfoRow>
           {a?.exists && <InfoRow label="Login"><span style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>{a.username}</span></InfoRow>}
-          {a?.has_passkey && <InfoRow label="Logowanie">klucz dostępu</InfoRow>}
+          {a?.has_passkey && <InfoRow label="Logowanie">Klucz dostępu</InfoRow>}
           {a?.last_login_at && <InfoRow label="Ostatnio">{formatDateTime(a.last_login_at)}</InfoRow>}
         </Section>
-        {!activated && (a?.active ?? true) && (
-          <Section title="Zaproszenie" plain>
+        {(!a?.exists || (a.active && !a.has_passkey)) && (
+          <Section title={a?.exists ? "Zaproszenie" : "Załóż konto"} plain>
+            {!a?.exists && (
+              <Text size="sm" c="dimmed" mb="xs">
+                Pracownik nie ma jeszcze konta. Wyślij zaproszenie – założy je sam na telefonie (twarz lub odcisk palca).
+              </Text>
+            )}
             <Stack gap="sm">
               <TextInput label="Wyślij na e-mail" description={contactEmail ? undefined : "Bez adresu dostaniesz link do przekazania."} type="email" size="md" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
               <Button size="md" variant="default" leftSection={<IconMail size={18} />} loading={invite.isPending} onClick={() => invite.mutate()}>
@@ -119,8 +124,8 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
         )}
         {a?.exists && a.active && (
           <DangerZone>
-            {activated && <DangerAction label="Zresetuj dostęp" description="Np. po zgubieniu telefonu. Stare klucze przestaną działać." loading={reset.isPending} onClick={askReset} />}
-            <DangerAction label="Wyłącz konto" description="Pracownik nie zaloguje się, dane zostają w kartotece." loading={toggle.isPending} onClick={askDisable} />
+            {activated && <DangerAction label="Zresetuj dostęp" description="Np. po zgubieniu telefonu. Stare klucze przestaną działać – trzeba będzie wysłać nowe zaproszenie." loading={reset.isPending} onClick={askReset} />}
+            <DangerAction label="Wyłącz konto" description="Pracownik nie zaloguje się, dopóki go nie włączysz. Dane zostają w kartotece." loading={toggle.isPending} onClick={askDisable} />
           </DangerZone>
         )}
       </Stack>
@@ -148,7 +153,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
       {a?.exists && (
         <Text size="sm" c="dimmed" mb="sm">
           Login: {a.username}
-          {a.has_passkey ? " · klucz dostępu" : ""}
+          {a.has_passkey ? " · Klucz dostępu" : ""}
           {a.last_login_at ? ` · ostatnie logowanie ${formatDateTime(a.last_login_at)}` : ""}
           {a.invite_pending ? " · zaproszenie wysłane" : ""}
         </Text>
@@ -159,7 +164,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
         </Text>
       )}
       <Stack gap="sm">
-        {!activated && (a?.active ?? true) && (
+        {(!a?.exists || (a.active && !a.has_passkey)) && (
           <>
             <TextInput
               label="E-mail do zaproszenia (opcjonalnie)"
@@ -181,7 +186,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
         {a?.exists && a.active && (
           <Stack gap="xs" p="sm" mt="xs" className="danger-zone">
             <Text size="sm" fw={700} c="red">
-              Zmiany, których nie da się cofnąć
+              Działania wymagające ostrożności
             </Text>
             {activated && (
               <Button

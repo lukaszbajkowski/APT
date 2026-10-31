@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconFileText, IconPlus, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -196,8 +196,15 @@ export function BroadcastsPage() {
     onError: (e) => setError(errorText(e)),
   });
   const opts = (d?: DictionaryItem[]) => (d ?? []).filter((x) => x.is_active).map((x) => ({ value: String(x.id), label: x.name }));
-  const rows = list.data ?? [];
-  const b = rows.find((x) => x.id === openId) ?? null;
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState("");
+  const all = list.data ?? [];
+  const rows = all.filter(
+    (x) =>
+      (!q.trim() || `${x.subject} ${x.target}`.toLowerCase().includes(q.trim().toLowerCase())) &&
+      (status === "" || (status === "done") === x.finished),
+  );
+  const b = all.find((x) => x.id === openId) ?? null;
   const hasRight = composing || b !== null;
   const showList = !mobile || !hasRight;
   const showRight = !mobile || hasRight;
@@ -212,7 +219,7 @@ export function BroadcastsPage() {
           <Stack p="sm" gap="xs">
             <Group justify="space-between">
               <Title order={4}>Komunikaty do grup</Title>
-              <ActionIcon variant="filled" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
+              <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
                 <IconPlus size={18} />
               </ActionIcon>
             </Group>
@@ -225,8 +232,20 @@ export function BroadcastsPage() {
                 back();
               }}
               data={[
-                { value: "w", label: "Aktualne" },
+                { value: "w", label: "Aktywne" },
                 { value: "a", label: "Archiwum" },
+              ]}
+            />
+            <TextInput size="xs" placeholder="Szukaj: temat lub odbiorcy" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+            <SegmentedControl
+              size="xs"
+              fullWidth
+              value={status}
+              onChange={setStatus}
+              data={[
+                { value: "", label: "Wszystkie" },
+                { value: "open", label: "W toku" },
+                { value: "done", label: "Zakończone" },
               ]}
             />
           </Stack>

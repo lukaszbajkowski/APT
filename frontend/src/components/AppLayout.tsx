@@ -130,14 +130,20 @@ function MobileTopBar() {
   const own = useMobileHeaderValue();
   const auto = headerFor(location.pathname);
   const back = own.back ?? auto.back;
-  const title = own.title ?? auto.title;
   const [scrolled, setScrolled] = useState(false);
+  const [deep, setDeep] = useState(false);
   useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 48);
+    const on = () => {
+      setScrolled(window.scrollY > 48);
+      setDeep(window.scrollY > 110);
+    };
     on();
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, [location.pathname]);
+  const swap = deep && !!own.scrolledTitle;
+  const title = swap ? own.scrolledTitle! : own.title ?? auto.title;
+  const subtitle = swap ? own.scrolledSubtitle : own.subtitle;
   const showTitle = !!back || !!own.title || scrolled;
   return (
     <div className="topbar">
@@ -152,9 +158,9 @@ function MobileTopBar() {
       ) : (
         <span className="topbar-btn" aria-hidden />
       )}
-      <div className="topbar-title" data-visible={showTitle || undefined} aria-hidden={!showTitle}>
+      <div className="topbar-title" data-visible={showTitle || undefined} aria-hidden={!showTitle} key={swap ? "deep" : "top"}>
         <span className="topbar-title-main">{title}</span>
-        {own.subtitle && <span className="topbar-title-sub">{own.subtitle}</span>}
+        {subtitle && <span className="topbar-title-sub">{subtitle}</span>}
       </div>
       <AccountMenu compact />
     </div>

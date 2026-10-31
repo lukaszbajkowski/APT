@@ -257,7 +257,12 @@ export function EmployeeProfilePage() {
   const missingReq = (reqs.data ?? []).filter((r) => r.state === "missing" || r.state === "expired").length;
   useMobileHeader(
     mobile && emp
-      ? { title: "Pracownik", back: "/pracownicy" }
+      ? {
+          title: "Pracownik",
+          back: "/pracownicy",
+          scrolledTitle: `${emp.last_name} ${emp.first_name}`,
+          scrolledSubtitle: `nr ${emp.number_display} · ${emp.status === "active" ? "aktywny" : "archiwum"}`,
+        }
       : null,
   );
 

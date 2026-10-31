@@ -14,6 +14,9 @@ export interface MobileHeader {
   title?: string;
   subtitle?: string;
   back?: string;
+  /** tytuł po przewinięciu poniżej nagłówka ekranu (np. imię i nazwisko zamiast „Pracownik”) */
+  scrolledTitle?: string;
+  scrolledSubtitle?: string;
 }
 const HeaderCtx = createContext<{ header: MobileHeader; set: (h: MobileHeader | null) => void }>({ header: {}, set: () => undefined });
 

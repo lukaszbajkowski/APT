@@ -4,6 +4,7 @@ import { Alert, Button, Card, CopyButton, Group, Stack, Text, TextInput, Title }
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
+import { useConfirm } from "../lib/confirm";
 
 interface Status {
   account_active: boolean;
@@ -38,6 +39,7 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
     },
     onError: (e) => setError(errorText(e)),
   });
+  const confirm = useConfirm();
   const cancel = useMutation({
     mutationFn: () => api<Status>(`/employees/${employeeId}/data-link`, { method: "DELETE" }),
     onSuccess: (s) => {
@@ -82,7 +84,7 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
             {s.active ? "Wyślij nowy link" : "Utwórz link"}
           </Button>
           {s.active && (
-            <Button variant="default" loading={cancel.isPending} onClick={() => window.confirm("Unieważnić aktywny link?") && cancel.mutate()}>
+            <Button variant="default" loading={cancel.isPending} onClick={() => confirm({ title: "Unieważnić link?", message: "Unieważnić aktywny link? Pracownik nie otworzy już swojej strony z danymi.", confirmLabel: "Unieważnij", danger: true }).then((ok) => ok && cancel.mutate())}>
               Unieważnij
             </Button>
           )}

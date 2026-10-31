@@ -12,6 +12,7 @@ import { LanguagePicker, useT } from "../lib/i18n";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useConfirm } from "../lib/confirm";
 
 interface Options {
   challenge_id: string;
@@ -190,6 +191,7 @@ export function MyAccountPage() {
     },
     onError: (e) => setError(passkeyErrorText(e) ?? errorText(e)),
   });
+  const confirm = useConfirm();
   const remove = useMutation({
     mutationFn: (id: number) => api(`/passkeys/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -253,7 +255,7 @@ export function MyAccountPage() {
                 size="xs"
                 leftSection={<IconTrash size={14} />}
                 loading={remove.isPending && remove.variables === k.id}
-                onClick={() => window.confirm(t("Usunąć ten klucz?")) && remove.mutate(k.id)}
+                onClick={() => confirm({ title: t("Usunąć klucz?"), message: t("Usunąć ten klucz?"), confirmLabel: t("Usuń"), danger: true }).then((ok) => ok && remove.mutate(k.id))}
               >
                 {t("Usuń")}
               </Button>

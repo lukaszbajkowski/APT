@@ -45,6 +45,7 @@ export function EmployeeAccountsPage() {
       </Text>
       <Group>
         <TextInput
+          aria-label="Szukaj konta"
           placeholder="Szukaj: nazwisko, imię lub login"
           leftSection={<IconSearch size={16} />}
           value={q}

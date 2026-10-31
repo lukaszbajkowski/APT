@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
+import { PageSheet } from "./PageSheet";
 import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
@@ -117,23 +118,7 @@ export function DocumentViewer({
         {q.data && (
           <Stack gap="md" align="center" py="md" style={{ filter: hidden ? "blur(28px)" : undefined, transition: "filter .1s" }}>
             {Array.from({ length: q.data.pages }, (_, i) => (
-              <Box
-                key={i}
-                role="img"
-                aria-label={`Strona ${i + 1}`}
-                w="100%"
-                maw={900}
-                style={{
-                  aspectRatio: "210 / 297",
-                  backgroundImage: `url(${withAcct(`/api${pageUrl(i)}`)})`,
-                  backgroundSize: "contain",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "center top",
-                  backgroundColor: "#fff",
-                  boxShadow: "0 1px 4px rgba(0,0,0,.15)",
-                  pointerEvents: "none",
-                }}
-              />
+              <PageSheet key={i} index={i} src={`/api${pageUrl(i)}`} maw={900} />
             ))}
           </Stack>
         )}

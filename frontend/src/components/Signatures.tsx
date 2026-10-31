@@ -35,7 +35,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-import { api, errorText, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
+import { api, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
 import { Loading } from "./States";
 
 interface RoleState {
@@ -127,7 +127,6 @@ function AccountRequest({ doc, employee, r, st, onDone }: { doc: GeneratedDoc; e
       setResult(res);
       onDone();
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (result)
     return (
@@ -184,7 +183,6 @@ function RoleRequest({ doc, employee, r, st, onDone, force = false }: { doc: Gen
       onDone();
       if (res.sent) notifications.show({ color: "green", message: channel === "sms" ? "Wysłano SMS z linkiem." : "Wysłano e-mail z linkiem." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   if (result?.in_account)
@@ -243,6 +241,7 @@ function RoleRequest({ doc, employee, r, st, onDone, force = false }: { doc: Gen
         {channel !== "link" && (
           <TextInput
             size="xs"
+            aria-label={placeholder}
             style={{ flex: 1 }}
             placeholder={placeholder}
             leftSection={channel === "email" ? <IconMail size={14} /> : <IconDeviceMobile size={14} />}
@@ -287,7 +286,6 @@ function RemoveSignature({ id, what, docId, onDone }: { id: number; what: string
       onDone();
       notifications.show({ color: "green", message: `Usunięto ${what}.` });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   return (
     <>
@@ -338,7 +336,6 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
   const cancel = useMutation({
     mutationFn: (id: number) => api(`/signatures/${id}`, { method: "DELETE" }),
     onSuccess: refresh,
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const scan = useMutation({
     mutationFn: (file: File) => {
@@ -350,7 +347,6 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
       refresh();
       notifications.show({ color: "green", message: "Dołączono skan – dokument oznaczony jako podpisany." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const st = q.data;
   return (

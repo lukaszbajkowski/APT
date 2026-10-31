@@ -5,7 +5,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconUsers } from "@tabler/icons-react";
 
-import { api, errorText, type Employee, type MentorProgram, type Page, type TrainingProgram, type TrainingType } from "../api";
+import { api, type Employee, type MentorProgram, type Page, type TrainingProgram, type TrainingType } from "../api";
 import { useAuth } from "../auth";
 
 const programLabel = (p: { name: string; department: string | null }) => (p.department ? `${p.name} · ${p.department}` : p.name);
@@ -37,7 +37,6 @@ export function ProgramMentorsButton({ program }: { program: TrainingProgram }) 
       notifications.show({ color: "green", message: `Zapisano opiekunów: ${program.name}.` });
       setOpened(false);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const open = () => {
@@ -129,7 +128,6 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
       notifications.show({ color: "green", message: "Zapisano szkolenia, które pracownik może prowadzić." });
       setEditing(false);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const list = mine.data ?? [];

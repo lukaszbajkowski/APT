@@ -40,7 +40,6 @@ function UsersTab() {
       qc.invalidateQueries({ queryKey: ["access-users"] });
       notifications.show({ color: "green", message: "Konto wyłączone." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;

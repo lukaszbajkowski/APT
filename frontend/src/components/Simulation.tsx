@@ -45,6 +45,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
       <Box px="xs" pb="xs">
         <Select
           size="xs"
+          aria-label="Podgląd jako rola"
           leftSection={<IconUserCog size={14} />}
           value={pickAgency ? "agency" : (me.sim_role ?? "admin")}
           onChange={(v) => {
@@ -64,6 +65,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
           <Select
             mt={6}
             size="xs"
+            aria-label="Agencja do podglądu"
             placeholder="Wybierz APT agencji"
             value={me.sim_role === "agency" && me.sim_agency_id ? String(me.sim_agency_id) : null}
             comboboxProps={{ withinPortal: false }}
@@ -79,6 +81,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
           <Select
             mt={6}
             size="xs"
+            aria-label="Wydział kierownika do podglądu"
             placeholder="Wydział kierownika: brak"
             value={scope}
             clearable

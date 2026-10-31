@@ -53,7 +53,7 @@ export function NewPasswordFields({
         }}
       />
       {pw.length > 0 && <Progress value={(done / 3) * 100} color={color} size="xs" />}
-      <Box>
+      <Box aria-live="polite">
         {rules.map((r) => (
           <Group key={r.label} gap={6} wrap="nowrap" align="flex-start">
             {r.ok ? <IconCheck size={14} color="var(--mantine-color-teal-6)" /> : <IconCircle size={14} color="var(--mantine-color-gray-5)" />}
@@ -72,7 +72,7 @@ export function NewPasswordFields({
         onChange={(e) => onRepeat(e.currentTarget.value)}
       />
       {repeat.length > 0 && !mismatch && pw.length > 0 && (
-        <Text size="xs" c="teal">
+        <Text size="xs" c="teal" role="status">
           Hasła są takie same.
         </Text>
       )}

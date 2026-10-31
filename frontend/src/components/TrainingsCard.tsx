@@ -49,6 +49,7 @@ import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
 import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
+import { useConfirm } from "../lib/confirm";
 
 interface Form {
   type_id: string | null;
@@ -451,6 +452,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     onSuccess: refresh,
     onError,
   });
+  const confirm = useConfirm();
   const remove = useMutation({
     mutationFn: (id: number) => api<void>(`/trainings/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -574,7 +576,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                           color="red"
                           leftSection={<IconTrash size={14} />}
                           onClick={() => {
-                            if (window.confirm(`Usunąć szkolenie „${t.name ?? t.type_name}”?`)) remove.mutate(t.id);
+                            confirm({ title: "Usunąć szkolenie?", message: `Usunąć szkolenie „${t.name ?? t.type_name}”?`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate(t.id));
                           }}
                         >
                           Usuń

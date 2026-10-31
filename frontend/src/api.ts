@@ -594,6 +594,15 @@ export function formatDate(value: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
+/** Godzina dla dzisiejszej daty, w innym dniu dzień i miesiąc (listy wiadomości). */
+export function shortTime(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  return d.toDateString() === today.toDateString()
+    ? d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
+}
+
 export function formatDateTime(value: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleString("pl-PL", {

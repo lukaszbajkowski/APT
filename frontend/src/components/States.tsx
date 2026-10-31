@@ -21,7 +21,7 @@ export function EmptyState({
   compact?: boolean;
 }) {
   return (
-    <Stack align="center" gap="xs" p={compact ? "md" : "xl"} ta="center">
+    <Stack align="center" gap="xs" p={compact ? "md" : "xl"} ta="center" role="status">
       <ThemeIcon size={compact ? 40 : 56} radius="xl" variant="light">
         {icon ?? (search ? <IconSearchOff size={26} /> : <IconInbox size={26} />)}
       </ThemeIcon>
@@ -107,14 +107,14 @@ export function NetworkBanner() {
   const slow = useSyncExternalStore(slowStore.subscribe, slowStore.get);
   if (!online) {
     return (
-      <Alert color="yellow" variant="light" icon={<IconWifiOff size={18} />} py={6} mb="xs">
+      <Alert color="yellow" variant="light" icon={<IconWifiOff size={18} />} py={6} mb="xs" role="status" aria-live="polite">
         Jesteś offline. Pokazujemy dane z ostatniej wizyty. Zmiany i wysyłka zadziałają po odzyskaniu połączenia.
       </Alert>
     );
   }
   if (slow) {
     return (
-      <Box mb="xs">
+      <Box mb="xs" role="status" aria-live="polite">
         <Text size="xs" c="dimmed" mb={4}>
           Wolne połączenie – wczytywanie trwa dłużej niż zwykle. Nie odświeżaj strony.
         </Text>

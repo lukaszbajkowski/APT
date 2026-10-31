@@ -113,7 +113,6 @@ function EmailDocument({ doc, size }: { doc: GeneratedDoc; size: "compact-xs" | 
       notifications.show({ color: "green", message: `Wysłano na ${r.sent_to}.` });
       setOpen(false);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   return (
     <>
@@ -198,7 +197,6 @@ function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employ
       notifications.show({ color: "green", message: "Dokument przeniesiony do kosza." });
       setOpen(false);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (!doc.can_delete) return null;
   return (
@@ -276,7 +274,6 @@ function TrashList({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["documents-trash", employee.id] });
       notifications.show({ color: "green", message: "Dokument przywrócony." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (!trash.data?.length) return null;
   return (

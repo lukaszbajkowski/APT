@@ -313,13 +313,13 @@ export function PhotoEditor({
                 <Text size="sm" fw={600}>
                   {T("Przed")}
                 </Text>
-                <Image src={src} radius="sm" mah={320} fit="contain" />
+                <Image src={src} alt="Wybrane zdjęcie przed poprawkami" radius="sm" mah={320} fit="contain" />
               </Stack>
               <Stack gap={4} align="center">
                 <Text size="sm" fw={600}>
                   {T("Po")}
                 </Text>
-                <Image src={enh.image} radius="sm" mah={320} fit="contain" />
+                <Image src={enh.image} alt="Zdjęcie po automatycznej poprawie" radius="sm" mah={320} fit="contain" />
               </Stack>
             </Group>
             <Stack gap={4}>

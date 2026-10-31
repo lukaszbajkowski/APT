@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text, Title } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import { IconCircleCheck } from "@tabler/icons-react";
 
-import { api, errorText, formatDate } from "../api";
+import { api, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 import { ErrorState, Loading } from "../components/States";
@@ -62,7 +61,6 @@ function OpenTasks() {
       qc.invalidateQueries({ queryKey: ["employee-checklists"] });
       qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const rows = q.data ?? [];
   const overdue = rows.filter((t) => t.state === "overdue").length;

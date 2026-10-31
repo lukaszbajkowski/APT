@@ -58,11 +58,13 @@ import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useConfirm } from "../lib/confirm";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
 function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "phone" | "email"; value?: string | null }) {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const remove = useMutation({
     mutationFn: () => api(`/employees/${employeeId}/contact/${kind}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -81,7 +83,7 @@ function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "p
         variant="subtle"
         color="red"
         loading={remove.isPending}
-        onClick={() => window.confirm(`Usunąć ${kind === "phone" ? "telefon" : "e-mail"} z kartoteki? Pracownik może go później podać ponownie.`) && remove.mutate()}
+        onClick={() => confirm({ title: "Usunąć dane kontaktowe?", message: `Usunąć ${kind === "phone" ? "telefon" : "e-mail"} z kartoteki? Pracownik może go później podać ponownie.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}
       >
         Usuń
       </Button>

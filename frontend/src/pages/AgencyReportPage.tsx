@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconDownload, IconMail } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { api, errorText, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
+import { api, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 
 interface Row {
@@ -75,7 +75,6 @@ export function AgencyReportPage() {
       notifications.show({ color: "green", message: `Wysłano na: ${r.sent_to.join(", ")}` });
       qc.invalidateQueries({ queryKey: ["agency-report"] });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const r = report.data;

@@ -45,6 +45,7 @@ import { ProgramMentorsButton } from "../components/MentorPrograms";
 import { TrainingsReport } from "../components/TrainingsReport";
 import { CompetenceMatrix, PositionRequirements } from "../components/Competence";
 import { Loading } from "../components/States";
+import { useConfirm } from "../lib/confirm";
 
 function Expiring() {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -143,6 +144,7 @@ function ProgramRow({
     },
     onError,
   });
+  const confirm = useConfirm();
   const remove = useMutation({
     mutationFn: () => api(`/training-programs/${program!.id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["training-types"] }),
@@ -190,7 +192,7 @@ function ProgramRow({
           variant="subtle"
           color="red"
           aria-label="Usuń z katalogu"
-          onClick={() => window.confirm(`Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`) && remove.mutate()}
+          onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}
         >
           <IconTrash size={14} />
         </ActionIcon>

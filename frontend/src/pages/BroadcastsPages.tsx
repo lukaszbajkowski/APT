@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
-import { api, errorText, formatDateTime, withAcct, type DictionaryItem } from "../api";
+import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
+import { PageSheet } from "../components/PageSheet";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../lib/i18n";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
+import { useConfirm } from "../lib/confirm";
+import { MasterDetail } from "../components/MasterDetail";
 
 interface FileRef {
   id: number;
@@ -66,22 +69,7 @@ function InlineDoc({ base }: { base: string }) {
         style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--mantine-color-gray-1)", padding: 8, borderRadius: 6 }}
       >
         {Array.from({ length: info.data.pages }, (_, i) => (
-          <Box
-            key={i}
-            role="img"
-            aria-label={`Strona ${i + 1}`}
-            w="100%"
-            style={{
-              aspectRatio: "210 / 297",
-              backgroundImage: `url(${withAcct(`/api${base}/page/${i}`)})`,
-              backgroundSize: "contain",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "center top",
-              backgroundColor: "#fff",
-              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
-              pointerEvents: "none",
-            }}
-          />
+          <PageSheet key={i} index={i} src={`/api${base}/page/${i}`} />
         ))}
       </Stack>
       {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} />}
@@ -106,7 +94,6 @@ function RecipientsPane({ id }: { id: number }) {
   const remind = useMutation({
     mutationFn: () => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
     onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane na ${r.pushed} z ${r.unread} kont.` }),
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const data = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
   const all = data.data ?? [];
@@ -122,7 +109,7 @@ function RecipientsPane({ id }: { id: number }) {
         <Button size="compact-sm" variant="light" loading={remind.isPending} disabled={unread === 0} onClick={() => remind.mutate()}>
           Przypomnij tym, którzy nie przeczytali ({unread})
         </Button>
-        <TextInput size="xs" style={{ flex: 1, minWidth: 140 }} placeholder="Szukaj: nazwisko" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        <TextInput size="xs" aria-label="Szukaj osoby" style={{ flex: 1, minWidth: 140 }} placeholder="Szukaj: nazwisko" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
         <SegmentedControl
           size="xs"
           value={f}
@@ -190,7 +177,6 @@ export function BroadcastsPage() {
       qc.invalidateQueries({ queryKey: ["broadcasts"] });
       setOpenId(null);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const target = { agency_id: agency ? Number(agency) : null, department_id: dept ? Number(dept) : null, everyone };
   const hasTarget = !!(agency || dept || everyone);
@@ -199,6 +185,7 @@ export function BroadcastsPage() {
     queryFn: () => api<Preview>("/broadcasts/preview", { method: "POST", body: target }),
     enabled: hasTarget && composing,
   });
+  const confirm = useConfirm();
   const send = useMutation({
     mutationFn: () => {
       const f = new FormData();
@@ -247,240 +234,243 @@ export function BroadcastsPage() {
     setOpenId(null);
   };
   return (
-    <Paper withBorder radius="md" style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}>
-      {showList && (
-        <Stack gap={0} w={mobile ? "100%" : 340} style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}>
-          <Stack p="sm" gap="xs">
-            <Group justify="space-between">
-              <Title order={4}>Komunikaty do grup</Title>
-              <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
-                <IconPlus size={18} />
-              </ActionIcon>
+    <MasterDetail
+      mobile={!!mobile}
+      showList={showList}
+      showRight={showRight}
+      list={
+        <>
+  <Stack p="sm" gap="xs">
+    <Group justify="space-between">
+      <Title order={4}>Komunikaty do grup</Title>
+      <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
+        <IconPlus size={18} />
+      </ActionIcon>
+    </Group>
+    <SegmentedControl
+      size="xs"
+      fullWidth
+      value={archive ? "a" : "w"}
+      onChange={(v) => {
+        setArchive(v === "a");
+        back();
+      }}
+      data={[
+        { value: "w", label: "Aktywne" },
+        { value: "a", label: "Archiwum" },
+      ]}
+    />
+    <TextInput size="xs" aria-label="Szukaj komunikatów" placeholder="Szukaj: temat lub odbiorcy" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+    <SegmentedControl
+      size="xs"
+      fullWidth
+      value={status}
+      onChange={setStatus}
+      data={[
+        { value: "", label: "Wszystkie" },
+        { value: "open", label: "W toku" },
+        { value: "done", label: "Zakończone" },
+      ]}
+    />
+  </Stack>
+  <ScrollArea style={{ flex: 1 }}>
+    {list.isLoading && <Loading />}
+    {!list.isLoading && rows.length === 0 && (
+      q.trim() || status ? (
+        <EmptyState
+          search
+          title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak komunikatów w tym filtrze"}
+          text="Sprawdź pisownię albo pokaż wszystkie komunikaty."
+          action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
+        />
+      ) : archive ? (
+        <EmptyState title="Archiwum jest puste" text="Zakończone komunikaty trafiają tu po archiwizacji albo po 30 dniach bez ruchu." />
+      ) : (
+        <EmptyState
+          title="Nie wysłano jeszcze komunikatów"
+          text="Komunikat trafia do wszystkich aktywnych pracowników wybranej agencji lub wydziału."
+          action={{ label: "Nowy komunikat", onClick: () => { setOpenId(null); setComposing(true); } }}
+        />
+      )
+    )}
+    {rows.map((x) => (
+      <UnstyledButton
+        key={x.id}
+        w="100%"
+        p="sm"
+        onClick={() => {
+          setComposing(false);
+          setOpenId(x.id);
+        }}
+        bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
+      >
+        <Group wrap="nowrap" align="flex-start">
+          <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
+            {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
+          </Avatar>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group justify="space-between" wrap="nowrap" gap={4}>
+              <Text size="sm" fw={600} lineClamp={1}>
+                {x.subject}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {shortTime(x.created_at)}
+              </Text>
             </Group>
-            <SegmentedControl
-              size="xs"
-              fullWidth
-              value={archive ? "a" : "w"}
-              onChange={(v) => {
-                setArchive(v === "a");
-                back();
-              }}
-              data={[
-                { value: "w", label: "Aktywne" },
-                { value: "a", label: "Archiwum" },
-              ]}
-            />
-            <TextInput size="xs" placeholder="Szukaj: temat lub odbiorcy" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
-            <SegmentedControl
-              size="xs"
-              fullWidth
-              value={status}
-              onChange={setStatus}
-              data={[
-                { value: "", label: "Wszystkie" },
-                { value: "open", label: "W toku" },
-                { value: "done", label: "Zakończone" },
-              ]}
-            />
-          </Stack>
-          <ScrollArea style={{ flex: 1 }}>
-            {list.isLoading && <Loading />}
-            {!list.isLoading && rows.length === 0 && (
-              q.trim() || status ? (
-                <EmptyState
-                  search
-                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak komunikatów w tym filtrze"}
-                  text="Sprawdź pisownię albo pokaż wszystkie komunikaty."
-                  action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
-                />
-              ) : archive ? (
-                <EmptyState title="Archiwum jest puste" text="Zakończone komunikaty trafiają tu po archiwizacji albo po 30 dniach bez ruchu." />
-              ) : (
-                <EmptyState
-                  title="Nie wysłano jeszcze komunikatów"
-                  text="Komunikat trafia do wszystkich aktywnych pracowników wybranej agencji lub wydziału."
-                  action={{ label: "Nowy komunikat", onClick: () => { setOpenId(null); setComposing(true); } }}
-                />
-              )
-            )}
-            {rows.map((x) => (
-              <UnstyledButton
-                key={x.id}
-                w="100%"
-                p="sm"
-                onClick={() => {
-                  setComposing(false);
-                  setOpenId(x.id);
-                }}
-                bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
-              >
-                <Group wrap="nowrap" align="flex-start">
-                  <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
-                    {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
-                  </Avatar>
-                  <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Group justify="space-between" wrap="nowrap" gap={4}>
-                      <Text size="sm" fw={600} lineClamp={1}>
-                        {x.subject}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {shortTime(x.created_at)}
-                      </Text>
-                    </Group>
-                    <Group justify="space-between" wrap="nowrap" gap={4}>
-                      <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
-                        {x.target}
-                      </Text>
-                      <Badge size="xs" variant="light" color={x.read >= x.total ? "teal" : "gray"}>
-                        {x.read}/{x.total}
-                      </Badge>
-                    </Group>
-                  </Box>
-                </Group>
-              </UnstyledButton>
-            ))}
-          </ScrollArea>
-        </Stack>
-      )}
-      {showRight && (
-        <Box style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          {composing ? (
-            <>
-              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-                {mobile && (
-                  <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
-                    <IconArrowLeft size={18} />
-                  </ActionIcon>
-                )}
-                <Text fw={600}>Nowy komunikat</Text>
-              </Group>
-              <ScrollArea style={{ flex: 1 }} p="md">
-                <Stack pb="md">
-                  <Text c="dimmed" size="sm">
-                    Wiadomość do wszystkich aktywnych pracowników agencji lub wydziału. Pracownik dostaje powiadomienie i e-mail w swoim
-                    języku, czyta komunikat w aplikacji i potwierdza przeczytanie.
-                  </Text>
-                  {error && <Alert color="red">{error}</Alert>}
-                  <Group grow align="flex-end">
-                    <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
-                    <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
-                  </Group>
-                  <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
-                  {preview.data && (
-                    <Text size="sm">
-                      Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
-                      {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
-                    </Text>
-                  )}
-                  <SegmentedControl
-                    value={kind}
-                    onChange={(v) => setKind(v as "info" | "document")}
-                    data={[
-                      { value: "info", label: "Komunikat" },
-                      { value: "document", label: "Dokument do zapoznania się" },
-                    ]}
-                  />
-                  <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-                  <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
-                  <FileInput
-                    label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
-                    placeholder="Dodaj pliki"
-                    accept="application/pdf,image/jpeg,image/png"
-                    multiple
-                    clearable
-                    value={files}
-                    onChange={(v) => setFiles((v ?? []).slice(0, 5))}
-                  />
-                </Stack>
-              </ScrollArea>
-              <Group p="sm" justify="space-between" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-                <Text size="xs" c="dimmed">
-                  {!hasTarget
-                    ? "Wybierz agencję, wydział albo „Wszyscy”."
-                    : preview.data && preview.data.total === 0
-                    ? "Brak aktywnych pracowników w tej grupie – wybierz inną."
-                    : !subject.trim()
-                    ? "Wpisz temat komunikatu."
-                    : !body.trim() && files.length === 0
-                    ? "Dodaj treść albo dokument."
-                    : ""}
-                </Text>
-                <Button
-                  disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
-                  loading={send.isPending}
-                  onClick={() => {
-                    if (window.confirm(`Wysłać komunikat do ${preview.data?.total ?? 0} osób?`)) send.mutate();
-                  }}
-                >
-                  Wyślij
-                </Button>
-              </Group>
-            </>
-          ) : b === null ? (
-            <Stack h="100%" align="center" justify="center">
-              <Text c="dimmed">Wybierz komunikat lub dodaj nowy („+”)</Text>
-            </Stack>
-          ) : (
-            <>
-              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-                {mobile && (
-                  <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
-                    <IconArrowLeft size={18} />
-                  </ActionIcon>
-                )}
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap={8} wrap="nowrap" align="center">
-                    <Text fw={600} lineClamp={2}>
-                      {b.subject}
-                    </Text>
-                    {b.kind === "document" && (
-                      <Badge size="sm" variant="light" style={{ flexShrink: 0 }}>
-                        dokument
-                      </Badge>
-                    )}
-                  </Group>
-                  <Text size="xs" c="dimmed">
-                    {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
-                  </Text>
-                </Box>
-                <Button
-                  size="xs"
-                  variant="default"
-                  loading={arch.isPending}
-                  disabled={!archive && !b.finished}
-                  title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined}
-                  onClick={() => arch.mutate({ id: b.id, on: !archive })}
-                >
-                  {archive ? "Przywróć" : "Archiwizuj"}
-                </Button>
-              </Group>
-              <Tabs value={tab} onChange={(v) => setTab(v === "read" ? "read" : "content")}>
-                <Tabs.List px="sm">
-                  <Tabs.Tab value="content">Treść</Tabs.Tab>
-                  <Tabs.Tab value="read">Kto przeczytał ({b.read}/{b.total})</Tabs.Tab>
-                </Tabs.List>
-              </Tabs>
-              {tab === "read" ? (
-                <RecipientsPane id={b.id} />
-              ) : (
-                <ScrollArea style={{ flex: 1 }} p="md">
-                  <Stack gap="md" pb="md">
-                    {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
-                    <FileDocs files={b.files} staff />
-                    {!archive && (
-                      <Text size="xs" c="dimmed">
-                        Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
-                        (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
-                      </Text>
-                    )}
-                  </Stack>
-                </ScrollArea>
-              )}
-            </>
+            <Group justify="space-between" wrap="nowrap" gap={4}>
+              <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                {x.target}
+              </Text>
+              <Badge size="xs" variant="light" color={x.read >= x.total ? "teal" : "gray"}>
+                {x.read}/{x.total}
+              </Badge>
+            </Group>
+          </Box>
+        </Group>
+      </UnstyledButton>
+    ))}
+  </ScrollArea>
+        </>
+      }
+      detail={
+        <>
+  {composing ? (
+    <>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        {mobile && (
+          <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
+            <IconArrowLeft size={18} />
+          </ActionIcon>
+        )}
+        <Text fw={600}>Nowy komunikat</Text>
+      </Group>
+      <ScrollArea style={{ flex: 1 }} p="md">
+        <Stack pb="md">
+          <Text c="dimmed" size="sm">
+            Wiadomość do wszystkich aktywnych pracowników agencji lub wydziału. Pracownik dostaje powiadomienie i e-mail w swoim
+            języku, czyta komunikat w aplikacji i potwierdza przeczytanie.
+          </Text>
+          {error && <Alert color="red">{error}</Alert>}
+          <Group grow align="flex-end">
+            <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
+            <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
+          </Group>
+          <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
+          {preview.data && (
+            <Text size="sm">
+              Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
+              {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
+            </Text>
           )}
+          <SegmentedControl
+            value={kind}
+            onChange={(v) => setKind(v as "info" | "document")}
+            data={[
+              { value: "info", label: "Komunikat" },
+              { value: "document", label: "Dokument do zapoznania się" },
+            ]}
+          />
+          <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <FileInput
+            label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
+            placeholder="Dodaj pliki"
+            accept="application/pdf,image/jpeg,image/png"
+            multiple
+            clearable
+            value={files}
+            onChange={(v) => setFiles((v ?? []).slice(0, 5))}
+          />
+        </Stack>
+      </ScrollArea>
+      <Group p="sm" justify="space-between" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+        <Text size="xs" c="dimmed">
+          {!hasTarget
+            ? "Wybierz agencję, wydział albo „Wszyscy”."
+            : preview.data && preview.data.total === 0
+            ? "Brak aktywnych pracowników w tej grupie – wybierz inną."
+            : !subject.trim()
+            ? "Wpisz temat komunikatu."
+            : !body.trim() && files.length === 0
+            ? "Dodaj treść albo dokument."
+            : ""}
+        </Text>
+        <Button
+          disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
+          loading={send.isPending}
+          onClick={() => {
+            confirm({ title: "Wysłać komunikat?", message: `Komunikat „${subject.trim()}” trafi do ${preview.data?.total ?? 0} osób. Tej operacji nie da się cofnąć.`, confirmLabel: "Wyślij" }).then((ok) => ok && send.mutate());
+          }}
+        >
+          Wyślij
+        </Button>
+      </Group>
+    </>
+  ) : b === null ? (
+    <Stack h="100%" align="center" justify="center">
+      <Text c="dimmed">Wybierz komunikat lub dodaj nowy („+”)</Text>
+    </Stack>
+  ) : (
+    <>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        {mobile && (
+          <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
+            <IconArrowLeft size={18} />
+          </ActionIcon>
+        )}
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Group gap={8} wrap="nowrap" align="center">
+            <Text fw={600} lineClamp={2}>
+              {b.subject}
+            </Text>
+            {b.kind === "document" && (
+              <Badge size="sm" variant="light" style={{ flexShrink: 0 }}>
+                dokument
+              </Badge>
+            )}
+          </Group>
+          <Text size="xs" c="dimmed">
+            {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
+          </Text>
         </Box>
+        <Button
+          size="xs"
+          variant="default"
+          loading={arch.isPending}
+          disabled={!archive && !b.finished}
+          title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined}
+          onClick={() => arch.mutate({ id: b.id, on: !archive })}
+        >
+          {archive ? "Przywróć" : "Archiwizuj"}
+        </Button>
+      </Group>
+      <Tabs value={tab} onChange={(v) => setTab(v === "read" ? "read" : "content")}>
+        <Tabs.List px="sm">
+          <Tabs.Tab value="content">Treść</Tabs.Tab>
+          <Tabs.Tab value="read">Kto przeczytał ({b.read}/{b.total})</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+      {tab === "read" ? (
+        <RecipientsPane id={b.id} />
+      ) : (
+        <ScrollArea style={{ flex: 1 }} p="md">
+          <Stack gap="md" pb="md">
+            {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
+            <FileDocs files={b.files} staff />
+            {!archive && (
+              <Text size="xs" c="dimmed">
+                Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
+                (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
+              </Text>
+            )}
+          </Stack>
+        </ScrollArea>
       )}
-    </Paper>
+    </>
+  )}
+        </>
+      }
+    />
   );
 }
 
@@ -496,12 +486,6 @@ interface Mine {
   read_at: string | null;
 }
 
-function shortTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
-}
 
 /** Komunikaty pracownika w stylu „Napisz do kadr”: lista po lewej, treść po prawej (na telefonie jedno okno naraz). */
 export function MyBroadcastsPage() {
@@ -534,7 +518,6 @@ export function MyBroadcastsPage() {
   const read = useMutation({
     mutationFn: (id: number) => api(`/me/broadcasts/${id}/read`, { method: "POST" }),
     onSuccess: refresh,
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const arch = useMutation({
     mutationFn: (v: { id: number; on: boolean }) => api(`/me/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
@@ -542,7 +525,6 @@ export function MyBroadcastsPage() {
       refresh();
       if (v.on || view === "archive") setOpenId(null);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const rows = q.data ?? [];
   const m = rows.find((x) => x.id === openId) ?? null;
@@ -553,159 +535,162 @@ export function MyBroadcastsPage() {
     setSpeaking(null);
   };
   return (
-    <Paper withBorder radius="md" style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}>
-      {showList && (
-        <Stack gap={0} w={mobile ? "100%" : 340} style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}>
-          <Stack p="sm" gap="xs">
-            <Title order={4}>{t("Komunikaty")}</Title>
-            <SegmentedControl
-              size="xs"
-              fullWidth
-              value={view}
-              onChange={(v) => {
-                stop();
-                setView(v as "active" | "archive");
-                setOpenId(null);
-              }}
-              data={[
-                { value: "active", label: t("Aktywne") },
-                { value: "archive", label: t("Archiwum") },
-              ]}
-            />
-          </Stack>
-          <ScrollArea style={{ flex: 1 }}>
-            {q.isLoading && <Loading />}
-            {!q.isLoading && rows.length === 0 && (
-              <EmptyState
-                title={view === "archive" ? t("Archiwum jest puste") : t("Brak komunikatów")}
-                text={
-                  view === "archive"
-                    ? t("Zarchiwizowane komunikaty pojawią się tutaj.")
-                    : t("Kadry nie wysłały jeszcze komunikatu. Gdy coś się pojawi, dostaniesz powiadomienie.")
-                }
-              />
-            )}
-            {rows.map((x) => (
-              <UnstyledButton
-                key={x.id}
-                w="100%"
-                p="sm"
-                onClick={() => {
-                  stop();
-                  setOpenId(x.id);
-                }}
-                bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
-              >
-                <Group wrap="nowrap" align="flex-start">
-                  <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
-                    {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
-                  </Avatar>
-                  <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Group justify="space-between" wrap="nowrap" gap={4}>
-                      <Text size="sm" fw={x.read_at ? 500 : 700} lineClamp={1}>
-                        {x.subject}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {shortTime(x.sent_at)}
-                      </Text>
-                    </Group>
-                    <Group justify="space-between" wrap="nowrap" gap={4}>
-                      <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
-                        {x.body || (x.files.length ? x.files[0].name : "")}
-                      </Text>
-                      {!x.read_at ? (
-                        <Badge size="xs" circle color="red" />
-                      ) : (
-                        <Badge size="xs" variant="light" color="teal">
-                          {t("Potwierdzone")}
-                        </Badge>
-                      )}
-                    </Group>
-                  </Box>
-                </Group>
-              </UnstyledButton>
-            ))}
-          </ScrollArea>
-        </Stack>
-      )}
-      {showRight && (
-        <Box style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          {m === null ? (
-            <Stack h="100%" align="center" justify="center">
-              <Text c="dimmed">{t("Wybierz komunikat")}</Text>
-            </Stack>
-          ) : (
-            <>
-              <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-                {mobile && (
-                  <ActionIcon variant="subtle" onClick={() => { stop(); setOpenId(null); }} aria-label={t("Wróć")}>
-                    <IconArrowLeft size={18} />
-                  </ActionIcon>
-                )}
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw={600} lineClamp={2}>
-                    {m.subject}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {t("Kadry")} · {formatDateTime(m.sent_at)}
-                  </Text>
-                </Box>
-                {m.read_at && (!m.archived || m.own_archived) && (
-                  <Button size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
-                    {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
-                  </Button>
-                )}
-              </Group>
-              <ScrollArea style={{ flex: 1 }} p="md">
-                <Stack gap="sm" pb="md">
-                  {m.body && <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>}
-                  <FileDocs files={m.files} />
-                  {canSpeak() && (
-                    <Group>
-                      <Button
-                        size="compact-sm"
-                        variant="light"
-                        leftSection={speaking === m.id ? <IconPlayerStop size={14} /> : <IconVolume size={14} />}
-                        onClick={() => {
-                          if (speaking === m.id) {
-                            stop();
-                            return;
-                          }
-                          stopSpeaking();
-                          setNoVoice(false);
-                          setSpeaking(m.id);
-                          if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(null)) === "no-voice") {
-                            setNoVoice(true);
-                            setSpeaking(null);
-                          }
-                        }}
-                      >
-                        {speaking === m.id ? t("Zatrzymaj") : t("Odsłuchaj")}
-                      </Button>
-                    </Group>
-                  )}
-                  {noVoice && (
-                    <Text size="xs" c="dimmed">
-                      {t("Brak głosu dla tego języka w tym urządzeniu.")}
-                    </Text>
-                  )}
-                </Stack>
-              </ScrollArea>
-              <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-                {!m.read_at ? (
-                  <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
-                    {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
-                  </Button>
-                ) : (
-                  <Badge variant="light" color="teal">
-                    {t("Potwierdzone")} · {formatDateTime(m.read_at)}
-                  </Badge>
-                )}
-              </Box>
-            </>
-          )}
+    <MasterDetail
+      mobile={!!mobile}
+      showList={showList}
+      showRight={showRight}
+      list={
+        <>
+  <Stack p="sm" gap="xs">
+    <Title order={4}>{t("Komunikaty")}</Title>
+    <SegmentedControl
+      size="xs"
+      fullWidth
+      value={view}
+      onChange={(v) => {
+        stop();
+        setView(v as "active" | "archive");
+        setOpenId(null);
+      }}
+      data={[
+        { value: "active", label: t("Aktywne") },
+        { value: "archive", label: t("Archiwum") },
+      ]}
+    />
+  </Stack>
+  <ScrollArea style={{ flex: 1 }}>
+    {q.isLoading && <Loading />}
+    {!q.isLoading && rows.length === 0 && (
+      <EmptyState
+        title={view === "archive" ? t("Archiwum jest puste") : t("Brak komunikatów")}
+        text={
+          view === "archive"
+            ? t("Zarchiwizowane komunikaty pojawią się tutaj.")
+            : t("Kadry nie wysłały jeszcze komunikatu. Gdy coś się pojawi, dostaniesz powiadomienie.")
+        }
+      />
+    )}
+    {rows.map((x) => (
+      <UnstyledButton
+        key={x.id}
+        w="100%"
+        p="sm"
+        onClick={() => {
+          stop();
+          setOpenId(x.id);
+        }}
+        bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
+      >
+        <Group wrap="nowrap" align="flex-start">
+          <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
+            {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
+          </Avatar>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <Group justify="space-between" wrap="nowrap" gap={4}>
+              <Text size="sm" fw={x.read_at ? 500 : 700} lineClamp={1}>
+                {x.subject}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {shortTime(x.sent_at)}
+              </Text>
+            </Group>
+            <Group justify="space-between" wrap="nowrap" gap={4}>
+              <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                {x.body || (x.files.length ? x.files[0].name : "")}
+              </Text>
+              {!x.read_at ? (
+                <Badge size="xs" circle color="red" />
+              ) : (
+                <Badge size="xs" variant="light" color="teal">
+                  {t("Potwierdzone")}
+                </Badge>
+              )}
+            </Group>
+          </Box>
+        </Group>
+      </UnstyledButton>
+    ))}
+  </ScrollArea>
+        </>
+      }
+      detail={
+        <>
+  {m === null ? (
+    <Stack h="100%" align="center" justify="center">
+      <Text c="dimmed">{t("Wybierz komunikat")}</Text>
+    </Stack>
+  ) : (
+    <>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        {mobile && (
+          <ActionIcon variant="subtle" onClick={() => { stop(); setOpenId(null); }} aria-label={t("Wróć")}>
+            <IconArrowLeft size={18} />
+          </ActionIcon>
+        )}
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Text fw={600} lineClamp={2}>
+            {m.subject}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {t("Kadry")} · {formatDateTime(m.sent_at)}
+          </Text>
         </Box>
-      )}
-    </Paper>
+        {m.read_at && (!m.archived || m.own_archived) && (
+          <Button size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
+            {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
+          </Button>
+        )}
+      </Group>
+      <ScrollArea style={{ flex: 1 }} p="md">
+        <Stack gap="sm" pb="md">
+          {m.body && <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>}
+          <FileDocs files={m.files} />
+          {canSpeak() && (
+            <Group>
+              <Button
+                size="compact-sm"
+                variant="light"
+                leftSection={speaking === m.id ? <IconPlayerStop size={14} /> : <IconVolume size={14} />}
+                onClick={() => {
+                  if (speaking === m.id) {
+                    stop();
+                    return;
+                  }
+                  stopSpeaking();
+                  setNoVoice(false);
+                  setSpeaking(m.id);
+                  if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(null)) === "no-voice") {
+                    setNoVoice(true);
+                    setSpeaking(null);
+                  }
+                }}
+              >
+                {speaking === m.id ? t("Zatrzymaj") : t("Odsłuchaj")}
+              </Button>
+            </Group>
+          )}
+          {noVoice && (
+            <Text size="xs" c="dimmed">
+              {t("Brak głosu dla tego języka w tym urządzeniu.")}
+            </Text>
+          )}
+        </Stack>
+      </ScrollArea>
+      <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+        {!m.read_at ? (
+          <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
+            {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
+          </Button>
+        ) : (
+          <Badge variant="light" color="teal">
+            {t("Potwierdzone")} · {formatDateTime(m.read_at)}
+          </Badge>
+        )}
+      </Box>
+    </>
+  )}
+        </>
+      }
+    />
   );
 }

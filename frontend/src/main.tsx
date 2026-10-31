@@ -8,12 +8,13 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { MantineProvider, createTheme, type MantineColorsTuple } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { App } from "./App";
 import { AuthProvider } from "./auth";
+import { ConfirmProvider } from "./lib/confirm";
 import { I18nProvider } from "./lib/i18n";
-import { ApiError } from "./api";
+import { ApiError, errorText } from "./api";
 import { notifications } from "@mantine/notifications";
 
 // Granat – ten sam kolor co pasek na karcie identyfikacyjnej.
@@ -40,6 +41,14 @@ const theme = createTheme({
 
 // Błąd wczytywania: jedno czytelne powiadomienie (co się stało, czyja to wina, co zrobić), bez dublowania.
 const queryClient = new QueryClient({
+  // domyślna obsługa błędu zapisu: czerwone powiadomienie, chyba że mutacja ma własną obsługę
+  mutationCache: new MutationCache({
+    onError: (error, _v, _c, mutation) => {
+      if (mutation.options.onError) return;
+      if (error instanceof ApiError && error.status === 401) return;
+      notifications.show({ color: "red", title: "Nie udało się zapisać", message: errorText(error) });
+    },
+  }),
   queryCache: new QueryCache({
     onError: (error) => {
       if (!(error instanceof ApiError) || error.status === 401 || (error.status >= 400 && error.status < 500 && error.status !== 0)) return;
@@ -70,7 +79,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <AuthProvider>
             <I18nProvider>
-              <App />
+              <ConfirmProvider>
+                <App />
+              </ConfirmProvider>
             </I18nProvider>
           </AuthProvider>
         </BrowserRouter>

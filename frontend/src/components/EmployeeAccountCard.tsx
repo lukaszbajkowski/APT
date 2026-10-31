@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Card, CopyButton, Group, Stack, Text, TextInput, 
 import { IconAlertCircle } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
+import { useConfirm } from "../lib/confirm";
 
 interface Account {
   exists: boolean;
@@ -21,6 +22,7 @@ interface InviteOut {
 
 /** Konto pracownika w systemie (tylko kadry): zaproszenie, status, wyłączenie. */
 export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: number; contactEmail?: string | null }) {
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
@@ -104,8 +106,12 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
               color="orange"
               loading={reset.isPending}
               onClick={() =>
-                window.confirm("Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.") &&
-                reset.mutate()
+                confirm({
+                  title: "Zresetować konto?",
+                  message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
+                  confirmLabel: "Zresetuj konto",
+                  danger: true,
+                }).then((ok) => ok && reset.mutate())
               }
             >
               Zresetuj dostęp (utrata telefonu)

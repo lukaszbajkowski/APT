@@ -94,7 +94,6 @@ function PlannedList({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
       notifications.show({ color: "green", message: "Anulowano zaplanowaną zmianę." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (!q.data?.length) return null;
   return (
@@ -328,7 +327,6 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const done = it.state === "done" || it.state === "auto";
   return (
@@ -389,7 +387,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
         )}
         {it.can_edit && !done && (
           <Tooltip label={it.state === "skipped" ? "Przywróć" : "Pomiń (nie dotyczy)"} withArrow>
-            <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => patch.mutate({ skipped: it.state !== "skipped" })}>
+            <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Pomiń lub przywróć punkt" onClick={() => patch.mutate({ skipped: it.state !== "skipped" })}>
               <IconPlayerSkipForward size={14} />
             </ActionIcon>
           </Tooltip>
@@ -414,7 +412,6 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
       refresh();
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   if (!q.data) return null;
   const kinds = (["offboarding", "onboarding"] as const).filter((k) => q.data[k].length > 0);
@@ -523,7 +520,6 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
       setSaved(true);
       notifications.show({ color: "green", message: "Zapisano. Nowe checklisty będą tworzone według tych ustawień." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const apply = useMutation({
     mutationFn: () => api<{ people: number; added: number; removed: number }>(`/checklist-templates/${kind}/apply`, { method: "POST" }),
@@ -535,7 +531,6 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
         message: `Zaktualizowano checklisty ${r.people} os. (dodane pozycje: ${r.added}, usunięte: ${r.removed}).`,
       });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const upd = (i: number, v: Partial<TemplateItem>) => {

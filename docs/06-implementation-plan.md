@@ -133,3 +133,8 @@ Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie 
 - Błędy sieci to `ApiError(0)`; globalne powiadomienie o błędzie wczytywania (QueryCache) mówi, czyja to wina i co zrobić.
 - Brak wyników wyszukiwania: komunikat z cytatem frazy i przyciskiem „Wyczyść wyszukiwanie”.
 - Wygaśnięcie sesji: ekran logowania wyjaśnia powód; odmowa mikrofonu: wyjaśnienie i wpisanie ręczne; formularz komunikatu podpowiada, czego brakuje; po wysłaniu komunikatu potwierdzenie z kolejnym krokiem.
+
+## Przegląd systemu projektowego (frontend)
+- Etykiety pól i opisy ikon (`aria-label`), teksty alternatywne obrazów w edytorze zdjęcia, ogłaszanie komunikatów statusu (`aria-live`/`role="status"`).
+- Okno potwierdzenia `useConfirm()` (`lib/confirm.tsx`) zamiast `window.confirm`; domyślna obsługa błędu zapisu w `MutationCache` (własne `onError` ma pierwszeństwo).
+- Wspólne komponenty: `MasterDetail` (układ komunikatora), `PageSheet` (strona dokumentu), `shortTime` w `api.ts`.

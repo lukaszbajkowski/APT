@@ -93,7 +93,6 @@ function PositionRow({ p, types, staff }: { p: PositionReqs; types: TrainingType
       notifications.show({ color: "green", message: `Zapisano wymagania: ${p.position}.` });
       setEditing(false);
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   return (

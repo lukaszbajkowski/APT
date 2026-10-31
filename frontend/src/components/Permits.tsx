@@ -88,7 +88,6 @@ export function PermitsCard({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
       notifications.show({ color: "green", message: "Usunięto dokument." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const latest = q.data?.[0];
   return (

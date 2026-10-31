@@ -5,7 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
 import { useT } from "../lib/i18n";
-import { api, errorText } from "../api";
+import { api } from "../api";
 import { isIos, isStandalone } from "../lib/install";
 
 function toKey(b64: string): Uint8Array {
@@ -65,7 +65,6 @@ export function PushCard() {
       setOn(true);
     },
     onSuccess: () => notifications.show({ color: "green", message: t("Powiadomienia włączone na tym urządzeniu.") }),
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const disable = useMutation({
     mutationFn: async () => {
@@ -80,7 +79,6 @@ export function PushCard() {
       setOn(false);
     },
     onSuccess: () => notifications.show({ message: t("Powiadomienia wyłączone na tym urządzeniu.") }),
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const test = useMutation({
     mutationFn: async () => {
@@ -88,7 +86,6 @@ export function PushCard() {
       return api("/push/test", { method: "POST", body: { endpoint: sub?.endpoint ?? null } });
     },
     onSuccess: () => notifications.show({ message: t("Wysłano testowe powiadomienie.") }),
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const needInstall = isIos() && !isStandalone();

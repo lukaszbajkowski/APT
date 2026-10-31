@@ -145,7 +145,6 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["medical-exams", employee.id] });
       notifications.show({ color: "green", message: "Usunięto badanie." });
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
   const latest = q.data?.[0];
   return (

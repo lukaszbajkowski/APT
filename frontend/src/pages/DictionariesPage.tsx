@@ -98,7 +98,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
   return (
     <Stack mt="md">
       <Group justify="space-between">
-        <TextInput placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
+        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
         <Button leftSection={<IconPlus size={16} />} onClick={() => open("new")}>
           Dodaj {cfg.noun}
         </Button>

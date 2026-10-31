@@ -6,10 +6,11 @@ import { notifications } from "@mantine/notifications";
 import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
-import { api, errorText, formatDateTime } from "../api";
+import { api, errorText, formatDateTime, shortTime } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
+import { MasterDetail } from "./MasterDetail";
 
 export interface ThreadRow {
   id: number;
@@ -43,13 +44,6 @@ export const THREAD_STATUS: Record<ThreadRow["status"], { label: string; color: 
 // Odświeżanie „na żywo”: odpytywanie co kilka sekund, tylko gdy karta jest widoczna.
 const LIVE = { refetchOnWindowFocus: true, refetchIntervalInBackground: false } as const;
 
-function shortTime(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  return d.toDateString() === today.toDateString()
-    ? d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
-}
 
 function initials(name: string): string {
   return name
@@ -224,6 +218,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
             {staff ? (
               <Select
                 size="xs"
+                aria-label="Status rozmowy"
                 w={140}
                 allowDeselect={false}
                 value={t.status}
@@ -340,6 +335,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
       <Group p="sm" align="flex-end" wrap="nowrap" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
         <Textarea
           style={{ flex: 1 }}
+          aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
           placeholder={staff ? "Napisz odpowiedź…" : T("Napisz wiadomość…")}
           autosize
           minRows={1}
@@ -473,127 +469,127 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     setComposing(false);
   };
   return (
-    <Paper
-      withBorder
-      radius="md"
-      style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}
-    >
-      {showList && (
-        <Stack gap={0} w={mobile ? "100%" : 340} style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}>
-          <Stack p="sm" gap="xs">
-            <Group justify="space-between">
-              <Title order={4}>{staff ? "Wiadomości" : T("Napisz do kadr")}</Title>
-              <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setComposing(true); setOpenId(null); }} aria-label={T("Nowa wiadomość")}>
-                <IconPlus size={18} />
-              </ActionIcon>
-            </Group>
-            <SegmentedControl
-              size="xs"
-              fullWidth
-              value={view}
-              onChange={(v) => {
-                setView(v as "active" | "archive");
-                setOpenId(null);
-                setComposing(false);
-              }}
-              data={[
-                { value: "active", label: T("Aktywne") },
-                { value: "archive", label: T("Archiwum") },
-              ]}
-            />
-            {staff && (
-              <>
-                <TextInput size="xs" placeholder="Szukaj: nazwisko lub temat" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
-                <SegmentedControl
-                  size="xs"
-                  fullWidth
-                  value={status}
-                  onChange={setStatus}
-                  data={[
-                    { value: "", label: "Wszystkie" },
-                    { value: "new", label: "Nowe" },
-                    { value: "in_progress", label: "W toku" },
-                    { value: "done", label: "Zakończone" },
-                  ]}
-                />
-              </>
-            )}
-          </Stack>
-          <ScrollArea style={{ flex: 1 }}>
-            {rows.length === 0 && (
-              q.trim() || status ? (
-                <EmptyState
-                  search
-                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak wiadomości w tym filtrze"}
-                  text="Sprawdź pisownię albo pokaż wszystkie wiadomości."
-                  action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
-                />
-              ) : view === "archive" ? (
-                <EmptyState
-                  title={T("Archiwum jest puste")}
-                  text={T("Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")}
-                />
-              ) : (
-                <EmptyState
-                  title={staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
-                  text={staff ? "Pracownicy nie napisali jeszcze do kadr. Możesz też sam zacząć rozmowę." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
-                  action={{ label: T("Nowa wiadomość"), onClick: () => { setComposing(true); setOpenId(null); } }}
-                />
-              )
-            )}
-            {rows.map((t) => {
-              const name = staff ? (t.employee_name ?? "") : T("Kadry");
-              return (
-                <UnstyledButton
-                  key={t.id}
-                  w="100%"
-                  p="sm"
-                  onClick={() => { setOpenId(t.id); setComposing(false); }}
-                  bg={openId === t.id ? "var(--mantine-color-default-hover)" : undefined}
-                >
-                  <Group wrap="nowrap" align="flex-start">
-                    <Avatar radius="xl" color="blue">
-                      {initials(name)}
-                    </Avatar>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
-                      <Group justify="space-between" wrap="nowrap" gap={4}>
-                        <Text size="sm" fw={t.unread ? 700 : 500} lineClamp={1}>
-                          {name}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {shortTime(t.updated_at)}
-                        </Text>
-                      </Group>
-                      <Text size="xs" c="dimmed" lineClamp={1}>
-                        {t.subject}
-                      </Text>
-                      <Group justify="space-between" wrap="nowrap" gap={4}>
-                        <Text size="xs" fw={t.unread ? 700 : 400} lineClamp={1} style={{ flex: 1 }}>
-                          {(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}
-                        </Text>
-                        {t.unread ? <Badge size="xs" circle color="red" /> : <Badge size="xs" variant="light" color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>}
-                      </Group>
-                    </Box>
-                  </Group>
-                </UnstyledButton>
-              );
-            })}
-          </ScrollArea>
-        </Stack>
-      )}
-      {showRight && (
-        <Box style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-          {composing ? (
-            <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
-          ) : openId !== null ? (
-            <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} />
-          ) : (
-            <Stack h="100%" align="center" justify="center">
-              <Text c="dimmed">{T("Wybierz rozmowę")}</Text>
-            </Stack>
-          )}
-        </Box>
-      )}
-    </Paper>
+    <MasterDetail
+      mobile={!!mobile}
+      showList={showList}
+      showRight={showRight}
+      plainDetail
+      list={
+        <>
+  <Stack p="sm" gap="xs">
+    <Group justify="space-between">
+      <Title order={4}>{staff ? "Wiadomości" : T("Napisz do kadr")}</Title>
+      <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setComposing(true); setOpenId(null); }} aria-label={T("Nowa wiadomość")}>
+        <IconPlus size={18} />
+      </ActionIcon>
+    </Group>
+    <SegmentedControl
+      size="xs"
+      fullWidth
+      value={view}
+      onChange={(v) => {
+        setView(v as "active" | "archive");
+        setOpenId(null);
+        setComposing(false);
+      }}
+      data={[
+        { value: "active", label: T("Aktywne") },
+        { value: "archive", label: T("Archiwum") },
+      ]}
+    />
+    {staff && (
+      <>
+        <TextInput size="xs" aria-label="Szukaj wiadomości" placeholder="Szukaj: nazwisko lub temat" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        <SegmentedControl
+          size="xs"
+          fullWidth
+          value={status}
+          onChange={setStatus}
+          data={[
+            { value: "", label: "Wszystkie" },
+            { value: "new", label: "Nowe" },
+            { value: "in_progress", label: "W toku" },
+            { value: "done", label: "Zakończone" },
+          ]}
+        />
+      </>
+    )}
+  </Stack>
+  <ScrollArea style={{ flex: 1 }}>
+    {rows.length === 0 && (
+      q.trim() || status ? (
+        <EmptyState
+          search
+          title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak wiadomości w tym filtrze"}
+          text="Sprawdź pisownię albo pokaż wszystkie wiadomości."
+          action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
+        />
+      ) : view === "archive" ? (
+        <EmptyState
+          title={T("Archiwum jest puste")}
+          text={T("Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")}
+        />
+      ) : (
+        <EmptyState
+          title={staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
+          text={staff ? "Pracownicy nie napisali jeszcze do kadr. Możesz też sam zacząć rozmowę." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
+          action={{ label: T("Nowa wiadomość"), onClick: () => { setComposing(true); setOpenId(null); } }}
+        />
+      )
+    )}
+    {rows.map((t) => {
+      const name = staff ? (t.employee_name ?? "") : T("Kadry");
+      return (
+        <UnstyledButton
+          key={t.id}
+          w="100%"
+          p="sm"
+          onClick={() => { setOpenId(t.id); setComposing(false); }}
+          bg={openId === t.id ? "var(--mantine-color-default-hover)" : undefined}
+        >
+          <Group wrap="nowrap" align="flex-start">
+            <Avatar radius="xl" color="blue">
+              {initials(name)}
+            </Avatar>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <Group justify="space-between" wrap="nowrap" gap={4}>
+                <Text size="sm" fw={t.unread ? 700 : 500} lineClamp={1}>
+                  {name}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {shortTime(t.updated_at)}
+                </Text>
+              </Group>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {t.subject}
+              </Text>
+              <Group justify="space-between" wrap="nowrap" gap={4}>
+                <Text size="xs" fw={t.unread ? 700 : 400} lineClamp={1} style={{ flex: 1 }}>
+                  {(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}
+                </Text>
+                {t.unread ? <Badge size="xs" circle color="red" /> : <Badge size="xs" variant="light" color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>}
+              </Group>
+            </Box>
+          </Group>
+        </UnstyledButton>
+      );
+    })}
+  </ScrollArea>
+        </>
+      }
+      detail={
+        <>
+  {composing ? (
+    <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
+  ) : openId !== null ? (
+    <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} />
+  ) : (
+    <Stack h="100%" align="center" justify="center">
+      <Text c="dimmed">{T("Wybierz rozmowę")}</Text>
+    </Stack>
+  )}
+        </>
+      }
+    />
   );
 }

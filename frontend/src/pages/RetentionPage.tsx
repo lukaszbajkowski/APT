@@ -102,7 +102,6 @@ export function RetentionPage() {
       setConfirmText("");
       refresh();
     },
-    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
 
   const hold = useMutation({

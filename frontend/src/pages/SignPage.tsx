@@ -89,6 +89,10 @@ async function confirmWithDevice(token: string, view: string | null): Promise<Re
 }
 
 /** Strona publiczna: motyw zawsze z systemu telefonu (brak informacji = jasny), niezależnie od wyboru zapisanego w aplikacji. */
+// kolor „atramentu” podpisu: ciemny granat (jak pasek karty) i jasny w trybie ciemnym
+const INK = "#0b1f66";
+const INK_DARK = "#dbe4ff";
+
 function useSystemColorScheme() {
   useEffect(() => {
     const root = document.documentElement;
@@ -152,7 +156,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
     c.width = Math.round(r.width * ratio);
     c.height = Math.round(r.height * ratio);
     const ctx = c.getContext("2d")!;
-    drawStrokes(ctx, strokes.current, (r.width / PAD_W) * ratio, isDark() ? "#dbe4ff" : "#0b1f66");
+    drawStrokes(ctx, strokes.current, (r.width / PAD_W) * ratio, isDark() ? INK_DARK : INK);
   };
 
   useEffect(() => {
@@ -173,7 +177,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
     const out = document.createElement("canvas");
     out.width = PAD_W * 2;
     out.height = PAD_H * 2;
-    drawStrokes(out.getContext("2d")!, strokes.current, 2, "#0b1f66");
+    drawStrokes(out.getContext("2d")!, strokes.current, 2, INK);
     return out.toDataURL("image/png");
   };
 

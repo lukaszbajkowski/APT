@@ -202,7 +202,7 @@ export function EmployeesPage() {
         <div>
           <Title order={2}>Pracownicy</Title>
           {list.data && (
-            <Text size="sm" c="dimmed">
+            <Text size="sm" c="dimmed" role="status" aria-live="polite">
               {list.data.total === 0 ? "Brak wyników" : `Znaleziono: ${list.data.total}`}
             </Text>
           )}

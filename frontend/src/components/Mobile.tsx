@@ -192,6 +192,99 @@ export function useSwipe(onLeft: () => void, onRight: () => void) {
   };
 }
 
+/**
+ * Strony obok siebie przesuwane palcem: treść jedzie za palcem, po puszczeniu dojeżdża do sąsiedniej strony.
+ * Wszystkie strony są wczytane od razu, więc sąsiednia treść jest gotowa w trakcie przesuwania.
+ */
+export function SwipePager({ index, onIndex, children }: { index: number; onIndex: (i: number) => void; children: ReactNode[] }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const pages = useRef<(HTMLDivElement | null)[]>([]);
+  const st = useRef({ x: 0, y: 0, t: 0, dx: 0, lock: "" as "" | "x" | "y", skip: false });
+  const [height, setHeight] = useState<number | undefined>(undefined);
+  const n = children.length;
+
+  const place = (dx: number, animate: boolean) => {
+    const el = track.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 280ms cubic-bezier(.2,.8,.2,1)" : "none";
+    el.style.transform = `translate3d(calc(${-index * 100}% + ${dx}px), 0, 0)`;
+  };
+  useEffect(() => place(0, true));
+
+  // wysokość = wysokość bieżącej strony (bez pustego miejsca pod krótszymi zakładkami)
+  useEffect(() => {
+    const el = pages.current[index];
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeight(el.offsetHeight));
+    ro.observe(el);
+    setHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [index, n]);
+
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.target as HTMLElement;
+    const skip = !!t.closest("input, textarea, select, [data-no-swipe], .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer");
+    st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, lock: "", skip };
+  };
+  const onTouchMove = (e: TouchEvent) => {
+    const c = st.current;
+    if (c.skip) return;
+    const dx = e.touches[0].clientX - c.x;
+    const dy = e.touches[0].clientY - c.y;
+    if (!c.lock) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      c.lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (c.lock !== "x") return;
+    // opór na pierwszej i ostatniej stronie
+    const edge = (index === 0 && dx > 0) || (index === n - 1 && dx < 0);
+    c.dx = edge ? dx / 3 : dx;
+    place(c.dx, false);
+  };
+  const onTouchEnd = () => {
+    const c = st.current;
+    if (c.lock !== "x") return;
+    const w = wrap.current?.offsetWidth ?? 390;
+    const fast = Math.abs(c.dx) / Math.max(1, Date.now() - c.t) > 0.4;
+    let next = index;
+    if ((c.dx < -w * 0.25 || (fast && c.dx < -30)) && index < n - 1) next = index + 1;
+    if ((c.dx > w * 0.25 || (fast && c.dx > 30)) && index > 0) next = index - 1;
+    c.lock = "";
+    if (next !== index) onIndex(next);
+    else place(0, true);
+  };
+
+  return (
+    <div
+      ref={wrap}
+      className="ui-pager"
+      style={{ height, transition: "height 200ms ease" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div ref={track} className="ui-pager-track">
+        {children.map((c, i) => (
+          <div
+            key={i}
+            ref={(el) => {
+              pages.current[i] = el;
+            }}
+            className="ui-pager-page"
+            role="tabpanel"
+            aria-hidden={i !== index}
+            {...((i !== index ? { inert: "" } : {}) as object)}
+          >
+            {c}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć. */
 export function SheetHandle({ onClose, children }: { onClose: () => void; children?: ReactNode }) {
   const drag = useDragToClose(onClose);

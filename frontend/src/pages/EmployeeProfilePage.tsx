@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -67,7 +67,7 @@ import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
-import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, useSwipe, type SheetAction } from "../components/Mobile";
+import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -197,14 +197,10 @@ export function EmployeeProfilePage() {
   const [moreSheet, setMoreSheet] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [tab, setTab] = useState("dane");
-  const tabOrder = useRef<string[]>([]);
   useEffect(() => {
     document.querySelector<HTMLElement>('.profile-tabs [role="tab"][aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [tab]);
-  const swipe = useSwipe(
-    () => { const o = tabOrder.current; const i = o.indexOf(tab); if (i >= 0 && i < o.length - 1) setTab(o[i + 1]); },
-    () => { const o = tabOrder.current; const i = o.indexOf(tab); if (i > 0) setTab(o[i - 1]); },
-  );
+
   const navigate = useNavigate();
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -365,7 +361,7 @@ export function EmployeeProfilePage() {
       { v: "konto", l: "Konto", show: staff },
       { v: "historia", l: "Historia", show: !isAgency },
     ].filter((t) => t.show);
-    tabOrder.current = tabs.map((t) => t.v);
+    const idx = Math.max(0, tabs.findIndex((t) => t.v === tab));
     return (
       <Stack gap="md">
         <Group gap="md" wrap="nowrap" align="center">
@@ -417,7 +413,7 @@ export function EmployeeProfilePage() {
           </Group>
         )}
 
-        <Tabs value={tab} onChange={(v) => setTab(v ?? "dane")} keepMounted={false} className="profile-tabs">
+        <Tabs value={tab} onChange={(v) => setTab(v ?? "dane")} className="profile-tabs">
           <Tabs.List>
             {tabs.map((t) => (
               <Tabs.Tab
@@ -435,9 +431,11 @@ export function EmployeeProfilePage() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
-          <div {...swipe} style={{ minHeight: "50vh" }}>
-
-          <Tabs.Panel value="dane" pt="md">
+          <SwipePager index={idx} onIndex={(i) => setTab(tabs[i].v)}>
+            {tabs.map((t) => (
+              <div key={t.v} style={{ paddingTop: 16 }}>
+                {t.v === "dane" && (
+                  <>
             <Stack gap="lg">
               {(overdueN > 0 || missingReq > 0) && (
                 <UnstyledButton className="attention" onClick={() => setTab(overdueN ? "zadania" : "szkolenia")}>
@@ -492,36 +490,49 @@ export function EmployeeProfilePage() {
                 </Section>
               )}
             </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="dokumenty" pt="md">
+                  </>
+                )}
+                {t.v === "dokumenty" && (
+                  <>
             <Stack gap="lg">
               {canEdit && <DocumentsCard employee={e} />}
               {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
               {staff && <PermitsCard employee={e} />}
             </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="zadania" pt="md">
+                  </>
+                )}
+                {t.v === "zadania" && (
+                  <>
             {canEdit && <ChecklistsCard employee={e} />}
-          </Tabs.Panel>
-          <Tabs.Panel value="szkolenia" pt="md">
+                  </>
+                )}
+                {t.v === "szkolenia" && (
+                  <>
             <Stack gap="md">
               <TrainingsCard employee={e} />
               <MentorProgramsCard employee={e} />
             </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="konto" pt="md">
+                  </>
+                )}
+                {t.v === "konto" && (
+                  <>
             <Stack gap="md">
               <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />
               <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />
             </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="historia" pt="md">
+                  </>
+                )}
+                {t.v === "historia" && (
+                  <>
             <Stack gap="md">
               <TimelineCard employee={e} />
               {historyCard}
             </Stack>
-          </Tabs.Panel>
-          </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </SwipePager>
         </Tabs>
 
         <ActionSheet opened={moreSheet} onClose={() => setMoreSheet(false)} title={`${e.last_name} ${e.first_name}`} actions={moreActions} />

@@ -444,3 +444,8 @@ html, body { background: var(--apt-ground); }
   background: var(--mantine-color-orange-light); color: var(--mantine-color-text);
 }
 .attention > svg:first-child { color: var(--mantine-color-orange-text); }
+
+/* strony przesuwane palcem */
+.ui-pager { overflow: hidden; touch-action: pan-y; margin: 0 calc(var(--mantine-spacing-sm) * -1); }
+.ui-pager-track { display: flex; align-items: flex-start; will-change: transform; }
+.ui-pager-page { flex: 0 0 100%; min-width: 0; padding: 0 var(--mantine-spacing-sm); box-sizing: border-box; }

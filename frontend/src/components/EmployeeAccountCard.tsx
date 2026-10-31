@@ -70,6 +70,13 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
       confirmLabel: "Zresetuj konto",
       danger: true,
     }).then((ok) => ok && reset.mutate());
+  const askDisable = () =>
+    confirm({
+      title: "Wyłączyć konto?",
+      message: "Pracownik nie zaloguje się do aplikacji, dopóki nie włączysz konta ponownie. Dane w kartotece zostają bez zmian.",
+      confirmLabel: "Wyłącz konto",
+      danger: true,
+    }).then((ok) => ok && toggle.mutate(false));
   if (mobile) {
     const resultBox = result && (
       <Alert color="green" variant="light" title={result.sent ? "Zaproszenie wysłane e-mailem" : "Link do zaproszenia"}>
@@ -113,7 +120,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
         {a?.exists && a.active && (
           <DangerZone>
             {activated && <DangerAction label="Zresetuj dostęp" description="Np. po zgubieniu telefonu. Stare klucze przestaną działać." loading={reset.isPending} onClick={askReset} />}
-            <DangerAction label="Wyłącz konto" description="Pracownik nie zaloguje się, dane zostają w kartotece." loading={toggle.isPending} onClick={() => toggle.mutate(false)} />
+            <DangerAction label="Wyłącz konto" description="Pracownik nie zaloguje się, dane zostają w kartotece." loading={toggle.isPending} onClick={askDisable} />
           </DangerZone>
         )}
       </Stack>
@@ -201,7 +208,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
                 </Stack>
               </Button>
             )}
-            <Button variant="outline" color="red" justify="flex-start" h="auto" py={8} loading={toggle.isPending} onClick={() => toggle.mutate(false)}>
+            <Button variant="outline" color="red" justify="flex-start" h="auto" py={8} loading={toggle.isPending} onClick={askDisable}>
               <Stack gap={0} align="flex-start">
                 <span>Wyłącz konto</span>
                 <Text span size="xs" c="dimmed" fw={400} style={{ whiteSpace: "normal", textAlign: "left" }}>

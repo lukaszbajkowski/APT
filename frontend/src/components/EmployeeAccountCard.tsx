@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
+import { DangerAction, DangerZone, InfoRow, Section, StatusBadge } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, CopyButton, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconCheck, IconMail } from "@tabler/icons-react";
@@ -23,6 +25,7 @@ interface InviteOut {
 /** Konto pracownika w systemie (tylko kadry): zaproszenie, status, wyłączenie. */
 export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: number; contactEmail?: string | null }) {
   const confirm = useConfirm();
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
@@ -60,6 +63,62 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
 
   const a = acc.data;
   const activated = !!a && a.has_passkey;
+  const askReset = () =>
+    confirm({
+      title: "Zresetować konto?",
+      message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.",
+      confirmLabel: "Zresetuj konto",
+      danger: true,
+    }).then((ok) => ok && reset.mutate());
+  if (mobile) {
+    const resultBox = result && (
+      <Alert color="green" variant="light" title={result.sent ? "Zaproszenie wysłane e-mailem" : "Link do zaproszenia"}>
+        {!result.sent && (
+          <Stack gap={6}>
+            <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+              {result.link}
+            </Text>
+            <CopyButton value={result.link}>{({ copied, copy }) => <Button size="xs" variant="default" onClick={copy}>{copied ? "Skopiowano" : "Kopiuj link"}</Button>}</CopyButton>
+          </Stack>
+        )}
+      </Alert>
+    );
+    return (
+      <Stack gap="lg">
+        {error && <Alert color="red" icon={<IconAlertCircle size={18} />}>{error}</Alert>}
+        <Section title="Konto w aplikacji">
+          <InfoRow label="Stan">
+            {!a?.exists ? <StatusBadge tone="neutral">brak konta</StatusBadge> : !a.active ? <StatusBadge tone="neutral">wyłączone</StatusBadge> : a.has_passkey ? <StatusBadge tone="ok">aktywne</StatusBadge> : <StatusBadge tone="wait">czeka na aktywację</StatusBadge>}
+          </InfoRow>
+          {a?.exists && <InfoRow label="Login"><span style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>{a.username}</span></InfoRow>}
+          {a?.has_passkey && <InfoRow label="Logowanie">klucz dostępu</InfoRow>}
+          {a?.last_login_at && <InfoRow label="Ostatnio">{formatDateTime(a.last_login_at)}</InfoRow>}
+        </Section>
+        {!activated && (a?.active ?? true) && (
+          <Section title="Zaproszenie" plain>
+            <Stack gap="sm">
+              <TextInput label="Wyślij na e-mail" description={contactEmail ? undefined : "Bez adresu dostaniesz link do przekazania."} type="email" size="md" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
+              <Button size="md" variant="default" leftSection={<IconMail size={18} />} loading={invite.isPending} onClick={() => invite.mutate()}>
+                {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
+              </Button>
+              {resultBox}
+            </Stack>
+          </Section>
+        )}
+        {a?.exists && !a.active && (
+          <Button size="md" variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)}>
+            Włącz konto
+          </Button>
+        )}
+        {a?.exists && a.active && (
+          <DangerZone>
+            {activated && <DangerAction label="Zresetuj dostęp" description="Np. po zgubieniu telefonu. Stare klucze przestaną działać." loading={reset.isPending} onClick={askReset} />}
+            <DangerAction label="Wyłącz konto" description="Pracownik nie zaloguje się, dane zostają w kartotece." loading={toggle.isPending} onClick={() => toggle.mutate(false)} />
+          </DangerZone>
+        )}
+      </Stack>
+    );
+  }
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="xs">

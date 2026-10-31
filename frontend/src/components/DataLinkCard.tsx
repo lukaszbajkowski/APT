@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, CopyButton, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import { ListRow, Section } from "./Mobile";
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
@@ -40,6 +42,8 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
     onError: (e) => setError(errorText(e)),
   });
   const confirm = useConfirm();
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [sheet, setSheet] = useState(false);
   const cancel = useMutation({
     mutationFn: () => api<Status>(`/employees/${employeeId}/data-link`, { method: "DELETE" }),
     onSuccess: (s) => {
@@ -50,8 +54,8 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
   });
   const s = st.data;
   if (!s || s.account_active) return null; // pracownik z kontem zmienia dane w aplikacji
-  return (
-    <Card withBorder padding="lg">
+  const body = (
+    <>
       <Title order={4} mb="xs">
         Aktualizacja danych (bez konta)
       </Title>
@@ -108,6 +112,22 @@ export function DataLinkCard({ employeeId, contactEmail, contactPhone }: { emplo
           </Alert>
         )}
       </Stack>
-    </Card>
+    </>
   );
+  if (mobile)
+    return (
+      <>
+        <Section title="Aktualizacja danych bez konta">
+          <ListRow
+            title={s.active ? "Link jest aktywny" : "Wyślij link do aktualizacji"}
+            description={s.active && s.expires_at ? `do ${formatDateTime(s.expires_at)}` : "Zdjęcie, telefon i e-mail po potwierdzeniu daty urodzenia."}
+            onClick={() => setSheet(true)}
+          />
+        </Section>
+        <Drawer opened={sheet} onClose={() => setSheet(false)} position="bottom" size="auto" radius="lg" title="Aktualizacja danych bez konta">
+          {body}
+        </Drawer>
+      </>
+    );
+  return <Card withBorder padding="lg">{body}</Card>;
 }

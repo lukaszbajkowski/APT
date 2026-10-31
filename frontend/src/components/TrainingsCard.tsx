@@ -1,3 +1,5 @@
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -414,6 +416,7 @@ function summary(t: Training): string {
 }
 
 export function TrainingsCard({ employee }: { employee: Employee }) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
@@ -470,6 +473,81 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     },
     onError,
   });
+
+  const menuFor = (t: Training) =>
+    staff ? (
+
+                    <Menu position="bottom-end" withinPortal>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray" aria-label="Akcje szkolenia">
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => setModal({ open: true, editing: t })}>
+                          Edytuj
+                        </Menu.Item>
+                        {t.can_generate && (
+                          <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => generate.mutate(t.id)}>
+                            Generuj dokument
+                          </Menu.Item>
+                        )}
+                        <FileButton accept="application/pdf,image/jpeg,image/png" onChange={(f) => f && upload.mutate({ id: t.id, file: f })}>
+                          {(props) => (
+                            <Menu.Item {...props} closeMenuOnClick={false} leftSection={<IconUpload size={14} />}>
+                              {t.has_scan ? "Zmień skan zaświadczenia" : "Dodaj skan zaświadczenia"}
+                            </Menu.Item>
+                          )}
+                        </FileButton>
+                        {t.has_scan && (
+                          <Menu.Item leftSection={<IconPaperclip size={14} />} onClick={() => removeScan.mutate(t.id)}>
+                            Usuń skan
+                          </Menu.Item>
+                        )}
+                        <Menu.Divider />
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          onClick={() => {
+                            confirm({ title: "Usunąć szkolenie?", message: `Usunąć szkolenie „${t.name ?? t.type_name}”?`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate(t.id));
+                          }}
+                        >
+                          Usuń
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  
+    ) : null;
+
+  if (mobile) {
+    return (
+      <Stack gap="md">
+        <EmployeeRequirements employeeId={employee.id} />
+        <Section title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj", icon: <IconPlus size={16} />, onClick: () => setModal({ open: true, editing: null }) } : undefined}>
+          {list.isLoading && <Loading rows={2} />}
+          {list.data?.length === 0 && <CompactEmpty title="Brak szkoleń" />}
+          {list.data?.map((t) => {
+            const st = TRAINING_STATUS[t.status];
+            const tone = t.status === "overdue" || t.status === "expired" ? "warn" : st.color === "teal" || st.color === "green" ? "ok" : t.status === "expiring" ? "warn" : "neutral";
+            return (
+              <ListRow
+                key={t.id}
+                title={t.name ?? t.type_name}
+                description={
+                  <>
+                    <StatusBadge tone={tone}>{st.label}</StatusBadge>{" "}
+                    {t.status === "planned" ? `od ${formatDate(t.start_date)}` : t.valid_until ? `do ${formatDate(t.valid_until)}` : summary(t)}
+                  </>
+                }
+                trailing={menuFor(t)}
+              />
+            );
+          })}
+        </Section>
+        <TrainingModal employee={employee} editing={modal.editing} opened={modal.open} onClose={() => setModal({ open: false, editing: null })} />
+      </Stack>
+    );
+  }
 
   return (
     <Card withBorder padding="lg">
@@ -543,47 +621,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                       )
                     )}
                   </Stack>
-                  {staff && (
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray" aria-label="Akcje szkolenia">
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => setModal({ open: true, editing: t })}>
-                          Edytuj
-                        </Menu.Item>
-                        {t.can_generate && (
-                          <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => generate.mutate(t.id)}>
-                            Generuj dokument
-                          </Menu.Item>
-                        )}
-                        <FileButton accept="application/pdf,image/jpeg,image/png" onChange={(f) => f && upload.mutate({ id: t.id, file: f })}>
-                          {(props) => (
-                            <Menu.Item {...props} closeMenuOnClick={false} leftSection={<IconUpload size={14} />}>
-                              {t.has_scan ? "Zmień skan zaświadczenia" : "Dodaj skan zaświadczenia"}
-                            </Menu.Item>
-                          )}
-                        </FileButton>
-                        {t.has_scan && (
-                          <Menu.Item leftSection={<IconPaperclip size={14} />} onClick={() => removeScan.mutate(t.id)}>
-                            Usuń skan
-                          </Menu.Item>
-                        )}
-                        <Menu.Divider />
-                        <Menu.Item
-                          color="red"
-                          leftSection={<IconTrash size={14} />}
-                          onClick={() => {
-                            confirm({ title: "Usunąć szkolenie?", message: `Usunąć szkolenie „${t.name ?? t.type_name}”?`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate(t.id));
-                          }}
-                        >
-                          Usuń
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                  {menuFor(t)}
                 </Group>
               </Group>
             </Paper>

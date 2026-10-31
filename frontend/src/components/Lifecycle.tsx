@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, CompactEmpty, Section } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -28,6 +30,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconArrowDown,
   IconArrowUp,
+  IconAlertTriangle,
   IconBolt,
   IconDotsVertical,
   IconCalendarEvent,
@@ -330,9 +333,11 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
   });
   const done = it.state === "done" || it.state === "auto";
   const [dueOpen, setDueOpen] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [due, setDue] = useState(it.due_date ?? "");
   return (
-    <Group justify="space-between" wrap="nowrap" gap="sm" py={6}>
+    <Group justify="space-between" wrap="nowrap" gap="sm" py={6} px={mobile ? 12 : 0} mih={mobile ? 60 : undefined}>
       <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
         <Checkbox
           checked={done}
@@ -358,7 +363,25 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
           </Text>
         </div>
       </Group>
-      {(staff && !done && it.state !== "skipped") || it.auto || (it.can_edit && !done) ? (
+      {mobile && ((staff && !done && it.state !== "skipped") || (it.auto && it.state !== "auto") || (it.can_edit && !done)) ? (
+        <>
+          <ActionIcon variant="subtle" color="gray" size={44} aria-label={`Akcje: ${it.label}`} style={{ flexShrink: 0 }} onClick={() => setSheet(true)}>
+            <IconDotsVertical size={20} />
+          </ActionIcon>
+          <ActionSheet
+            opened={sheet}
+            onClose={() => setSheet(false)}
+            title={it.label}
+            subtitle={it.auto && it.state !== "auto" ? "Odhaczy się samo, gdy warunek zostanie spełniony." : undefined}
+            actions={[
+              ...(staff && !done && it.state !== "skipped" ? [{ label: "Zmień termin", icon: <IconCalendarEvent size={20} />, onClick: () => setDueOpen(true) }] : []),
+              ...(it.can_edit && !done
+                ? [{ label: it.state === "skipped" ? "Przywróć zadanie" : "Pomiń (nie dotyczy)", icon: <IconPlayerSkipForward size={20} />, onClick: () => patch.mutate({ skipped: it.state !== "skipped" }) }]
+                : []),
+            ]}
+          />
+        </>
+      ) : !mobile && ((staff && !done && it.state !== "skipped") || it.auto || (it.can_edit && !done)) ? (
         <Menu position="bottom-end" width={260} withinPortal>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray" size={40} aria-label={`Akcje: ${it.label}`} style={{ flexShrink: 0 }}>
@@ -409,6 +432,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
 }
 
 export function ChecklistsCard({ employee }: { employee: Employee }) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
@@ -428,6 +452,49 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
   const kinds = (["offboarding", "onboarding"] as const).filter((k) => q.data[k].length > 0);
   const missing = employee.status === "terminated" ? "offboarding" : "onboarding";
   if (kinds.length === 0 && !staff) return null;
+
+  if (mobile) {
+    return (
+      <Stack gap="lg">
+        {kinds.length === 0 && (
+          <Section title="Checklisty" action={staff ? { label: `Utwórz: ${KIND_LABEL[missing].toLowerCase()}`, icon: <IconPlus size={16} />, onClick: () => create.mutate(missing) } : undefined}>
+            <CompactEmpty title="Brak checklist" text="Wdrożenie tworzy się samo przy dodaniu osoby, odejście – przy zwolnieniu." />
+          </Section>
+        )}
+        {kinds.map((k) => {
+          const items = q.data[k];
+          const doneN = items.filter((i) => ["done", "auto", "skipped"].includes(i.state)).length;
+          const overdue = items.filter((i) => i.state === "overdue").length;
+          return (
+            <Stack key={k} gap={8}>
+              <Group justify="space-between" align="baseline">
+                <Title order={2} size="h4">
+                  {KIND_LABEL[k]}
+                </Title>
+                <Text size="sm" c="dimmed">
+                  {doneN} z {items.length} zrobione
+                </Text>
+              </Group>
+              <Progress value={(doneN / items.length) * 100} color={doneN === items.length ? "teal" : undefined} size="md" aria-label={`Postęp: ${doneN} z ${items.length}`} />
+              {overdue > 0 && (
+                <Group gap={6} c="orange">
+                  <IconAlertTriangle size={16} aria-hidden />
+                  <Text size="sm" fw={600} c="orange">
+                    {overdue} po terminie
+                  </Text>
+                </Group>
+              )}
+              <div className="ui-group">
+                {items.map((it) => (
+                  <ItemRow key={it.id} it={it} onChange={refresh} />
+                ))}
+              </div>
+            </Stack>
+          );
+        })}
+      </Stack>
+    );
+  }
 
   return (
     <Card withBorder padding="lg">

@@ -1,3 +1,5 @@
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, Section } from "./Mobile";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge, Button, Card, Group, MultiSelect, Popover, Stack, Text, Title } from "@mantine/core";
@@ -97,6 +99,7 @@ export function ProgramMentorsButton({ program }: { program: TrainingProgram }) 
 
 /** Sekcja w kartotece: jakie szkolenia stanowiskowe pracownik może prowadzić. */
 export function MentorProgramsCard({ employee }: { employee: Employee }) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
@@ -134,6 +137,16 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
   // bez katalogu i bez przypisań sekcja nic nie wnosi
   if (!mine.data || (list.length === 0 && allPrograms.length === 0)) return null;
   if (list.length === 0 && !staff) return null;
+
+  if (mobile && !editing)
+    return (
+      <Section
+        title="Może prowadzić szkolenia"
+        action={staff ? { label: "Zmień", onClick: () => { setSelected(list.map((p) => String(p.id))); setEditing(true); } } : undefined}
+      >
+        {list.length === 0 ? <CompactEmpty title="Brak" text="Nie jest opiekunem żadnego szkolenia stanowiskowego." /> : list.map((p) => <ListRow key={p.id} title={programLabel(p)} />)}
+      </Section>
+    );
 
   return (
     <Card withBorder padding="lg">

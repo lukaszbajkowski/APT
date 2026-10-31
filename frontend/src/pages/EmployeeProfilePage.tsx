@@ -5,6 +5,7 @@ import {
   ActionIcon,
   Alert,
   Tabs,
+  UnstyledButton,
   Anchor,
   Badge,
   Button,
@@ -36,6 +37,8 @@ import {
   IconTrash,
   IconMessage,
   IconCheck,
+  IconAlertTriangle,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -235,6 +238,19 @@ export function EmployeeProfilePage() {
   });
 
   const emp = employee.data;
+  const checklists = useQuery({
+    queryKey: ["employee-checklists", Number(id)],
+    queryFn: () => api<{ onboarding: { state: string }[]; offboarding: { state: string }[] }>(`/employees/${id}/checklists`),
+    enabled: mobile && canEdit,
+  });
+  const docsQ = useQuery({ queryKey: ["documents", Number(id)], queryFn: () => api<unknown[]>(`/employees/${id}/documents`), enabled: mobile && canEdit });
+  const reqs = useQuery({
+    queryKey: ["employee-requirements", Number(id)],
+    queryFn: () => api<{ state: string }[]>(`/employees/${id}/requirements`),
+    enabled: mobile && !isAgency,
+  });
+  const overdueN = [...(checklists.data?.onboarding ?? []), ...(checklists.data?.offboarding ?? [])].filter((x) => x.state === "overdue").length;
+  const missingReq = (reqs.data ?? []).filter((r) => r.state === "missing" || r.state === "expired").length;
   useMobileHeader(
     mobile && emp
       ? { title: "Pracownik", back: "/pracownicy" }
@@ -335,9 +351,9 @@ export function EmployeeProfilePage() {
       photoActions.push({ label: "Usuń zdjęcie", description: "Bez zdjęcia nie wydrukujesz karty.", icon: <IconTrash size={20} />, danger: true, onClick: () => deletePhoto.mutate() });
     const tabs = [
       { v: "dane", l: "Dane", show: true },
-      { v: "dokumenty", l: "Dokumenty", show: canEdit || isAgency || staff },
-      { v: "zadania", l: "Zadania", show: canEdit },
-      { v: "szkolenia", l: "Szkolenia", show: !isAgency },
+      { v: "dokumenty", l: "Dokumenty", show: canEdit || isAgency || staff, n: docsQ.data?.length },
+      { v: "zadania", l: "Zadania", show: canEdit, warn: overdueN },
+      { v: "szkolenia", l: "Szkolenia", show: !isAgency, warn: missingReq },
       { v: "konto", l: "Konto", show: staff },
       { v: "historia", l: "Historia", show: !isAgency },
     ].filter((t) => t.show);
@@ -392,10 +408,20 @@ export function EmployeeProfilePage() {
           </Group>
         )}
 
-        <Tabs value={tab} onChange={(v) => setTab(v ?? "dane")} keepMounted={false}>
+        <Tabs value={tab} onChange={(v) => setTab(v ?? "dane")} keepMounted={false} className="profile-tabs">
           <Tabs.List>
             {tabs.map((t) => (
-              <Tabs.Tab key={t.v} value={t.v}>
+              <Tabs.Tab
+                key={t.v}
+                value={t.v}
+                rightSection={
+                  "warn" in t && t.warn ? (
+                    <span className="tab-count" data-warn aria-label={`${t.warn} wymaga uwagi`}>{t.warn}</span>
+                  ) : "n" in t && t.n ? (
+                    <span className="tab-count">{t.n}</span>
+                  ) : undefined
+                }
+              >
                 {t.l}
               </Tabs.Tab>
             ))}
@@ -403,6 +429,20 @@ export function EmployeeProfilePage() {
 
           <Tabs.Panel value="dane" pt="md">
             <Stack gap="lg">
+              {(overdueN > 0 || missingReq > 0) && (
+                <UnstyledButton className="attention" onClick={() => setTab(overdueN ? "zadania" : "szkolenia")}>
+                  <IconAlertTriangle size={20} aria-hidden style={{ flexShrink: 0 }} />
+                  <span className="ui-row-text">
+                    <span className="ui-row-title">Wymaga uwagi</span>
+                    <span className="ui-row-desc">
+                      {[overdueN ? `${overdueN} ${overdueN === 1 ? "zadanie" : overdueN < 5 ? "zadania" : "zadań"} po terminie` : null, missingReq ? `${missingReq} brakujące szkolenia` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                  <IconChevronRight size={18} aria-hidden />
+                </UnstyledButton>
+              )}
               <Section title="Zatrudnienie">
                 <InfoRow label="Agencja">{e.agency?.name ?? "—"}</InfoRow>
                 <InfoRow label="Wydział">{e.department?.name ?? "—"}</InfoRow>
@@ -444,7 +484,7 @@ export function EmployeeProfilePage() {
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="dokumenty" pt="md">
-            <Stack gap="md">
+            <Stack gap="lg">
               {canEdit && <DocumentsCard employee={e} />}
               {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
               {staff && <PermitsCard employee={e} />}

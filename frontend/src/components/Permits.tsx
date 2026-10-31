@@ -1,3 +1,5 @@
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Card, Group, Modal, Select, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
@@ -90,6 +92,41 @@ export function PermitsCard({ employee }: { employee: Employee }) {
     },
   });
   const latest = q.data?.[0];
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [sheet, setSheet] = useState<Permit | null>(null);
+  const polish = /^pol(ska|and)$/i.test(employee.country?.name ?? "");
+  if (mobile) {
+    return (
+      <>
+        <Section title="Dokumenty pobytowe" action={polish && !q.data?.length ? undefined : { label: "Dodaj", icon: <IconPlus size={16} />, onClick: () => setOpen(true) }}>
+          {q.isLoading && <Loading rows={1} />}
+          {q.data?.length === 0 && (
+            <CompactEmpty title={polish ? "Nie dotyczy" : "Brak dokumentów"} text={polish ? "Obywatelstwo polskie." : "Karta pobytu, wiza lub zezwolenie."} />
+          )}
+          {q.data?.map((x) => (
+            <ListRow
+              key={x.id}
+              title={x.kind_label}
+              description={
+                <StatusBadge tone={x.state === "valid" ? "ok" : x.state === "expired" ? "error" : "warn"}>
+                  {PERMIT_STATE[x.state].label} do {formatDate(x.valid_until)}
+                </StatusBadge>
+              }
+              onClick={() => setSheet(x)}
+            />
+          ))}
+        </Section>
+        <ActionSheet
+          opened={!!sheet}
+          onClose={() => setSheet(null)}
+          title={sheet?.kind_label ?? ""}
+          subtitle={sheet?.notes ?? undefined}
+          actions={sheet ? [{ label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => del.mutate(sheet.id) }] : []}
+        />
+        <AddPermit employee={employee} opened={open} onClose={() => setOpen(false)} />
+      </>
+    );
+  }
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">

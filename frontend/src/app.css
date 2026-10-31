@@ -422,3 +422,20 @@ html, body { background: var(--apt-ground); }
 }
 .danger-zone .mantine-Button-root { height: auto; min-height: 48px; }
 .danger-zone .mantine-Button-label { white-space: normal; }
+
+/* ——— karta pracownika (telefon) ——— */
+.profile-tabs .mantine-Tabs-list { gap: 4px; }
+.profile-tabs .mantine-Tabs-list::before { border-color: var(--apt-line); }
+.profile-tabs .mantine-Tabs-tab { height: 44px; padding: 0 10px; font-size: 15px; color: var(--mantine-color-dimmed); }
+.profile-tabs .mantine-Tabs-tab[data-active] { color: var(--mantine-color-text); font-weight: 700; border-color: var(--mantine-primary-color-filled); }
+.profile-tabs .mantine-Tabs-tab:hover { background: transparent; }
+.profile-tabs .mantine-Tabs-tabSection { margin-left: 6px; }
+.tab-count { font-size: 12px; color: var(--mantine-color-dimmed); }
+.tab-count[data-warn] { font-weight: 800; color: #1E1A17; background: var(--mantine-color-orange-4); border-radius: 9px; padding: 1px 6px; }
+:root[data-mantine-color-scheme="light"] .tab-count[data-warn] { color: #FCFBFA; background: var(--mantine-color-orange-7); }
+.attention {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--mantine-color-orange-light); color: var(--mantine-color-text);
+}
+.attention > svg:first-child { color: var(--mantine-color-orange-text); }

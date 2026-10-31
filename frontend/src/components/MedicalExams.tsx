@@ -1,3 +1,5 @@
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -147,6 +149,39 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
     },
   });
   const latest = q.data?.[0];
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [sheet, setSheet] = useState<MedicalExam | null>(null);
+  if (mobile) {
+    const acts: SheetAction[] = [];
+    if (sheet?.has_file) acts.push({ label: "Pokaż orzeczenie", icon: <IconFileText size={20} />, onClick: () => window.open(withAcct(`/api/medical-exams/${sheet.id}/file`), "_blank") });
+    if (sheet?.can_delete) acts.push({ label: "Usuń badanie", icon: <IconTrash size={20} />, danger: true, onClick: () => del.mutate(sheet.id) });
+    return (
+      <>
+        <Section title="Badania lekarskie" action={canAdd ? { label: "Dodaj", icon: <IconPlus size={16} />, onClick: () => setOpen(true) } : undefined}>
+          {q.isLoading && <Loading rows={1} />}
+          {q.data?.length === 0 && <CompactEmpty title="Brak badań" text="Dodaj badanie, aby śledzić termin ważności." />}
+          {q.data?.map((x, i) => (
+            <ListRow
+              key={x.id}
+              title={x.kind_label}
+              muted={i > 0}
+              description={
+                <>
+                  {i === 0 && x.valid_until ? (
+                    <StatusBadge tone={x.state === "valid" ? "ok" : x.state === "expired" ? "error" : "warn"}>do {formatDate(x.valid_until)}</StatusBadge>
+                  ) : null}{" "}
+                  badanie {formatDate(x.exam_date)}
+                </>
+              }
+              onClick={x.has_file || x.can_delete ? () => setSheet(x) : undefined}
+            />
+          ))}
+        </Section>
+        <ActionSheet opened={!!sheet} onClose={() => setSheet(null)} title={sheet?.kind_label ?? ""} actions={acts} />
+        {canAdd && <AddExam employee={employee} opened={open} onClose={() => setOpen(false)} />}
+      </>
+    );
+  }
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">

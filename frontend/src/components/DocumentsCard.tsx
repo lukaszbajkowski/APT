@@ -1,3 +1,5 @@
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -101,8 +103,11 @@ export function FieldInput({ field, value, onChange }: { field: TemplateField; v
   }
 }
 
-function EmailDocument({ doc, size }: { doc: GeneratedDoc; size: "compact-xs" | "sm" }) {
-  const [open, setOpen] = useState(false);
+function EmailDocument({ doc, size, opened, onClose }: { doc: GeneratedDoc; size: "compact-xs" | "sm"; opened?: boolean; onClose?: () => void }) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = opened !== undefined;
+  const open = controlled ? opened : ownOpen;
+  const setOpen = (v: boolean) => (controlled ? !v && onClose?.() : setOwnOpen(v));
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
   const send = useMutation({
@@ -115,9 +120,11 @@ function EmailDocument({ doc, size }: { doc: GeneratedDoc; size: "compact-xs" | 
   });
   return (
     <>
-      <Button size={size} variant="default" leftSection={<IconMail size={14} />} onClick={() => { setTo(""); setMessage(""); setOpen(true); }}>
-        E-mail
-      </Button>
+      {!controlled && (
+        <Button size={size} variant="default" leftSection={<IconMail size={14} />} onClick={() => { setTo(""); setMessage(""); setOpen(true); }}>
+          E-mail
+        </Button>
+      )}
       <Modal opened={open} onClose={() => setOpen(false)} title="Wyślij dokument e-mailem" size="md">
         <Stack>
           <Text size="sm">
@@ -182,9 +189,12 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
   );
 }
 
-function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employee }) {
+function DeleteDocument({ doc, employee, opened, onClose }: { doc: GeneratedDoc; employee: Employee; opened?: boolean; onClose?: () => void }) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = opened !== undefined;
+  const open = controlled ? opened : ownOpen;
+  const setOpen = (v: boolean) => (controlled ? !v && onClose?.() : setOwnOpen(v));
   const [reason, setReason] = useState("");
   const signed = !!doc.signed_at || doc.has_signed_pdf;
   const del = useMutation({
@@ -200,11 +210,13 @@ function DeleteDocument({ doc, employee }: { doc: GeneratedDoc; employee: Employ
   if (!doc.can_delete) return null;
   return (
     <>
-      <Tooltip label="Usuń dokument">
-        <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" onClick={() => { setReason(""); setOpen(true); }}>
-          <IconTrash size={15} />
-        </ActionIcon>
-      </Tooltip>
+      {!controlled && (
+        <Tooltip label="Usuń dokument">
+          <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" onClick={() => { setReason(""); setOpen(true); }}>
+            <IconTrash size={15} />
+          </ActionIcon>
+        </Tooltip>
+      )}
       <Modal opened={open} onClose={() => setOpen(false)} title="Usuń dokument" size="md">
         <Stack>
           <Text size="sm">
@@ -321,6 +333,11 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [pesel, setPesel] = useState("");
   const [done, setDone] = useState<GeneratedDoc | null>(null);
   const [signDoc, setSignDoc] = useState<GeneratedDoc | null>(null);
+  const [sheetDoc, setSheetDoc] = useState<GeneratedDoc | null>(null);
+  const [viewDoc, setViewDoc] = useState<GeneratedDoc | null>(null);
+  const [mailDoc, setMailDoc] = useState<GeneratedDoc | null>(null);
+  const [delDoc, setDelDoc] = useState<GeneratedDoc | null>(null);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [error, setError] = useState<string | null>(null);
 
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);
@@ -363,74 +380,8 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   );
   const warnMasked = isManager && template?.sensitive;
 
-  return (
-    <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Title order={5}>Dokumenty</Title>
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<IconPlus size={14} />}
-          onClick={() => {
-            setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
-            setValues({});
-            setDone(null);
-            setOpen(true);
-          }}
-          disabled={!templates.data?.length}
-        >
-          Generuj dokument
-        </Button>
-      </Group>
-      {templates.data && templates.data.length === 0 && (
-        <Text size="sm" c="dimmed">
-          Brak dostępnych szablonów. Administrator dodaje je w zakładce „Szablony”.
-        </Text>
-      )}
-      {docs.isLoading && <Loading />}
-      {docs.data && docs.data.length === 0 && templates.data?.length !== 0 && (
-        <Text size="sm" c="dimmed">
-          Nie wygenerowano jeszcze żadnego dokumentu.
-        </Text>
-      )}
-      {docs.data && docs.data.length > 0 && (
-        <Stack gap={0}>
-          {docs.data.map((d, i) => (
-            <Group
-              key={d.id}
-              justify="space-between"
-              align="center"
-              gap="sm"
-              py="sm"
-              wrap="wrap"
-              style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
-            >
-              <Group gap="sm" wrap="nowrap" align="flex-start" style={{ flex: "1 1 220px", minWidth: 0 }}>
-                <IconFileText size={20} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
-                <div style={{ minWidth: 0 }}>
-                  <Text size="sm" fw={600}>
-                    {d.template_name}
-                  </Text>
-                  <Group gap={6} mt={2} wrap="wrap">
-                    <SignatureBadge doc={d} />
-                    <Text size="xs" c="dimmed">
-                      {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
-                      {d.masked && " · bez PESEL i daty urodzenia"}
-                    </Text>
-                  </Group>
-                </div>
-              </Group>
-              <Group gap={6} wrap="wrap" style={{ flex: "0 1 auto" }}>
-                <SignButton doc={d} employee={employee} />
-                <DocActions doc={d} />
-                <DeleteDocument doc={d} employee={employee} />
-              </Group>
-            </Group>
-          ))}
-        </Stack>
-      )}
-      <TrashList employee={employee} />
-
+  const generateModal = (
+    <>
       <Modal opened={open} onClose={() => setOpen(false)} title="Nowy dokument" size="lg">
         {done ? (
           <Stack>
@@ -543,6 +494,141 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
         </form>
         )}
       </Modal>
+    </>
+  );
+  const openGenerate = () => {
+    setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
+    setValues({});
+    setDone(null);
+    setOpen(true);
+  };
+
+  if (mobile) {
+    const d = sheetDoc;
+    const actions: SheetAction[] = [];
+    if (d && d.accessible) {
+      actions.push({ label: d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis", icon: <IconSignature size={20} />, onClick: () => setSignDoc(d) });
+      if (d.can_view) actions.push({ label: "Podgląd dokumentu", icon: <IconEye size={20} />, onClick: () => setViewDoc(d) });
+      if (d.download.includes("pdf")) actions.push({ label: "Pobierz PDF", icon: <IconFileTypePdf size={20} />, onClick: () => download(d, "pdf") });
+      if (d.download.includes("docx")) actions.push({ label: "Pobierz Word", icon: <IconFileTypeDocx size={20} />, onClick: () => download(d, "docx") });
+      if (d.download.length > 0) actions.push({ label: "Wyślij e-mailem", icon: <IconMail size={20} />, onClick: () => setMailDoc(d) });
+    }
+    if (d?.can_delete) actions.push({ label: "Usuń dokument", description: "Trafi do kosza na 30 dni.", icon: <IconTrash size={20} />, danger: true, onClick: () => setDelDoc(d) });
+    return (
+      <>
+        <Section
+          title="Dokumenty"
+          action={templates.data?.length ? { label: "Generuj", icon: <IconPlus size={16} />, onClick: openGenerate } : undefined}
+        >
+          {docs.isLoading && <Loading rows={2} />}
+          {docs.data?.map((doc) => (
+            <ListRow
+              key={doc.id}
+              leading={<IconFileText size={20} />}
+              title={doc.template_name}
+              description={
+                <>
+                  {doc.signed_at ? <StatusBadge tone="ok">podpisany</StatusBadge> : doc.signature_pending ? <StatusBadge tone="wait">czeka na podpis</StatusBadge> : null}
+                  {doc.signed_at || doc.signature_pending ? " " : ""}
+                  {formatDateTime(doc.created_at)}
+                </>
+              }
+              onClick={() => setSheetDoc(doc)}
+            />
+          ))}
+          {docs.data?.length === 0 && (
+            <CompactEmpty
+              title={templates.data?.length === 0 ? "Brak szablonów" : "Brak dokumentów"}
+              text={templates.data?.length === 0 ? "Administrator dodaje je w „Szablonach”." : undefined}
+            />
+          )}
+        </Section>
+        <TrashList employee={employee} />
+        <ActionSheet
+          opened={!!sheetDoc}
+          onClose={() => setSheetDoc(null)}
+          title={d?.template_name ?? ""}
+          subtitle={d ? `${formatDateTime(d.created_at)} · ${d.created_by_name ?? "—"}` : undefined}
+          actions={actions}
+        />
+        {viewDoc && <DocumentViewer docId={viewDoc.id} opened onClose={() => setViewDoc(null)} />}
+        {mailDoc && <EmailDocument doc={mailDoc} size="sm" opened onClose={() => setMailDoc(null)} />}
+        {delDoc && <DeleteDocument doc={delDoc} employee={employee} opened onClose={() => setDelDoc(null)} />}
+        {generateModal}
+        {signDoc && <SignaturesModal doc={signDoc} employee={employee} opened onClose={() => setSignDoc(null)} />}
+      </>
+    );
+  }
+
+  return (
+    <Card withBorder padding="lg">
+      <Group justify="space-between" mb="sm">
+        <Title order={5}>Dokumenty</Title>
+        <Button
+          size="xs"
+          variant="light"
+          leftSection={<IconPlus size={14} />}
+          onClick={() => {
+            setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
+            setValues({});
+            setDone(null);
+            setOpen(true);
+          }}
+          disabled={!templates.data?.length}
+        >
+          Generuj dokument
+        </Button>
+      </Group>
+      {templates.data && templates.data.length === 0 && (
+        <Text size="sm" c="dimmed">
+          Brak dostępnych szablonów. Administrator dodaje je w zakładce „Szablony”.
+        </Text>
+      )}
+      {docs.isLoading && <Loading />}
+      {docs.data && docs.data.length === 0 && templates.data?.length !== 0 && (
+        <Text size="sm" c="dimmed">
+          Nie wygenerowano jeszcze żadnego dokumentu.
+        </Text>
+      )}
+      {docs.data && docs.data.length > 0 && (
+        <Stack gap={0}>
+          {docs.data.map((d, i) => (
+            <Group
+              key={d.id}
+              justify="space-between"
+              align="center"
+              gap="sm"
+              py="sm"
+              wrap="wrap"
+              style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
+            >
+              <Group gap="sm" wrap="nowrap" align="flex-start" style={{ flex: "1 1 220px", minWidth: 0 }}>
+                <IconFileText size={20} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                <div style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={600}>
+                    {d.template_name}
+                  </Text>
+                  <Group gap={6} mt={2} wrap="wrap">
+                    <SignatureBadge doc={d} />
+                    <Text size="xs" c="dimmed">
+                      {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
+                      {d.masked && " · bez PESEL i daty urodzenia"}
+                    </Text>
+                  </Group>
+                </div>
+              </Group>
+              <Group gap={6} wrap="wrap" style={{ flex: "0 1 auto" }}>
+                <SignButton doc={d} employee={employee} />
+                <DocActions doc={d} />
+                <DeleteDocument doc={d} employee={employee} />
+              </Group>
+            </Group>
+          ))}
+        </Stack>
+      )}
+      <TrashList employee={employee} />
+
+      {generateModal}
       {signDoc && <SignaturesModal doc={signDoc} employee={employee} opened onClose={() => setSignDoc(null)} />}
     </Card>
   );

@@ -419,7 +419,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                     {r.signer_name} · {formatDateTime(r.signed_at)} · {methodLabel(r)}
                   </Text>
                   {r.device_verified && (
-                    <Text size="xs" c="teal.7">
+                    <Text size="xs" c="teal">
                       Potwierdzono blokadą urządzenia (biometria lub kod telefonu).
                     </Text>
                   )}

@@ -138,3 +138,17 @@ Odrzucone: historia i ważność kart, adres i telefon w kartotece, sprawdzanie 
 - Etykiety pól i opisy ikon (`aria-label`), teksty alternatywne obrazów w edytorze zdjęcia, ogłaszanie komunikatów statusu (`aria-live`/`role="status"`).
 - Okno potwierdzenia `useConfirm()` (`lib/confirm.tsx`) zamiast `window.confirm`; domyślna obsługa błędu zapisu w `MutationCache` (własne `onError` ma pierwszeństwo).
 - Wspólne komponenty: `MasterDetail` (układ komunikatora), `PageSheet` (strona dokumentu), `shortTime` w `api.ts`.
+
+## Kolory i kontrast (nowy kierunek wizualny)
+
+Paleta „ciepłe neutralne” w dwóch motywach – jasnym i ciemnym (przełącznik w menu konta: Jasny / Ciemny / System). Definicja: `frontend/src/theme.ts`, role kolorów: `frontend/src/app.css` (`--apt-ground`, `--apt-surface`, `--apt-subtle`, `--apt-line`, `--apt-nav`).
+
+Zasady:
+- bez czystej bieli i czerni (jasne tło #F5F4F2, karty #FCFBFA, tekst #1C1917; ciemne tło #1E1A17, karty #272220, tekst #F0EAE3),
+- akcent (orzech #5C4636 / piasek #D9BFA3) tylko dla akcji i linków; bursztyn tylko dla braków i ostrzeżeń; szałwia dla stanu „w porządku”; czerwony tylko dla błędów i usuwania,
+- kolor nigdy nie niesie znaczenia sam – stany mają ikonę i słowo (✓ aktywny, ⚠ brak), wykresy mają liczby,
+- tekst ≥ 4,5:1 (większość ≥ 7:1), obrysy pól i przycisków ≥ 3:1 (WCAG 1.4.11), linie dekoracyjne celowo delikatne,
+- w motywie ciemnym wypełnienia są jasne, więc tekst na przyciskach jest ciemny (≥ 8:1),
+- widoczna ramka fokusu, respektowanie `prefers-reduced-motion`, cele dotyku ≥ 44 px na telefonie.
+
+Nawigacja: na komputerze menu boczne w grupach (Komunikacja, Kadry, Administracja – zwinięta domyślnie), konto na dole menu. Na telefonie dolny pasek (Dziś, Pracownicy, Skanuj na środku, Wiadomości, Więcej) i panel „Wszystkie sekcje”; zestaw zakładek zależy od roli.

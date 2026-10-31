@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, Stack, Table, Text, ThemeIcon, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
+  IconCamera,
+  IconId,
   IconAlertTriangle,
   IconChevronDown,
   IconChevronUp,
@@ -11,15 +13,11 @@ import {
   IconChecklist,
   IconCircleCheck,
   IconClockShield,
-  IconFileSpreadsheet,
-  IconIdBadge2,
-  IconScan,
   IconSearch,
   IconUserPlus,
-  IconUsers,
 } from "@tabler/icons-react";
 
-import { api, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
+import { api, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
@@ -79,8 +77,8 @@ function UpcomingCard() {
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Group gap="xs">
-          <IconCalendarEvent size={20} />
-          <Title order={4}>Najbliższe 14 dni</Title>
+          <IconCalendarEvent size={20} aria-hidden />
+          <Title order={3} size="h4">Najbliższe 14 dni</Title>
         </Group>
         {!hasRole("agency") && <Group gap="xs">
           <ActionButton to="/zadania" icon={<IconChecklist size={16} />}>
@@ -148,35 +146,27 @@ interface QueueGroup {
 /** „Do zrobienia dzisiaj”: wszystko, co wymaga uwagi kadr, jako lista z przyciskami do list z problemem. */
 function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000, enabled: full });
-  const rows: { key: string; label: string; count: number; url: string; sample?: string; color: string }[] = [];
-  if (d.without_photo) rows.push({ key: "photo", label: "Pracownicy bez zdjęcia", count: d.without_photo, url: "/pracownicy?missing=photo", color: "orange" });
-  if (d.without_pesel) rows.push({ key: "pesel", label: "Pracownicy bez PESEL", count: d.without_pesel, url: "/pracownicy?missing=pesel", color: "orange" });
+  const rows: { key: string; label: string; count: number; url: string; sample?: string; hint?: string; color: string; icon: typeof IconCamera; action: string }[] = [];
+  if (d.without_photo)
+    rows.push({ key: "photo", label: "bez zdjęcia", count: d.without_photo, url: "/pracownicy?missing=photo", color: "orange", icon: IconCamera, action: "Uzupełnij", hint: "Bez zdjęcia nie wydrukujesz karty identyfikacyjnej." });
+  if (d.without_pesel)
+    rows.push({ key: "pesel", label: "bez numeru PESEL", count: d.without_pesel, url: "/pracownicy?missing=pesel", color: "orange", icon: IconId, action: "Uzupełnij", hint: "PESEL jest potrzebny w zestawieniach dla agencji." });
   const hasMissingRows = rows.length > 0;
   for (const g of q.data?.groups ?? []) {
     if (hasMissingRows && /^Braki w danych/.test(g.label)) continue; // te same braki już widać wyżej jako zdjęcia i PESEL
-    rows.push({ key: g.key, label: g.label, count: g.count, url: g.url, sample: g.items[0] ? `${g.items[0].title}${g.items[0].detail ? " · " + g.items[0].detail : ""}` : undefined, color: "red" });
+    rows.push({ key: g.key, label: g.label, count: g.count, url: g.url, sample: g.items[0] ? `${g.items[0].title}${g.items[0].detail ? " · " + g.items[0].detail : ""}` : undefined, color: "orange", icon: IconAlertTriangle, action: "Przejrzyj" });
   }
   return (
-    <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Group gap="xs">
-          <IconChecklist size={20} />
-          <Title order={4}>Do zrobienia dzisiaj</Title>
-        </Group>
-        <Text size="xs" c="dimmed">
-          {full && (
-            <>
-              <Text component={Link} to="/do-zrobienia" span className="brand-link" size="xs">
-                Pełna lista
-              </Text>{" "}
-              ·{" "}
-            </>
-          )}
-          {d.active} aktywnych · {d.added_30_days} nowych w 30 dni ·{" "}
-          <Text component={Link} to="/pracownicy?status=terminated" span className="brand-link" size="xs">
-            {d.terminated} w archiwum
+    <Card withBorder padding={0}>
+      <Group justify="space-between" px="lg" py="md" style={{ borderBottom: "1px solid var(--apt-line)" }}>
+        <Title order={3} size="h4">
+          Do zrobienia
+        </Title>
+        {full && (
+          <Text component={Link} to="/do-zrobienia" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link">
+            Pełna lista
           </Text>
-        </Text>
+        )}
       </Group>
       {full && q.isLoading ? (
         <Loading rows={3} />
@@ -189,25 +179,28 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
         />
       ) : (
         <Stack gap={0}>
-          {rows.map((r) => (
-            <Group key={r.key} wrap="nowrap" justify="space-between" py={8} style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-              <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                <Badge color={r.color} variant="light" size="lg" miw={44}>
-                  {r.count}
-                </Badge>
-                <div style={{ minWidth: 0 }}>
-                  <Text size="sm" fw={600} truncate>
-                    {r.label}
-                  </Text>
-                  {r.sample && (
-                    <Text size="xs" c="dimmed" truncate>
-                      np. {r.sample}
-                    </Text>
-                  )}
-                </div>
-              </Group>
-              <Button component={Link} to={r.url} size="compact-sm" variant="light" style={{ flexShrink: 0 }}>
-                Napraw
+          {rows.map((r, i) => (
+            <Group
+              key={r.key}
+              wrap="nowrap"
+              gap="md"
+              px="lg"
+              py="sm"
+              style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--apt-line)" : undefined }}
+            >
+              <ThemeIcon variant="light" color={r.color} size={40} radius="md" aria-hidden>
+                <r.icon size={20} />
+              </ThemeIcon>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <Text fw={700} size="sm">
+                  {r.count} · {r.label}
+                </Text>
+                <Text size="sm" c="dimmed" lineClamp={2}>
+                  {r.hint ?? (r.sample ? `np. ${r.sample}` : "")}
+                </Text>
+              </div>
+              <Button component={Link} to={r.url} variant="default" size="sm" style={{ flexShrink: 0 }}>
+                {r.action}
               </Button>
             </Group>
           ))}
@@ -277,20 +270,123 @@ function BackupCard({ status }: { status: BackupStatus | null }) {
   );
 }
 
+function Summary({ d, manager }: { d: Dashboard; manager: boolean }) {
+  const tiles: { label: string; value: number; note: string; to: string; warn?: boolean }[] = [
+    { label: manager ? "Aktywni w Twoich wydziałach" : "Aktywni pracownicy", value: d.active, note: "w kartotece", to: "/pracownicy" },
+    { label: "Przyjęci w 30 dni", value: d.added_30_days, note: "nowe osoby", to: "/pracownicy?sort=-hire_date" },
+    { label: "Bez zdjęcia", value: d.without_photo, note: d.without_photo ? "karta się nie wydrukuje" : "wszyscy mają zdjęcie", to: "/pracownicy?missing=photo", warn: d.without_photo > 0 },
+    { label: "W archiwum", value: d.terminated, note: "byli pracownicy", to: "/pracownicy?status=terminated" },
+  ];
+  return (
+    <SimpleGrid cols={{ base: 2, md: 4 }} spacing={0} className="summary-strip">
+      {tiles.map((t) => (
+        <UnstyledButton key={t.label} component={Link} to={t.to} className="summary-tile">
+          <Text size="sm" fw={600} c="dimmed">
+            {t.label}
+          </Text>
+          <Group gap={8} align="center" wrap="nowrap">
+            <Text fz={30} fw={800} lh={1.15} c={t.warn ? "orange" : undefined}>
+              {t.value}
+            </Text>
+            {t.warn && <IconAlertTriangle size={18} color="var(--mantine-color-orange-text)" aria-label="Wymaga uwagi" />}
+          </Group>
+          <Text size="xs" c="dimmed">
+            {t.note}
+          </Text>
+        </UnstyledButton>
+      ))}
+    </SimpleGrid>
+  );
+}
+
+function RecentCard({ d }: { d: Dashboard }) {
+  return (
+    <Card withBorder padding={0}>
+      <Group justify="space-between" px="lg" py="md">
+        <Title order={3} size="h4">
+          Ostatnio dodani
+        </Title>
+        <Text component={Link} to="/pracownicy" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link">
+          Wszyscy
+        </Text>
+      </Group>
+      {d.recent.length === 0 ? (
+        <Text size="sm" c="dimmed" px="lg" pb="lg">
+          Kartoteka jest pusta.
+        </Text>
+      ) : (
+        <Stack gap={0} pb="xs">
+          {d.recent.map((e) => (
+            <UnstyledButton key={e.id} component={Link} to={`/pracownicy/${e.id}`} className="list-row">
+              <EmployeePhoto employee={e} width={36} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <Text size="sm" fw={600} truncate>
+                  {e.last_name} {e.first_name}
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
+                  {[e.department?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+                </Text>
+              </div>
+              <Text size="xs" c="dimmed" ff="monospace">
+                {e.number_display}
+              </Text>
+            </UnstyledButton>
+          ))}
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+function todayLabel() {
+  const s = new Date().toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function HomePage() {
   const { me, hasRole } = useAuth();
+  const navigate = useNavigate();
   const staff = hasRole("admin", "hr");
   const data = useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard") });
   const firstName = me?.user.full_name.split(" ")[0];
+  const [q, setQ] = useState("");
 
   return (
-    <Stack maw={1200}>
-      <div>
-        <Title order={2}>Dzień dobry{firstName ? `, ${firstName}` : ""}</Title>
-        <Text c="dimmed" size="sm">
-          {hasRole("manager") ? "Podsumowanie Twoich wydziałów." : "Podsumowanie kartoteki pracowników."}
-        </Text>
-      </div>
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end" gap="md">
+        <div>
+          <Text size="sm" c="dimmed" fw={500}>
+            {todayLabel()}
+          </Text>
+          <Title order={1} size="h2">
+            Dzień dobry{firstName ? `, ${firstName}` : ""}
+          </Title>
+        </div>
+        <Group gap="sm" wrap="wrap" style={{ flex: "1 1 320px", justifyContent: "flex-end" }}>
+          <form
+            role="search"
+            style={{ flex: "1 1 260px", maxWidth: 380 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate(q.trim() ? `/pracownicy?q=${encodeURIComponent(q.trim())}` : "/pracownicy");
+            }}
+          >
+            <TextInput
+              aria-label="Szukaj pracownika"
+              placeholder="Szukaj: nazwisko, nr karty"
+              leftSection={<IconSearch size={16} aria-hidden />}
+              value={q}
+              onChange={(e) => setQ(e.currentTarget.value)}
+              size="md"
+            />
+          </form>
+          {staff && (
+            <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />}>
+              Dodaj pracownika
+            </Button>
+          )}
+        </Group>
+      </Group>
 
       {data.isLoading && <Loading />}
       {data.error && <ErrorState error={data.error} onRetry={() => data.refetch()} />}
@@ -313,87 +409,24 @@ export function HomePage() {
           {staff && data.data.active === 0 && data.data.recent.length === 0 ? (
             <GettingStarted employees={data.data.active} />
           ) : (
-            <TodayCard d={data.data} full={staff} />
+            <>
+              <Summary d={data.data} manager={hasRole("manager")} />
+              <Grid gutter="lg" align="flex-start">
+                <Grid.Col span={{ base: 12, lg: 7 }}>
+                  <Stack gap="lg">
+                    <TodayCard d={data.data} full={staff} />
+                    <UpcomingCard />
+                  </Stack>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 5 }}>
+                  <Stack gap="lg">
+                    <RecentCard d={data.data} />
+                    {hasRole("admin") && <BackupCard status={data.data.backup} />}
+                  </Stack>
+                </Grid.Col>
+              </Grid>
+            </>
           )}
-
-          <UpcomingCard />
-
-          <Grid>
-            <Grid.Col span={{ base: 12, md: 8 }}>
-            <Card withBorder padding="lg" h="100%">
-              <Group justify="space-between" mb="sm">
-                <Title order={4}>Ostatnio dodani</Title>
-                <ActionButton to="/pracownicy" icon={<IconUsers size={16} />}>
-                  Wszyscy pracownicy
-                </ActionButton>
-              </Group>
-              {data.data.recent.length === 0 ? (
-                <Text size="sm" c="dimmed">
-                  Kartoteka jest pusta.
-                </Text>
-              ) : (
-                <Table highlightOnHover verticalSpacing={6}>
-                  <Table.Tbody>
-                    {data.data.recent.map((e) => (
-                      <Table.Tr key={e.id}>
-                        <Table.Td w={44}>
-                          <EmployeePhoto employee={e} width={32} />
-                        </Table.Td>
-                        <Table.Td>
-                          <Text component={Link} to={`/pracownicy/${e.id}`} size="sm" fw={500} className="brand-link">
-                            {e.last_name} {e.first_name}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {e.number_display} · {[e.agency?.name, e.department?.name].filter(Boolean).join(" · ") || "—"}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td visibleFrom="sm" align="right">
-                          <Text size="xs" c="dimmed">
-                            {e.hire_date ? `zatrudniony ${formatDate(e.hire_date)}` : ""}
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              )}
-            </Card>
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 12, md: 4 }}>
-            <Stack h="100%">
-            <Card withBorder padding="lg" style={{ flex: 1 }}>
-              <Title order={4} mb="sm">
-                Szybkie akcje
-              </Title>
-              <Stack gap="xs">
-                <ActionButton to="/pracownicy" justify="flex-start" icon={<IconSearch size={16} />}>
-                  Szukaj pracownika
-                </ActionButton>
-                <ActionButton to="/skaner" justify="flex-start" icon={<IconScan size={16} />}>
-                  Skanuj kartę
-                </ActionButton>
-                {staff && (
-                  <>
-                    <ActionButton to="/pracownicy/nowy" justify="flex-start" icon={<IconUserPlus size={16} />}>
-                      Dodaj pracownika
-                    </ActionButton>
-                    <ActionButton to="/pracownicy/import" justify="flex-start" icon={<IconFileSpreadsheet size={16} />}>
-                      Importuj z arkusza
-                    </ActionButton>
-                  </>
-                )}
-                {hasRole("admin", "hr", "manager") && (
-                  <ActionButton to="/pracownicy" justify="flex-start" icon={<IconIdBadge2 size={16} />}>
-                    Drukuj karty
-                  </ActionButton>
-                )}
-              </Stack>
-            </Card>
-            {hasRole("admin") && <BackupCard status={data.data.backup} />}
-            </Stack>
-            </Grid.Col>
-          </Grid>
         </>
       )}
     </Stack>

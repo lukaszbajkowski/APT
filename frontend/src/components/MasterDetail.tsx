@@ -23,7 +23,7 @@ export function MasterDetail({
         <Stack
           gap={0}
           w={mobile ? "100%" : 340}
-          style={{ borderRight: mobile ? undefined : "1px solid var(--mantine-color-default-border)", minHeight: 0 }}
+          style={{ borderRight: mobile ? undefined : "1px solid var(--apt-line)", minHeight: 0 }}
         >
           {list}
         </Stack>

@@ -100,7 +100,7 @@ export function DocumentViewer({
           )}
         </Group>
       }
-      styles={{ body: { background: "var(--mantine-color-gray-1)", minHeight: "calc(100vh - 60px)" } }}
+      styles={{ body: { background: "var(--apt-subtle)", minHeight: "calc(100vh - 60px)" } }}
     >
       <Box
         className="doc-viewer"
@@ -126,7 +126,7 @@ export function DocumentViewer({
           <Portal>
           <Center style={{ position: "fixed", inset: 0, zIndex: 1000, cursor: "pointer" }} onClick={() => setHidden(false)}>
             <Stack align="center" gap={6} bg="white" p="lg" style={{ borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,.15)" }}>
-              <IconEyeOff size={36} color="var(--mantine-color-gray-6)" />
+              <IconEyeOff size={36} color="var(--mantine-color-dimmed)" />
               <Text fw={600}>{T("Podgląd ukryty")}</Text>
               <Text size="sm" c="dimmed" ta="center" maw={320}>
                 {T("Dokument ukrywa się, gdy okno traci fokus albo przy próbie zrzutu ekranu lub druku. Kliknij, aby wrócić.")}
@@ -136,7 +136,7 @@ export function DocumentViewer({
           </Portal>
         )}
         <Group justify="center" gap={6} pb="md">
-          <IconShieldLock size={14} color="var(--mantine-color-gray-6)" />
+          <IconShieldLock size={14} color="var(--mantine-color-dimmed)" />
           <Text size="xs" c="dimmed">
             {base ? T("Twój podpisany dokument") : T("Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku")}
           </Text>

@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, Group, SimpleGrid, Stack, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { IconAlertTriangle, IconChevronRight, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
@@ -13,26 +13,40 @@ export function EmployeeMessagesPage() {
 }
 
 function Tile({ icon: Icon, title, hint, badge, to, onClick }: { icon: typeof IconMessage; title: string; hint: string; badge?: string | number; to?: string; onClick?: () => void }) {
+  const warn = typeof badge === "string";
   const body = (
-    <Card withBorder padding="md" h="100%">
-      <Stack gap={4} align="flex-start">
-        <Icon size={26} />
-        <Group gap={8} wrap="nowrap" align="center">
-          <Text fw={600}>{title}</Text>
-          {badge ? <Badge color="red">{badge}</Badge> : null}
-        </Group>
-        <Text size="xs" c="dimmed">
-          {hint}
-        </Text>
-      </Stack>
+    <Card withBorder padding="md" h="100%" className="tile-card">
+      <Group gap="md" wrap="nowrap" align="center">
+        <ThemeIcon variant="light" size={44} radius="md" color={warn ? "orange" : undefined} aria-hidden>
+          <Icon size={22} />
+        </ThemeIcon>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Group gap={8} wrap="wrap" align="center">
+            <Text fw={700}>{title}</Text>
+            {badge ? (
+              warn ? (
+                <Badge variant="light" color="orange" leftSection={<IconAlertTriangle size={12} aria-hidden />} style={{ textTransform: "none" }}>
+                  {badge}
+                </Badge>
+              ) : (
+                <Badge aria-label={`${badge} nowe`}>{badge}</Badge>
+              )
+            ) : null}
+          </Group>
+          <Text size="sm" c="dimmed">
+            {hint}
+          </Text>
+        </div>
+        <IconChevronRight size={18} color="var(--mantine-color-dimmed)" aria-hidden />
+      </Group>
     </Card>
   );
   return to ? (
-    <UnstyledButton component={Link} to={to}>
+    <UnstyledButton component={Link} to={to} h="100%">
       {body}
     </UnstyledButton>
   ) : (
-    <UnstyledButton onClick={onClick}>{body}</UnstyledButton>
+    <UnstyledButton onClick={onClick} h="100%">{body}</UnstyledButton>
   );
 }
 

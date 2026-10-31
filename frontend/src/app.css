@@ -1,24 +1,55 @@
-/* Kolory zależne od motywu (jasny / ciemny). */
-.surface-subtle {
-  background: var(--mantine-color-gray-0);
+/*
+ * Tokeny motywu (ciepłe neutralne). Kolory pochodzą z theme.ts – tu tylko role:
+ *  --apt-ground  tło strony, --apt-surface karty i panele, --apt-subtle tło wyróżnione,
+ *  --apt-line    linie dekoracyjne (podziały list, obrys kart),
+ *  --apt-nav     tło menu bocznego i dolnego paska.
+ * Obrysy pól i przycisków to --mantine-color-default-border (≥ 3:1, wymóg WCAG 1.4.11).
+ */
+:root[data-mantine-color-scheme="light"] {
+  --apt-ground: #F5F4F2;
+  --apt-surface: #FCFBFA;
+  --apt-subtle: #EFECE8;
+  --apt-line: #E7E5E4;
+  --apt-nav: #FCFBFA;
+  --apt-nav-active: #EFECE8;
+  --mantine-color-body: var(--apt-surface);
 }
-[data-mantine-color-scheme="dark"] .surface-subtle {
-  background: var(--mantine-color-dark-8);
+:root[data-mantine-color-scheme="dark"] {
+  --apt-ground: #1E1A17;
+  --apt-surface: #272220;
+  --apt-subtle: #2E2925;
+  --apt-line: #383230;
+  --apt-nav: #171412;
+  --apt-nav-active: #2E2925;
+  --mantine-color-body: var(--apt-surface);
 }
 
-.brand-title {
-  color: var(--mantine-color-navy-9);
-}
-[data-mantine-color-scheme="dark"] .brand-title {
-  color: var(--mantine-color-navy-2);
+html, body { background: var(--apt-ground); }
+.mantine-AppShell-main { background: var(--apt-ground); }
+.mantine-AppShell-navbar, .mantine-AppShell-header, .mantine-AppShell-footer {
+  background: var(--apt-nav);
+  border-color: var(--apt-line);
 }
 
-.photo-placeholder {
-  background: var(--mantine-color-gray-1);
+/* karty: obrys dekoracyjny, nie konkurujący z polami formularzy */
+.mantine-Paper-root[data-with-border] { border-color: var(--apt-line); }
+.mantine-Table-table { --table-border-color: var(--apt-line); }
+.mantine-Table-thead { color: var(--mantine-color-dimmed); }
+.mantine-Divider-root { --divider-color: var(--apt-line); }
+
+/* wyraźna ramka fokusu przy obsłudze klawiaturą (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled) !important;
+  outline-offset: 2px;
 }
-[data-mantine-color-scheme="dark"] .photo-placeholder {
-  background: var(--mantine-color-dark-5);
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+.surface-subtle { background: var(--apt-subtle); }
+.brand-title { color: var(--mantine-color-text); }
+.photo-placeholder { background: var(--apt-subtle); }
 
 .row-selected,
 .row-selected:hover {
@@ -40,3 +71,146 @@
     visibility: hidden !important;
   }
 }
+
+/* ——— nawigacja ——— */
+.nav-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 12px;
+  min-height: 32px;
+  border-radius: var(--mantine-radius-sm);
+}
+.nav-group:hover { background: var(--apt-subtle); }
+.nav-item {
+  border-radius: var(--mantine-radius-md);
+  min-height: 40px;
+  font-weight: 500;
+  color: var(--mantine-color-text);
+}
+.nav-item[data-active] {
+  background: var(--apt-nav-active);
+  color: var(--mantine-color-text);
+  font-weight: 700;
+}
+.nav-item[data-active] .mantine-NavLink-section { color: var(--mantine-primary-color-text); }
+.nav-item:hover { background: var(--apt-subtle); }
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--mantine-radius-md);
+}
+.account-button:hover { background: var(--apt-subtle); }
+
+/* dolny pasek (telefon) */
+.tabbar {
+  height: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: stretch;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar-item, .tabbar-scan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mantine-color-dimmed);
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.1;
+}
+.tabbar-item[data-active] { color: var(--mantine-primary-color-text); font-weight: 750; }
+.tabbar-item[data-active] .tabbar-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tabbar-icon { position: relative; display: inline-flex; }
+.tabbar-badge {
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-primary-color-contrast);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  box-sizing: border-box;
+}
+.tabbar-scan { color: var(--mantine-color-text); font-weight: 700; }
+.tabbar-scan-btn {
+  width: 52px;
+  height: 52px;
+  margin-top: -22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-primary-color-contrast);
+  border: 4px solid var(--apt-ground);
+  box-sizing: content-box;
+}
+
+/* ——— ekran Dziś i listy ——— */
+.summary-strip {
+  border: 1px solid var(--apt-line);
+  border-radius: var(--mantine-radius-lg);
+  overflow: hidden;
+  background: var(--apt-line);
+  gap: 1px !important;
+}
+.summary-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  background: var(--apt-surface);
+  text-decoration: none;
+  color: inherit;
+}
+.summary-tile:hover { background: var(--apt-subtle); }
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  min-height: 52px;
+  text-decoration: none;
+  color: inherit;
+}
+.list-row:hover { background: var(--apt-subtle); }
+
+/* motyw ciemny: wszystkie wypełnienia są jasne (odcień 5), więc tekst na nich zawsze ciemny (≥ 8:1) */
+:root[data-mantine-color-scheme="dark"] :is(.mantine-Button-root, .mantine-ActionIcon-root, .mantine-ThemeIcon-root, .mantine-Badge-root, .mantine-Avatar-root, .mantine-Chip-root, .mantine-Indicator-indicator):is([data-variant="filled"], :not([data-variant])) {
+  --button-color: #1E1A17 !important;
+  --badge-color: #1E1A17 !important;
+  --ai-color: #1E1A17 !important;
+  --ti-color: #1E1A17 !important;
+  --avatar-color: #1E1A17 !important;
+  --chip-color: #1E1A17 !important;
+}
+:root[data-mantine-color-scheme="dark"] { --mantine-primary-color-contrast: #1E1A17; }
+:root[data-mantine-color-scheme="light"] { --mantine-primary-color-contrast: #FCFBFA; }
+.tile-card { transition: background-color 120ms; }
+.tile-card:hover { background: var(--apt-subtle); }

@@ -325,7 +325,7 @@ export function PhotoEditor({
             <Stack gap={4}>
               {enh.notes.map((n, i) => (
                 <Group key={i} gap={6} wrap="nowrap" align="flex-start">
-                  {n.level === "ok" ? <IconCheck size={16} color="var(--mantine-color-green-6)" /> : <IconAlertTriangle size={16} color="var(--mantine-color-orange-6)" />}
+                  {n.level === "ok" ? <IconCheck size={16} color="var(--mantine-color-green-text)" /> : <IconAlertTriangle size={16} color="var(--mantine-color-orange-text)" />}
                   <Text size="xs">{T(n.text)}</Text>
                 </Group>
               ))}
@@ -366,7 +366,7 @@ export function PhotoEditor({
             </div>
             {original ? (
               <Group gap="xs">
-                <IconCheck size={16} color="var(--mantine-color-green-6)" />
+                <IconCheck size={16} color="var(--mantine-color-green-text)" />
                 <Text size="xs">{T("Użyto zdjęcia poprawionego automatycznie.")}</Text>
                 <Button size="compact-xs" variant="subtle" onClick={revertOriginal}>
                   {T("Wróć do oryginału")}

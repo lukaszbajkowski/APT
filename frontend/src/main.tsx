@@ -6,7 +6,8 @@ import "./app.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { MantineProvider, createTheme, type MantineColorsTuple } from "@mantine/core";
+import { MantineProvider } from "@mantine/core";
+import { theme } from "./theme";
 import { Notifications } from "@mantine/notifications";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -16,28 +17,6 @@ import { ConfirmProvider } from "./lib/confirm";
 import { I18nProvider } from "./lib/i18n";
 import { ApiError, errorText } from "./api";
 import { notifications } from "@mantine/notifications";
-
-// Granat – ten sam kolor co pasek na karcie identyfikacyjnej.
-const navy: MantineColorsTuple = [
-  "#eef2fa",
-  "#dbe2f0",
-  "#b3c2e2",
-  "#89a0d4",
-  "#6683c8",
-  "#5071c1",
-  "#4467bf",
-  "#3657a8",
-  "#2d4d97",
-  "#1f3a73",
-];
-
-const theme = createTheme({
-  primaryColor: "navy",
-  primaryShade: { light: 7, dark: 5 },
-  colors: { navy },
-  defaultRadius: "md",
-  fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-});
 
 // Błąd wczytywania: jedno czytelne powiadomienie (co się stało, czyja to wina, co zrobić), bez dublowania.
 const queryClient = new QueryClient({

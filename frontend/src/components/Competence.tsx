@@ -199,7 +199,7 @@ export function EmployeeRequirements({ employeeId }: { employeeId: number }) {
   return (
     <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-red-light)" : undefined}>
       <Group gap={6} mb={6}>
-        {problems ? <IconAlertTriangle size={16} color="var(--mantine-color-red-6)" /> : <IconCheck size={16} color="var(--mantine-color-teal-6)" />}
+        {problems ? <IconAlertTriangle size={16} color="var(--mantine-color-red-text)" /> : <IconCheck size={16} color="var(--mantine-color-teal-text)" />}
         <Text size="sm" fw={600}>
           Wymagane na stanowisku{problems ? ` – braki: ${problems}` : " – komplet"}
         </Text>
@@ -290,7 +290,7 @@ function CellView({ c, col, row }: { c: MatrixCell; col: MatrixColumn; row: Matr
       >
         {icon ?? <Text c="dimmed">·</Text>}
         {c.mentor && (
-          <IconStarFilled size={9} style={{ position: "absolute", top: -3, right: -3, color: "var(--mantine-color-yellow-6)" }} />
+          <IconStarFilled size={9} style={{ position: "absolute", top: -3, right: -3, color: "var(--mantine-color-yellow-text)" }} />
         )}
       </div>
     </Tooltip>
@@ -356,7 +356,7 @@ export function CompetenceMatrix() {
           </Group>
         ))}
         <Text size="xs" c="dimmed">
-          Obramowanie = wymagane na stanowisku · <IconStarFilled size={10} color="var(--mantine-color-yellow-6)" /> = może
+          Obramowanie = wymagane na stanowisku · <IconStarFilled size={10} color="var(--mantine-color-yellow-text)" /> = może
           prowadzić
         </Text>
       </Group>
@@ -381,7 +381,7 @@ export function CompetenceMatrix() {
                     verticalAlign: "bottom",
                     padding: "8px 12px",
                     minWidth: 200,
-                    borderBottom: "1px solid var(--mantine-color-default-border)",
+                    borderBottom: "1px solid var(--apt-line)",
                   }}
                 >
                   Pracownik ({data.rows.length})
@@ -396,7 +396,7 @@ export function CompetenceMatrix() {
                       minWidth: 40,
                       verticalAlign: "bottom",
                       padding: "6px 0",
-                      borderBottom: "1px solid var(--mantine-color-default-border)",
+                      borderBottom: "1px solid var(--apt-line)",
                     }}
                   >
                     <div
@@ -427,7 +427,7 @@ export function CompetenceMatrix() {
                       zIndex: 1,
                       background: "var(--mantine-color-body)",
                       padding: "4px 12px",
-                      borderBottom: "1px solid var(--mantine-color-default-border)",
+                      borderBottom: "1px solid var(--apt-line)",
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -446,7 +446,7 @@ export function CompetenceMatrix() {
                     </Text>
                   </td>
                   {data.columns.map((c) => (
-                    <td key={c.key} style={{ padding: 4, borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+                    <td key={c.key} style={{ padding: 4, borderBottom: "1px solid var(--apt-line)" }}>
                       <CellView c={r.cells[c.key]} col={c} row={r} />
                     </td>
                   ))}

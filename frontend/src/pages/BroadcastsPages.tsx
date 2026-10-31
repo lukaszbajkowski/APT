@@ -66,7 +66,7 @@ function InlineDoc({ base }: { base: string }) {
         gap="sm"
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
-        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--mantine-color-gray-1)", padding: 8, borderRadius: 6 }}
+        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--apt-subtle)", padding: 8, borderRadius: 6 }}
       >
         {Array.from({ length: info.data.pages }, (_, i) => (
           <PageSheet key={i} index={i} src={`/api${base}/page/${i}`} />
@@ -105,7 +105,7 @@ function RecipientsPane({ id }: { id: number }) {
   );
   return (
     <>
-      <Group p="sm" gap="xs" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" gap="xs" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         <Button size="compact-sm" variant="light" loading={remind.isPending} disabled={unread === 0} onClick={() => remind.mutate()}>
           Przypomnij tym, którzy nie przeczytali ({unread})
         </Button>
@@ -336,7 +336,7 @@ export function BroadcastsPage() {
         <>
   {composing ? (
     <>
-      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         {mobile && (
           <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
             <IconArrowLeft size={18} />
@@ -383,7 +383,7 @@ export function BroadcastsPage() {
           />
         </Stack>
       </ScrollArea>
-      <Group p="sm" justify="space-between" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" justify="space-between" style={{ borderTop: "1px solid var(--apt-line)" }}>
         <Text size="xs" c="dimmed">
           {!hasTarget
             ? "Wybierz agencję, wydział albo „Wszyscy”."
@@ -412,7 +412,7 @@ export function BroadcastsPage() {
     </Stack>
   ) : (
     <>
-      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         {mobile && (
           <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
             <IconArrowLeft size={18} />
@@ -599,7 +599,7 @@ export function MyBroadcastsPage() {
                 {x.body || (x.files.length ? x.files[0].name : "")}
               </Text>
               {!x.read_at ? (
-                <Badge size="xs" circle color="red" />
+                <Badge size="xs" circle aria-label="Nieprzeczytane" />
               ) : (
                 <Badge size="xs" variant="light" color="teal">
                   {t("Potwierdzone")}
@@ -621,7 +621,7 @@ export function MyBroadcastsPage() {
     </Stack>
   ) : (
     <>
-      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         {mobile && (
           <ActionIcon variant="subtle" onClick={() => { stop(); setOpenId(null); }} aria-label={t("Wróć")}>
             <IconArrowLeft size={18} />
@@ -676,7 +676,7 @@ export function MyBroadcastsPage() {
           )}
         </Stack>
       </ScrollArea>
-      <Box p="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+      <Box p="sm" style={{ borderTop: "1px solid var(--apt-line)" }}>
         {!m.read_at ? (
           <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
             {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}

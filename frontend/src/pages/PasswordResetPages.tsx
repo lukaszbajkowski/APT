@@ -43,7 +43,7 @@ export function ForgotPasswordPage() {
     <Shell>
       {sent ? (
         <Stack>
-          <IconMailCheck size={36} color="var(--mantine-color-green-6)" />
+          <IconMailCheck size={36} color="var(--mantine-color-green-text)" />
           <Title order={4}>Sprawdź skrzynkę</Title>
           <Text size="sm">{sent}</Text>
           <Text size="sm" c="dimmed">

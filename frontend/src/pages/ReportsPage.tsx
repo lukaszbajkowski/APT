@@ -11,7 +11,7 @@ import { EmptyState, Loading } from "../components/States";
 function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
   return (
-    <Box h={8} style={{ background: "var(--mantine-color-default-border)", borderRadius: 4, overflow: "hidden" }}>
+    <Box h={8} style={{ background: "var(--apt-subtle)", borderRadius: 4, overflow: "hidden" }}>
       <Box h="100%" w={`${value ? pct : 0}%`} style={{ background: color, borderRadius: 4 }} />
     </Box>
   );
@@ -142,11 +142,11 @@ export function ReportsPage() {
           <Title order={5}>Zatrudnienia i zwolnienia – ostatnie 12 miesięcy</Title>
           <Group gap="md">
             <Group gap={6}>
-              <Box w={10} h={10} style={{ background: "var(--mantine-color-teal-6)", borderRadius: 2 }} />
+              <Box w={10} h={10} style={{ background: "var(--mantine-color-teal-text)", borderRadius: 2 }} />
               <Text size="xs">zatrudnieni</Text>
             </Group>
             <Group gap={6}>
-              <Box w={10} h={10} style={{ background: "var(--mantine-color-red-5)", borderRadius: 2 }} />
+              <Box w={10} h={10} style={{ background: "var(--mantine-color-orange-text)", borderRadius: 2 }} />
               <Text size="xs">zwolnieni</Text>
             </Group>
           </Group>
@@ -161,15 +161,15 @@ export function ReportsPage() {
                   </Table.Td>
                   <Table.Td>
                     <Stack gap={3}>
-                      <Bar value={m.hired} max={maxMonth} color="var(--mantine-color-teal-6)" />
-                      <Bar value={m.terminated} max={maxMonth} color="var(--mantine-color-red-5)" />
+                      <Bar value={m.hired} max={maxMonth} color="var(--mantine-color-teal-text)" />
+                      <Bar value={m.terminated} max={maxMonth} color="var(--mantine-color-orange-text)" />
                     </Stack>
                   </Table.Td>
                   <Table.Td w={120} ta="right">
-                    <Text size="sm" span c="teal.7" fw={600}>
+                    <Text size="sm" span c="teal" fw={600}>
                       +{m.hired}
                     </Text>{" "}
-                    <Text size="sm" span c="red.6" fw={600}>
+                    <Text size="sm" span c="orange" fw={600}>
                       −{m.terminated}
                     </Text>
                   </Table.Td>

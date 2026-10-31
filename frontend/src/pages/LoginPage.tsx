@@ -1,7 +1,8 @@
+import { BrandMark } from "../components/AppLayout";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Box, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
@@ -52,7 +53,7 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
     <form onSubmit={submit}>
       <Stack>
         <Group gap="sm" wrap="nowrap">
-          <IconShieldLock size={28} color="var(--mantine-color-navy-6)" />
+          <IconShieldLock size={28} color="var(--mantine-primary-color-filled)" />
           <div>
             <Title order={4}>{T("Logowanie dwuetapowe")}</Title>
             <Text size="sm" c="dimmed">
@@ -205,7 +206,7 @@ export function LoginPage() {
   }
 
   return (
-    <Center mih="100vh" className="surface-subtle" p="md">
+    <Center mih="100vh" p="md" style={{ background: "var(--apt-ground)" }}>
       <Stack align="center" w="100%" maw={400} gap="md">
       <Paper withBorder shadow="sm" p="xl" w="100%">
         {me?.mfa_pending ? (
@@ -214,7 +215,8 @@ export function LoginPage() {
           <form onSubmit={submit}>
             <Stack>
               <div>
-                <Title order={3} className="brand-title" style={{ textWrap: "balance" }}>
+                <Box mb="md"><BrandMark size={44} /></Box>
+                <Title order={1} size="h3" className="brand-title" style={{ textWrap: "balance" }}>
                   Identyfikacja pracowników APT
                 </Title>
                 <Text size="sm" c="dimmed">

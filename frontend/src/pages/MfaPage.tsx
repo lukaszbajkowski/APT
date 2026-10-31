@@ -244,7 +244,7 @@ function SetupFlow({ forced }: { forced: boolean }) {
                 h={200}
                 p={4}
                 bg="white"
-                style={{ borderRadius: 8, border: "1px solid var(--mantine-color-default-border)" }}
+                style={{ borderRadius: 8, border: "1px solid var(--apt-line)" }}
                 aria-label="Kod QR do aplikacji uwierzytelniającej"
                 dangerouslySetInnerHTML={{ __html: setup.qr_svg }}
               />
@@ -390,7 +390,7 @@ export function MfaPage() {
         <Stack>
           <div>
             {forced && (
-              <Text size="xs" fw={600} c="navy" tt="uppercase" mb={4}>
+              <Text size="xs" fw={600} c="var(--mantine-primary-color-text)" tt="uppercase" mb={4}>
                 Ostatni krok przed wejściem do aplikacji
               </Text>
             )}

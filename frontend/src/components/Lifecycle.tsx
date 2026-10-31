@@ -382,7 +382,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
         )}
         {it.auto && it.state !== "auto" && (
           <Tooltip label="Odhaczy się samo, gdy warunek zostanie spełniony" withArrow>
-            <IconBolt size={14} color="var(--mantine-color-gray-5)" />
+            <IconBolt size={14} color="var(--mantine-color-dimmed)" />
           </Tooltip>
         )}
         {it.can_edit && !done && (

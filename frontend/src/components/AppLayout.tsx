@@ -1,92 +1,100 @@
-import { Fragment, useState } from "react";
-import { Alert } from "@mantine/core";
+import { Fragment, useState, type ReactNode } from "react";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  ActionIcon,
+  Alert,
   AppShell,
   Avatar,
+  Badge,
   Box,
-  Burger,
+  Drawer,
   Group,
   Menu,
-  ScrollArea,
-  Badge,
   NavLink,
+  ScrollArea,
   SegmentedControl,
+  Stack,
   Text,
   UnstyledButton,
   useMantineColorScheme,
   type MantineColorScheme,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useMediaQuery } from "@mantine/hooks";
 import {
+  IconBook,
+  IconChartBar,
+  IconCertificate2,
+  IconChecklist,
   IconChevronDown,
   IconChevronRight,
-  IconBook,
-  IconFileSpreadsheet,
-  IconUserPlus,
-  IconDeviceDesktop,
-  IconFingerprint,
-  IconMessage,
-  IconSignature,
-  IconSwitchHorizontal,
-  IconHome,
-  IconMoon,
-  IconChartBar,
-  IconScan,
-  IconShieldLock,
-  IconSun,
-  IconFileText,
-  IconSpeakerphone,
-  IconHeartbeat,
-  IconKey,
-  IconListDetails,
-  IconShieldCheck,
-  IconChecklist,
   IconClipboardCheck,
   IconClockShield,
+  IconDeviceDesktop,
+  IconFileSpreadsheet,
+  IconFileText,
+  IconFingerprint,
+  IconHeartbeat,
+  IconHome,
+  IconKey,
+  IconListDetails,
   IconLogout,
-  IconTargetArrow,
-  IconUsersGroup,
+  IconMenu2,
+  IconMessage,
+  IconMoon,
+  IconScan,
   IconSchool,
-  IconCertificate2,
+  IconSelector,
+  IconShieldCheck,
+  IconShieldLock,
+  IconSignature,
+  IconSpeakerphone,
+  IconSun,
+  IconSwitchHorizontal,
+  IconTargetArrow,
   IconUserCircle,
   IconUserCog,
+  IconUserPlus,
+  IconUsersGroup,
 } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../auth";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
-import { useQuery } from "@tanstack/react-query";
+
+type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
+
+const ADMIN_GROUP = "Administracja";
+
+function isActivePath(to: string, path: string) {
+  return to === "/" || to === "/moje-konto" ? path === to : path === to || path.startsWith(to + "/");
+}
 
 export function AppLayout() {
-  const [opened, { toggle, close }] = useDisclosure();
-  const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { hasRole } = useAuth();
+  const location = useLocation();
+  const t = useT();
+  const lang = useLang();
   const [collapsed, setCollapsed] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem("apt-nav-collapsed") ?? "[]") as string[];
+      return JSON.parse(localStorage.getItem("apt-nav-collapsed-v2") ?? JSON.stringify([ADMIN_GROUP])) as string[];
     } catch {
-      return [];
+      return [ADMIN_GROUP];
     }
   });
   const toggleGroup = (g: string) =>
     setCollapsed((c) => {
       const next = c.includes(g) ? c.filter((x) => x !== g) : [...c, g];
       try {
-        localStorage.setItem("apt-nav-collapsed", JSON.stringify(next));
+        localStorage.setItem("apt-nav-collapsed-v2", JSON.stringify(next));
       } catch {
         /* pamięć przeglądarki niedostępna – zwijanie działa do odświeżenia */
       }
       return next;
     });
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const t = useT();
-  const lang = useLang();
 
   const count = useQuery({
     queryKey: ["hr-count"],
@@ -116,236 +124,147 @@ export function AppLayout() {
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
   });
-  const newMessages = count.data?.unread ?? 0;
-  type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
+
+  const staff = hasRole("admin", "hr");
+  const canScan = !hasRole("agency", "employee");
   const items: NavItem[] = [
+    // pracownik
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
-    { to: "/moje-konto/klucze", label: "Klucze", icon: IconFingerprint, show: hasRole("employee") },
     { to: "/moje-konto/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: hasRole("employee"), badge: bcCount.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
-    { to: "/", label: "Start", icon: IconHome, show: !hasRole("employee") },
-    { to: "/do-zrobienia", label: "Do zrobienia", icon: IconTargetArrow, show: hasRole("admin", "hr") },
+    { to: "/moje-konto/klucze", label: "Klucze logowania", icon: IconFingerprint, show: hasRole("employee"), group: "Ustawienia" },
+    // personel
+    { to: "/", label: "Dziś", icon: IconHome, show: !hasRole("employee") },
+    { to: "/pracownicy", label: "Pracownicy", icon: IconUsersGroup, show: !hasRole("employee") },
+    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: canScan },
+    { to: "/do-zrobienia", label: "Do zrobienia", icon: IconTargetArrow, show: staff },
 
-    { to: "/pracownicy", label: "Pracownicy", icon: IconUsersGroup, show: !hasRole("employee"), group: "Ludzie" },
-    { to: "/skaner", label: "Skaner kart", icon: IconScan, show: !hasRole("agency", "employee"), group: "Ludzie" },
-    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
-    { to: "/szkolenia", label: "Szkolenia", icon: IconSchool, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
-    { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconCertificate2, show: hasRole("admin", "hr"), group: "Ludzie" },
-    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager"), group: "Ludzie" },
+    { to: "/wiadomosci", label: "Wiadomości", icon: IconMessage, show: staff, badge: count.data?.unread ?? 0, group: "Komunikacja" },
+    { to: "/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: staff, group: "Komunikacja" },
 
-    { to: "/wiadomosci", label: "Wiadomości", icon: IconMessage, show: hasRole("admin", "hr"), badge: newMessages, group: "Komunikacja" },
-    { to: "/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: hasRole("admin", "hr"), group: "Komunikacja" },
-    { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconUserCircle, show: hasRole("admin", "hr"), group: "Komunikacja" },
+    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
+    { to: "/szkolenia", label: "Szkolenia", icon: IconSchool, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
+    { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconCertificate2, show: staff, group: "Kadry" },
+    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
+    { to: "/zgloszenia", label: "Zgłoszenia nowych osób", icon: IconUserPlus, show: hasRole("admin", "hr", "agency"), group: "Kadry" },
+    { to: "/zestawienia", label: "Zestawienia dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency"), group: "Kadry" },
+    { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
 
-    { to: "/zgloszenia", label: "Zgłoszenia", icon: IconUserPlus, show: hasRole("admin", "hr"), group: "Agencje i raporty" },
-    { to: "/zgloszenia", label: "Zgłoszenia", icon: IconUserPlus, show: hasRole("agency"), group: "Agencje i raporty" },
-    { to: "/zestawienia", label: "Zestawienia", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency"), group: "Agencje i raporty" },
-    { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager"), group: "Agencje i raporty" },
+    { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconUserCircle, show: staff, group: ADMIN_GROUP },
+    { to: "/slowniki", label: "Słowniki", icon: IconBook, show: staff, group: ADMIN_GROUP },
+    { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUserCog, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: ADMIN_GROUP },
+  ].filter((i) => i.show);
 
-    { to: "/slowniki", label: "Słowniki", icon: IconBook, show: hasRole("admin", "hr"), group: "Administracja" },
-    { to: "/szablony", label: "Szablony", icon: IconFileText, show: hasRole("admin"), group: "Administracja" },
-    { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUserCog, show: hasRole("admin"), group: "Administracja" },
-    { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: "Administracja" },
-    { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin"), group: "Administracja" },
-    { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin"), group: "Administracja" },
-    { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: "Administracja" },
-  ];
+  // dolny pasek na telefonie: najczęstsze miejsca + skaner na środku
+  const byPath = (p: string) => items.find((i) => i.to === p);
+  const tabPaths = hasRole("employee")
+    ? ["/moje-konto", "/moje-konto/do-podpisu", "/moje-konto/komunikaty", "/moje-konto/wiadomosci"]
+    : hasRole("agency")
+      ? ["/", "/pracownicy", "/zgloszenia", "/zestawienia"]
+      : staff
+        ? ["/", "/pracownicy", "/wiadomosci"]
+        : ["/", "/pracownicy"];
+  const tabs = tabPaths.map(byPath).filter((x): x is NavItem => !!x);
+  const moreBadge = items.filter((i) => !tabPaths.includes(i.to)).reduce((n, i) => n + (i.badge ?? 0), 0);
 
-  const initials = (me?.user.full_name ?? "?")
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const navList = (onNavigate?: () => void) => (
+    <NavList items={items} path={location.pathname} collapsed={collapsed} toggleGroup={toggleGroup} onNavigate={onNavigate} />
+  );
 
   return (
     <AppShell
-      header={{ height: 56 }}
-      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }}
-      padding="md"
+      header={{ height: 56, collapsed: !mobile }}
+      footer={{ height: 68, collapsed: !mobile }}
+      navbar={{ width: 256, breakpoint: "sm", collapsed: { mobile: true } }}
+      padding={mobile ? "sm" : "lg"}
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
-            <Link to="/" className="brand-link" onClick={close}>
-              <Text fw={700} className="brand-title" truncate visibleFrom="sm">
-                Identyfikacja pracowników APT
-              </Text>
-              <Text fw={700} className="brand-title" truncate hiddenFrom="sm">
-                Identyfikacja APT
-              </Text>
+      {mobile && (
+        <AppShell.Header>
+          <Group h="100%" px="sm" justify="space-between" wrap="nowrap">
+            <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link">
+              <Group gap={8} wrap="nowrap">
+                <BrandMark />
+                <Text fw={750} className="brand-title" truncate>
+                  Identyfikacja APT
+                </Text>
+              </Group>
             </Link>
+            <AccountMenu compact />
           </Group>
-          <Group gap="xs" wrap="nowrap">
-          {!hasRole("agency", "employee") && (
-            <ActionIcon component={Link} to="/skaner" variant="light" size="lg" radius="xl" hiddenFrom="sm" aria-label="Skanuj kartę">
-              <IconScan size={18} />
-            </ActionIcon>
-          )}
-          <Menu position="bottom-end" width={260} closeOnItemClick opened={menuOpen} onChange={setMenuOpen}>
-            <Menu.Target>
-              <UnstyledButton aria-label="Konto użytkownika">
-                <Group gap="xs" wrap="nowrap">
-                  <Avatar color="navy" radius="xl" size="sm">
-                    {initials}
-                  </Avatar>
-                  <Box visibleFrom="sm" style={{ lineHeight: 1.1 }}>
-                    <Text size="sm" fw={500}>
-                      {me?.user.full_name}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {me ? ROLE_LABELS[me.user.role] : ""}
-                      {me?.sim_role ? " (symulacja)" : ""}
-                    </Text>
-                  </Box>
-                  <IconChevronDown size={14} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Konta w tej przeglądarce</Menu.Label>
-              {accounts
-                .filter((a) => a.id !== me?.user.id)
-                .map((a) => (
-                  <Menu.Item key={a.id} leftSection={<IconSwitchHorizontal size={16} />} onClick={() => switchAccount(a.id)}>
-                    <Text size="sm">{a.full_name}</Text>
-                    <Text size="xs" c="dimmed">
-                      {ROLE_LABELS[a.role]} · {a.username}
-                    </Text>
-                  </Menu.Item>
-                ))}
-              <Menu.Item leftSection={<IconUserPlus size={16} />} onClick={addAccount}>
-                {t("Dodaj konto")}
-              </Menu.Item>
-              <Menu.Divider />
-              <SimulationMenu onDone={() => setMenuOpen(false)} />
-              <Menu.Label>{t("Motyw")}</Menu.Label>
-              <Box px="xs" pb="xs">
-                <SegmentedControl
-                  fullWidth
-                  size="xs"
-                  value={colorScheme}
-                  onChange={(v) => setColorScheme(v as MantineColorScheme)}
-                  data={[
-                    {
-                      value: "light",
-                      label: (
-                        <Group gap={4} justify="center" wrap="nowrap">
-                          <IconSun size={14} /> {t("Jasny")}
-                        </Group>
-                      ),
-                    },
-                    {
-                      value: "dark",
-                      label: (
-                        <Group gap={4} justify="center" wrap="nowrap">
-                          <IconMoon size={14} /> {t("Ciemny")}
-                        </Group>
-                      ),
-                    },
-                    {
-                      value: "auto",
-                      label: (
-                        <Group gap={4} justify="center" wrap="nowrap">
-                          <IconDeviceDesktop size={14} /> {t("System")}
-                        </Group>
-                      ),
-                    },
-                  ]}
-                />
-              </Box>
-              <Menu.Divider />
-              {hasRole("employee") && (
-                <>
-                  <Menu.Label>{t("Język")}</Menu.Label>
-                  <Box px="xs" pb="xs">
-                    <LanguagePicker size="xs" />
-                  </Box>
-                  <Menu.Divider />
-                </>
-              )}
-              {!hasRole("employee") && (
-                <>
-                  <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
-                    Logowanie dwuetapowe
-                  </Menu.Item>
-                  <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
-                    Zmień hasło
-                  </Menu.Item>
-                </>
-              )}
-              <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
-                {t("Klucze i powiadomienia")}
-              </Menu.Item>
-              <Menu.Item
-                color="red"
-                leftSection={<IconLogout size={16} />}
-                onClick={async () => {
-                  await logout();
-                  navigate("/login");
-                }}
-              >
-                {t("Wyloguj")}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-          </Group>
-        </Group>
-      </AppShell.Header>
+        </AppShell.Header>
+      )}
 
-      <AppShell.Navbar p="xs">
+      <AppShell.Navbar p="sm">
+        <AppShell.Section>
+          <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link">
+            <Group gap={10} wrap="nowrap" px={6} pt={4} pb="md">
+              <BrandMark />
+              <Box style={{ lineHeight: 1.2, minWidth: 0 }}>
+                <Text fw={750} size="sm" className="brand-title">
+                  Identyfikacja
+                </Text>
+                <Text size="xs" c="dimmed">
+                  pracowników APT
+                </Text>
+              </Box>
+            </Group>
+          </Link>
+        </AppShell.Section>
         <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize={8}>
-        {items
-          .filter((i) => i.show)
-          .map((i, idx, arr) => {
-            const isActive = i.to === "/" || i.to === "/moje-konto" ? location.pathname === i.to : location.pathname.startsWith(i.to);
-            const closed = !!i.group && collapsed.includes(i.group);
-            const first = !!i.group && i.group !== arr[idx - 1]?.group;
-            const groupBadge = first && closed ? arr.filter((x) => x.group === i.group).reduce((n, x) => n + (x.badge ?? 0), 0) : 0;
-            return (
-              <Fragment key={i.to + i.label}>
-                {first && i.group && (
-                  <UnstyledButton
-                    onClick={() => toggleGroup(i.group as string)}
-                    aria-expanded={!closed}
-                    w="100%"
-                    px="sm"
-                    pt={idx === 0 ? 0 : "md"}
-                    pb={4}
-                  >
-                    <Group gap={4} justify="space-between" wrap="nowrap">
-                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-                        {t(i.group)}
-                      </Text>
-                      <Group gap={4} wrap="nowrap">
-                        {groupBadge > 0 && (
-                          <Badge size="xs" circle color="red">
-                            {groupBadge}
-                          </Badge>
-                        )}
-                        {closed ? <IconChevronRight size={14} /> : <IconChevronDown size={14} />}
-                      </Group>
-                    </Group>
-                  </UnstyledButton>
-                )}
-                {(!closed || isActive) && (
-                  <NavLink
-                    component={Link}
-                    to={i.to}
-                    active={isActive}
-                    label={t(i.label)}
-                    leftSection={<i.icon size={18} />}
-                    rightSection={i.badge ? <Badge size="sm" circle color="red">{i.badge}</Badge> : undefined}
-                    onClick={close}
-                  />
-                )}
-              </Fragment>
-            );
-          })}
+          {navList()}
+        </AppShell.Section>
+        <AppShell.Section pt="xs" style={{ borderTop: "1px solid var(--apt-line)" }}>
+          <AccountMenu />
         </AppShell.Section>
       </AppShell.Navbar>
+
+      {mobile && (
+        <AppShell.Footer>
+          <nav aria-label={t("Menu główne")} className="tabbar">
+            {tabs.slice(0, 2).map((i) => (
+              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.label)} />
+            ))}
+            {canScan ? (
+              <Link to="/skaner" className="tabbar-scan" aria-label={t("Skanuj kartę")} data-active={location.pathname === "/skaner" || undefined}>
+                <span className="tabbar-scan-btn">
+                  <IconScan size={24} stroke={2} />
+                </span>
+                <span>{t("Skanuj")}</span>
+              </Link>
+            ) : (
+              tabs[2] && <TabLink item={tabs[2]} active={isActivePath(tabs[2].to, location.pathname)} label={t(tabs[2].label)} />
+            )}
+            {tabs.slice(canScan ? 2 : 3, canScan ? 3 : 4).map((i) => (
+              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.label)} />
+            ))}
+            <UnstyledButton className="tabbar-item" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" data-active={moreOpen || undefined}>
+              <span className="tabbar-icon">
+                <IconMenu2 size={22} stroke={1.8} />
+                {moreBadge > 0 && <span className="tabbar-badge">{moreBadge}</span>}
+              </span>
+              <span>{t("Więcej")}</span>
+            </UnstyledButton>
+          </nav>
+        </AppShell.Footer>
+      )}
+
+      <Drawer
+        opened={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        position="bottom"
+        size="85%"
+        title={t("Wszystkie sekcje")}
+        radius="lg"
+        styles={{ body: { paddingBottom: 24 } }}
+      >
+        {navList(() => setMoreOpen(false))}
+      </Drawer>
 
       <AppShell.Main>
         <SimulationBanner />
@@ -355,8 +274,231 @@ export function AppLayout() {
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
           </Alert>
         )}
-        <Outlet />
+        <Box maw={1440} mx="auto">
+          <Outlet />
+        </Box>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+export function BrandMark({ size = 32 }: { size?: number }) {
+  return (
+    <Box
+      aria-hidden
+      w={size}
+      h={size}
+      style={{
+        borderRadius: 8,
+        background: "var(--mantine-primary-color-filled)",
+        color: "var(--mantine-primary-color-contrast)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: 800,
+        fontSize: Math.round(size * 0.4),
+        flex: "none",
+      }}
+    >
+      ID
+    </Box>
+  );
+}
+
+function TabLink({ item, active, label }: { item: NavItem; active: boolean; label: string }) {
+  return (
+    <Link to={item.to} className="tabbar-item" data-active={active || undefined} aria-current={active ? "page" : undefined}>
+      <span className="tabbar-icon">
+        <item.icon size={22} stroke={active ? 2.2 : 1.8} />
+        {!!item.badge && <span className="tabbar-badge">{item.badge}</span>}
+      </span>
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function NavList({
+  items,
+  path,
+  collapsed,
+  toggleGroup,
+  onNavigate,
+}: {
+  items: NavItem[];
+  path: string;
+  collapsed: string[];
+  toggleGroup: (g: string) => void;
+  onNavigate?: () => void;
+}) {
+  const t = useT();
+  return (
+    <Stack gap={2}>
+      {items.map((i, idx, arr) => {
+        const active = isActivePath(i.to, path);
+        const first = !!i.group && i.group !== arr[idx - 1]?.group;
+        const closed = !!i.group && collapsed.includes(i.group) && !arr.some((x) => x.group === i.group && isActivePath(x.to, path));
+        const groupBadge = first && closed ? arr.filter((x) => x.group === i.group).reduce((n, x) => n + (x.badge ?? 0), 0) : 0;
+        return (
+          <Fragment key={i.to + i.label}>
+            {first && i.group && (
+              <UnstyledButton
+                onClick={() => toggleGroup(i.group as string)}
+                aria-expanded={!closed}
+                className="nav-group"
+                mt={idx === 0 ? 0 : "md"}
+              >
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: ".06em" }}>
+                  {t(i.group)}
+                </Text>
+                <Group gap={4} wrap="nowrap">
+                  {groupBadge > 0 && <CountBadge n={groupBadge} />}
+                  {closed ? <IconChevronRight size={14} aria-hidden /> : <IconChevronDown size={14} aria-hidden />}
+                </Group>
+              </UnstyledButton>
+            )}
+            {!closed && (
+              <NavLink
+                component={Link}
+                to={i.to}
+                active={active}
+                aria-current={active ? "page" : undefined}
+                label={t(i.label)}
+                leftSection={<i.icon size={19} stroke={1.8} />}
+                rightSection={i.badge ? <CountBadge n={i.badge} /> : undefined}
+                onClick={onNavigate}
+                className="nav-item"
+              />
+            )}
+          </Fragment>
+        );
+      })}
+    </Stack>
+  );
+}
+
+function CountBadge({ n }: { n: number }) {
+  return (
+    <Badge size="sm" variant="filled" aria-label={`${n} nowych`}>
+      {n}
+    </Badge>
+  );
+}
+
+function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
+  const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const t = useT();
+  const initials = (me?.user.full_name ?? "?")
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const role = me ? ROLE_LABELS[me.user.role] + (me.sim_role ? " (symulacja)" : "") : "";
+
+  return (
+    <Menu position={compact ? "bottom-end" : "top-start"} width={270} closeOnItemClick opened={open} onChange={setOpen}>
+      <Menu.Target>
+        {compact ? (
+          <UnstyledButton aria-label={t("Konto użytkownika")} p={4}>
+            <Avatar radius="xl" size={36} color="orzech" variant="filled">
+              {initials}
+            </Avatar>
+          </UnstyledButton>
+        ) : (
+          <UnstyledButton aria-label={t("Konto użytkownika")} className="account-button">
+            <Avatar radius="xl" size={34} color="orzech" variant="light">
+              {initials}
+            </Avatar>
+            <Box style={{ lineHeight: 1.25, minWidth: 0, flex: 1 }}>
+              <Text size="sm" fw={600} truncate>
+                {me?.user.full_name}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                {role}
+              </Text>
+            </Box>
+            <IconSelector size={16} aria-hidden />
+          </UnstyledButton>
+        )}
+      </Menu.Target>
+      <Menu.Dropdown>
+        {compact && (
+          <Box px="sm" py={6}>
+            <Text size="sm" fw={600}>
+              {me?.user.full_name}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {role}
+            </Text>
+          </Box>
+        )}
+        <Menu.Label>{t("Konta w tej przeglądarce")}</Menu.Label>
+        {accounts
+          .filter((a) => a.id !== me?.user.id)
+          .map((a) => (
+            <Menu.Item key={a.id} leftSection={<IconSwitchHorizontal size={16} />} onClick={() => switchAccount(a.id)}>
+              <Text size="sm">{a.full_name}</Text>
+              <Text size="xs" c="dimmed">
+                {ROLE_LABELS[a.role]} · {a.username}
+              </Text>
+            </Menu.Item>
+          ))}
+        <Menu.Item leftSection={<IconUserPlus size={16} />} onClick={addAccount}>
+          {t("Dodaj konto")}
+        </Menu.Item>
+        <Menu.Divider />
+        <SimulationMenu onDone={() => setOpen(false)} />
+        <Menu.Label>{t("Motyw")}</Menu.Label>
+        <Box px="xs" pb="xs">
+          <SegmentedControl
+            fullWidth
+            size="xs"
+            value={colorScheme}
+            onChange={(v) => setColorScheme(v as MantineColorScheme)}
+            data={[
+              { value: "light", label: <Group gap={4} justify="center" wrap="nowrap"><IconSun size={14} /> {t("Jasny")}</Group> },
+              { value: "dark", label: <Group gap={4} justify="center" wrap="nowrap"><IconMoon size={14} /> {t("Ciemny")}</Group> },
+              { value: "auto", label: <Group gap={4} justify="center" wrap="nowrap"><IconDeviceDesktop size={14} /> {t("System")}</Group> },
+            ]}
+          />
+        </Box>
+        <Menu.Divider />
+        {hasRole("employee") && (
+          <>
+            <Menu.Label>{t("Język")}</Menu.Label>
+            <Box px="xs" pb="xs">
+              <LanguagePicker size="xs" />
+            </Box>
+            <Menu.Divider />
+          </>
+        )}
+        {!hasRole("employee") && (
+          <>
+            <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => navigate(MFA_PATH)}>
+              Logowanie dwuetapowe
+            </Menu.Item>
+            <Menu.Item leftSection={<IconKey size={16} />} onClick={() => navigate("/zmiana-hasla")}>
+              Zmień hasło
+            </Menu.Item>
+          </>
+        )}
+        <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
+          {t("Klucze i powiadomienia")}
+        </Menu.Item>
+        <Menu.Item
+          color="red"
+          leftSection={<IconLogout size={16} />}
+          onClick={async () => {
+            await logout();
+            navigate("/login");
+          }}
+        >
+          {t("Wyloguj")}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }

@@ -19,9 +19,10 @@ import {
   Text,
   TextInput,
   Title,
+  UnstyledButton,
 } from "@mantine/core";
-import { useDebouncedValue } from "@mantine/hooks";
-import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
+import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
+import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -48,6 +49,7 @@ const MISSING = [
 export function EmployeesPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const canPrint = hasRole("admin", "hr", "manager");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [printOpen, setPrintOpen] = useState(false);
@@ -228,12 +230,12 @@ export function EmployeesPage() {
 
       <Group align="flex-end" gap="sm">
         <TextInput
-          label="Szukaj"
-          placeholder="nazwisko, imię lub numer"
-          leftSection={<IconSearch size={16} />}
+          aria-label="Szukaj pracownika"
+          placeholder="Nazwisko, imię lub nr karty"
+          leftSection={<IconSearch size={16} aria-hidden />}
           value={q}
           onChange={(e) => update({ q: e.currentTarget.value })}
-          w={{ base: "100%", sm: 260 }}
+          w={{ base: "100%", sm: 320 }}
         />
         <SegmentedControl
           value={status}
@@ -394,7 +396,44 @@ export function EmployeesPage() {
         />
       )}
 
-      {list.data && list.data.items.length > 0 && (
+      {list.data && list.data.items.length > 0 && mobile && (
+        <Paper withBorder radius="lg" style={{ overflow: "hidden" }}>
+          {list.data.items.map((e, i) => (
+            <Group
+              key={e.id}
+              wrap="nowrap"
+              gap="sm"
+              px="sm"
+              py={10}
+              className={selected.has(e.id) ? "row-selected" : undefined}
+              style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
+            >
+              {canPrint && (
+                <Checkbox aria-label={`Zaznacz ${e.last_name} ${e.first_name}`} checked={selected.has(e.id)} onChange={() => toggle(e.id)} />
+              )}
+              <UnstyledButton component={Link} to={`/pracownicy/${e.id}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                <EmployeePhoto employee={e} width={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={700} size="sm" truncate>
+                    {e.last_name} {e.first_name}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {[e.department?.name, e.position?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+                  </Text>
+                </div>
+                <Stack gap={2} align="flex-end">
+                  <Text size="xs" c="dimmed" ff="monospace">
+                    {e.number_display}
+                  </Text>
+                  {e.status !== "active" && <StatusBadge active={false} />}
+                </Stack>
+              </UnstyledButton>
+            </Group>
+          ))}
+        </Paper>
+      )}
+
+      {list.data && list.data.items.length > 0 && !mobile && (
         <Table.ScrollContainer minWidth={900}>
           <Table highlightOnHover verticalSpacing={6}>
             <Table.Thead>
@@ -465,15 +504,7 @@ export function EmployeesPage() {
                   <Table.Td>{formatDate(e.hire_date)}</Table.Td>
                   {status !== "active" && (
                     <Table.Td>
-                      {e.status === "active" ? (
-                        <Badge color="green" variant="light">
-                          aktywny
-                        </Badge>
-                      ) : (
-                        <Badge color="gray" variant="light">
-                          archiwum
-                        </Badge>
-                      )}
+                      <StatusBadge active={e.status === "active"} />
                     </Table.Td>
                   )}
                 </Table.Tr>
@@ -499,5 +530,17 @@ export function EmployeesPage() {
       )}
       {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
     </Stack>
+  );
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return active ? (
+    <Badge color="green" variant="light" leftSection={<IconCheck size={12} aria-hidden />}>
+      aktywny
+    </Badge>
+  ) : (
+    <Badge color="gray" variant="light" leftSection={<IconArchive size={12} aria-hidden />}>
+      archiwum
+    </Badge>
   );
 }

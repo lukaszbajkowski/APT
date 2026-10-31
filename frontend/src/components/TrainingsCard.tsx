@@ -492,7 +492,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
             <Paper key={t.id} withBorder p="sm" radius="md">
               <Group justify="space-between" wrap="nowrap" align="flex-start">
                 <Group gap="sm" wrap="nowrap" align="flex-start" style={{ minWidth: 0 }}>
-                  <IconCertificate size={20} style={{ flexShrink: 0, marginTop: 2 }} color="var(--mantine-color-gray-6)" />
+                  <IconCertificate size={20} style={{ flexShrink: 0, marginTop: 2 }} color="var(--mantine-color-dimmed)" />
                   <div style={{ minWidth: 0 }}>
                     <Group gap={6}>
                       <Text fw={600}>{t.name ?? t.type_name}</Text>

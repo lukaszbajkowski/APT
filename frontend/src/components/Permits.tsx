@@ -94,7 +94,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Group gap="xs">
-          <IconId size={18} color="var(--mantine-color-gray-6)" />
+          <IconId size={18} color="var(--mantine-color-dimmed)" />
           <Title order={5}>Dokumenty pobytowe i zezwolenia</Title>
           {latest && (
             <Badge variant="light" color={PERMIT_STATE[latest.state].color}>

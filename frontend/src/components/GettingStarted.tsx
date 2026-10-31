@@ -46,7 +46,7 @@ export function GettingStarted({ employees }: { employees: number }) {
       <Stack gap="md">
         {steps.map((s) => (
           <Group key={s.title} wrap="nowrap" align="flex-start">
-            <ThemeIcon variant={s.done ? "filled" : "light"} color={s.done ? "teal" : "navy"} size={36} radius="xl">
+            <ThemeIcon variant={s.done ? "filled" : "light"} color={s.done ? "teal" : undefined} size={36} radius="xl">
               {s.done ? <IconCheck size={18} /> : s.icon}
             </ThemeIcon>
             <div style={{ flex: 1 }}>

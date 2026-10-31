@@ -98,7 +98,7 @@ export function TemplatesPage() {
           >
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Group gap="xs" wrap="nowrap">
-                <IconFileTypeDocx size={28} color="var(--mantine-color-navy-6)" />
+                <IconFileTypeDocx size={28} color="var(--mantine-primary-color-filled)" />
                 <Text fw={600}>{t.name}</Text>
               </Group>
               {!t.is_active && <Badge color="gray">wyłączony</Badge>}

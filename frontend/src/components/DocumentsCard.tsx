@@ -400,7 +400,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               <Table.Tr key={d.id}>
                 <Table.Td>
                   <Group gap={6} wrap="nowrap">
-                    <IconFileText size={18} color="var(--mantine-color-gray-6)" />
+                    <IconFileText size={18} color="var(--mantine-color-dimmed)" />
                     <div>
                       <Group gap={6}>
                         <Text size="sm" fw={500}>
@@ -433,7 +433,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
         {done ? (
           <Stack>
             <Group gap="sm" wrap="nowrap">
-              <IconCircleCheck size={32} color="var(--mantine-color-green-6)" />
+              <IconCircleCheck size={32} color="var(--mantine-color-green-text)" />
               <div>
                 <Text fw={600}>Gotowe: {done.template_name}</Text>
                 <Text size="sm" c="dimmed">

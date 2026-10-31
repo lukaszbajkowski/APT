@@ -151,7 +151,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Group gap="xs">
-          <IconStethoscope size={18} color="var(--mantine-color-gray-6)" />
+          <IconStethoscope size={18} color="var(--mantine-color-dimmed)" />
           <Title order={5}>Badania lekarskie</Title>
           {latest && (
             <Badge variant="light" color={STATE[latest.state].color}>

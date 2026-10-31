@@ -249,7 +249,7 @@ export function TemplateEditPage() {
                     {({ copied, copy }) => (
                       <Tooltip label={copied ? "Skopiowano" : "Kopiuj"} position="left" withArrow>
                         <Group gap={6} wrap="nowrap" style={{ cursor: "pointer" }} onClick={copy}>
-                          <IconCopy size={12} color="var(--mantine-color-gray-6)" />
+                          <IconCopy size={12} color="var(--mantine-color-dimmed)" />
                           <Code>{`{{ ${b.key} }}`}</Code>
                           <Text size="xs" c="dimmed" truncate>
                             {b.label}

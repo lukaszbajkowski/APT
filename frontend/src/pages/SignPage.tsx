@@ -362,7 +362,7 @@ export function SignPage() {
           <Card withBorder padding="lg" radius="md">
             <Center>
               <Stack align="center" gap="xs">
-                <IconCircleCheck size={56} color="var(--mantine-color-teal-6)" />
+                <IconCircleCheck size={56} color="var(--mantine-color-teal-text)" />
                 <Title order={3}>{T("Dziękujemy – dokument podpisany")}</Title>
                 <Text c="dimmed" ta="center">
                   {T("Podpisany dokument trafił do działu kadr. Możesz zamknąć tę stronę.")}
@@ -408,7 +408,7 @@ export function SignPage() {
                 <Card withBorder padding="xs" radius="md">
                   <Stack gap="xs">
                     {Array.from({ length: pages }, (_, i) => (
-                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={T("Strona {n}", { n: i + 1 })} radius="sm" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+                      <Image key={i} src={`/api/sign/${token}/page/${i}${v}`} alt={T("Strona {n}", { n: i + 1 })} radius="sm" style={{ border: "1px solid var(--apt-line)" }} />
                     ))}
                   </Stack>
                   <Group justify="flex-end" mt="xs">

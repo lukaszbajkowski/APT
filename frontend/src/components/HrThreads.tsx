@@ -197,7 +197,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   const submit = () => body.trim() && !send.isPending && send.mutate();
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
-      <Group justify="space-between" p="sm" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+      <Group justify="space-between" p="sm" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         <Group gap="sm" wrap="nowrap">
           {showBack && (
             <ActionIcon variant="subtle" onClick={onBack} aria-label={T("Wróć")}>
@@ -243,7 +243,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
         )}
       </Group>
       {cfg.data?.enabled && (
-        <Group px="sm" py={4} gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        <Group px="sm" py={4} gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
           <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={2}>
             {cfg.data.exhausted
               ? T("Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca.")
@@ -332,7 +332,7 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
           {error}
         </Alert>
       )}
-      <Group p="sm" align="flex-end" wrap="nowrap" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
+      <Group p="sm" align="flex-end" wrap="nowrap" style={{ borderTop: "1px solid var(--apt-line)" }}>
         <Textarea
           style={{ flex: 1 }}
           aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
@@ -567,7 +567,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                 <Text size="xs" fw={t.unread ? 700 : 400} lineClamp={1} style={{ flex: 1 }}>
                   {(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}
                 </Text>
-                {t.unread ? <Badge size="xs" circle color="red" /> : <Badge size="xs" variant="light" color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>}
+                {t.unread ? <Badge size="xs" circle aria-label={T("Nieprzeczytane")} /> : <Badge size="xs" variant="light" color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>}
               </Group>
             </Box>
           </Group>

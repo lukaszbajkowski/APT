@@ -56,7 +56,7 @@ export function NewPasswordFields({
       <Box aria-live="polite">
         {rules.map((r) => (
           <Group key={r.label} gap={6} wrap="nowrap" align="flex-start">
-            {r.ok ? <IconCheck size={14} color="var(--mantine-color-teal-6)" /> : <IconCircle size={14} color="var(--mantine-color-gray-5)" />}
+            {r.ok ? <IconCheck size={14} color="var(--mantine-color-teal-text)" /> : <IconCircle size={14} color="var(--mantine-color-dimmed)" />}
             <Text size="xs" c={r.ok ? "teal" : touched && pw.length > 0 ? "red" : "dimmed"}>
               {r.label}
             </Text>

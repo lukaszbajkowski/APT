@@ -182,7 +182,7 @@ export function ToSignPage() {
           <Card withBorder padding="xs">
             <Stack gap="xs">
               {Array.from({ length: info.data.pages }, (_, i) => (
-                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={t("Strona {n}", { n: i + 1 })} style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={t("Strona {n}", { n: i + 1 })} style={{ border: "1px solid var(--apt-line)" }} />
               ))}
             </Stack>
           </Card>

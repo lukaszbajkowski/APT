@@ -13,7 +13,13 @@ export function EmployeePhoto({ employee, width }: { employee: Employee; width: 
         style={{ borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}
         aria-label="Brak zdjęcia"
       >
-        <IconUser size={Math.max(16, width / 2.5)} color="var(--mantine-color-gray-5)" />
+        {width >= 28 ? (
+          <span aria-hidden style={{ fontSize: Math.max(11, Math.round(width / 2.8)), fontWeight: 700, color: "var(--mantine-color-dimmed)", letterSpacing: ".02em" }}>
+            {(employee.first_name?.[0] ?? "") + (employee.last_name?.[0] ?? "")}
+          </span>
+        ) : (
+          <IconUser size={Math.max(16, width / 2.5)} color="var(--mantine-color-dimmed)" />
+        )}
       </Box>
     );
   }

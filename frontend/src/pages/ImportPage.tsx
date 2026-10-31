@@ -202,7 +202,7 @@ export function ImportPage() {
         <Stepper.Step label="Plik" description="xlsx, numbers, csv">
           <Paper withBorder p="xl" mt="md">
             <Stack align="center" gap="md">
-              <IconFileSpreadsheet size={48} stroke={1.3} color="var(--mantine-color-navy-6)" />
+              <IconFileSpreadsheet size={48} stroke={1.3} color="var(--mantine-primary-color-filled)" />
               <Text ta="center">
                 Pierwszy wiersz z nazwami kolumn zostanie rozpoznany automatycznie.
                 <br />
@@ -324,7 +324,7 @@ export function ImportPage() {
                   <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                     Do importu
                   </Text>
-                  <Text fz={32} fw={700} c="green.8">
+                  <Text fz={32} fw={700} c="green">
                     {preview.summary.to_import}
                   </Text>
                 </Card>
@@ -332,7 +332,7 @@ export function ImportPage() {
                   <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                     Pominięte (już są w kartotece)
                   </Text>
-                  <Text fz={32} fw={700} c="yellow.9">
+                  <Text fz={32} fw={700} c="yellow">
                     {preview.summary.skipped}
                   </Text>
                 </Card>
@@ -448,7 +448,7 @@ export function ImportPage() {
           {result && (
             <Paper withBorder p="xl" mt="md">
               <Stack align="center">
-                <IconCheck size={48} color="var(--mantine-color-green-7)" />
+                <IconCheck size={48} color="var(--mantine-color-green-text)" />
                 <Title order={3}>Zaimportowano {result.imported} pracowników</Title>
                 {result.first_number && (
                   <Text>

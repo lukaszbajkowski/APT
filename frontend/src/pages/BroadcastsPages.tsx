@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, SegmentedControl, Select, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, Paper, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, Loader, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
@@ -98,38 +98,64 @@ function FileDocs({ files, staff }: { files: FileRef[]; staff?: boolean }) {
   );
 }
 
-/** Lista odbiorców w panelu szczegółów (zamiast okna): kto przeczytał + przypomnienie. */
+/** Zakładka „Kto przeczytał”: przypomnienie, wyszukiwarka, filtr i lista przewijana osobno (komunikat może iść do setek osób). */
 function RecipientsPane({ id }: { id: number }) {
+  const [q, setQ] = useState("");
+  const [f, setF] = useState("unread");
   const remind = useMutation({
     mutationFn: () => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
     onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane na ${r.pushed} z ${r.unread} kont.` }),
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
-  const q = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
+  const data = useQuery({ queryKey: ["bc-recipients", id], queryFn: () => api<Recipient[]>(`/broadcasts/${id}/recipients`) });
+  const all = data.data ?? [];
+  const unread = all.filter((r) => !r.read_at).length;
+  const rows = all.filter(
+    (r) =>
+      (!q.trim() || r.name.toLowerCase().includes(q.trim().toLowerCase())) &&
+      (f === "all" || (f === "read") === !!r.read_at),
+  );
   return (
-    <Stack gap="xs">
-      <Group justify="space-between">
-        <Text fw={600} size="sm">Kto przeczytał</Text>
-        <Button size="compact-sm" variant="light" loading={remind.isPending} onClick={() => remind.mutate()}>
-          Przypomnij tym, którzy nie przeczytali
+    <>
+      <Group p="sm" gap="xs" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+        <Button size="compact-sm" variant="light" loading={remind.isPending} disabled={unread === 0} onClick={() => remind.mutate()}>
+          Przypomnij tym, którzy nie przeczytali ({unread})
         </Button>
+        <TextInput size="xs" style={{ flex: 1, minWidth: 140 }} placeholder="Szukaj: nazwisko" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        <SegmentedControl
+          size="xs"
+          value={f}
+          onChange={setF}
+          data={[
+            { value: "all", label: "Wszyscy" },
+            { value: "unread", label: "Nieprzeczytali" },
+            { value: "read", label: "Przeczytali" },
+          ]}
+        />
       </Group>
-      {q.isLoading && <Loader size="sm" />}
-      <Table verticalSpacing={4} fz="sm">
-        <Table.Tbody>
-          {(q.data ?? []).map((r) => (
-            <Table.Tr key={r.employee_id}>
-              <Table.Td>{r.name}</Table.Td>
-              <Table.Td ta="right">
-                <Badge variant="light" color={r.read_at ? "teal" : "gray"}>
-                  {r.read_at ? formatDateTime(r.read_at) : "nie przeczytał(a)"}
-                </Badge>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Stack>
+      <ScrollArea style={{ flex: 1 }}>
+        {data.isLoading && <Loader size="sm" m="md" />}
+        {!data.isLoading && rows.length === 0 && (
+          <Text size="sm" c="dimmed" p="md">
+            Brak osób dla tego filtra.
+          </Text>
+        )}
+        <Table verticalSpacing={6} fz="sm" px="sm">
+          <Table.Tbody>
+            {rows.map((r) => (
+              <Table.Tr key={r.employee_id}>
+                <Table.Td pl="md">{r.name}</Table.Td>
+                <Table.Td ta="right" pr="md">
+                  <Badge variant="light" color={r.read_at ? "teal" : "gray"}>
+                    {r.read_at ? formatDateTime(r.read_at) : "nie przeczytał(a)"}
+                  </Badge>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
+    </>
   );
 }
 
@@ -146,6 +172,8 @@ export function BroadcastsPage() {
     refetchInterval: 15_000,
   });
   const [openId, setOpenId] = useState<number | null>(null);
+  const [tab, setTab] = useState<"content" | "read">("content");
+  useEffect(() => setTab("content"), [openId]);
   const [composing, setComposing] = useState(false);
   const [agency, setAgency] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
@@ -394,19 +422,28 @@ export function BroadcastsPage() {
                   {archive ? "Przywróć" : "Archiwizuj"}
                 </Button>
               </Group>
-              <ScrollArea style={{ flex: 1 }} p="md">
-                <Stack gap="md" pb="md">
-                  <RecipientsPane id={b.id} />
-                  {!archive && (
-                    <Text size="xs" c="dimmed">
-                      Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
-                      (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
-                    </Text>
-                  )}
-                  {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
-                  <FileDocs files={b.files} staff />
-                </Stack>
-              </ScrollArea>
+              <Tabs value={tab} onChange={(v) => setTab(v === "read" ? "read" : "content")}>
+                <Tabs.List px="sm">
+                  <Tabs.Tab value="content">Treść</Tabs.Tab>
+                  <Tabs.Tab value="read">Kto przeczytał ({b.read}/{b.total})</Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+              {tab === "read" ? (
+                <RecipientsPane id={b.id} />
+              ) : (
+                <ScrollArea style={{ flex: 1 }} p="md">
+                  <Stack gap="md" pb="md">
+                    {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
+                    <FileDocs files={b.files} staff />
+                    {!archive && (
+                      <Text size="xs" c="dimmed">
+                        Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
+                        (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
+                      </Text>
+                    )}
+                  </Stack>
+                </ScrollArea>
+              )}
             </>
           )}
         </Box>

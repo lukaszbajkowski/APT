@@ -1,4 +1,4 @@
-import { createTheme, type MantineColorsTuple } from "@mantine/core";
+import { createTheme, Modal, type MantineColorsTuple } from "@mantine/core";
 
 /*
  * Paleta „ciepłe neutralne” – jasny i ciemny motyw.
@@ -50,4 +50,8 @@ export const theme = createTheme({
   cursorType: "pointer",
   fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
   headings: { fontWeight: "750" },
+  components: {
+    // okna dialogowe na środku ekranu – w zasięgu kciuka na telefonie
+    Modal: Modal.extend({ defaultProps: { centered: true } }),
+  },
 });

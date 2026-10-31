@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, Section } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section } from "./Mobile";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Card, Group, MultiSelect, Popover, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Badge, Button, Card, Group, Modal, MultiSelect, Popover, Select, Stack, Text, Title } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconPencil, IconUsers } from "@tabler/icons-react";
+import { IconDotsVertical, IconPencil, IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
 
 import { api, type Employee, type MentorProgram, type Page, type TrainingProgram, type TrainingType } from "../api";
 import { useAuth } from "../auth";
@@ -110,6 +110,9 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addId, setAddId] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<MentorProgram | null>(null);
 
   const allPrograms = (types.data ?? []).flatMap((t) => t.programs.map((p) => ({ ...p, type_name: t.name })));
   const groups = (types.data ?? [])
@@ -122,14 +125,16 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
     }));
 
   const save = useMutation({
-    mutationFn: () =>
-      api<MentorProgram[]>(`/employees/${employee.id}/mentor-programs`, { method: "PUT", body: { ids: selected.map(Number) } }),
+    mutationFn: (ids: number[]) =>
+      api<MentorProgram[]>(`/employees/${employee.id}/mentor-programs`, { method: "PUT", body: { ids } }),
     onSuccess: (data) => {
       qc.setQueryData(["mentor-programs", employee.id], data);
       qc.invalidateQueries({ queryKey: ["training-types"] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
       notifications.show({ color: "green", message: "Zapisano szkolenia, które pracownik może prowadzić." });
       setEditing(false);
+      setAddOpen(false);
+      setAddId(null);
     },
   });
 
@@ -138,8 +143,64 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
   if (!mine.data || (list.length === 0 && allPrograms.length === 0)) return null;
   if (list.length === 0 && !staff) return null;
 
-  if (mobile && !editing)
+  if (mobile) {
+    const ids = list.map((p) => p.id);
+    const addable = groups
+      .map((g) => ({ group: g.group, items: g.items.filter((i) => !ids.includes(Number(i.value))) }))
+      .filter((g) => g.items.length);
     return (
+      <>
+        <Section
+          title="Może prowadzić szkolenia"
+          action={staff && addable.length ? { label: "Dodaj", icon: <IconPlus size={16} />, onClick: () => setAddOpen(true) } : undefined}
+        >
+          {list.length === 0 ? (
+            <CompactEmpty title="Brak" text="Nie jest opiekunem żadnego szkolenia stanowiskowego." />
+          ) : (
+            list.map((p) => (
+              <ListRow
+                key={p.id}
+                title={p.name}
+                description={p.department ?? undefined}
+                trailing={
+                  staff ? (
+                    <ActionIcon variant="subtle" color="gray" size={44} aria-label={`Akcje: ${p.name}`} onClick={() => setSheet(p)}>
+                      <IconDotsVertical size={20} />
+                    </ActionIcon>
+                  ) : undefined
+                }
+              />
+            ))
+          )}
+        </Section>
+        <ActionSheet
+          opened={!!sheet}
+          onClose={() => setSheet(null)}
+          title={sheet ? programLabel(sheet) : ""}
+          actions={
+            sheet
+              ? [{ label: "Usuń z listy", description: "Pracownik przestanie być opiekunem tego szkolenia.", icon: <IconTrash size={20} />, danger: true, onClick: () => save.mutate(ids.filter((x) => x !== sheet.id)) }]
+              : []
+          }
+        />
+        <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Może prowadzić szkolenie">
+          <Stack>
+            <Select label="Szkolenie stanowiskowe" placeholder="Wybierz z katalogu" searchable data={addable} value={addId} onChange={setAddId} size="md" />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setAddOpen(false)}>
+                Anuluj
+              </Button>
+              <Button disabled={!addId} loading={save.isPending} onClick={() => addId && save.mutate([...ids, Number(addId)])}>
+                Dodaj
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
+      </>
+    );
+  }
+
+  return (
       <Section
         title="Może prowadzić szkolenia"
         action={staff ? { label: "Zmień", onClick: () => { setSelected(list.map((p) => String(p.id))); setEditing(true); } } : undefined}
@@ -181,7 +242,7 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
             <Button size="xs" variant="default" onClick={() => setEditing(false)}>
               Anuluj
             </Button>
-            <Button size="xs" onClick={() => save.mutate()} loading={save.isPending}>
+            <Button size="xs" onClick={() => save.mutate(selected.map(Number))} loading={save.isPending}>
               Zapisz
             </Button>
           </Group>

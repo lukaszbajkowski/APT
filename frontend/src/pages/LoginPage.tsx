@@ -214,7 +214,7 @@ export function LoginPage() {
           <form onSubmit={submit}>
             <Stack>
               <div>
-                <Title order={3} className="brand-title">
+                <Title order={3} className="brand-title" style={{ textWrap: "balance" }}>
                   Identyfikacja pracowników APT
                 </Title>
                 <Text size="sm" c="dimmed">

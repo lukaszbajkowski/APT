@@ -94,7 +94,7 @@ export function QualityPage() {
             </Text>
           )}
           <Card withBorder padding={0}>
-            <Table striped highlightOnHover verticalSpacing="xs">
+            <Table highlightOnHover verticalSpacing="xs">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Pracownik</Table.Th>

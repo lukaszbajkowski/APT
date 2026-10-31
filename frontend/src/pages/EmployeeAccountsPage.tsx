@@ -67,7 +67,7 @@ export function EmployeeAccountsPage() {
       {list.isLoading && <Loading />}
       {list.data && (
         <Table.ScrollContainer minWidth={640}>
-          <Table striped highlightOnHover>
+          <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Pracownik</Table.Th>

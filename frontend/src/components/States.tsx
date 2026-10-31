@@ -9,6 +9,7 @@ export function EmptyState({
   title,
   text,
   action,
+  secondary,
   icon,
   search,
   compact,
@@ -16,6 +17,7 @@ export function EmptyState({
   title: string;
   text?: string;
   action?: { label: string; onClick: () => void };
+  secondary?: { label: string; onClick: () => void };
   icon?: ReactNode;
   search?: boolean;
   compact?: boolean;
@@ -31,10 +33,15 @@ export function EmptyState({
           {text}
         </Text>
       )}
-      {action && (
-        <Button mt={4} onClick={action.onClick}>
-          {action.label}
-        </Button>
+      {(action || secondary) && (
+        <Group gap="xs" justify="center" mt={4}>
+          {action && <Button onClick={action.onClick}>{action.label}</Button>}
+          {secondary && (
+            <Button variant="default" onClick={secondary.onClick}>
+              {secondary.label}
+            </Button>
+          )}
+        </Group>
       )}
     </Stack>
   );

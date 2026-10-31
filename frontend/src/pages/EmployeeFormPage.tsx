@@ -370,7 +370,7 @@ export function EmployeeFormPage() {
                 data={[
                   { value: "K", label: "Kobieta" },
                   { value: "M", label: "Mężczyzna" },
-                  { value: "none", label: "—" },
+                  { value: "none", label: "Nie podano" },
                 ]}
               />
             </div>
@@ -393,7 +393,7 @@ export function EmployeeFormPage() {
           </Title>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <Select
-              label="APT"
+              label="APT (agencja pracy)"
               searchable
               clearable
               disabled={personalLocked}

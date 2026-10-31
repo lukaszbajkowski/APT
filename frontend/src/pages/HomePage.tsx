@@ -1,12 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, Stack, Table, Text, ThemeIcon, Title } from "@mantine/core";
 import {
-  IconArchive,
   IconCalendarEvent,
   IconAlertTriangle,
-  IconCamera,
   IconChevronDown,
   IconChevronUp,
   IconCertificate,
@@ -14,9 +12,7 @@ import {
   IconCircleCheck,
   IconClockShield,
   IconFileSpreadsheet,
-  IconId,
   IconIdBadge2,
-  IconPrinter,
   IconScan,
   IconSearch,
   IconUserPlus,
@@ -150,8 +146,8 @@ interface QueueGroup {
 }
 
 /** „Do zrobienia dzisiaj”: wszystko, co wymaga uwagi kadr, jako lista z przyciskami do list z problemem. */
-function TodayCard({ d }: { d: Dashboard }) {
-  const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000 });
+function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
+  const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000, enabled: full });
   const rows: { key: string; label: string; count: number; url: string; sample?: string; color: string }[] = [];
   if (d.without_photo) rows.push({ key: "photo", label: "Pracownicy bez zdjęcia", count: d.without_photo, url: "/pracownicy?missing=photo", color: "orange" });
   if (d.without_pesel) rows.push({ key: "pesel", label: "Pracownicy bez PESEL", count: d.without_pesel, url: "/pracownicy?missing=pesel", color: "orange" });
@@ -168,13 +164,21 @@ function TodayCard({ d }: { d: Dashboard }) {
           <Title order={4}>Do zrobienia dzisiaj</Title>
         </Group>
         <Text size="xs" c="dimmed">
+          {full && (
+            <>
+              <Text component={Link} to="/do-zrobienia" span className="brand-link" size="xs">
+                Pełna lista
+              </Text>{" "}
+              ·{" "}
+            </>
+          )}
           {d.active} aktywnych · {d.added_30_days} nowych w 30 dni ·{" "}
           <Text component={Link} to="/pracownicy?status=terminated" span className="brand-link" size="xs">
             {d.terminated} w archiwum
           </Text>
         </Text>
       </Group>
-      {q.isLoading ? (
+      {full && q.isLoading ? (
         <Loading rows={3} />
       ) : rows.length === 0 ? (
         <EmptyState
@@ -210,51 +214,6 @@ function TodayCard({ d }: { d: Dashboard }) {
         </Stack>
       )}
     </Card>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  icon,
-  color,
-  to,
-  hint,
-}: {
-  label: string;
-  value: number;
-  icon: ReactNode;
-  color: string;
-  to?: string;
-  hint?: string;
-}) {
-  const body = (
-    <Card withBorder padding="md" h="100%">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <div>
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-            {label}
-          </Text>
-          <Text fz={28} fw={700} lh={1.2}>
-            {value.toLocaleString("pl-PL")}
-          </Text>
-          {hint && (
-            <Text size="xs" c="dimmed">
-              {hint}
-            </Text>
-          )}
-        </div>
-        <ThemeIcon variant="light" color={color} size={38} radius="md">
-          {icon}
-        </ThemeIcon>
-      </Group>
-    </Card>
-  );
-  if (!to) return body;
-  return (
-    <UnstyledButton component={Link} to={to} aria-label={label} style={{ display: "block" }}>
-      {body}
-    </UnstyledButton>
   );
 }
 
@@ -353,54 +312,8 @@ export function HomePage() {
 
           {staff && data.data.active === 0 && data.data.recent.length === 0 ? (
             <GettingStarted employees={data.data.active} />
-          ) : staff ? (
-            <TodayCard d={data.data} />
-          ) : null}
-
-          {!staff && (
-          <SimpleGrid cols={{ base: 2, md: 3, lg: 5 }}>
-            <Stat label="Aktywni" value={data.data.active} icon={<IconUsers size={20} />} color="navy" to="/pracownicy" />
-            <Stat
-              label="Nowi"
-              value={data.data.added_30_days}
-              icon={<IconUserPlus size={20} />}
-              color="teal"
-              to="/pracownicy?sort=-number"
-              hint="ostatnie 30 dni"
-            />
-            <Stat
-              label="Bez zdjęcia"
-              value={data.data.without_photo}
-              icon={<IconCamera size={20} />}
-              color={data.data.without_photo ? "orange" : "gray"}
-              to="/pracownicy?missing=photo"
-              hint="aktywni"
-            />
-            {data.data.without_pesel !== null && (
-              <Stat
-                label="Bez PESEL"
-                value={data.data.without_pesel}
-                icon={<IconId size={20} />}
-                color={data.data.without_pesel ? "orange" : "gray"}
-                to="/pracownicy?missing=pesel"
-                hint="aktywni"
-              />
-            )}
-            <Stat
-              label="Karty"
-              value={data.data.cards_printed_30_days}
-              icon={<IconPrinter size={20} />}
-              color="grape"
-              hint="wydrukowane w 30 dni"
-            />
-            <Stat
-              label="Archiwum"
-              value={data.data.terminated}
-              icon={<IconArchive size={20} />}
-              color="gray"
-              to="/pracownicy?status=terminated"
-            />
-          </SimpleGrid>
+          ) : (
+            <TodayCard d={data.data} full={staff} />
           )}
 
           <UpcomingCard />

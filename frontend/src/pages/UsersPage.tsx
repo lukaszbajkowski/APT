@@ -363,7 +363,7 @@ export function UsersPage() {
             />
             {form.role === "agency" && (
               <Select
-                label="APT"
+                label="APT (agencja pracy)"
                 description="Konto agencji widzi tylko osoby z tej APT (bez PESEL), może wgrywać zdjęcia i badania lekarskie oraz zgłaszać nowe osoby do zatwierdzenia przez kadry."
                 required
                 searchable

@@ -109,7 +109,7 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
         <Text c="dimmed">Słownik jest pusty. Dodaj pierwszą pozycję przyciskiem powyżej.</Text>
       )}
       {rows.length > 0 && (
-        <Table striped highlightOnHover verticalSpacing="xs">
+        <Table highlightOnHover verticalSpacing="xs">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Nazwa</Table.Th>

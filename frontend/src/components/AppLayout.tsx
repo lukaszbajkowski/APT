@@ -3,6 +3,7 @@ import { Alert } from "@mantine/core";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Box,
@@ -169,15 +170,24 @@ export function AppLayout() {
           <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
             <Link to="/" className="brand-link" onClick={close}>
-              <Text fw={700} className="brand-title" truncate>
+              <Text fw={700} className="brand-title" truncate visibleFrom="sm">
                 Identyfikacja pracowników APT
+              </Text>
+              <Text fw={700} className="brand-title" truncate hiddenFrom="sm">
+                Identyfikacja APT
               </Text>
             </Link>
           </Group>
+          <Group gap="xs" wrap="nowrap">
+          {!hasRole("agency", "employee") && (
+            <ActionIcon component={Link} to="/skaner" variant="light" size="lg" radius="xl" hiddenFrom="sm" aria-label="Skanuj kartę">
+              <IconScan size={18} />
+            </ActionIcon>
+          )}
           <Menu position="bottom-end" width={260} closeOnItemClick opened={menuOpen} onChange={setMenuOpen}>
             <Menu.Target>
               <UnstyledButton aria-label="Konto użytkownika">
-                <Group gap="xs">
+                <Group gap="xs" wrap="nowrap">
                   <Avatar color="navy" radius="xl" size="sm">
                     {initials}
                   </Avatar>
@@ -281,6 +291,7 @@ export function AppLayout() {
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
+          </Group>
         </Group>
       </AppShell.Header>
 

@@ -389,6 +389,11 @@ export function MfaPage() {
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={620}>
         <Stack>
           <div>
+            {forced && (
+              <Text size="xs" fw={600} c="navy" tt="uppercase" mb={4}>
+                Ostatni krok przed wejściem do aplikacji
+              </Text>
+            )}
             <Group gap="xs">
               <Title order={3}>Logowanie dwuetapowe</Title>
               {me.user.mfa_required && (

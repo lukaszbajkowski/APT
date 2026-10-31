@@ -258,7 +258,7 @@ export function RehireModal({ employee, opened, onClose }: { employee: Employee;
         </Text>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <DateField  label="Data zatrudnienia" value={hire} onChange={(e) => setHire(e.currentTarget.value)} />
-          <Select label="APT" clearable searchable data={opts(agencies.data)} value={agency} onChange={setAgency} />
+          <Select label="APT (agencja pracy)" clearable searchable data={opts(agencies.data)} value={agency} onChange={setAgency} />
           <Select
             label="Wydział"
             clearable

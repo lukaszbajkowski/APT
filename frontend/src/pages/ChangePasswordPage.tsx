@@ -55,6 +55,11 @@ export function ChangePasswordPage() {
           <Stack>
             <div>
               <Title order={3}>Zmiana hasła</Title>
+              {forced && me?.user.mfa_required && (
+                <Text size="xs" fw={600} c="navy" tt="uppercase" mb={4}>
+                  Krok 1 z 2 · potem logowanie dwuetapowe
+                </Text>
+              )}
               {forced && (
                 <Text size="sm" c="dimmed">
                   Logujesz się hasłem tymczasowym. Ustaw własne hasło, aby kontynuować.

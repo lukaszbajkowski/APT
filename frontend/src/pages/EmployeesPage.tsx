@@ -203,7 +203,7 @@ export function EmployeesPage() {
           <Title order={2}>Pracownicy</Title>
           {list.data && (
             <Text size="sm" c="dimmed" role="status" aria-live="polite">
-              {list.data.total === 0 ? "Brak wyników" : `Znaleziono: ${list.data.total}`}
+              {list.data.total === 0 ? (params.toString() ? "Brak wyników" : "Brak pracowników") : `Znaleziono: ${list.data.total}`}
             </Text>
           )}
         </div>
@@ -256,7 +256,7 @@ export function EmployeesPage() {
       <Collapse in={filtersOpen}>
         <Group align="flex-end" gap="sm">
         <Select
-          label="APT"
+          label="APT (agencja pracy)"
           placeholder="Wszystkie"
           clearable
           searchable
@@ -387,15 +387,16 @@ export function EmployeesPage() {
             params.toString()
               ? { label: "Wyczyść wyszukiwanie i filtry", onClick: () => setParams(new URLSearchParams(), { replace: true }) }
               : staff
-              ? { label: "Dodaj pracownika", onClick: () => navigate("/pracownicy/nowy") }
+              ? { label: "Importuj z arkusza", onClick: () => navigate("/pracownicy/import") }
               : undefined
           }
+          secondary={!params.toString() && staff ? { label: "Dodaj ręcznie", onClick: () => navigate("/pracownicy/nowy") } : undefined}
         />
       )}
 
       {list.data && list.data.items.length > 0 && (
         <Table.ScrollContainer minWidth={900}>
-          <Table highlightOnHover verticalSpacing={6} striped>
+          <Table highlightOnHover verticalSpacing={6}>
             <Table.Thead>
               <Table.Tr>
                 {canPrint && (

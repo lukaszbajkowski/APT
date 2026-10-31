@@ -91,7 +91,7 @@ export function AgencyReportPage() {
       <Group align="flex-end" gap="sm" wrap="wrap">
         {staff && (
           <Select
-            label="APT"
+            label="APT (agencja pracy)"
             w={260}
             searchable
             allowDeselect={false}

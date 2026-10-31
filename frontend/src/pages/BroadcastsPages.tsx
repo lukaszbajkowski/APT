@@ -396,8 +396,6 @@ export function BroadcastsPage() {
               </Group>
               <ScrollArea style={{ flex: 1 }} p="md">
                 <Stack gap="md" pb="md">
-                  {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
-                  <FileDocs files={b.files} staff />
                   <RecipientsPane id={b.id} />
                   {!archive && (
                     <Text size="xs" c="dimmed">
@@ -405,6 +403,8 @@ export function BroadcastsPage() {
                       (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
                     </Text>
                   )}
+                  {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
+                  <FileDocs files={b.files} staff />
                 </Stack>
               </ScrollArea>
             </>

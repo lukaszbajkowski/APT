@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
@@ -28,9 +28,8 @@ function CountTable({ title, rows, limit = 12 }: { title: string; rows: ReportRo
         {title}
       </Title>
       {rows.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          Brak danych.
-        </Text>
+        <EmptyState compact title="Brak danych do raportu"
+          text="Raport wypełni się, gdy w aplikacji pojawią się pracownicy i szkolenia." />
       ) : (
         <Table verticalSpacing={6} withRowBorders={false}>
           <Table.Tbody>

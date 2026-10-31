@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
-import { Loading } from "../components/States";
+import { ErrorState, Loading } from "../components/States";
 
 interface UserReview {
   id: number;
@@ -141,7 +141,7 @@ function PeselTab() {
         />
       </Group>
       {q.isLoading && <Loading />}
-      {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
+      {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && (
         <>
           <Text size="sm" c="dimmed">

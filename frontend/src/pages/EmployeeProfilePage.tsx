@@ -57,7 +57,7 @@ import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecyc
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -406,7 +406,8 @@ export function EmployeeProfilePage() {
             Historia zmian
           </Title>
           {history.isLoading && <Loading />}
-          {history.data && history.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
+          {history.data && history.data.length === 0 && <EmptyState compact title="Brak wpisów w historii"
+          text="Zmiany danych pracownika pojawią się tutaj po pierwszej edycji." />}
           {history.data && history.data.length > 0 && (
             <Timeline bulletSize={12} lineWidth={2}>
               {(historyAll ? history.data : history.data.slice(0, HISTORY_SHORT)).map((h) => (

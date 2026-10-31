@@ -5,7 +5,7 @@ import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, Text
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 interface Row {
   employee_id: number;
@@ -105,9 +105,8 @@ export function EmployeeAccountsPage() {
               {list.data.length === 0 && (
                 <Table.Tr>
                   <Table.Td colSpan={5}>
-                    <Text c="dimmed" ta="center">
-                      Brak kont. Zaproszenie wyślesz z karty pracownika.
-                    </Text>
+                    <EmptyState compact title="Brak kont"
+          text="Zaproszenie wyślesz z karty pracownika." />
                   </Table.Td>
                 </Table.Tr>
               )}

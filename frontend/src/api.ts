@@ -309,9 +309,19 @@ function errorMessage(
     return { message: d.message, code: d.code, data: detail as Record<string, unknown> };
   }
   if (Array.isArray(detail)) {
-    const first = detail[0] as { msg?: string } | undefined;
+    const items = detail as { msg?: string; loc?: unknown[] }[];
+    const first = items[0];
     const msg = first?.msg?.replace(/^Value error, /, "");
-    return { message: msg ? `Niepoprawne dane: ${msg}` : "Niepoprawne dane w formularzu." };
+    // błędy przy konkretnych polach (nazwa pola = ostatni element lokalizacji)
+    const fields: Record<string, string> = {};
+    for (const it of items) {
+      const key = it.loc?.[it.loc.length - 1];
+      if (typeof key === "string" && it.msg && !(key in fields)) fields[key] = it.msg.replace(/^Value error, /, "");
+    }
+    return {
+      message: msg ? `Niepoprawne dane: ${msg}` : "Niepoprawne dane w formularzu.",
+      data: { fields },
+    };
   }
   if (status === 413) return { message: "Plik jest za duży." };
   return { message: `Błąd serwera (${status}).` };

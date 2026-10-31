@@ -40,7 +40,7 @@ import {
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
 import { useAuth } from "../auth";
-import { Loading } from "./States";
+import { EmptyState, Loading } from "./States";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -167,9 +167,8 @@ export function TimelineCard({ employee }: { employee: Employee }) {
             Wydział, stanowisko, APT – zmiany
           </Text>
           {assignments.length === 0 ? (
-            <Text size="sm" c="dimmed">
-              Brak wpisów.
-            </Text>
+            <EmptyState compact title="Brak wpisów"
+          text="Wpisy pojawią się, gdy ktoś wykona akcję." />
           ) : (
             <Timeline bulletSize={14} lineWidth={2} active={0}>
               {assignments.map((a, i) => (
@@ -435,9 +434,8 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
         )}
       </Group>
       {kinds.length === 0 && (
-        <Text size="sm" c="dimmed">
-          Brak checklist. Wdrożenie tworzy się samo przy dodaniu nowej osoby, odejście – przy zwolnieniu.
-        </Text>
+        <EmptyState compact title="Brak checklist"
+          text="Wdrożenie tworzy się samo przy dodaniu nowej osoby, a odejście – przy zwolnieniu." />
       )}
       <SimpleGrid cols={{ base: 1, md: kinds.length > 1 ? 2 : 1 }} spacing="lg">
         {kinds.map((k) => {
@@ -688,9 +686,8 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
             <Select size="xs" label="Wydział" placeholder="dowolny" clearable searchable data={depOpts} value={pDep} onChange={setPDep} />
           </SimpleGrid>
           {preview.length === 0 ? (
-            <Text size="sm" c="dimmed">
-              Brak zadań.
-            </Text>
+            <EmptyState compact title="Brak zadań"
+          text="Wszystkie punkty są wykonane albo checklista nie ma jeszcze pozycji." />
           ) : (
             <Stack gap={6}>
               {[...preview]

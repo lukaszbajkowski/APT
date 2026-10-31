@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  Alert,
   Anchor,
   Badge,
   Button,
@@ -31,7 +30,7 @@ import {
   type TrainingStatus,
   type TrainingType,
 } from "../api";
-import { Loading } from "./States";
+import { ErrorState, EmptyState, Loading } from "./States";
 
 interface Row {
   training_id: number;
@@ -229,7 +228,7 @@ export function TrainingsReport() {
         </Group>
       </Paper>
 
-      {report.error && <Alert color="red">{errorText(report.error)}</Alert>}
+      {report.error && <ErrorState error={report.error} onRetry={() => report.refetch()} />}
       {!data && report.isLoading && <Loading />}
       {data && (
         <>
@@ -250,7 +249,8 @@ export function TrainingsReport() {
             ))}
           </Group>
           {data.total === 0 ? (
-            <Text c="dimmed">Brak szkoleń dla wybranych filtrów.</Text>
+            <EmptyState compact title="Brak szkoleń dla wybranych filtrów"
+          text="Zmień lub wyczyść filtry, aby zobaczyć więcej." />
           ) : (
             <Card withBorder padding={0}>
               <Table striped highlightOnHover verticalSpacing="xs">

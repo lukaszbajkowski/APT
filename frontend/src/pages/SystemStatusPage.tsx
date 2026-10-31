@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 
 import { api, errorText, formatDateTime } from "../api";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 interface Run {
   at: string;
@@ -86,9 +86,8 @@ export function SystemStatusPage() {
               </Text>
             </>
           ) : (
-            <Text size="sm" c="dimmed">
-              Brak danych.
-            </Text>
+            <EmptyState compact title="Brak danych"
+          text="Informacje pojawią się po pierwszym uruchomieniu zadań cyklicznych." />
           )}
         </Card>
         <Card withBorder padding="lg">

@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  Alert,
   Badge,
   Button,
   Checkbox,
@@ -31,7 +30,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
-import { Loading } from "../components/States";
+import { EmptyState, ErrorState, Loading } from "../components/States";
 
 const PAGE_SIZE = 50;
 
@@ -343,7 +342,22 @@ export function EmployeesPage() {
       )}
 
       {list.isLoading && <Loading />}
-      {list.error && <Alert color="red">{errorText(list.error)}</Alert>}
+      {list.error && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
+
+      {list.data && list.data.items.length === 0 && (
+        <EmptyState
+          search={params.toString() !== ""}
+          title={q.trim() ? `Brak wyników dla „${q.trim()}”` : params.toString() ? "Brak pracowników dla tych filtrów" : "Nie ma jeszcze pracowników"}
+          text={params.toString() ? "Sprawdź pisownię albo wyczyść filtry." : "Dodaj pierwszego pracownika ręcznie albo zaimportuj listę z arkusza."}
+          action={
+            params.toString()
+              ? { label: "Wyczyść wyszukiwanie i filtry", onClick: () => setParams(new URLSearchParams(), { replace: true }) }
+              : staff
+              ? { label: "Dodaj pracownika", onClick: () => navigate("/pracownicy/nowy") }
+              : undefined
+          }
+        />
+      )}
 
       {list.data && list.data.items.length > 0 && (
         <Table.ScrollContainer minWidth={900}>

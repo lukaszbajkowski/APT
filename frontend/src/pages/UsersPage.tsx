@@ -25,7 +25,7 @@ import { IconDots, IconPlus } from "@tabler/icons-react";
 
 import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
 import { useAuth } from "../auth";
-import { Loading } from "../components/States";
+import { ErrorState, EmptyState, Loading } from "../components/States";
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => r !== "employee").map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 
@@ -195,12 +195,10 @@ export function UsersPage() {
       </Tabs>
 
       {users.isLoading && <Loading />}
-      {users.error && <Alert color="red">{errorText(users.error)}</Alert>}
+      {users.error && <ErrorState error={users.error} onRetry={() => users.refetch()} />}
 
       {users.data && visible.length === 0 && (
-        <Text c="dimmed" size="sm">
-          {showDisabled ? "Brak wyłączonych kont." : "Brak aktywnych kont."}
-        </Text>
+        <EmptyState compact title={showDisabled ? "Brak wyłączonych kont" : "Brak aktywnych kont"} text={showDisabled ? "Wyłączone konta pojawią się tutaj." : "Dodaj pierwszego użytkownika przyciskiem powyżej."} />
       )}
 
       {users.data && visible.length > 0 && (

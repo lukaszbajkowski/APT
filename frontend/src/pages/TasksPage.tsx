@@ -8,7 +8,7 @@ import { IconCircleCheck } from "@tabler/icons-react";
 import { api, errorText, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
-import { Loading } from "../components/States";
+import { ErrorState, Loading } from "../components/States";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -86,7 +86,7 @@ function OpenTasks() {
         )}
       </Group>
       {q.isLoading && <Loading />}
-      {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
+      {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && rows.length === 0 && (
         <Alert color="green" icon={<IconCircleCheck />}>
           Brak otwartych zadań.

@@ -11,7 +11,7 @@ import { useAuth } from "../auth";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -33,7 +33,7 @@ export function ToSignListPage() {
       <Title order={2}>{t("Do podpisu")}</Title>
       {list.isLoading && <Loading />}
       {list.data && list.data.pending.length === 0 && (
-        <Text c="dimmed">{t("Nie masz dokumentów do podpisu. O nowym dokumencie dostaniesz powiadomienie.")}</Text>
+        <EmptyState compact title={t("Nie masz dokumentów do podpisu")} text={t("O nowym dokumencie dostaniesz powiadomienie.")} />
       )}
       {list.data?.pending.map((p) => (
         <Card key={p.id} withBorder padding="md">

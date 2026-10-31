@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Card, Group, Stack, Switch, Table, Text, Title } from "@mantine/core";
 import { Link } from "react-router-dom";
 
-import { api, errorText, formatDate, type PermitRow } from "../api";
+import { api, formatDate, type PermitRow } from "../api";
 import { PERMIT_STATE } from "../components/Permits";
-import { Loading } from "../components/States";
+import { ErrorState, Loading } from "../components/States";
 
 export function PermitsReportPage() {
   const [all, setAll] = useState(false);
@@ -25,7 +25,7 @@ export function PermitsReportPage() {
         <Switch label="Pokaż także ważne" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />
       </Group>
       {q.isLoading && <Loading />}
-      {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
+      {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <Alert color="teal">Nic nie wymaga uwagi.</Alert>}
       {q.data && q.data.length > 0 && (
         <Card withBorder padding="sm">

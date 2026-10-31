@@ -3,6 +3,7 @@ import { IconArrowDown, IconArrowUp, IconPlus, IconTrash } from "@tabler/icons-r
 
 import { type FieldType, type TemplateField } from "../api";
 import { useFieldFormats } from "./DocumentsCard";
+import { EmptyState } from "./States";
 
 const TYPES: { value: FieldType; label: string }[] = [
   { value: "text", label: "Tekst" },
@@ -195,9 +196,8 @@ export function FieldsEditor({
         </Button>
       )}
       {fields.length === 0 && !editableKeys && (
-        <Text c="dimmed" size="sm">
-          Brak pól.
-        </Text>
+        <EmptyState compact title="Brak pól"
+          text="Dodaj pole, aby zacząć." />
       )}
     </Stack>
   );

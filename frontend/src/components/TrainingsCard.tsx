@@ -47,7 +47,7 @@ import {
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
-import { Loading } from "./States";
+import { EmptyState, Loading } from "./States";
 
 interface Form {
   type_id: string | null;
@@ -480,7 +480,8 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
       </Group>
       <EmployeeRequirements employeeId={employee.id} />
       {list.isLoading && <Loading />}
-      {list.data && list.data.length === 0 && <Text c="dimmed">Brak wpisów.</Text>}
+      {list.data && list.data.length === 0 && <EmptyState compact title="Brak wpisów szkoleń"
+          text="Pracownik nie ma jeszcze żadnego szkolenia. Dodaj pierwsze przyciskiem powyżej." />}
       <Stack gap="xs">
         {list.data?.map((t) => {
           const st = TRAINING_STATUS[t.status];

@@ -29,7 +29,7 @@ import {
 
 import { api, errorText, formatDate, type DictionaryItem, type TrainingType } from "../api";
 import { useAuth } from "../auth";
-import { Loading } from "./States";
+import { ErrorState, EmptyState, Loading } from "./States";
 
 export type ReqState = "ok" | "expiring" | "in_progress" | "expired" | "missing";
 
@@ -173,7 +173,8 @@ export function PositionRequirements() {
         Szkolenia obowiązkowe na stanowisku. Braki widać w kartotece, w matrycy, w „Brakach w danych” i w poniedziałkowym e-mailu.
         Stanowiska dodaje się w Słownikach.
       </Text>
-      {list.data?.length === 0 && <Text c="dimmed">Brak stanowisk w słowniku.</Text>}
+      {list.data?.length === 0 && <EmptyState compact title="Brak stanowisk w słowniku"
+          text="Stanowiska dodaje administrator w zakładce Słowniki." />}
       {list.data?.map((p) => (
         <PositionRow key={p.position_id} p={p} types={(types.data ?? []).filter((t) => t.is_active)} staff={staff} />
       ))}
@@ -360,12 +361,11 @@ export function CompetenceMatrix() {
           prowadzić
         </Text>
       </Group>
-      {m.error && <Alert color="red">{errorText(m.error)}</Alert>}
+      {m.error && <ErrorState error={m.error} onRetry={() => m.refetch()} />}
       {!data && m.isLoading && <Loading />}
       {data && data.columns.length === 0 && (
-        <Text c="dimmed">
-          Brak szkoleń do pokazania. Dodaj pozycje do katalogu szkoleń stanowiskowych albo włącz zwykłe szkolenia.
-        </Text>
+        <EmptyState compact title="Brak szkoleń do pokazania"
+          text="Dodaj pozycje do katalogu szkoleń stanowiskowych albo włącz zwykłe szkolenia." />
       )}
       {data && data.columns.length > 0 && (
         <Card withBorder padding={0} style={{ overflowX: "auto", width: "fit-content", maxWidth: "100%" }}>

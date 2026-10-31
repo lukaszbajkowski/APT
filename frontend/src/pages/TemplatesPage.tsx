@@ -20,7 +20,7 @@ import {
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
-import { Loading } from "../components/States";
+import { ErrorState, Loading } from "../components/States";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -78,7 +78,7 @@ export function TemplatesPage() {
       </Group>
 
       {templates.isLoading && <Loading />}
-      {templates.error && <Alert color="red">{errorText(templates.error)}</Alert>}
+      {templates.error && <ErrorState error={templates.error} onRetry={() => templates.refetch()} />}
       {templates.data && templates.data.length === 0 && (
         <Alert color="blue">
           Nie ma jeszcze żadnego szablonu. Dodaj pierwszy, np. deklarację Medicover (plik{" "}

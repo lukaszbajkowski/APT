@@ -119,6 +119,7 @@ export function EmployeeFormPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [original, setOriginal] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fe, setFe] = useState<Record<string, string>>({});
   const [peselDuplicate, setPeselDuplicate] = useState<DuplicateRef | null>(null);
   const [possibleDuplicate, setPossibleDuplicate] = useState<DuplicateRef | null>(null);
 
@@ -200,6 +201,7 @@ export function EmployeeFormPage() {
       if (err instanceof ApiError && err.code === "pesel_duplicate") {
         setPeselDuplicate(err.data?.employee as DuplicateRef);
       }
+      setFe((err instanceof ApiError ? (err.data?.fields as Record<string, string> | undefined) : undefined) ?? {});
       setError(errorText(err));
     },
   });
@@ -207,6 +209,14 @@ export function EmployeeFormPage() {
   function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const missing: Record<string, string> = {};
+    if (!form.last_name.trim()) missing.last_name = "Wpisz nazwisko.";
+    if (!form.first_name.trim()) missing.first_name = "Wpisz imię.";
+    setFe(missing);
+    if (Object.keys(missing).length) {
+      setError("Uzupełnij zaznaczone pola.");
+      return;
+    }
     if (peselCheck && !peselCheck.valid) {
       setError(peselCheck.message);
       return;
@@ -290,6 +300,7 @@ export function EmployeeFormPage() {
               required
               disabled={personalLocked}
               value={form.last_name}
+              error={fe.last_name}
               onChange={(e) => set("last_name", e.currentTarget.value)}
             />
             <TextInput
@@ -297,6 +308,7 @@ export function EmployeeFormPage() {
               required
               disabled={personalLocked}
               value={form.first_name}
+              error={fe.first_name}
               onChange={(e) => set("first_name", e.currentTarget.value)}
             />
             {staff && (
@@ -394,6 +406,7 @@ export function EmployeeFormPage() {
               type="date"
               disabled={personalLocked}
               value={form.hire_date}
+              error={fe.hire_date}
               onChange={(e) => set("hire_date", e.currentTarget.value)}
             />
             <Select

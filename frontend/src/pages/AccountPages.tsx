@@ -10,7 +10,7 @@ import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
-import { Loading } from "../components/States";
+import { EmptyState, Loading } from "../components/States";
 
 interface Options {
   challenge_id: string;
@@ -258,7 +258,7 @@ export function MyAccountPage() {
               </Button>
             </Group>
           ))}
-          {keys.data?.length === 0 && <Text size="sm">{t("Nie masz jeszcze żadnego klucza.")}</Text>}
+          {keys.data?.length === 0 && <EmptyState compact title={t("Nie masz jeszcze klucza dostępu")} text={t("Klucz pozwala logować się odciskiem palca lub twarzą. Dodaj go przyciskiem powyżej.")} />}
         </Stack>
       </Card>
     </Stack>

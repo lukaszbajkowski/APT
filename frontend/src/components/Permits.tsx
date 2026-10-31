@@ -5,7 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
-import { Loading } from "./States";
+import { EmptyState, Loading } from "./States";
 
 export const PERMIT_KINDS = [
   { value: "karta_pobytu", label: "karta pobytu" },
@@ -108,9 +108,8 @@ export function PermitsCard({ employee }: { employee: Employee }) {
       </Group>
       {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
-        <Text size="sm" c="dimmed">
-          Brak dokumentów (dotyczy cudzoziemców).
-        </Text>
+        <EmptyState compact title="Brak dokumentów pobytowych"
+          text="Dotyczy cudzoziemców. Dodaj kartę pobytu, wizę lub zezwolenie, aby śledzić ich ważność." />
       )}
       {q.data && q.data.length > 0 && (
         <Table verticalSpacing={6} fz="sm">

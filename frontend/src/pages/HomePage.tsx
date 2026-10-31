@@ -23,11 +23,11 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
-import { api, errorText, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
+import { api, formatDate, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { Loading } from "../components/States";
+import { ErrorState, EmptyState, Loading } from "../components/States";
 
 interface UpcomingEvent {
   date: string;
@@ -97,9 +97,8 @@ function UpcomingCard() {
       {q.isLoading ? (
         <Loading />
       ) : events.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          Brak zaplanowanych egzaminów, końców ważności ani nowych osób.
-        </Text>
+        <EmptyState compact title="Nic nie jest zaplanowane"
+          text="Brak egzaminów, końców ważności i nowych osób w najbliższym czasie." />
       ) : (
         <Stack gap={6}>
           {shown.map((e, i) => (
@@ -257,7 +256,7 @@ export function HomePage() {
       </div>
 
       {data.isLoading && <Loading />}
-      {data.error && <Alert color="red">{errorText(data.error)}</Alert>}
+      {data.error && <ErrorState error={data.error} onRetry={() => data.refetch()} />}
 
       {data.data && (
         <>

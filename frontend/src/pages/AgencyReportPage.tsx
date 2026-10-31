@@ -7,7 +7,7 @@ import { IconDownload, IconMail } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
-import { Loading } from "../components/States";
+import { ErrorState, EmptyState, Loading } from "../components/States";
 
 interface Row {
   employee_id: number;
@@ -120,7 +120,7 @@ export function AgencyReportPage() {
 
       {staff && agencies.data?.length === 0 && <Alert color="blue">Dodaj APT w Słownikach, żeby przygotować zestawienie.</Alert>}
       {report.isLoading && <Loading />}
-      {report.error && <Alert color="red">{errorText(report.error)}</Alert>}
+      {report.error && <ErrorState error={report.error} onRetry={() => report.refetch()} />}
       {r && (
         <>
           {staff && (
@@ -154,7 +154,7 @@ export function AgencyReportPage() {
             </Card>
           </SimpleGrid>
           {r.rows.length === 0 ? (
-            <Text c="dimmed">Brak osób w {r.label}.</Text>
+            <EmptyState compact title={`Brak osób w: ${r.label}`} text="W tym okresie nikt nie spełnia tego warunku." />
           ) : (
             <Card withBorder padding={0}>
               <Table.ScrollContainer minWidth={820}>

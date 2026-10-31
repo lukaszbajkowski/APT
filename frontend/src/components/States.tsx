@@ -11,16 +11,18 @@ export function EmptyState({
   action,
   icon,
   search,
+  compact,
 }: {
   title: string;
   text?: string;
   action?: { label: string; onClick: () => void };
   icon?: ReactNode;
   search?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <Stack align="center" gap="xs" p="xl" ta="center">
-      <ThemeIcon size={56} radius="xl" variant="light">
+    <Stack align="center" gap="xs" p={compact ? "md" : "xl"} ta="center">
+      <ThemeIcon size={compact ? 40 : 56} radius="xl" variant="light">
         {icon ?? (search ? <IconSearchOff size={26} /> : <IconInbox size={26} />)}
       </ThemeIcon>
       <Text fw={600}>{title}</Text>

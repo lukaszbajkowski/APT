@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
+import { Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
-import { api, errorText, withAcct } from "../api";
+import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
+import { ErrorState } from "./States";
 
 interface Preview {
   pages: number;
@@ -112,7 +113,7 @@ export function DocumentViewer({
             <Loader />
           </Center>
         )}
-        {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
+        {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
         {q.data && (
           <Stack gap="md" align="center" py="md" style={{ filter: hidden ? "blur(28px)" : undefined, transition: "filter .1s" }}>
             {Array.from({ length: q.data.pages }, (_, i) => (

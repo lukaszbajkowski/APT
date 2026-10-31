@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Card, Grid, Group, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconArchive,
   IconCalendarEvent,
@@ -28,6 +28,7 @@ import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { ErrorState, EmptyState, Loading } from "../components/States";
+import { GettingStarted } from "../components/GettingStarted";
 
 interface UpcomingEvent {
   date: string;
@@ -129,6 +130,83 @@ function UpcomingCard() {
               {all ? "Pokaż mniej" : `Pokaż wszystkie (${events.length})`}
             </ActionButton>
           )}
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+interface QueueItem {
+  title: string;
+  detail: string | null;
+  url: string;
+}
+interface QueueGroup {
+  key: string;
+  label: string;
+  count: number;
+  url: string;
+  items: QueueItem[];
+}
+
+/** „Do zrobienia dzisiaj”: wszystko, co wymaga uwagi kadr, jako lista z przyciskami do list z problemem. */
+function TodayCard({ d }: { d: Dashboard }) {
+  const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000 });
+  const rows: { key: string; label: string; count: number; url: string; sample?: string; color: string }[] = [];
+  if (d.without_photo) rows.push({ key: "photo", label: "Pracownicy bez zdjęcia", count: d.without_photo, url: "/pracownicy?missing=photo", color: "orange" });
+  if (d.without_pesel) rows.push({ key: "pesel", label: "Pracownicy bez PESEL", count: d.without_pesel, url: "/pracownicy?missing=pesel", color: "orange" });
+  const hasMissingRows = rows.length > 0;
+  for (const g of q.data?.groups ?? []) {
+    if (hasMissingRows && /^Braki w danych/.test(g.label)) continue; // te same braki już widać wyżej jako zdjęcia i PESEL
+    rows.push({ key: g.key, label: g.label, count: g.count, url: g.url, sample: g.items[0] ? `${g.items[0].title}${g.items[0].detail ? " · " + g.items[0].detail : ""}` : undefined, color: "red" });
+  }
+  return (
+    <Card withBorder padding="lg">
+      <Group justify="space-between" mb="sm">
+        <Group gap="xs">
+          <IconChecklist size={20} />
+          <Title order={4}>Do zrobienia dzisiaj</Title>
+        </Group>
+        <Text size="xs" c="dimmed">
+          {d.active} aktywnych · {d.added_30_days} nowych w 30 dni ·{" "}
+          <Text component={Link} to="/pracownicy?status=terminated" span className="brand-link" size="xs">
+            {d.terminated} w archiwum
+          </Text>
+        </Text>
+      </Group>
+      {q.isLoading ? (
+        <Loading rows={3} />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          compact
+          icon={<IconCircleCheck size={26} />}
+          title="Wszystko zrobione"
+          text="Nic nie czeka na kadry. Najbliższe terminy zobaczysz poniżej."
+        />
+      ) : (
+        <Stack gap={0}>
+          {rows.map((r) => (
+            <Group key={r.key} wrap="nowrap" justify="space-between" py={8} style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+              <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                <Badge color={r.color} variant="light" size="lg" miw={44}>
+                  {r.count}
+                </Badge>
+                <div style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={600} truncate>
+                    {r.label}
+                  </Text>
+                  {r.sample && (
+                    <Text size="xs" c="dimmed" truncate>
+                      np. {r.sample}
+                    </Text>
+                  )}
+                </div>
+              </Group>
+              <Button component={Link} to={r.url} size="compact-sm" variant="light" style={{ flexShrink: 0 }}>
+                Napraw
+              </Button>
+            </Group>
+          ))}
         </Stack>
       )}
     </Card>
@@ -273,7 +351,14 @@ export function HomePage() {
             </Alert>
           )}
 
-          <SimpleGrid cols={{ base: 2, md: 3, lg: staff ? 6 : 5 }}>
+          {staff && data.data.active === 0 && data.data.recent.length === 0 ? (
+            <GettingStarted employees={data.data.active} />
+          ) : staff ? (
+            <TodayCard d={data.data} />
+          ) : null}
+
+          {!staff && (
+          <SimpleGrid cols={{ base: 2, md: 3, lg: 5 }}>
             <Stat label="Aktywni" value={data.data.active} icon={<IconUsers size={20} />} color="navy" to="/pracownicy" />
             <Stat
               label="Nowi"
@@ -316,6 +401,7 @@ export function HomePage() {
               to="/pracownicy?status=terminated"
             />
           </SimpleGrid>
+          )}
 
           <UpcomingCard />
 

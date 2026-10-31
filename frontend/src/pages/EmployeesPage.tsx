@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
+  Collapse,
   Badge,
   Button,
   Checkbox,
@@ -20,7 +21,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconCertificate, IconChevronDown, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
+import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -68,6 +69,7 @@ export function EmployeesPage() {
   const departments = useDepartments();
   const positions = usePositions();
 
+
   function update(changes: Record<string, string | string[] | null>, resetPage = true) {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(changes)) {
@@ -102,6 +104,8 @@ export function EmployeesPage() {
   }, [query]);
 
   const [exporting, setExporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => !!(params.get("agency") || params.get("department") || params.get("position") || params.getAll("missing").length));
+  const activeFilters = [agency, department, position].filter(Boolean).length + (missing.length ? 1 : 0);
   const [docsOpen, setDocsOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
   async function exportXlsx(withPesel: boolean, format: "xlsx" | "pdf" = "xlsx") {
@@ -166,6 +170,32 @@ export function EmployeesPage() {
     );
   };
 
+  const exportMenu = list.data ? (
+        <Menu position="bottom-end" width={260}>
+          <Menu.Target>
+            <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
+              Eksport ({list.data.total})
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>Eksport wyników z bieżącymi filtrami</Menu.Label>
+            <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (Excel)</Menu.Item>
+            <Menu.Item onClick={() => exportXlsx(false, "pdf")}>Pobierz listę (PDF)</Menu.Item>
+            {staff && (
+              <>
+                <Menu.Divider />
+                <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
+                  Z numerami PESEL (Excel)
+                </Menu.Item>
+                <Menu.Item color="orange" onClick={() => exportXlsx(true, "pdf")}>
+                  Z numerami PESEL (PDF)
+                </Menu.Item>
+              </>
+            )}
+          </Menu.Dropdown>
+        </Menu>
+  ) : null;
+
   return (
     <Stack>
       <Group justify="space-between">
@@ -203,7 +233,7 @@ export function EmployeesPage() {
           leftSection={<IconSearch size={16} />}
           value={q}
           onChange={(e) => update({ q: e.currentTarget.value })}
-          w={260}
+          w={{ base: "100%", sm: 260 }}
         />
         <SegmentedControl
           value={status}
@@ -214,12 +244,23 @@ export function EmployeesPage() {
             { value: "all", label: "Wszyscy" },
           ]}
         />
+        <Button
+          variant={filtersOpen || activeFilters ? "light" : "default"}
+          leftSection={<IconFilter size={16} />}
+          rightSection={filtersOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+          onClick={() => setFiltersOpen((o) => !o)}
+        >
+          Filtry{activeFilters ? ` (${activeFilters})` : ""}
+        </Button>
+      </Group>
+      <Collapse in={filtersOpen}>
+        <Group align="flex-end" gap="sm">
         <Select
           label="APT"
           placeholder="Wszystkie"
           clearable
           searchable
-          w={200}
+          w={{ base: "100%", sm: 200 }}
           data={options(agencies.data, agency ? Number(agency) : null)}
           value={agency}
           onChange={(v) => update({ agency: v })}
@@ -229,7 +270,7 @@ export function EmployeesPage() {
           placeholder="Wszystkie"
           clearable
           searchable
-          w={200}
+          w={{ base: "100%", sm: 200 }}
           data={options(departments.data, department ? Number(department) : null)}
           value={department}
           onChange={(v) => update({ department: v, position: null })}
@@ -239,7 +280,7 @@ export function EmployeesPage() {
           placeholder="Wszystkie"
           clearable
           searchable
-          w={200}
+          w={{ base: "100%", sm: 200 }}
           data={options(
             positions.data,
             position ? Number(position) : null,
@@ -252,15 +293,30 @@ export function EmployeesPage() {
           label="Braki danych"
           placeholder={missing.length ? undefined : "—"}
           clearable
-          w={230}
+          w={{ base: "100%", sm: 230 }}
           data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
           value={missing}
           onChange={(v) => update({ missing: v })}
         />
-        <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
-      </Group>
+          <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
+        </Group>
+      </Collapse>
 
-      {canPrint && list.data && list.data.total > 0 && (
+      {canPrint && list.data && list.data.total > 0 && selected.size === 0 && (
+        <Group justify="space-between" gap="xs">
+          <Text size="xs" c="dimmed">
+            Zaznacz pola przy nazwiskach, aby drukować karty lub wystawiać dokumenty.
+          </Text>
+          <Group gap="xs">
+            <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
+              Zaznacz wszystkie ({list.data.total})
+            </Button>
+            {exportMenu}
+          </Group>
+        </Group>
+      )}
+
+      {canPrint && list.data && list.data.total > 0 && selected.size > 0 && (
         <Paper withBorder px="md" py={8} className={selected.size ? "row-selected" : undefined}>
           <Group justify="space-between" gap="xs">
             <Text size="sm">
@@ -313,29 +369,7 @@ export function EmployeesPage() {
                   Szkolenie{selected.size ? ` (${selected.size})` : ""}
                 </Button>
               )}
-              <Menu position="bottom-end" width={260}>
-                <Menu.Target>
-                  <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
-                    Eksport ({list.data.total})
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Eksport wyników z bieżącymi filtrami</Menu.Label>
-                  <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (Excel)</Menu.Item>
-                  <Menu.Item onClick={() => exportXlsx(false, "pdf")}>Pobierz listę (PDF)</Menu.Item>
-                  {staff && (
-                    <>
-                      <Menu.Divider />
-                      <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
-                        Z numerami PESEL (Excel)
-                      </Menu.Item>
-                      <Menu.Item color="orange" onClick={() => exportXlsx(true, "pdf")}>
-                        Z numerami PESEL (PDF)
-                      </Menu.Item>
-                    </>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
+              {exportMenu}
             </Group>
           </Group>
         </Paper>

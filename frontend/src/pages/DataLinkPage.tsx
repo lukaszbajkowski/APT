@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Badge, Button, Center, Group, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Avatar, Badge, Button, Center, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { IconAlertCircle, IconCamera, IconCheck, IconClock } from "@tabler/icons-react";
 
 import { api, errorText, getLinkAccess, setLinkAccess } from "../api";
@@ -10,6 +10,7 @@ import { ContactEditor } from "../components/MyDataCards";
 import { PhotoEditor } from "../components/PhotoEditor";
 import type { Employee } from "../api";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 interface Data {
   first_name: string;
@@ -137,7 +138,7 @@ export function DataLinkPage() {
                   {error}
                 </Alert>
               )}
-              <TextInput label={T("Data urodzenia")} type="date" value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
+              <DateField label={T("Data urodzenia")}  value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
               <Button size="md" loading={busy} disabled={!birth} onClick={verify}>
                 {T("Dalej")}
               </Button>

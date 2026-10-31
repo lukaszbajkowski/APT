@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Checkbox, Group, Modal, SegmentedControl, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Anchor, Button, Checkbox, Group, Modal, SegmentedControl, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPrinter } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText } from "../api";
 import { Loading } from "./States";
+import { DateField } from "./DateField";
 
 interface PersonRef {
   id: number;
@@ -138,7 +139,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
           onChange={(e) => setWithExpiry(e.currentTarget.checked)}
         />
         {withExpiry && (
-          <TextInput type="date" label="Ważna do" value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
+          <DateField  label="Ważna do" value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
         )}
 
         <Group justify="flex-end">

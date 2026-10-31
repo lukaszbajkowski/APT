@@ -11,6 +11,7 @@ import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
 import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { EmptyState, Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 interface Options {
   challenge_id: string;
@@ -113,10 +114,10 @@ export function InvitePage() {
                 </Alert>
               )}
               {needsBirth && (
-                <TextInput
+                <DateField
                   label={t("Data urodzenia")}
                   description={t("Potwierdzamy, że to Ty.")}
-                  type="date"
+                  
                   value={birth}
                   onChange={(e) => setBirth(e.currentTarget.value)}
                 />

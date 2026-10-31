@@ -25,6 +25,7 @@ import { IconCircleCheck, IconDownload, IconEraser, IconFileUpload, IconFingerpr
 import { api, errorText } from "../api";
 import { LanguagePicker, useT } from "../lib/i18n";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 interface Info {
   document: string;
@@ -390,7 +391,7 @@ export function SignPage() {
               <Card withBorder padding="md" radius="md" component="form" onSubmit={verify}>
                 <Stack>
                   <Text>{T("Dla bezpieczeństwa potwierdź swoją datę urodzenia.")}</Text>
-                  <TextInput size="md" type="date" label={T("Data urodzenia")} required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
+                  <DateField size="md"  label={T("Data urodzenia")} required value={birth} onChange={(e) => setBirth(e.currentTarget.value)} />
                   <Button type="submit" size="md" loading={busy}>
                     {T("Dalej")}
                   </Button>

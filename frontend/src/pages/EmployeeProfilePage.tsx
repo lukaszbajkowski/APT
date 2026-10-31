@@ -14,7 +14,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
   Timeline,
   Title,
   Tooltip,
@@ -58,6 +57,7 @@ import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -437,9 +437,9 @@ export function EmployeeProfilePage() {
             Pracownik zniknie z listy aktywnych. Dane zostaną zachowane w archiwum i będzie można je przywrócić.
             Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
           </Text>
-          <TextInput
+          <DateField
             label="Data zwolnienia"
-            type="date"
+            
             required
             value={terminationDate}
             onChange={(ev) => setTerminationDate(ev.currentTarget.value)}

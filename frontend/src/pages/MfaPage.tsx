@@ -402,6 +402,24 @@ export function MfaPage() {
               zaloguje się bez telefonu.
             </Text>
           </div>
+          {forced && !me.user.mfa_enabled && (
+            <Alert color="blue" variant="light" title="Dlaczego to widzisz i ile to potrwa">
+              <Text size="sm">
+                Twoje konto ma dostęp do danych osobowych pracowników (PESEL, zdjęcia, dokumenty), dlatego sam login i hasło nie wystarczą.
+                To jednorazowa konfiguracja, około 3 minut – potem wchodzisz już normalnie.
+              </Text>
+              <Text size="sm" mt={6} fw={600}>
+                Co zrobisz:
+              </Text>
+              <Text size="sm">
+                1. Zainstaluj w telefonie aplikację do kodów (np. Google Authenticator, Microsoft Authenticator).
+                <br />
+                2. Zeskanuj kod QR pokazany niżej i wpisz 6-cyfrowy kod z aplikacji.
+                <br />
+                3. Zapisz kody awaryjne w bezpiecznym miejscu – pomogą, gdy zgubisz telefon.
+              </Text>
+            </Alert>
+          )}
           {me.user.mfa_enabled ? <EnabledPanel /> : <SetupFlow forced={forced} />}
           <Group justify="flex-start">
             {forced ? (

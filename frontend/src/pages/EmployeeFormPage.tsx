@@ -26,6 +26,7 @@ import { useAuth } from "../auth";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { parsePesel } from "../pesel";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 interface FormState {
   last_name: string;
@@ -350,9 +351,9 @@ export function EmployeeFormPage() {
               />
             )}
             {staff && (
-              <TextInput
+              <DateField
                 label="Data urodzenia"
-                type="date"
+                
                 disabled={!!peselCheck?.valid}
                 value={form.birth_date}
                 onChange={(e) => set("birth_date", e.currentTarget.value)}
@@ -401,9 +402,9 @@ export function EmployeeFormPage() {
               onChange={(v) => set("agency_id", v)}
               nothingFoundMessage="Brak – dodaj APT w Słownikach"
             />
-            <TextInput
+            <DateField
               label="Data zatrudnienia"
-              type="date"
+              
               disabled={personalLocked}
               value={form.hire_date}
               error={fe.hire_date}
@@ -428,14 +429,23 @@ export function EmployeeFormPage() {
               clearable
               data={positionOptions}
               value={form.position_id}
-              onChange={(v) => set("position_id", v)}
+              placeholder={!form.department_id ? "Najpierw wybierz wydział (zawęzi listę)" : undefined}
+              onChange={(v) => {
+                // wybór stanowiska uzupełnia wydział, do którego ono należy
+                const pos = positions.data?.find((p) => String(p.id) === v);
+                setForm((f) => ({
+                  ...f,
+                  position_id: v,
+                  department_id: !f.department_id && pos?.department_id ? String(pos.department_id) : f.department_id,
+                }));
+              }}
             />
           </SimpleGrid>
           {assignmentChanged && (
             <Paper withBorder p="sm" mt="md" radius="md" bg="var(--mantine-color-blue-light)">
               <Group align="flex-end" gap="md" wrap="wrap">
-                <TextInput
-                  type="date"
+                <DateField
+                  
                   label="Zmiana APT / wydziału / stanowiska obowiązuje od"
                   value={effectiveDate}
                   min={current?.hire_date ?? undefined}

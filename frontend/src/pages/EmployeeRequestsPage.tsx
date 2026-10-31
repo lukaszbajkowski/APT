@@ -27,6 +27,7 @@ import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 const STATUS: Record<EmployeeRequest["status"], { label: string; color: string }> = {
   pending: { label: "czeka na kadry", color: "orange" },
@@ -90,7 +91,7 @@ function PersonFields({ v, set, notes = true }: { v: FormValues; set: (v: FormVa
           value={v.position_id}
           onChange={(x) => set({ ...v, position_id: x })}
         />
-        <TextInput label="Data rozpoczęcia pracy" type="date" value={v.hire_date} onChange={(e) => set({ ...v, hire_date: e.currentTarget.value })} />
+        <DateField label="Data rozpoczęcia pracy"  value={v.hire_date} onChange={(e) => set({ ...v, hire_date: e.currentTarget.value })} />
       </SimpleGrid>
       {notes && (
         <Textarea label="Uwagi dla kadr" autosize minRows={2} maxLength={1000} value={v.notes} onChange={(e) => set({ ...v, notes: e.currentTarget.value })} />

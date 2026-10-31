@@ -5,6 +5,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 
 import { ACTION_LABELS, api, ApiError, formatDateTime, type AuditEntry, type Page } from "../api";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 const PAGE_SIZE = 50;
 
@@ -82,8 +83,8 @@ export function AuditPage() {
             setPage(1);
           }}
         />
-        <TextInput label="Od" type="date" value={dateFrom} onChange={(e) => resetPage(setDateFrom)(e.currentTarget.value)} />
-        <TextInput label="Do" type="date" value={dateTo} onChange={(e) => resetPage(setDateTo)(e.currentTarget.value)} />
+        <DateField label="Od"  value={dateFrom} onChange={(e) => resetPage(setDateFrom)(e.currentTarget.value)} />
+        <DateField label="Do"  value={dateTo} onChange={(e) => resetPage(setDateTo)(e.currentTarget.value)} />
       </Group>
 
       {log.isLoading && <Loading />}

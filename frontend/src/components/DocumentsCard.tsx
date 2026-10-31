@@ -30,6 +30,7 @@ import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type F
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
 import { Loading } from "./States";
+import { DateField } from "./DateField";
 
 export type Values = Record<string, string | boolean | number | null>;
 
@@ -89,7 +90,7 @@ export function FieldInput({ field, value, onChange }: { field: TemplateField; v
         />
       );
     case "date":
-      return <TextInput {...common} type="date" value={(value as string) ?? ""} onChange={(e) => onChange(e.currentTarget.value)} />;
+      return <DateField {...common}  value={(value as string) ?? ""} onChange={(e) => onChange(e.currentTarget.value)} />;
     case "number":
       return <NumberInput {...common} value={(value as number) ?? ""} onChange={(v) => onChange(v === "" ? null : Number(v))} decimalSeparator="," />;
     case "textarea":

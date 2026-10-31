@@ -41,6 +41,7 @@ import {
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
 import { useAuth } from "../auth";
 import { EmptyState, Loading } from "./States";
+import { DateField } from "./DateField";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -257,7 +258,7 @@ export function RehireModal({ employee, opened, onClose }: { employee: Employee;
           ewidencyjny, PESEL, zdjęcie, szkolenia i dokumenty zostają.
         </Text>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <TextInput type="date" label="Data zatrudnienia" value={hire} onChange={(e) => setHire(e.currentTarget.value)} />
+          <DateField  label="Data zatrudnienia" value={hire} onChange={(e) => setHire(e.currentTarget.value)} />
           <Select label="APT" clearable searchable data={opts(agencies.data)} value={agency} onChange={setAgency} />
           <Select
             label="Wydział"
@@ -368,12 +369,12 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
               </Tooltip>
             </Popover.Target>
             <Popover.Dropdown>
-              <TextInput
+              <DateField
                 size="xs"
-                type="date"
+                
                 label="Termin"
-                defaultValue={it.due_date ?? ""}
-                onBlur={(e) => {
+                value={it.due_date ?? ""}
+                onChange={(e) => {
                   const v = e.currentTarget.value;
                   if (v && v !== it.due_date) patch.mutate({ due_date: v });
                 }}

@@ -25,6 +25,7 @@ import { IconFileText, IconPlus, IconStethoscope, IconTrash } from "@tabler/icon
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
 import { EmptyState, Loading } from "./States";
+import { DateField } from "./DateField";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
   valid: { label: "ważne", color: "teal" },
@@ -93,8 +94,8 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
             onChange={(v) => v && setKind(v)}
           />
           <SimpleGrid cols={2}>
-            <TextInput label="Data badania" type="date" required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-            <TextInput label="Ważne do" type="date" min={date} value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
+            <DateField label="Data badania"  required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
+            <DateField label="Ważne do"  min={date} value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
           </SimpleGrid>
           <Group gap={6}>
             <Text size="xs" c="dimmed">

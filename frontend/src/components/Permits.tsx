@@ -6,6 +6,7 @@ import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
 import { EmptyState, Loading } from "./States";
+import { DateField } from "./DateField";
 
 export const PERMIT_KINDS = [
   { value: "karta_pobytu", label: "karta pobytu" },
@@ -58,8 +59,8 @@ function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: 
           {error && <Alert color="red">{error}</Alert>}
           <Select label="Rodzaj" allowDeselect={false} data={PERMIT_KINDS} value={kind} onChange={(v) => v && setKind(v)} />
           <SimpleGrid cols={2}>
-            <TextInput label="Ważne od" type="date" value={from} onChange={(e) => setFrom(e.currentTarget.value)} />
-            <TextInput label="Ważne do" type="date" required min={from || undefined} value={until} onChange={(e) => setUntil(e.currentTarget.value)} />
+            <DateField label="Ważne od"  value={from} onChange={(e) => setFrom(e.currentTarget.value)} />
+            <DateField label="Ważne do"  required min={from || undefined} value={until} onChange={(e) => setUntil(e.currentTarget.value)} />
           </SimpleGrid>
           <TextInput label="Uwagi" maxLength={500} value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
           <Group justify="flex-end">

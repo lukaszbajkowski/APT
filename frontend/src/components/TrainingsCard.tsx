@@ -48,6 +48,7 @@ import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
 import { EmptyState, Loading } from "./States";
+import { DateField } from "./DateField";
 
 interface Form {
   type_id: string | null;
@@ -294,9 +295,9 @@ export function TrainingModal({
                 value={form.department_id}
                 onChange={(v) => set("department_id", v)}
               />
-              <TextInput type="date" label="Data rozpoczęcia" value={form.start_date} onChange={(e) => set("start_date", e.currentTarget.value)} />
-              <TextInput type="date" label="Data egzaminu" value={form.exam_date} onChange={(e) => set("exam_date", e.currentTarget.value)} />
-              <TextInput type="date" label="Data zakończenia" value={form.end_date} onChange={(e) => set("end_date", e.currentTarget.value)} />
+              <DateField  label="Data rozpoczęcia" value={form.start_date} onChange={(e) => set("start_date", e.currentTarget.value)} />
+              <DateField  label="Data egzaminu" value={form.exam_date} onChange={(e) => set("exam_date", e.currentTarget.value)} />
+              <DateField  label="Data zakończenia" value={form.end_date} onChange={(e) => set("end_date", e.currentTarget.value)} />
               <NumberInput
                 label="Czas nauki wg standardu (dni)"
                 min={0}
@@ -341,15 +342,15 @@ export function TrainingModal({
         {type && (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {!position && (
-              <TextInput
-                type="date"
+              <DateField
+                
                 label="Data ukończenia"
                 value={form.completed_on}
                 onChange={(e) => set("completed_on", e.currentTarget.value)}
               />
             )}
-            <TextInput
-              type="date"
+            <DateField
+              
               label="Ważne do"
               placeholder="bezterminowe"
               value={form.valid_until}

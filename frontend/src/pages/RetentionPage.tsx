@@ -22,6 +22,7 @@ import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-reac
 
 import { api, errorText, formatDate, type RetentionItem, type RetentionOverview } from "../api";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
 
 const CONFIRM = "USUŃ";
 
@@ -325,7 +326,7 @@ export function RetentionPage() {
                 {holdFor.name} ({holdFor.number}) – dane zostaną zachowane do podanej daty.
               </Text>
               {holdError && <Alert color="red">{holdError}</Alert>}
-              <TextInput label="Wstrzymaj do" type="date" required value={holdUntil} onChange={(e) => setHoldUntil(e.currentTarget.value)} />
+              <DateField label="Wstrzymaj do"  required value={holdUntil} onChange={(e) => setHoldUntil(e.currentTarget.value)} />
               <Textarea
                 label="Powód"
                 required

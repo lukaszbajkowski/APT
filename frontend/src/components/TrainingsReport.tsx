@@ -15,7 +15,6 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconFileSpreadsheet, IconFileTypePdf, IconFilterOff } from "@tabler/icons-react";
@@ -31,6 +30,7 @@ import {
   type TrainingType,
 } from "../api";
 import { ErrorState, EmptyState, Loading } from "./States";
+import { DateField } from "./DateField";
 
 interface Row {
   training_id: number;
@@ -187,13 +187,13 @@ export function TrainingsReport() {
             value={f.status}
             onChange={(v) => set("status", v)}
           />
-          <TextInput
-            type="date"
+          <DateField
+            
             label="Od"
             value={f.date_from}
             onChange={(e) => set("date_from", e.currentTarget.value)}
           />
-          <TextInput type="date" label="Do" value={f.date_to} onChange={(e) => set("date_to", e.currentTarget.value)} />
+          <DateField  label="Do" value={f.date_to} onChange={(e) => set("date_to", e.currentTarget.value)} />
           <div>
             <Text size="sm" fw={500} mb={2}>
               Pracownicy

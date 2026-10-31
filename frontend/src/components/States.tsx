@@ -22,6 +22,19 @@ export function EmptyState({
   search?: boolean;
   compact?: boolean;
 }) {
+  if (compact && !action && !secondary)
+    return (
+      <Stack gap={2} py="xs" role="status">
+        <Text size="sm" fw={600}>
+          {title}
+        </Text>
+        {text && (
+          <Text size="sm" c="dimmed">
+            {text}
+          </Text>
+        )}
+      </Stack>
+    );
   return (
     <Stack align="center" gap="xs" p={compact ? "md" : "xl"} ta="center" role="status">
       <ThemeIcon size={compact ? 40 : 56} radius="xl" variant="light">

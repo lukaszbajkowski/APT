@@ -13,7 +13,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   TextInput,
   Textarea,
@@ -161,7 +160,7 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
     );
   }
   return (
-    <Group gap={4} justify="flex-end" wrap="nowrap">
+    <Group gap={4} wrap="wrap">
       {doc.can_view && (
         <Button size={size} variant="light" leftSection={<IconEye size={14} />} onClick={() => setViewing(true)}>
           Podgląd
@@ -370,6 +369,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
         <Title order={5}>Dokumenty</Title>
         <Button
           size="xs"
+          variant="light"
           leftSection={<IconPlus size={14} />}
           onClick={() => {
             setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
@@ -394,38 +394,40 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
         </Text>
       )}
       {docs.data && docs.data.length > 0 && (
-        <Table verticalSpacing={6}>
-          <Table.Tbody>
-            {docs.data.map((d) => (
-              <Table.Tr key={d.id}>
-                <Table.Td>
-                  <Group gap={6} wrap="nowrap">
-                    <IconFileText size={18} color="var(--mantine-color-dimmed)" />
-                    <div>
-                      <Group gap={6}>
-                        <Text size="sm" fw={500}>
-                          {d.template_name}
-                        </Text>
-                        <SignatureBadge doc={d} />
-                      </Group>
-                      <Text size="xs" c="dimmed">
-                        {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
-                        {d.masked && " · bez PESEL i daty urodzenia"}
-                      </Text>
-                    </div>
+        <Stack gap={0}>
+          {docs.data.map((d, i) => (
+            <Group
+              key={d.id}
+              justify="space-between"
+              align="center"
+              gap="sm"
+              py="sm"
+              wrap="wrap"
+              style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
+            >
+              <Group gap="sm" wrap="nowrap" align="flex-start" style={{ flex: "1 1 220px", minWidth: 0 }}>
+                <IconFileText size={20} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                <div style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={600}>
+                    {d.template_name}
+                  </Text>
+                  <Group gap={6} mt={2} wrap="wrap">
+                    <SignatureBadge doc={d} />
+                    <Text size="xs" c="dimmed">
+                      {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
+                      {d.masked && " · bez PESEL i daty urodzenia"}
+                    </Text>
                   </Group>
-                </Table.Td>
-                <Table.Td align="right">
-                  <Group gap={6} justify="flex-end" wrap="nowrap">
-                    <SignButton doc={d} employee={employee} />
-                    <DocActions doc={d} />
-                    <DeleteDocument doc={d} employee={employee} />
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+                </div>
+              </Group>
+              <Group gap={6} wrap="wrap" style={{ flex: "0 1 auto" }}>
+                <SignButton doc={d} employee={employee} />
+                <DocActions doc={d} />
+                <DeleteDocument doc={d} employee={employee} />
+              </Group>
+            </Group>
+          ))}
+        </Stack>
       )}
       <TrashList employee={employee} />
 

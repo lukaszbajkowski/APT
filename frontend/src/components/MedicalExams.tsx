@@ -160,7 +160,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
           )}
         </Group>
         {canAdd && (
-          <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => setOpen(true)}>
+          <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setOpen(true)}>
             Dodaj badanie
           </Button>
         )}

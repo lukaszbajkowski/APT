@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -25,6 +25,7 @@ import {
   IconCertificate2,
   IconChecklist,
   IconChevronDown,
+  IconChevronLeft,
   IconChevronRight,
   IconClipboardCheck,
   IconClockShield,
@@ -62,6 +63,7 @@ import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
+import { MobileHeaderProvider, useMobileHeaderValue } from "./Mobile";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
 
@@ -71,7 +73,103 @@ function isActivePath(to: string, path: string) {
   return to === "/" || to === "/moje-konto" ? path === to : path === to || path.startsWith(to + "/");
 }
 
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "Dziś",
+  "/pracownicy": "Pracownicy",
+  "/pracownicy/nowy": "Nowy pracownik",
+  "/pracownicy/import": "Import z arkusza",
+  "/skaner": "Skaner kart",
+  "/do-zrobienia": "Do zrobienia",
+  "/wiadomosci": "Wiadomości",
+  "/komunikaty": "Komunikaty",
+  "/zadania": "Zadania",
+  "/szkolenia": "Szkolenia",
+  "/szkolenia/import": "Import szkoleń",
+  "/dokumenty-pobytowe": "Dokumenty pobytowe",
+  "/braki": "Braki w danych",
+  "/zgloszenia": "Zgłoszenia",
+  "/zestawienia": "Zestawienia",
+  "/raporty": "Raporty",
+  "/konta-pracownikow": "Konta pracowników",
+  "/slowniki": "Słowniki",
+  "/szablony": "Szablony",
+  "/uzytkownicy": "Użytkownicy",
+  "/uzytkownicy/wylaczeni": "Wyłączeni użytkownicy",
+  "/przeglad-dostepu": "Przegląd dostępu",
+  "/retencja": "Retencja danych",
+  "/stan-systemu": "Stan systemu",
+  "/dziennik": "Dziennik zdarzeń",
+  "/wzornik": "Wzornik",
+  "/moje-konto": "Moje konto",
+  "/moje-konto/do-podpisu": "Do podpisu",
+  "/moje-konto/komunikaty": "Komunikaty",
+  "/moje-konto/wiadomosci": "Napisz do kadr",
+  "/moje-konto/klucze": "Klucze logowania",
+};
+// ekrany „pierwszego poziomu”: bez strzałki powrotu
+const TOP_LEVEL = new Set(["/moje-konto", "/moje-konto/do-podpisu", "/moje-konto/komunikaty", "/moje-konto/wiadomosci", "/moje-konto/klucze"]);
+
+function headerFor(path: string): { title: string; back?: string } {
+  const clean = path.replace(/\/+$/, "") || "/";
+  const parts = clean.split("/").filter(Boolean);
+  const top = parts.length <= 1 || TOP_LEVEL.has(clean);
+  const parent = "/" + parts.slice(0, -1).join("/");
+  let title = ROUTE_TITLES[clean];
+  if (!title) {
+    if (/^\/pracownicy\/\d+\/edycja$/.test(clean)) title = "Edycja danych";
+    else if (/^\/pracownicy\/\d+$/.test(clean)) title = "Pracownik";
+    else title = ROUTE_TITLES[parent] ?? "";
+  }
+  return { title, back: top ? undefined : parent };
+}
+
+/** Pasek górny telefonu: powrót, nazwa ekranu, konto. Na ekranach głównych nazwa pojawia się po przewinięciu (duży tytuł jest w treści). */
+function MobileTopBar() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const own = useMobileHeaderValue();
+  const auto = headerFor(location.pathname);
+  const back = own.back ?? auto.back;
+  const title = own.title ?? auto.title;
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 48);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, [location.pathname]);
+  const showTitle = !!back || !!own.title || scrolled;
+  return (
+    <div className="topbar">
+      {back ? (
+        <UnstyledButton
+          className="topbar-btn"
+          aria-label="Wróć"
+          onClick={() => navigate(back)}
+        >
+          <IconChevronLeft size={26} stroke={2.2} />
+        </UnstyledButton>
+      ) : (
+        <span className="topbar-btn" aria-hidden />
+      )}
+      <div className="topbar-title" data-visible={showTitle || undefined} aria-hidden={!showTitle}>
+        <span className="topbar-title-main">{title}</span>
+        {own.subtitle && <span className="topbar-title-sub">{own.subtitle}</span>}
+      </div>
+      <AccountMenu compact />
+    </div>
+  );
+}
+
 export function AppLayout() {
+  return (
+    <MobileHeaderProvider>
+      <AppLayoutInner />
+    </MobileHeaderProvider>
+  );
+}
+
+function AppLayoutInner() {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [moreOpen, setMoreOpen] = useState(false);
   useResponsiveTables();
@@ -180,24 +278,14 @@ export function AppLayout() {
 
   return (
     <AppShell
-      header={{ height: 56, collapsed: !mobile }}
-      footer={{ height: 68, collapsed: !mobile }}
+      header={{ height: 52, collapsed: !mobile }}
+      footer={{ height: 58, collapsed: !mobile }}
       navbar={{ width: 256, breakpoint: "sm", collapsed: { mobile: true } }}
       padding={mobile ? "sm" : "lg"}
     >
       {mobile && (
         <AppShell.Header>
-          <Group h="100%" px="sm" justify="space-between" wrap="nowrap">
-            <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link">
-              <Group gap={8} wrap="nowrap">
-                <BrandMark />
-                <Text fw={750} className="brand-title" truncate>
-                  Identyfikacja APT
-                </Text>
-              </Group>
-            </Link>
-            <AccountMenu compact />
-          </Group>
+          <MobileTopBar />
         </AppShell.Header>
       )}
 
@@ -232,9 +320,9 @@ export function AppLayout() {
               <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.label)} />
             ))}
             {canScan ? (
-              <Link to="/skaner" className="tabbar-scan" aria-label={t("Skanuj kartę")} data-active={location.pathname === "/skaner" || undefined}>
-                <span className="tabbar-scan-btn">
-                  <IconScan size={24} stroke={2} />
+              <Link to="/skaner" className="tabbar-item tabbar-scan" aria-current={location.pathname === "/skaner" ? "page" : undefined} data-active={location.pathname === "/skaner" || undefined}>
+                <span className="tabbar-icon">
+                  <IconScan size={22} stroke={2} />
                 </span>
                 <span>{t("Skanuj")}</span>
               </Link>
@@ -246,7 +334,7 @@ export function AppLayout() {
             ))}
             <UnstyledButton className="tabbar-item" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" data-active={moreOpen || undefined}>
               <span className="tabbar-icon">
-                <IconMenu2 size={22} stroke={1.8} />
+                <IconMenu2 size={22} stroke={1.9} />
                 {moreBadge > 0 && <span className="tabbar-badge">{moreBadge}</span>}
               </span>
               <span>{t("Więcej")}</span>
@@ -310,7 +398,7 @@ function TabLink({ item, active, label }: { item: NavItem; active: boolean; labe
   return (
     <Link to={item.to} className="tabbar-item" data-active={active || undefined} aria-current={active ? "page" : undefined}>
       <span className="tabbar-icon">
-        <item.icon size={22} stroke={active ? 2.2 : 1.8} />
+        <item.icon size={22} stroke={1.9} />
         {!!item.badge && <span className="tabbar-badge">{item.badge}</span>}
       </span>
       <span>{label}</span>

@@ -9,11 +9,11 @@ import {
   Checkbox,
   Grid,
   Group,
+  Menu,
   Modal,
   MultiSelect,
   NumberInput,
   Paper,
-  Popover,
   Progress,
   Select,
   SimpleGrid,
@@ -23,13 +23,13 @@ import {
   TextInput,
   Timeline,
   Title,
-  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowDown,
   IconArrowUp,
   IconBolt,
+  IconDotsVertical,
   IconCalendarEvent,
   IconChecklist,
   IconPlayerSkipForward,
@@ -329,8 +329,10 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
     },
   });
   const done = it.state === "done" || it.state === "auto";
+  const [dueOpen, setDueOpen] = useState(false);
+  const [due, setDue] = useState(it.due_date ?? "");
   return (
-    <Group justify="space-between" wrap="nowrap" gap="sm" py={4}>
+    <Group justify="space-between" wrap="nowrap" gap="sm" py={6}>
       <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
         <Checkbox
           checked={done}
@@ -342,7 +344,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
           <Text size="sm" td={it.state === "skipped" ? "line-through" : undefined} c={done || it.state === "skipped" ? "dimmed" : undefined}>
             {it.label}
           </Text>
-          <Text size="xs" c={it.state === "overdue" ? "red" : "dimmed"}>
+          <Text size="xs" c={it.state === "overdue" ? "orange" : "dimmed"} fw={it.state === "overdue" ? 600 : undefined}>
             {[
               RESPONSIBLE[it.responsible],
               it.state === "done" && it.done_by_name ? `${it.done_by_name}, ${formatDateTime(it.done_at)}` : null,
@@ -356,43 +358,52 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
           </Text>
         </div>
       </Group>
-      <Group gap={4} wrap="nowrap">
-        {staff && !done && it.state !== "skipped" && (
-          <Popover position="bottom-end" withArrow shadow="md">
-            <Popover.Target>
-              <Tooltip label="Zmień termin" withArrow>
-                <ActionIcon variant="subtle" color="gray" size="sm" aria-label={`Termin: ${it.label}`}>
-                  <IconCalendarEvent size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <DateField
-                size="xs"
-                
-                label="Termin"
-                value={it.due_date ?? ""}
-                onChange={(e) => {
-                  const v = e.currentTarget.value;
-                  if (v && v !== it.due_date) patch.mutate({ due_date: v });
-                }}
-              />
-            </Popover.Dropdown>
-          </Popover>
-        )}
-        {it.auto && it.state !== "auto" && (
-          <Tooltip label="Odhaczy się samo, gdy warunek zostanie spełniony" withArrow>
-            <IconBolt size={14} color="var(--mantine-color-dimmed)" />
-          </Tooltip>
-        )}
-        {it.can_edit && !done && (
-          <Tooltip label={it.state === "skipped" ? "Przywróć" : "Pomiń (nie dotyczy)"} withArrow>
-            <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Pomiń lub przywróć punkt" onClick={() => patch.mutate({ skipped: it.state !== "skipped" })}>
-              <IconPlayerSkipForward size={14} />
+      {(staff && !done && it.state !== "skipped") || it.auto || (it.can_edit && !done) ? (
+        <Menu position="bottom-end" width={260} withinPortal>
+          <Menu.Target>
+            <ActionIcon variant="subtle" color="gray" size={40} aria-label={`Akcje: ${it.label}`} style={{ flexShrink: 0 }}>
+              <IconDotsVertical size={18} />
             </ActionIcon>
-          </Tooltip>
-        )}
-      </Group>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {it.auto && it.state !== "auto" && (
+              <Menu.Label style={{ whiteSpace: "normal" }}>
+                <Group gap={6} wrap="nowrap" align="flex-start">
+                  <IconBolt size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                  Odhaczy się samo, gdy warunek zostanie spełniony.
+                </Group>
+              </Menu.Label>
+            )}
+            {staff && !done && it.state !== "skipped" && (
+              <Menu.Item leftSection={<IconCalendarEvent size={16} />} onClick={() => setDueOpen(true)}>
+                Zmień termin
+              </Menu.Item>
+            )}
+            {it.can_edit && !done && (
+              <Menu.Item leftSection={<IconPlayerSkipForward size={16} />} onClick={() => patch.mutate({ skipped: it.state !== "skipped" })}>
+                {it.state === "skipped" ? "Przywróć zadanie" : "Pomiń (nie dotyczy)"}
+              </Menu.Item>
+            )}
+          </Menu.Dropdown>
+        </Menu>
+      ) : null}
+      <Modal opened={dueOpen} onClose={() => setDueOpen(false)} title={`Termin: ${it.label}`} size="sm">
+        <Stack>
+          <DateField label="Nowy termin" value={due} onChange={(e) => setDue(e.currentTarget.value)} />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setDueOpen(false)}>
+              Anuluj
+            </Button>
+            <Button
+              disabled={!due || due === it.due_date}
+              loading={patch.isPending}
+              onClick={() => patch.mutate({ due_date: due }, { onSuccess: () => setDueOpen(false) })}
+            >
+              Zapisz termin
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Group>
   );
 }
@@ -446,12 +457,12 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
                 <Text size="sm" fw={600}>
                   {KIND_LABEL[k]}
                 </Text>
-                <Text size="xs" c={overdue ? "red" : "dimmed"}>
+                <Text size="xs" c={overdue ? "orange" : "dimmed"} fw={overdue ? 600 : undefined}>
                   {doneN} z {items.length}
                   {overdue ? ` · po terminie: ${overdue}` : ""}
                 </Text>
               </Group>
-              <Progress value={(doneN / items.length) * 100} color={doneN === items.length ? "teal" : overdue ? "red" : "blue"} size="sm" mb="xs" />
+              <Progress value={(doneN / items.length) * 100} color={doneN === items.length ? "teal" : undefined} size="sm" mb="xs" />
               {items.map((it) => (
                 <ItemRow key={it.id} it={it} onChange={refresh} />
               ))}

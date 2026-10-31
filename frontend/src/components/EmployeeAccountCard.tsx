@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, CopyButton, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconMail } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
@@ -65,7 +65,11 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
       <Group justify="space-between" mb="xs">
         <Title order={4}>Konto pracownika</Title>
         {a?.exists && (
-          <Badge color={a.active ? (a.has_passkey ? "green" : "yellow") : "gray"}>
+          <Badge
+            variant="light"
+            color={a.active ? (a.has_passkey ? "green" : "orange") : "gray"}
+            leftSection={a.active && a.has_passkey ? <IconCheck size={12} aria-hidden /> : undefined}
+          >
             {!a.active ? "wyłączone" : a.has_passkey ? "aktywne" : "czeka na aktywację"}
           </Badge>
         )}
@@ -88,46 +92,66 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
           Pracownik nie ma konta. Wyślij zaproszenie – założy je sam na telefonie (twarz / odcisk palca).
         </Text>
       )}
-      <Stack gap="xs">
-        <TextInput
-          label="E-mail pracownika (opcjonalnie)"
-          description={contactEmail ? "Podstawiony potwierdzony adres z kartoteki – możesz go zmienić dla tej wysyłki." : "Na ten adres wyślemy zaproszenie. Adresu nie zapisujemy – bez niego dostaniesz sam link."}
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.currentTarget.value)}
-        />
-        <Group>
-          <Button loading={invite.isPending} disabled={activated || (a?.exists && !a.active)} onClick={() => invite.mutate()}>
-            {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
+      <Stack gap="sm">
+        {!activated && (a?.active ?? true) && (
+          <>
+            <TextInput
+              label="E-mail do zaproszenia (opcjonalnie)"
+              description={contactEmail ? "Adres z kartoteki – możesz go zmienić." : "Bez adresu dostaniesz link do przekazania."}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+            />
+            <Button variant="default" leftSection={<IconMail size={16} />} loading={invite.isPending} onClick={() => invite.mutate()} style={{ alignSelf: "flex-start" }}>
+              {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
+            </Button>
+          </>
+        )}
+        {a?.exists && !a.active && (
+          <Button variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)} style={{ alignSelf: "flex-start" }}>
+            Włącz konto
           </Button>
-          {activated && (
-            <Button
-              variant="light"
-              color="orange"
-              loading={reset.isPending}
-              onClick={() =>
-                confirm({
-                  title: "Zresetować konto?",
-                  message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
-                  confirmLabel: "Zresetuj konto",
-                  danger: true,
-                }).then((ok) => ok && reset.mutate())
-              }
-            >
-              Zresetuj dostęp (utrata telefonu)
+        )}
+        {a?.exists && a.active && (
+          <Stack gap="xs" p="sm" mt="xs" className="danger-zone">
+            <Text size="sm" fw={700} c="red">
+              Zmiany, których nie da się cofnąć
+            </Text>
+            {activated && (
+              <Button
+                variant="outline"
+                color="red"
+                justify="flex-start"
+                h="auto"
+                py={8}
+                loading={reset.isPending}
+                onClick={() =>
+                  confirm({
+                    title: "Zresetować konto?",
+                    message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
+                    confirmLabel: "Zresetuj konto",
+                    danger: true,
+                  }).then((ok) => ok && reset.mutate())
+                }
+              >
+                <Stack gap={0} align="flex-start">
+                  <span>Zresetuj dostęp</span>
+                  <Text span size="xs" c="dimmed" fw={400} style={{ whiteSpace: "normal", textAlign: "left" }}>
+                    Np. po zgubieniu telefonu. Stare klucze przestaną działać.
+                  </Text>
+                </Stack>
+              </Button>
+            )}
+            <Button variant="outline" color="red" justify="flex-start" h="auto" py={8} loading={toggle.isPending} onClick={() => toggle.mutate(false)}>
+              <Stack gap={0} align="flex-start">
+                <span>Wyłącz konto</span>
+                <Text span size="xs" c="dimmed" fw={400} style={{ whiteSpace: "normal", textAlign: "left" }}>
+                  Pracownik nie zaloguje się, dane zostają w kartotece.
+                </Text>
+              </Stack>
             </Button>
-          )}
-          {a?.exists && (
-            <Button
-              variant="light"
-              color={a.active ? "red" : "green"}
-              loading={toggle.isPending}
-              onClick={() => toggle.mutate(!a.active)}
-            >
-              {a.active ? "Wyłącz konto" : "Włącz konto"}
-            </Button>
-          )}
-        </Group>
+          </Stack>
+        )}
         {result && (
           <Alert color="green" variant="light" title={result.sent ? "Zaproszenie wysłane e-mailem" : "Link do zaproszenia"}>
             <Text size="sm" style={{ wordBreak: "break-all" }}>

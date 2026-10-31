@@ -476,7 +476,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
       <Group justify="space-between" mb="md">
         <Title order={5}>Szkolenia i uprawnienia</Title>
         {staff && (
-          <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, editing: null })}>
+          <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, editing: null })}>
             Dodaj szkolenie
           </Button>
         )}

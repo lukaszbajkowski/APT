@@ -1,8 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ActionIcon,
   Alert,
+  Tabs,
   Anchor,
   Badge,
   Button,
@@ -62,6 +64,7 @@ import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
+import { ActionSheet, InfoRow, Section, StatusBadge, useMobileHeader, type SheetAction } from "../components/Mobile";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -188,6 +191,10 @@ export function EmployeeProfilePage() {
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const [rehireOpen, setRehireOpen] = useState(searchParams.get("rehire") === "1");
+  const [moreSheet, setMoreSheet] = useState(false);
+  const [photoSheet, setPhotoSheet] = useState(false);
+  const [tab, setTab] = useState("dane");
+  const navigate = useNavigate();
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
 
   const refresh = (e: Employee) => {
@@ -227,10 +234,252 @@ export function EmployeeProfilePage() {
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
 
+  const emp = employee.data;
+  useMobileHeader(
+    mobile && emp
+      ? { title: "Pracownik", back: "/pracownicy" }
+      : null,
+  );
+
   if (employee.isLoading) return <Loading />;
   if (employee.error || !employee.data)
     return <Alert color="red">{employee.error ? errorText(employee.error) : "Brak danych."}</Alert>;
   const e = employee.data;
+
+  const terminateModal = (
+    <>
+      <Modal opened={terminateOpen} onClose={() => setTerminateOpen(false)} title="Przeniesienie do archiwum">
+        <Stack>
+          <Text size="sm">
+            Pracownik zniknie z listy aktywnych. Dane zostaną zachowane w archiwum i będzie można je przywrócić.
+            Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
+          </Text>
+          <DateField
+            label="Data zwolnienia"
+            
+            required
+            value={terminationDate}
+            onChange={(ev) => setTerminationDate(ev.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setTerminateOpen(false)}>
+              Anuluj
+            </Button>
+            <Button color="red" loading={terminate.isPending} disabled={!terminationDate} onClick={() => terminate.mutate()}>
+              Przenieś do archiwum
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+  const historyCard = (
+    <>
+      {staff && (
+        <Card withBorder padding="lg">
+          <Title order={5} mb="md">
+            Historia zmian
+          </Title>
+          {history.isLoading && <Loading />}
+          {history.data && history.data.length === 0 && <EmptyState compact title="Brak wpisów w historii"
+          text="Zmiany danych pracownika pojawią się tutaj po pierwszej edycji." />}
+          {history.data && history.data.length > 0 && (
+            <Timeline bulletSize={12} lineWidth={2}>
+              {(historyAll ? history.data : history.data.slice(0, HISTORY_SHORT)).map((h) => (
+                <Timeline.Item key={h.id} title={ACTION_LABELS[h.action] ?? h.action}>
+                  <Text size="xs" c="dimmed">
+                    {formatDateTime(h.ts)} · {h.username ?? "—"}
+                  </Text>
+                  {historyText(h) && <Text size="sm">{historyText(h)}</Text>}
+                </Timeline.Item>
+              ))}
+            </Timeline>
+          )}
+          {history.data && history.data.length > HISTORY_SHORT && (
+            <Button variant="subtle" size="xs" mt="sm" onClick={() => setHistoryAll((v) => !v)}>
+              {historyAll ? "Zwiń" : `Pokaż wszystkie (${history.data.length})`}
+            </Button>
+          )}
+        </Card>
+      )}
+
+    </>
+  );
+  const modals = (
+    <>
+      {staff && e.status === "terminated" && <RehireModal employee={e} opened={rehireOpen} onClose={() => setRehireOpen(false)} />}
+      {canPhoto && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
+      {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
+    </>
+  );
+  const sex = e.sex === "K" ? "kobieta" : e.sex === "M" ? "mężczyzna" : "—";
+
+  if (mobile) {
+    const moreActions: SheetAction[] = [];
+    if (staff && e.status === "active")
+      moreActions.push({
+        label: "Napisz do pracownika",
+        icon: <IconMessage size={20} />,
+        onClick: () => navigate(`/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${e.last_name} ${e.first_name} (${e.number})`)}`),
+      });
+    if (staff && e.status === "active")
+      moreActions.push({ label: "Przenieś do archiwum", description: "Zwolnienie – utworzy checklistę odejścia.", icon: <IconArchive size={20} />, onClick: () => setTerminateOpen(true) });
+    if (staff && e.status !== "active") {
+      moreActions.push({ label: "Zatrudnij ponownie", icon: <IconUserCheck size={20} />, onClick: () => setRehireOpen(true) });
+      moreActions.push({ label: "Cofnij zwolnienie", description: "Gdy zwolnienie wpisano omyłkowo.", icon: <IconRestore size={20} />, onClick: () => restore.mutate() });
+    }
+    const photoActions: SheetAction[] = [
+      { label: e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie", icon: <IconCamera size={20} />, onClick: () => setPhotoOpen(true) },
+    ];
+    if (e.has_photo && staff)
+      photoActions.push({ label: "Usuń zdjęcie", description: "Bez zdjęcia nie wydrukujesz karty.", icon: <IconTrash size={20} />, danger: true, onClick: () => deletePhoto.mutate() });
+    const tabs = [
+      { v: "dane", l: "Dane", show: true },
+      { v: "dokumenty", l: "Dokumenty", show: canEdit || isAgency || staff },
+      { v: "zadania", l: "Zadania", show: canEdit },
+      { v: "szkolenia", l: "Szkolenia", show: !isAgency },
+      { v: "konto", l: "Konto", show: staff },
+      { v: "historia", l: "Historia", show: !isAgency },
+    ].filter((t) => t.show);
+    return (
+      <Stack gap="md">
+        <Group gap="md" wrap="nowrap" align="center">
+          <div style={{ position: "relative", flex: "none" }}>
+            <EmployeePhoto employee={e} width={64} />
+            {canPhoto && (
+              <ActionIcon
+                aria-label={e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+                radius="xl"
+                size={32}
+                variant="default"
+                onClick={() => (photoActions.length > 1 ? setPhotoSheet(true) : setPhotoOpen(true))}
+                style={{ position: "absolute", right: -10, bottom: -8, border: "2px solid var(--apt-ground)" }}
+              >
+                <IconCamera size={16} />
+              </ActionIcon>
+            )}
+          </div>
+          <Stack gap={6} style={{ minWidth: 0 }}>
+            <Title order={1} size="h3" lh={1.2}>
+              {e.last_name} {e.first_name}
+            </Title>
+            <Group gap={8} wrap="wrap">
+              <Text size="sm" c="dimmed" ff="monospace">
+                nr {e.number_display}
+              </Text>
+              {e.status === "active" ? <StatusBadge tone="ok">aktywny</StatusBadge> : <StatusBadge tone="neutral">archiwum od {formatDate(e.termination_date)}</StatusBadge>}
+            </Group>
+          </Stack>
+        </Group>
+
+        {(canEdit || moreActions.length > 0) && (
+          <Group gap="sm" wrap="nowrap">
+            {canEdit && (
+              <Button size="md" px="sm" style={{ flex: 1 }} onClick={() => setPrintOpen(true)}>
+                Drukuj kartę
+              </Button>
+            )}
+            {canEdit && (
+              <Button size="md" px="sm" variant="default" style={{ flex: 1 }} component={Link} to={`/pracownicy/${e.id}/edycja`}>
+                Edytuj
+              </Button>
+            )}
+            {moreActions.length > 0 && (
+              <ActionIcon size={42} variant="default" radius="md" aria-label="Więcej akcji" onClick={() => setMoreSheet(true)}>
+                <IconDots size={20} />
+              </ActionIcon>
+            )}
+          </Group>
+        )}
+
+        <Tabs value={tab} onChange={(v) => setTab(v ?? "dane")} keepMounted={false}>
+          <Tabs.List>
+            {tabs.map((t) => (
+              <Tabs.Tab key={t.v} value={t.v}>
+                {t.l}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+
+          <Tabs.Panel value="dane" pt="md">
+            <Stack gap="lg">
+              <Section title="Zatrudnienie">
+                <InfoRow label="Agencja">{e.agency?.name ?? "—"}</InfoRow>
+                <InfoRow label="Wydział">{e.department?.name ?? "—"}</InfoRow>
+                <InfoRow label="Stanowisko">{e.position?.name ?? "—"}</InfoRow>
+                <InfoRow label="Zatrudniony od">{formatDate(e.hire_date)}</InfoRow>
+              </Section>
+              <Section title="Dane osobowe">
+                {e.personal_data_visible ? (
+                  <>
+                    <InfoRow label="PESEL">
+                      <PeselValue employee={e} />
+                    </InfoRow>
+                    <InfoRow label="Data urodzenia">
+                      {formatDate(e.birth_date)}
+                      {e.age !== null ? ` · ${e.age} lat` : ""}
+                    </InfoRow>
+                  </>
+                ) : (
+                  <InfoRow label="Wiek">{e.age !== null ? `${e.age} lat` : "—"}</InfoRow>
+                )}
+                <InfoRow label="Obywatelstwo">{e.country?.name ?? "—"}</InfoRow>
+                <InfoRow label="Płeć">{sex}</InfoRow>
+                {(e.contact_phone || e.contact_email) && (
+                  <InfoRow label="Kontakt" stacked>
+                    <ContactLine employeeId={e.id} kind="phone" value={e.contact_phone} />
+                    <ContactLine employeeId={e.id} kind="email" value={e.contact_email} />
+                  </InfoRow>
+                )}
+              </Section>
+              {e.notes && (
+                <Section title="Uwagi">
+                  <div className="ui-row">
+                    <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                      {e.notes}
+                    </Text>
+                  </div>
+                </Section>
+              )}
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="dokumenty" pt="md">
+            <Stack gap="md">
+              {canEdit && <DocumentsCard employee={e} />}
+              {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
+              {staff && <PermitsCard employee={e} />}
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="zadania" pt="md">
+            {canEdit && <ChecklistsCard employee={e} />}
+          </Tabs.Panel>
+          <Tabs.Panel value="szkolenia" pt="md">
+            <Stack gap="md">
+              <TrainingsCard employee={e} />
+              <MentorProgramsCard employee={e} />
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="konto" pt="md">
+            <Stack gap="md">
+              <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />
+              <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="historia" pt="md">
+            <Stack gap="md">
+              <TimelineCard employee={e} />
+              {historyCard}
+            </Stack>
+          </Tabs.Panel>
+        </Tabs>
+
+        <ActionSheet opened={moreSheet} onClose={() => setMoreSheet(false)} title={`${e.last_name} ${e.first_name}`} actions={moreActions} />
+        <ActionSheet opened={photoSheet} onClose={() => setPhotoSheet(false)} title="Zdjęcie do karty" actions={photoActions} />
+        {modals}
+        {terminateModal}
+      </Stack>
+    );
+  }
 
   return (
     <Stack maw={1000}>
@@ -406,60 +655,12 @@ export function EmployeeProfilePage() {
 
       {!isAgency && <TimelineCard employee={e} />}
 
-      {staff && (
-        <Card withBorder padding="lg">
-          <Title order={5} mb="md">
-            Historia zmian
-          </Title>
-          {history.isLoading && <Loading />}
-          {history.data && history.data.length === 0 && <EmptyState compact title="Brak wpisów w historii"
-          text="Zmiany danych pracownika pojawią się tutaj po pierwszej edycji." />}
-          {history.data && history.data.length > 0 && (
-            <Timeline bulletSize={12} lineWidth={2}>
-              {(historyAll ? history.data : history.data.slice(0, HISTORY_SHORT)).map((h) => (
-                <Timeline.Item key={h.id} title={ACTION_LABELS[h.action] ?? h.action}>
-                  <Text size="xs" c="dimmed">
-                    {formatDateTime(h.ts)} · {h.username ?? "—"}
-                  </Text>
-                  {historyText(h) && <Text size="sm">{historyText(h)}</Text>}
-                </Timeline.Item>
-              ))}
-            </Timeline>
-          )}
-          {history.data && history.data.length > HISTORY_SHORT && (
-            <Button variant="subtle" size="xs" mt="sm" onClick={() => setHistoryAll((v) => !v)}>
-              {historyAll ? "Zwiń" : `Pokaż wszystkie (${history.data.length})`}
-            </Button>
-          )}
-        </Card>
-      )}
+      {historyCard}
 
       {canPhoto && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
       {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
 
-      <Modal opened={terminateOpen} onClose={() => setTerminateOpen(false)} title="Przeniesienie do archiwum">
-        <Stack>
-          <Text size="sm">
-            Pracownik zniknie z listy aktywnych. Dane zostaną zachowane w archiwum i będzie można je przywrócić.
-            Po okresie przechowywania (10 lat od końca roku zwolnienia) administrator usunie je trwale.
-          </Text>
-          <DateField
-            label="Data zwolnienia"
-            
-            required
-            value={terminationDate}
-            onChange={(ev) => setTerminationDate(ev.currentTarget.value)}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setTerminateOpen(false)}>
-              Anuluj
-            </Button>
-            <Button color="red" loading={terminate.isPending} disabled={!terminationDate} onClick={() => terminate.mutate()}>
-              Przenieś do archiwum
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      {terminateModal}
     </Stack>
   );
 }

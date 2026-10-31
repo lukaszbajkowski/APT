@@ -37,8 +37,8 @@ export const REQ_STATE: Record<ReqState, { label: string; color: string }> = {
   ok: { label: "ma", color: "teal" },
   expiring: { label: "kończy się", color: "orange" },
   in_progress: { label: "w trakcie", color: "blue" },
-  expired: { label: "wygasło", color: "red" },
-  missing: { label: "brak", color: "red" },
+  expired: { label: "wygasło", color: "orange" },
+  missing: { label: "brak", color: "orange" },
 };
 
 // ---------- wymagania stanowisk ----------
@@ -197,9 +197,9 @@ export function EmployeeRequirements({ employeeId }: { employeeId: number }) {
   if (!q.data || q.data.length === 0) return null;
   const problems = q.data.filter((r) => r.state === "missing" || r.state === "expired").length;
   return (
-    <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-red-light)" : undefined}>
+    <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-orange-light)" : undefined}>
       <Group gap={6} mb={6}>
-        {problems ? <IconAlertTriangle size={16} color="var(--mantine-color-red-text)" /> : <IconCheck size={16} color="var(--mantine-color-teal-text)" />}
+        {problems ? <IconAlertTriangle size={16} color="var(--mantine-color-orange-text)" /> : <IconCheck size={16} color="var(--mantine-color-teal-text)" />}
         <Text size="sm" fw={600}>
           Wymagane na stanowisku{problems ? ` – braki: ${problems}` : " – komplet"}
         </Text>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { DangerAction, DangerZone, InfoRow, Section, StatusBadge } from "./Mobile";
+import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, CopyButton, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconCheck, IconMail } from "@tabler/icons-react";
+import { Alert, Badge, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertCircle, IconCheck, IconMail, IconUserOff } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
@@ -26,6 +26,7 @@ interface InviteOut {
 export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: number; contactEmail?: string | null }) {
   const confirm = useConfirm();
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [inviteOpen, setInviteOpen] = useState(false);
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
@@ -94,29 +95,59 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
       <Stack gap="lg">
         {error && <Alert color="red" icon={<IconAlertCircle size={18} />}>{error}</Alert>}
         <Section title="Konto w aplikacji">
-          <InfoRow label="Stan">
-            {!a?.exists ? <StatusBadge tone="neutral">brak konta</StatusBadge> : !a.active ? <StatusBadge tone="neutral">wyłączone</StatusBadge> : a.has_passkey ? <StatusBadge tone="ok">aktywne</StatusBadge> : <StatusBadge tone="wait">czeka na aktywację</StatusBadge>}
-          </InfoRow>
-          {a?.exists && <InfoRow label="Login"><span style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>{a.username}</span></InfoRow>}
-          {a?.has_passkey && <InfoRow label="Logowanie">Klucz dostępu</InfoRow>}
-          {a?.last_login_at && <InfoRow label="Ostatnio">{formatDateTime(a.last_login_at)}</InfoRow>}
+          {!a?.exists ? (
+            <ListRow
+              leading={<IconUserOff size={20} />}
+              title="Brak konta"
+              description="Pracownik założy je sam na telefonie – twarz lub odcisk palca."
+            />
+          ) : (
+            <>
+              <InfoRow label="Stan">
+                {!a.active ? <StatusBadge tone="neutral">Wyłączone</StatusBadge> : a.has_passkey ? <StatusBadge tone="ok">Aktywne</StatusBadge> : <StatusBadge tone="wait">Czeka na aktywację</StatusBadge>}
+              </InfoRow>
+              <InfoRow label="Login"><span style={{ fontFamily: "var(--mantine-font-family-monospace)" }}>{a.username}</span></InfoRow>
+              {a.has_passkey && <InfoRow label="Logowanie">Klucz dostępu</InfoRow>}
+              {a.last_login_at && <InfoRow label="Ostatnio">{formatDateTime(a.last_login_at)}</InfoRow>}
+            </>
+          )}
         </Section>
         {(!a?.exists || (a.active && !a.has_passkey)) && (
-          <Section title={a?.exists ? "Zaproszenie" : "Załóż konto"} plain>
-            {!a?.exists && (
-              <Text size="sm" c="dimmed" mb="xs">
-                Pracownik nie ma jeszcze konta. Wyślij zaproszenie – założy je sam na telefonie (twarz lub odcisk palca).
-              </Text>
-            )}
-            <Stack gap="sm">
-              <TextInput label="Wyślij na e-mail" description={contactEmail ? undefined : "Bez adresu dostaniesz link do przekazania."} type="email" size="md" value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-              <Button size="md" variant="default" leftSection={<IconMail size={18} />} loading={invite.isPending} onClick={() => invite.mutate()}>
-                {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
-              </Button>
-              {resultBox}
-            </Stack>
-          </Section>
+          <Button size="md" fullWidth leftSection={<IconMail size={18} />} onClick={() => setInviteOpen(true)}>
+            {a?.exists ? "Wyślij zaproszenie ponownie" : "Załóż konto – wyślij zaproszenie"}
+          </Button>
         )}
+        <Drawer
+          opened={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          classNames={{ content: "ui-sheet" }}
+          aria-label="Zaproszenie do aplikacji"
+        >
+          <SheetHandle onClose={() => setInviteOpen(false)}>
+            <div className="ui-sheet-head">
+              <div className="ui-sheet-title">{a?.exists ? "Wyślij zaproszenie ponownie" : "Załóż konto"}</div>
+              <div className="ui-row-desc">Pracownik dostanie link i sam utworzy klucz logowania na swoim telefonie.</div>
+            </div>
+          </SheetHandle>
+          <Stack gap="md" px={8} pb="md">
+            <TextInput
+              size="md"
+              label="E-mail pracownika"
+              description={contactEmail ? "Adres z kartoteki – możesz go zmienić." : "Opcjonalnie. Bez adresu dostaniesz link do przekazania."}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+            />
+            <Button size="md" fullWidth leftSection={<IconMail size={18} />} loading={invite.isPending} onClick={() => invite.mutate()}>
+              {email.trim() ? "Wyślij zaproszenie" : "Utwórz link do zaproszenia"}
+            </Button>
+            {resultBox}
+          </Stack>
+        </Drawer>
         {a?.exists && !a.active && (
           <Button size="md" variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)}>
             Włącz konto

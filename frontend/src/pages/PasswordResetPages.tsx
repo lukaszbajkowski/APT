@@ -1,11 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Center, List, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Center, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconMailCheck } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
+import { NewPasswordFields, passwordOk } from "../components/PasswordFields";
 import { Loading } from "../components/States";
 
 function Shell({ children }: { children: ReactNode }) {
@@ -101,8 +102,8 @@ export function SetPasswordPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (pw !== repeat) {
-      setError("Hasła nie są takie same.");
+    if (!passwordOk(pw, repeat, check.data?.username)) {
+      setError("Hasło nie spełnia wszystkich wymagań albo hasła nie są takie same – sprawdź listę pod polem.");
       return;
     }
     setBusy(true);
@@ -158,19 +159,7 @@ export function SetPasswordPage() {
               {error}
             </Alert>
           )}
-          <PasswordInput label="Nowe hasło" required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
-          <PasswordInput
-            label="Powtórz hasło"
-            required
-            autoComplete="new-password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.currentTarget.value)}
-          />
-          <List size="xs" c="dimmed">
-            <List.Item>co najmniej 12 znaków</List.Item>
-            <List.Item>co najmniej 3 z 4 grup: małe litery, wielkie litery, cyfry, znaki specjalne</List.Item>
-            <List.Item>nie może zawierać loginu</List.Item>
-          </List>
+          <NewPasswordFields pw={pw} repeat={repeat} onPw={setPw} onRepeat={setRepeat} username={check.data.username} />
           <Button type="submit" loading={busy} fullWidth>
             Ustaw hasło
           </Button>

@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Button, Center, Group, List, Paper, PasswordInput, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Center, Group, Paper, PasswordInput, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
+import { NewPasswordFields, passwordOk } from "../components/PasswordFields";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 
 export function ChangePasswordPage() {
@@ -16,12 +17,16 @@ export function ChangePasswordPage() {
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [currentError, setCurrentError] = useState<string | null>(null);
+  const [newError, setNewError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (next !== repeat) {
-      setError("Nowe hasła nie są takie same.");
+    setCurrentError(null);
+    setNewError(null);
+    if (!passwordOk(next, repeat, me?.user.username)) {
+      setError("Nowe hasło nie spełnia wszystkich wymagań albo hasła nie są takie same – sprawdź listę pod polem.");
       return;
     }
     setBusy(true);
@@ -34,7 +39,10 @@ export function ChangePasswordPage() {
       notifications.show({ color: "green", message: "Hasło zostało zmienione." });
       navigate(result.mfa_setup_required ? MFA_PATH : "/", { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Nie udało się zmienić hasła.");
+      const msg = err instanceof ApiError ? err.message : "Nie udało się zmienić hasła.";
+      if (/obecne/i.test(msg)) setCurrentError(msg);
+      else if (/nowe|hasło/i.test(msg) && err instanceof ApiError && err.status === 400) setNewError(msg);
+      else setError(msg);
     } finally {
       setBusy(false);
     }
@@ -63,27 +71,20 @@ export function ChangePasswordPage() {
               autoComplete="current-password"
               required
               value={current}
-              onChange={(e) => setCurrent(e.currentTarget.value)}
+              error={currentError}
+              onChange={(e) => {
+                setCurrent(e.currentTarget.value);
+                setCurrentError(null);
+              }}
             />
-            <PasswordInput
-              label="Nowe hasło"
-              autoComplete="new-password"
-              required
-              value={next}
-              onChange={(e) => setNext(e.currentTarget.value)}
+            <NewPasswordFields
+              pw={next}
+              repeat={repeat}
+              onPw={setNext}
+              onRepeat={setRepeat}
+              username={me?.user.username}
+              serverError={newError}
             />
-            <PasswordInput
-              label="Powtórz nowe hasło"
-              autoComplete="new-password"
-              required
-              value={repeat}
-              onChange={(e) => setRepeat(e.currentTarget.value)}
-            />
-            <List size="xs" c="dimmed">
-              <List.Item>co najmniej 12 znaków</List.Item>
-              <List.Item>co najmniej 3 z 4 grup: małe litery, wielkie litery, cyfry, znaki specjalne</List.Item>
-              <List.Item>nie może zawierać loginu</List.Item>
-            </List>
             <Group justify="space-between">
               {forced ? (
                 <Button variant="subtle" color="gray" onClick={() => logout().then(() => navigate("/login"))}>

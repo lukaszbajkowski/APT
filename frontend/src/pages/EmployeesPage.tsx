@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
+  ActionIcon,
   Collapse,
   Badge,
   Button,
@@ -212,9 +213,15 @@ export function EmployeesPage() {
         {staff && (
           <Menu position="bottom-end" width={290}>
             <Menu.Target>
-              <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
-                Dodaj pracownika
-              </Button>
+              {mobile ? (
+                <ActionIcon size={44} radius="md" aria-label="Dodaj pracownika">
+                  <IconPlus size={22} />
+                </ActionIcon>
+              ) : (
+                <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
+                  Dodaj pracownika
+                </Button>
+              )}
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item component={Link} to="/pracownicy/nowy" leftSection={<IconPencil size={16} />}>
@@ -306,13 +313,15 @@ export function EmployeesPage() {
 
       {canPrint && list.data && list.data.total > 0 && selected.size === 0 && (
         <Group justify="space-between" gap="xs">
-          <Text size="xs" c="dimmed">
+          <Text size="xs" c="dimmed" visibleFrom="sm">
             Zaznacz pola przy nazwiskach, aby drukować karty lub wystawiać dokumenty.
           </Text>
           <Group gap="xs">
-            <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
-              Zaznacz wszystkie ({list.data.total})
-            </Button>
+            {!mobile && (
+              <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
+                Zaznacz wszystkie ({list.data.total})
+              </Button>
+            )}
             {exportMenu}
           </Group>
         </Group>
@@ -408,7 +417,7 @@ export function EmployeesPage() {
               className={selected.has(e.id) ? "row-selected" : undefined}
               style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
             >
-              {canPrint && (
+              {canPrint && selected.size > 0 && (
                 <Checkbox aria-label={`Zaznacz ${e.last_name} ${e.first_name}`} checked={selected.has(e.id)} onChange={() => toggle(e.id)} />
               )}
               <UnstyledButton component={Link} to={`/pracownicy/${e.id}`} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>

@@ -12,6 +12,7 @@ import {
   Menu,
   Modal,
   SimpleGrid,
+  Flex,
   Stack,
   Text,
   Timeline,
@@ -32,7 +33,9 @@ import {
   IconUserCheck,
   IconTrash,
   IconMessage,
+  IconCheck,
 } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 import {
   ACTION_LABELS,
@@ -163,6 +166,7 @@ function PeselValue({ employee }: { employee: Employee }) {
 const HISTORY_SHORT = 5;
 
 export function EmployeeProfilePage() {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const { id } = useParams();
   const qc = useQueryClient();
   const { hasRole } = useAuth();
@@ -240,9 +244,9 @@ export function EmployeeProfilePage() {
       </Anchor>
 
       <Card withBorder padding="lg">
-        <Group align="flex-start" gap="xl" wrap="wrap">
-          <Stack gap="xs" align="center">
-            <EmployeePhoto employee={e} width={150} />
+        <Group align="flex-start" gap={mobile ? "md" : "xl"} wrap="wrap">
+          <Flex gap="xs" align="center" direction={mobile ? "row" : "column"}>
+            <EmployeePhoto employee={e} width={mobile ? 72 : 150} />
             {canPhoto && (
               <Group gap={4}>
                 <Button size="compact-sm" variant="light" leftSection={<IconCamera size={14} />} onClick={() => setPhotoOpen(true)}>
@@ -262,19 +266,19 @@ export function EmployeeProfilePage() {
                 )}
               </Group>
             )}
-          </Stack>
+          </Flex>
 
-          <Stack gap={6} style={{ flex: 1, minWidth: 260 }}>
+          <Stack gap={6} style={{ flex: 1, minWidth: mobile ? "100%" : 260 }}>
             <Group justify="space-between" align="flex-start">
               <div>
-                <Title order={2}>
+                <Title order={2} size={mobile ? "h3" : undefined}>
                   {e.last_name} {e.first_name}
                 </Title>
                 <Group gap="xs" mt={4}>
-                  <Text c="dimmed">Nr ewidencyjny</Text>
+                  <Text c="dimmed" visibleFrom="sm">Nr ewidencyjny</Text>
                   <Code fz="md">{e.number_display}</Code>
                   {e.status === "active" ? (
-                    <Badge color="green" variant="light">
+                    <Badge color="green" variant="light" leftSection={<IconCheck size={12} aria-hidden />}>
                       aktywny
                     </Badge>
                   ) : (
@@ -344,7 +348,7 @@ export function EmployeeProfilePage() {
               </Group>
             </Group>
 
-            <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }} mt="md" spacing="md" verticalSpacing="md">
+            <SimpleGrid cols={{ base: 2, md: 3 }} mt="md" spacing="md" verticalSpacing="md">
               <Field label="APT">{e.agency?.name ?? "—"}</Field>
               <Field label="Wydział">{e.department?.name ?? "—"}</Field>
               <Field label="Stanowisko">{e.position?.name ?? "—"}</Field>

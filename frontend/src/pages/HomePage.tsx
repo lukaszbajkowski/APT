@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, Grid, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
+  IconChevronRight,
   IconCamera,
   IconId,
   IconAlertTriangle,
@@ -145,6 +147,7 @@ interface QueueGroup {
 
 /** „Do zrobienia dzisiaj”: wszystko, co wymaga uwagi kadr, jako lista z przyciskami do list z problemem. */
 function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000, enabled: full });
   const rows: { key: string; label: string; count: number; url: string; sample?: string; hint?: string; color: string; icon: typeof IconCamera; action: string }[] = [];
   if (d.without_photo)
@@ -184,8 +187,9 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
               key={r.key}
               wrap="nowrap"
               gap="md"
-              px="lg"
+              px={mobile ? "md" : "lg"}
               py="sm"
+              {...(mobile ? { component: Link, to: r.url, className: "list-row-plain" } : {})}
               style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--apt-line)" : undefined }}
             >
               <ThemeIcon variant="light" color={r.color} size={40} radius="md" aria-hidden>
@@ -199,9 +203,13 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
                   {r.hint ?? (r.sample ? `np. ${r.sample}` : "")}
                 </Text>
               </div>
-              <Button component={Link} to={r.url} variant="default" size="sm" style={{ flexShrink: 0 }}>
-                {r.action}
-              </Button>
+              {mobile ? (
+                <IconChevronRight size={18} color="var(--mantine-color-dimmed)" aria-hidden style={{ flexShrink: 0 }} />
+              ) : (
+                <Button component={Link} to={r.url} variant="default" size="sm" style={{ flexShrink: 0 }}>
+                  {r.action}
+                </Button>
+              )}
             </Group>
           ))}
         </Stack>
@@ -381,7 +389,7 @@ export function HomePage() {
             />
           </form>
           {staff && (
-            <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />}>
+            <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />} visibleFrom="sm">
               Dodaj pracownika
             </Button>
           )}

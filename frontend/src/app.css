@@ -113,7 +113,6 @@ html, body { background: var(--apt-ground); }
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   align-items: stretch;
-  padding-bottom: env(safe-area-inset-bottom);
 }
 .tabbar-item, .tabbar-scan {
   display: flex;
@@ -214,3 +213,68 @@ html, body { background: var(--apt-ground); }
 :root[data-mantine-color-scheme="light"] { --mantine-primary-color-contrast: #FCFBFA; }
 .tile-card { transition: background-color 120ms; }
 .tile-card:hover { background: var(--apt-subtle); }
+
+/* ——— telefon ——— */
+@media (max-width: 48em) {
+  /* iOS powiększa stronę przy polach < 16 px – pola na telefonie mają 16 px */
+  input, textarea, select, .mantine-Input-input { font-size: 16px !important; }
+
+  /* pasek dolny nad wskaźnikiem iPhone'a, treść nie chowa się pod paskiem */
+  .mantine-AppShell-footer { box-sizing: content-box; padding-bottom: env(safe-area-inset-bottom); }
+  .mantine-AppShell-main { padding-bottom: calc(68px + env(safe-area-inset-bottom) + 24px) !important; }
+  .mantine-AppShell-header { padding-top: env(safe-area-inset-top); box-sizing: content-box; }
+
+  /* zakładki przewijane w bok zamiast łamania w kilka wierszy */
+  .mantine-Tabs-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .mantine-Tabs-list::-webkit-scrollbar { display: none; }
+  .mantine-Tabs-tab { white-space: nowrap; flex: none; }
+  .mantine-SegmentedControl-root { max-width: 100%; overflow-x: auto; }
+
+  /* tabele jako karty: etykieta po lewej, wartość po prawej */
+  .mantine-TableScrollContainer-scrollContainerInner { min-width: 0 !important; }
+  table[data-cards] { display: block; width: 100%; }
+  table[data-cards] thead { display: none; }
+  table[data-cards] tbody { display: block; }
+  table[data-cards] tr {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--apt-line);
+  }
+  table[data-cards] tr:last-child { border-bottom: 0; }
+  table[data-cards] td {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 2px 0 !important;
+    border: 0 !important;
+    min-width: 0;
+    width: auto !important;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  table[data-cards] td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 0;
+    align-items: start;
+    text-align: right;
+  }
+  table[data-cards] td[data-label] > * { grid-column: 2; justify-self: end; max-width: 100%; }
+  table[data-cards] td[data-label]::before {
+    content: attr(data-label);
+    grid-column: 1;
+    grid-row: 1 / span 6;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--mantine-color-dimmed);
+  }
+  table[data-cards] td:first-child { font-weight: 600; }
+  table[data-cards] td:empty { display: none; }
+}
+.list-row-plain { text-decoration: none; color: inherit; }
+.list-row-plain:active { background: var(--apt-subtle); }

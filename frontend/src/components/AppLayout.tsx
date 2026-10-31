@@ -2,7 +2,6 @@ import { Fragment, useState, type ReactNode } from "react";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  Alert,
   AppShell,
   Avatar,
   Badge,
@@ -62,6 +61,7 @@ import { useAuth } from "../auth";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
+import { useResponsiveTables } from "../lib/responsiveTables";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
 
@@ -74,6 +74,7 @@ function isActivePath(to: string, path: string) {
 export function AppLayout() {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [moreOpen, setMoreOpen] = useState(false);
+  useResponsiveTables();
   const { hasRole } = useAuth();
   const location = useLocation();
   const t = useT();
@@ -270,9 +271,9 @@ export function AppLayout() {
         <SimulationBanner />
         <NetworkBanner />
         {lang && hasRole("employee") && (
-          <Alert variant="light" color="gray" p="xs" mb="sm">
+          <Text size="xs" c="dimmed" mb="sm">
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
-          </Alert>
+          </Text>
         )}
         <Box maw={1440} mx="auto">
           <Outlet />

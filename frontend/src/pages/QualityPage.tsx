@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from "@mantine/core";
-import { IconCircleCheck } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
+import { Chips, ListRow, PageHead, cap } from "../components/Mobile";
 
 import { api, errorText } from "../api";
 import { Loading } from "../components/States";
@@ -39,11 +41,55 @@ const SHORT: Record<string, string> = {
 export function QualityPage() {
   const q = useQuery({ queryKey: ["quality"], queryFn: () => api<Quality>("/quality") });
   const [filter, setFilter] = useState<string | null>(null);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const data = q.data!;
   const rows = filter ? data.rows.filter((r) => r.missing.includes(filter)) : data.rows;
+
+  if (mobile)
+    return (
+      <Stack gap="md">
+        <PageHead
+          title="Braki w danych"
+          subtitle={data.rows.length ? `${data.rows.length} z ${data.active_total} aktywnych ma niepełną kartotekę` : "Wszystkie kartoteki są kompletne"}
+        />
+        {data.rows.length > 0 && (
+          <Chips
+            items={[
+              { label: "Wszystkie", count: data.rows.length, active: !filter, onClick: () => setFilter(null) },
+              ...data.checks
+                .filter((c) => c.count > 0)
+                .map((c) => ({ label: cap(SHORT[c.key] ?? c.label), count: c.count, active: filter === c.key, onClick: () => setFilter(filter === c.key ? null : c.key) })),
+            ]}
+          />
+        )}
+        {data.rows.length > 0 && (
+          <div className="ui-group">
+            {rows.map((r) => (
+              <ListRow
+                key={r.id}
+                to={`/pracownicy/${r.id}`}
+                title={`${r.last_name} ${r.first_name}`}
+                description={
+                  <>
+                    nr {r.number}
+                    {r.agency || r.department ? ` · ${[r.agency, r.department].filter(Boolean).join(" · ")}` : ""}
+                    <span className="ui-warn-line">
+                      <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Brak: {r.missing.map((k) => SHORT[k] ?? k).join(", ")}
+                    </span>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        )}
+        <Text size="sm" c="dimmed">
+          Przypomnienie e-mail wychodzi w poniedziałki do kadr i kierowników.
+        </Text>
+      </Stack>
+    );
 
   return (
     <Stack>

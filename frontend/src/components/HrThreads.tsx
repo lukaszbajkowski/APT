@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
+import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPencil, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
 import { api, errorText, formatDateTime, shortTime } from "../api";
@@ -11,6 +11,7 @@ import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
+import { CompactEmpty, PageHead, Segments } from "./Mobile";
 
 export interface ThreadRow {
   id: number;
@@ -468,6 +469,66 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     setOpenId(null);
     setComposing(false);
   };
+  if (mobile && showList) {
+    const unreadN = rows.filter((t) => t.unread).length;
+    const seg = view === "archive" ? "archive" : status === "new" ? "new" : "all";
+    const compose = () => {
+      setComposing(true);
+      setOpenId(null);
+    };
+    return (
+      <Stack gap="md">
+        <PageHead
+          title={staff ? T("Wiadomości") : T("Napisz do kadr")}
+          subtitle={view === "active" && unreadN ? `${unreadN} ${T("nieprzeczytane")}` : undefined}
+          action={{ label: T("Nowa wiadomość"), icon: <IconPencil size={22} />, onClick: compose }}
+        />
+        {staff && (
+          <TextInput size="md" aria-label="Szukaj wiadomości" placeholder="Nazwisko lub temat" leftSection={<IconSearch size={18} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        )}
+        <Segments
+          value={seg}
+          onChange={(v) => {
+            setView(v === "archive" ? "archive" : "active");
+            setStatus(v === "new" ? "new" : "");
+          }}
+          items={[
+            { value: "all", label: T("Wszystkie") },
+            ...(staff ? [{ value: "new", label: "Nowe" }] : []),
+            { value: "archive", label: T("Archiwum") },
+          ]}
+        />
+        {rows.length === 0 ? (
+          <CompactEmpty
+            title={q.trim() ? `Brak wyników dla „${q.trim()}”` : view === "archive" ? T("Archiwum jest puste") : staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
+            text={view === "archive" ? undefined : staff ? "Możesz sam zacząć rozmowę ikoną ołówka." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
+          />
+        ) : (
+          <div className="ui-group">
+            {rows.map((t) => {
+              const name = staff ? (t.employee_name ?? "") : T("Kadry");
+              return (
+                <UnstyledButton key={t.id} className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
+                  <span className="ui-thread-avatar" aria-hidden>{initials(name)}</span>
+                  <span className="ui-row-text">
+                    <span className="ui-thread-line">
+                      <span className="ui-thread-name">{name}</span>
+                      <span className="ui-thread-time">{shortTime(t.updated_at)}</span>
+                    </span>
+                    <span className="ui-thread-line">
+                      <span className="ui-thread-snip">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject)}</span>
+                      {t.unread ? <span className="ui-thread-dot" aria-label={T("Nieprzeczytane")} /> : null}
+                    </span>
+                  </span>
+                </UnstyledButton>
+              );
+            })}
+          </div>
+        )}
+      </Stack>
+    );
+  }
+
   return (
     <MasterDetail
       mobile={!!mobile}

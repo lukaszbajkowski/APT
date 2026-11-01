@@ -14,6 +14,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
+import { CompactEmpty, PageHead, Segments } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -223,7 +224,7 @@ export function BroadcastsPage() {
   const rows = all.filter(
     (x) =>
       (!q.trim() || `${x.subject} ${x.target}`.toLowerCase().includes(q.trim().toLowerCase())) &&
-      (status === "" || (status === "done") === x.finished),
+      (status === "" || (status === "done") === x.finished || (status === "open" && !x.finished)),
   );
   const b = all.find((x) => x.id === openId) ?? null;
   const hasRight = composing || b !== null;
@@ -233,6 +234,51 @@ export function BroadcastsPage() {
     setComposing(false);
     setOpenId(null);
   };
+  if (mobile && showList) {
+    const seg = archive ? "archive" : status === "done" ? "done" : "active";
+    return (
+      <Stack gap="md">
+        <PageHead
+          title="Komunikaty"
+          subtitle="Do grup pracowników"
+          action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => { setComposing(true); setOpenId(null); } }}
+        />
+        <Segments
+          value={seg}
+          onChange={(v) => {
+            setArchive(v === "archive");
+            setStatus(v === "done" ? "done" : v === "active" ? "open" : "");
+          }}
+          items={[
+            { value: "active", label: "W toku" },
+            { value: "done", label: "Zakończone" },
+            { value: "archive", label: "Archiwum" },
+          ]}
+        />
+        {list.isLoading && <Loading rows={3} />}
+        {list.data && rows.length === 0 && <CompactEmpty title="Brak komunikatów" text={archive ? undefined : "Nowy komunikat dodasz przyciskiem „+”."} />}
+        {rows.length > 0 && (
+          <div className="ui-group">
+            {rows.map((x) => (
+              <UnstyledButton key={x.id} className="ui-bc" onClick={() => setOpenId(x.id)}>
+                <span className="ui-thread-line">
+                  <span className="ui-thread-name">{x.subject}</span>
+                  <span className="ui-thread-time">{shortTime(x.created_at)}</span>
+                </span>
+                <span className="ui-row-desc">{x.target}{x.kind === "document" ? " · Dokument" : ""}</span>
+                <span className="ui-bc-read">
+                  <span className="ui-bc-bar" role="img" aria-label={`Przeczytało ${x.read} z ${x.total}`}>
+                    <span style={{ width: `${x.total ? Math.round((x.read / x.total) * 100) : 0}%` }} />
+                  </span>
+                  <span>Przeczytało {x.read} z {x.total}</span>
+                </span>
+              </UnstyledButton>
+            ))}
+          </div>
+        )}
+      </Stack>
+    );
+  }
   return (
     <MasterDetail
       mobile={!!mobile}

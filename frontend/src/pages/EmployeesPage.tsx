@@ -23,7 +23,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive } from "@tabler/icons-react";
+import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -34,6 +34,7 @@ import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
+import { ActionSheet, Chips, ListRow, PageHead, PickSheet, StatusBadge as Status } from "../components/Mobile";
 
 const PAGE_SIZE = 50;
 
@@ -110,6 +111,7 @@ export function EmployeesPage() {
   const [filtersOpen, setFiltersOpen] = useState(() => !!(params.get("agency") || params.get("department") || params.get("position") || params.getAll("missing").length));
   const activeFilters = [agency, department, position].filter(Boolean).length + (missing.length ? 1 : 0);
   const [docsOpen, setDocsOpen] = useState(false);
+  const [pick, setPick] = useState<null | "status" | "agency" | "department" | "missing" | "add">(null);
   const [trainingOpen, setTrainingOpen] = useState(false);
   async function exportXlsx(withPesel: boolean, format: "xlsx" | "pdf" = "xlsx") {
     setExporting(true);
@@ -198,6 +200,120 @@ export function EmployeesPage() {
           </Menu.Dropdown>
         </Menu>
   ) : null;
+
+  if (mobile) {
+    const STATUS = [
+      { value: "active", label: "Aktywni" },
+      { value: "terminated", label: "Archiwum" },
+      { value: "all", label: "Wszyscy" },
+    ];
+    const name = (list: { id: number; name: string }[] | undefined, id: string | null) => list?.find((x) => String(x.id) === id)?.name;
+    const total = list.data?.total;
+    const missingOpts = staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value));
+    const warnOf = (e: Employee) =>
+      [!e.has_photo && "zdjęcia", staff && !e.has_pesel && "PESEL"].filter(Boolean).join(", ");
+    return (
+      <Stack gap="md">
+        <PageHead
+          title="Pracownicy"
+          subtitle={total === undefined ? undefined : `${total} ${STATUS.find((x) => x.value === status)?.label.toLowerCase() ?? ""}`}
+          action={staff ? { label: "Dodaj pracownika", icon: <IconPlus size={22} />, onClick: () => setPick("add") } : undefined}
+        />
+        <TextInput
+          aria-label="Szukaj pracownika"
+          placeholder="Nazwisko, imię lub nr karty"
+          leftSection={<IconSearch size={18} aria-hidden />}
+          size="md"
+          value={q}
+          onChange={(e) => update({ q: e.currentTarget.value })}
+        />
+        <Chips
+          items={[
+            { label: STATUS.find((x) => x.value === status)?.label ?? "Aktywni", active: true, menu: true, onClick: () => setPick("status") },
+            { label: missing.length ? `Braki: ${missing.length}` : "Z brakami", warn: true, active: missing.length > 0, menu: true, onClick: () => setPick("missing") },
+            { label: name(agencies.data, agency) ?? "Agencja", active: !!agency, menu: true, onClick: () => setPick("agency") },
+            { label: name(departments.data, department) ?? "Wydział", active: !!department, menu: true, onClick: () => setPick("department") },
+          ]}
+        />
+        {list.isLoading && <Loading />}
+        {list.error && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
+        {list.data && list.data.items.length === 0 && (
+          <EmptyState
+            search={params.toString() !== ""}
+            title={q.trim() ? `Brak wyników dla „${q.trim()}”` : params.toString() ? "Brak pracowników dla tych filtrów" : "Nie ma jeszcze pracowników"}
+            text={params.toString() ? "Sprawdź pisownię albo wyczyść filtry." : "Dodaj pierwszego pracownika albo zaimportuj listę z arkusza."}
+            action={params.toString() ? { label: "Wyczyść filtry", onClick: () => setParams(new URLSearchParams(), { replace: true }) } : undefined}
+          />
+        )}
+        {list.data && list.data.items.length > 0 && (
+          <div className="ui-group">
+            {list.data.items.map((e) => {
+              const w = warnOf(e);
+              return (
+                <ListRow
+                  key={e.id}
+                  to={`/pracownicy/${e.id}`}
+                  leading={<EmployeePhoto employee={e} width={40} />}
+                  title={`${e.last_name} ${e.first_name}`}
+                  description={
+                    <>
+                      {[e.department?.name, e.position?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+                      {w && (
+                        <span className="ui-warn-line">
+                          <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Brak {w}
+                        </span>
+                      )}
+                      {e.status !== "active" && <Status tone="neutral">Archiwum</Status>}
+                    </>
+                  }
+                  trailing={
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontFamily: "var(--mantine-font-family-monospace)", fontSize: 12, color: "var(--mantine-color-dimmed)" }}>{e.number_display}</span>
+                      <IconChevronRight size={16} className="ui-row-chevron" aria-hidden />
+                    </span>
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+        {list.data && list.data.total > PAGE_SIZE && (
+          <Pagination total={Math.ceil(list.data.total / PAGE_SIZE)} value={page} onChange={(p) => update({ page: p === 1 ? null : String(p) }, false)} />
+        )}
+        {list.data && list.data.total > 0 && <Group justify="flex-start">{exportMenu}</Group>}
+
+        <PickSheet opened={pick === "status"} onClose={() => setPick(null)} title="Pokaż" options={STATUS} value={[status]} onChange={(v) => update({ status: v[0] === "active" ? null : v[0] })} />
+        <PickSheet opened={pick === "missing"} onClose={() => setPick(null)} title="Braki w danych" options={missingOpts} value={missing} multiple clearLabel="Bez filtra" onChange={(v) => update({ missing: v })} />
+        <PickSheet
+          opened={pick === "agency"}
+          onClose={() => setPick(null)}
+          title="Agencja (APT)"
+          options={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+          value={agency ? [agency] : []}
+          clearLabel="Wszystkie agencje"
+          onChange={(v) => update({ agency: v[0] ?? null })}
+        />
+        <PickSheet
+          opened={pick === "department"}
+          onClose={() => setPick(null)}
+          title="Wydział"
+          options={(departments.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+          value={department ? [department] : []}
+          clearLabel="Wszystkie wydziały"
+          onChange={(v) => update({ department: v[0] ?? null, position: null })}
+        />
+        <ActionSheet
+          opened={pick === "add"}
+          onClose={() => setPick(null)}
+          title="Dodaj pracownika"
+          actions={[
+            { label: "Wpisz ręcznie", icon: <IconPencil size={20} />, onClick: () => navigate("/pracownicy/nowy") },
+            { label: "Importuj z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/pracownicy/import") },
+          ]}
+        />
+      </Stack>
+    );
+  }
 
   return (
     <Stack>

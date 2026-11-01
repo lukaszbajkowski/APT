@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, StatusBadge } from "../components/Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -47,11 +49,34 @@ import { CompetenceMatrix, PositionRequirements } from "../components/Competence
 import { Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 
-function Expiring() {
+function Expiring({ mobile }: { mobile?: boolean }) {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
+  if (mobile)
+    return rows.length === 0 ? (
+      <CompactEmpty title="Nic się nie kończy" text="W ciągu 30 dni nie kończy się żadne szkolenie ani uprawnienie." />
+    ) : (
+      <div className="ui-group">
+        {rows.map((r) => (
+          <ListRow
+            key={r.training_id}
+            to={`/pracownicy/${r.employee_id}`}
+            title={`${r.last_name} ${r.first_name}`}
+            description={
+              <>
+                {r.name ?? r.type_name}
+                <br />
+                <StatusBadge tone={r.status === "expired" ? "error" : "warn"}>
+                  {r.status === "expired" ? "Wygasło" : "Kończy się"} {formatDate(r.valid_until)}
+                </StatusBadge>
+              </>
+            }
+          />
+        ))}
+      </div>
+    );
   if (rows.length === 0)
     return (
       <Alert color="green" icon={<IconCircleCheck />}>
@@ -225,11 +250,34 @@ function ProgramsEditor({ type }: { type: TrainingType }) {
   );
 }
 
-function InProgress() {
+function InProgress({ mobile }: { mobile?: boolean }) {
   const q = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress") });
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
+  if (mobile)
+    return rows.length === 0 ? (
+      <CompactEmpty title="Nikt nie jest w trakcie" text="Brak trwających szkoleń stanowiskowych." />
+    ) : (
+      <div className="ui-group">
+        {rows.map((r) => (
+          <ListRow
+            key={r.training_id}
+            to={`/pracownicy/${r.employee_id}`}
+            title={`${r.last_name} ${r.first_name}`}
+            description={
+              <>
+                {[r.name ?? r.type_name, r.mentor_name ? `opiekun: ${r.mentor_name}` : null].filter(Boolean).join(" · ")}
+                <br />
+                <StatusBadge tone={r.status === "overdue" ? "warn" : "wait"}>
+                  {r.status === "planned" ? `Zaplanowane od ${formatDate(r.start_date)}` : `${TRAINING_STATUS[r.status].label} · dzień ${r.days}${r.standard_days !== null ? ` z ${r.standard_days}` : ""}`}
+                </StatusBadge>
+              </>
+            }
+          />
+        ))}
+      </div>
+    );
   if (rows.length === 0)
     return (
       <Alert color="gray" icon={<IconCircleCheck />}>
@@ -272,7 +320,7 @@ function InProgress() {
                     {st.label}
                   </Badge>
                   {r.status !== "planned" && (
-                    <Text size="xs" c={r.status === "overdue" ? "red" : "dimmed"}>
+                    <Text size="xs" c={r.status === "overdue" ? "orange" : "dimmed"}>
                       dzień {r.days}
                       {r.standard_days !== null ? ` z ${r.standard_days}` : ""}
                     </Text>
@@ -488,6 +536,48 @@ function Types() {
 export function TrainingsPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [view, setView] = useState("expiring");
+  const [addOpen, setAddOpen] = useState(false);
+  const navigate = useNavigate();
+  const exp = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring"), enabled: mobile });
+  if (mobile) {
+    const views = [
+      { v: "expiring", l: "Kończące się" },
+      { v: "progress", l: "W trakcie" },
+      { v: "matrix", l: "Matryca" },
+      { v: "report", l: "Raport" },
+      { v: "requirements", l: "Wymagania" },
+      ...(staff ? [{ v: "types", l: "Rodzaje" }] : []),
+    ];
+    const n = exp.data?.length ?? 0;
+    return (
+      <Stack gap="md">
+        <PageHead
+          title="Szkolenia"
+          subtitle={n ? `${n} ${n === 1 ? "kończy się" : "kończą się"} w 30 dni` : "Nic nie kończy się w 30 dni"}
+          action={staff ? { label: "Dodaj szkolenie", icon: <IconPlus size={22} />, onClick: () => setAddOpen(true) } : undefined}
+        />
+        <Chips items={views.map((x) => ({ label: x.l, active: view === x.v, onClick: () => setView(x.v) }))} />
+        {view === "expiring" && <Expiring mobile />}
+        {view === "progress" && <InProgress mobile />}
+        {view === "matrix" && <CompetenceMatrix />}
+        {view === "report" && <TrainingsReport />}
+        {view === "requirements" && <PositionRequirements />}
+        {view === "types" && <Types />}
+        <ActionSheet
+          opened={addOpen}
+          onClose={() => setAddOpen(false)}
+          title="Dodaj szkolenie"
+          actions={[
+            { label: "Jednej osobie", description: "W karcie pracownika, zakładka Szkolenia", icon: <IconPencil size={20} />, onClick: () => navigate("/pracownicy") },
+            { label: "Kilku osobom naraz", description: "Na komputerze: zaznacz osoby na liście pracowników", icon: <IconUsers size={20} />, onClick: () => navigate("/pracownicy") },
+            { label: "Import z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/szkolenia/import") },
+          ]}
+        />
+      </Stack>
+    );
+  }
   return (
     <Stack>
       <Group justify="space-between" align="flex-start">

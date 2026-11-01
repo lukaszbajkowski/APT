@@ -7,7 +7,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { Link } from "react-router-dom";
 import { Drawer, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconArchive, IconCheck, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
 export interface MobileHeader {
@@ -396,3 +396,154 @@ export function StatusBadge({ tone, children }: { tone: Tone; children: ReactNod
 
 /** Pierwsza litera wielka (etykiety z serwera bywają pisane małą literą). */
 export const cap = (s: string | null | undefined) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+
+/* ——— nagłówek ekranu listy (telefon): duży tytuł, opis, jedna akcja obok ——— */
+export function PageHead({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  action?: { label: string; icon: ReactNode; onClick?: () => void; to?: string; variant?: "primary" | "outline" };
+}) {
+  const cls = action?.variant === "outline" ? "ui-head-action ui-head-action-outline" : "ui-head-action";
+  return (
+    <div className="ui-head">
+      <div className="ui-head-text">
+        <h1 className="ui-head-title">{title}</h1>
+        {subtitle && <span className="ui-head-sub">{subtitle}</span>}
+      </div>
+      {action &&
+        (action.to ? (
+          <Link to={action.to} className={cls} aria-label={action.label}>
+            {action.icon}
+          </Link>
+        ) : (
+          <UnstyledButton className={cls} aria-label={action.label} onClick={action.onClick}>
+            {action.icon}
+          </UnstyledButton>
+        ))}
+    </div>
+  );
+}
+
+/* ——— pigułki filtrów przewijane w bok ——— */
+export interface Chip {
+  label: string;
+  active?: boolean;
+  warn?: boolean;
+  count?: number;
+  onClick: () => void;
+  menu?: boolean;
+}
+export function Chips({ items }: { items: Chip[] }) {
+  return (
+    <div className="ui-chips" data-no-swipe>
+      {items.map((c) => (
+        <UnstyledButton key={c.label} className="ui-chip" data-active={c.active || undefined} data-warn={c.warn || undefined} aria-pressed={!!c.active} onClick={c.onClick}>
+          {c.label}
+          {c.count !== undefined && <span className="ui-chip-count">{c.count}</span>}
+          {c.menu && <IconChevronDown size={13} stroke={2.6} aria-hidden />}
+        </UnstyledButton>
+      ))}
+    </div>
+  );
+}
+
+/* ——— przełącznik 2–3 widoków (pełna szerokość) ——— */
+export function Segments({ value, onChange, items }: { value: string; onChange: (v: string) => void; items: { value: string; label: string }[] }) {
+  return (
+    <div className="ui-seg" role="tablist" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+      {items.map((i) => (
+        <UnstyledButton key={i.value} role="tab" aria-selected={i.value === value} className="ui-seg-item" data-active={i.value === value || undefined} onClick={() => onChange(i.value)}>
+          {i.label}
+        </UnstyledButton>
+      ))}
+    </div>
+  );
+}
+
+/* ——— nagłówek grupy w liście (np. „Po terminie · 3”) ——— */
+export function GroupLabel({ children, warn }: { children: ReactNode; warn?: boolean }) {
+  return (
+    <h2 className="ui-section-title" data-warn={warn || undefined} style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 0 0" }}>
+      {warn && <IconAlertTriangle size={14} stroke={2.6} aria-hidden />}
+      {children}
+    </h2>
+  );
+}
+
+/* ——— wybór z listy w arkuszu od dołu (jeden lub kilka) ——— */
+export function PickSheet({
+  opened,
+  onClose,
+  title,
+  options,
+  value,
+  onChange,
+  multiple,
+  clearLabel,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  title: string;
+  options: { value: string; label: string }[];
+  value: string[];
+  onChange: (v: string[]) => void;
+  multiple?: boolean;
+  clearLabel?: string;
+}) {
+  return (
+    <Drawer opened={opened} onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label={title}>
+      <SheetHandle onClose={onClose}>
+        <div className="ui-sheet-head">
+          <div className="ui-sheet-title">{title}</div>
+        </div>
+      </SheetHandle>
+      <div style={{ overflowY: "auto", maxHeight: "60dvh" }}>
+        {clearLabel && (
+          <UnstyledButton
+            className="ui-sheet-action"
+            onClick={() => {
+              onChange([]);
+              onClose();
+            }}
+          >
+            <span className="ui-row-text">
+              <span className="ui-row-title">{clearLabel}</span>
+            </span>
+            {value.length === 0 && <IconCheck size={20} className="ui-sheet-icon" aria-hidden />}
+          </UnstyledButton>
+        )}
+        {options.map((o) => {
+          const on = value.includes(o.value);
+          return (
+            <UnstyledButton
+              key={o.value}
+              className="ui-sheet-action"
+              aria-pressed={on}
+              onClick={() => {
+                if (multiple) onChange(on ? value.filter((v) => v !== o.value) : [...value, o.value]);
+                else {
+                  onChange([o.value]);
+                  onClose();
+                }
+              }}
+            >
+              <span className="ui-row-text">
+                <span className="ui-row-title">{o.label}</span>
+              </span>
+              {on && <IconCheck size={20} className="ui-sheet-icon" aria-hidden />}
+            </UnstyledButton>
+          );
+        })}
+      </div>
+      {multiple && (
+        <UnstyledButton className="ui-sheet-close" onClick={onClose}>
+          Gotowe
+        </UnstyledButton>
+      )}
+    </Drawer>
+  );
+}

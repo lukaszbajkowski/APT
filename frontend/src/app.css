@@ -500,3 +500,49 @@ html, body { background: var(--apt-ground); }
   .mantine-Menu-label { font-size: 13px; padding: 8px 12px; }
 }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ——— listy (telefon) ——— */
+.ui-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ui-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-head-title { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.ui-head-sub { font-size: 14px; color: var(--mantine-color-dimmed); }
+.ui-head-action {
+  flex: none; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast);
+}
+.ui-head-action-outline { background: transparent; color: var(--mantine-color-text); border: 1px solid var(--mantine-color-default-border); }
+.ui-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--mantine-spacing-sm) * -1); padding: 0 var(--mantine-spacing-sm); }
+.ui-chips::-webkit-scrollbar { display: none; }
+.ui-chip {
+  flex: none; height: 36px; padding: 0 12px; border-radius: 18px; display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--mantine-color-default-border); background: var(--apt-surface); color: var(--mantine-color-text);
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+.ui-chip[data-active] { background: var(--mantine-color-text); color: var(--apt-ground); border-color: var(--mantine-color-text); }
+.ui-chip[data-warn]:not([data-active]) { background: var(--mantine-color-orange-light); color: var(--mantine-color-orange-text); border-color: transparent; }
+.ui-chip-count { font-weight: 800; }
+.ui-seg { display: grid; gap: 4px; padding: 4px; border-radius: 12px; background: var(--apt-surface); border: 1px solid var(--apt-line); }
+.ui-seg-item { height: 36px; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--mantine-color-dimmed); text-align: center; }
+.ui-seg-item[data-active] { background: var(--apt-subtle); color: var(--mantine-color-text); font-weight: 700; }
+.ui-section-title[data-warn] { color: var(--mantine-color-orange-text); }
+.ui-list-gap { display: flex; flex-direction: column; gap: 12px; }
+.ui-warn-line { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--mantine-color-orange-text); }
+.ui-thread { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 10px 14px; box-sizing: border-box; text-align: left; }
+.ui-thread:active { background: var(--apt-subtle); }
+.ui-thread-avatar { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--apt-subtle); color: var(--mantine-primary-color-text); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+.ui-thread-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
+.ui-thread-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-thread-time { font-size: 13px; color: var(--mantine-color-dimmed); flex: none; }
+.ui-thread-snip { font-size: 14px; color: var(--mantine-color-dimmed); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-thread[data-unread] .ui-thread-name { font-weight: 800; }
+.ui-thread[data-unread] .ui-thread-snip { color: var(--mantine-color-text); }
+.ui-thread[data-unread] .ui-thread-time { color: var(--mantine-primary-color-text); font-weight: 700; }
+.ui-thread-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--mantine-primary-color-filled); }
+.ui-bc { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px 14px; box-sizing: border-box; text-align: left; }
+.ui-bc:active { background: var(--apt-subtle); }
+.ui-bc-read { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+.ui-bc-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--apt-subtle); overflow: hidden; }
+.ui-bc-bar > span { display: block; height: 6px; background: var(--mantine-primary-color-filled); }
+.ui-task { display: flex; align-items: center; gap: 2px; min-height: 64px; padding: 4px 0 4px 4px; }
+.ui-link-strong { color: var(--mantine-primary-color-text); font-weight: 600; text-decoration: none; }
+.ui-due[data-warn] { color: var(--mantine-color-orange-text); font-weight: 600; }

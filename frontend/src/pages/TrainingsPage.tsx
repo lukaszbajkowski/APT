@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, DangerAction, DangerZone, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,7 +30,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
 
 import {
   api,
@@ -44,6 +44,8 @@ import {
   type TrainingProgram,
   type TrainingKind,
   type TrainingType,
+  type Employee,
+  type Page,
 } from "../api";
 import { useAuth } from "../auth";
 import { ProgramMentorsButton } from "../components/MentorPrograms";
@@ -229,23 +231,34 @@ function ProgramRow({
   );
 }
 
-/** Telefon: pozycja katalogu w panelu od dołu. */
+/** Telefon: pozycja katalogu w panelu od dołu – nazwa, wydział, standard i opiekunowie. */
 function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: TrainingProgram | null; onClose: () => void }) {
   const qc = useQueryClient();
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
   const [name, setName] = useState(program?.name ?? "");
   const [dep, setDep] = useState<string | null>(program?.department_id ? String(program.department_id) : null);
   const [days, setDays] = useState<number | string>(program?.standard_days ?? "");
+  const [mentors, setMentors] = useState<{ id: number; name: string }[]>(program?.mentors.map((m) => ({ id: m.id, name: m.name })) ?? []);
   const [pickDep, setPickDep] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [q, setQ] = useState("");
+  const [dq] = useDebouncedValue(q, 250);
+  const people = useQuery({ queryKey: ["mentor-search", dq], queryFn: () => api<Page<Employee>>(`/employees?limit=20&q=${encodeURIComponent(dq)}`), enabled: finding });
   const confirm = useConfirm();
   const onError = (e: unknown) => notifications.show({ color: "red", message: errorText(e) });
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const body = { name, department_id: dep ? Number(dep) : null, standard_days: days === "" ? null : Number(days), is_active: true };
-      return program ? api(`/training-programs/${program.id}`, { method: "PUT", body }) : api(`/training-types/${typeId}/programs`, { method: "POST", body });
+      const saved = program
+        ? await api<TrainingProgram>(`/training-programs/${program.id}`, { method: "PUT", body })
+        : await api<TrainingProgram>(`/training-types/${typeId}/programs`, { method: "POST", body });
+      const before = (program?.mentors ?? []).map((m) => m.id).sort().join(",");
+      const after = mentors.map((m) => m.id).sort().join(",");
+      if (before !== after) await api(`/training-programs/${saved.id}/mentors`, { method: "PUT", body: { ids: mentors.map((m) => m.id) } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["training-types"] });
+      qc.invalidateQueries({ queryKey: ["mentor-programs"] });
       notifications.show({ color: "green", message: program ? "Zapisano pozycję katalogu." : "Dodano do katalogu." });
       onClose();
     },
@@ -255,6 +268,7 @@ function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: T
     mutationFn: () => api(`/training-programs/${program!.id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["training-types"] });
+      notifications.show({ color: "green", message: `Usunięto „${program?.name}” z katalogu.` });
       onClose();
     },
     onError,
@@ -265,29 +279,50 @@ function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: T
       <Drawer opened onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Pozycja katalogu">
         <SheetHandle onClose={onClose}>
           <div className="ui-sheet-head">
-            <div className="ui-sheet-title">{program ? "Pozycja katalogu" : "Nowa pozycja katalogu"}</div>
+            <div className="ui-sheet-title">{program ? program.name : "Nowa pozycja katalogu"}</div>
+            {program && <div className="ui-row-desc">{program.department ?? "Dowolny wydział"}</div>}
           </div>
         </SheetHandle>
-        <Stack gap="md" px="md" pb="sm">
+        <Stack gap="md" px="md" pb="md">
           <TextInput size="md" label="Nazwa" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-          <div className="ui-form-field">
-            <span className="ui-form-label">Wydział</span>
-            <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
-              <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
-              <IconChevronRight size={16} aria-hidden />
+          <SimpleGrid cols={2} spacing="sm">
+            <div className="ui-form-field">
+              <span className="ui-form-label">Wydział</span>
+              <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
+                <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
+                <IconChevronRight size={16} aria-hidden />
+              </UnstyledButton>
+            </div>
+            <NumberInput size="md" label="Standard" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
+          </SimpleGrid>
+        </Stack>
+        <h2 className="ui-section-title" style={{ padding: "0 20px", margin: "4px 0 6px" }}>Kto może prowadzić</h2>
+        {mentors.length === 0 && (
+          <div className="ui-filter-row">
+            <span className="ui-warn-line">
+              <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Nikt jeszcze nie może prowadzić tego szkolenia
+            </span>
+          </div>
+        )}
+        {mentors.map((m) => (
+          <div key={m.id} className="ui-filter-row" style={{ paddingRight: 8 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span className="ui-thread-avatar" style={{ width: 36, height: 36, fontSize: 13 }} aria-hidden>
+                {m.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}
+              </span>
+              <span className="ui-filter-label" style={{ fontWeight: 600 }}>{m.name}</span>
+            </span>
+            <UnstyledButton className="ui-chat-btn" aria-label={`Usuń opiekuna: ${m.name}`} onClick={() => setMentors((x) => x.filter((y) => y.id !== m.id))}>
+              <IconX size={18} stroke={2.4} />
             </UnstyledButton>
           </div>
-          <NumberInput size="md" label="Standard nauki" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
-          {program && (
-            <div className="ui-form-field">
-              <span className="ui-form-label">Kto może prowadzić</span>
-              <ProgramMentorsButton program={program} />
-            </div>
-          )}
-        </Stack>
+        ))}
+        <UnstyledButton className="ui-filter-save" onClick={() => { setQ(""); setFinding(true); }}>
+          <IconPlus size={18} aria-hidden /> Dodaj opiekuna
+        </UnstyledButton>
         <div className="ui-filter-foot">
           {program && (
-            <Button size="lg" variant="default" color="red" radius="md" c="red" onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>
+            <Button size="lg" variant="default" radius="md" c="red" loading={remove.isPending} onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>
               Usuń
             </Button>
           )}
@@ -297,7 +332,107 @@ function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: T
         </div>
       </Drawer>
       <PickSheet opened={pickDep} onClose={() => setPickDep(false)} title="Wydział" options={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))} value={dep ? [dep] : []} clearLabel="Dowolny wydział" onChange={(v) => setDep(v[0] ?? null)} />
+      <Drawer opened={finding} onClose={() => setFinding(false)} position="bottom" size="85%" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Dodaj opiekuna">
+        <SheetHandle onClose={() => setFinding(false)}>
+          <div className="ui-sheet-head">
+            <div className="ui-sheet-title">Dodaj opiekuna</div>
+          </div>
+        </SheetHandle>
+        <div style={{ padding: "0 16px 10px" }}>
+          <TextInput size="md" placeholder="Nazwisko lub nr karty" leftSection={<IconSearch size={18} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} data-autofocus aria-label="Szukaj pracownika" />
+        </div>
+        {(people.data?.items ?? [])
+          .filter((e) => !mentors.some((m) => m.id === e.id))
+          .map((e) => (
+            <UnstyledButton
+              key={e.id}
+              className="ui-sheet-action"
+              onClick={() => {
+                setMentors((x) => [...x, { id: e.id, name: `${e.last_name} ${e.first_name}` }]);
+                setFinding(false);
+              }}
+            >
+              <span className="ui-row-text">
+                <span className="ui-row-title">{e.last_name} {e.first_name}</span>
+                <span className="ui-row-desc">{[e.department?.name, e.position?.name, `nr ${e.number_display}`].filter(Boolean).join(" · ")}</span>
+              </span>
+            </UnstyledButton>
+          ))}
+        {people.data && people.data.items.length === 0 && <div className="ui-filter-row"><span className="ui-row-desc">Brak wyników</span></div>}
+      </Drawer>
     </>
+  );
+}
+
+/** Telefon: katalog szkoleń stanowiskowych jako osobny ekran (pod „⋯” w Szkoleniach). */
+function CatalogMobile() {
+  const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
+  const [dep, setDep] = useState<string | null>(null);
+  const [noMentor, setNoMentor] = useState(false);
+  const [pickDep, setPickDep] = useState(false);
+  const [edit, setEdit] = useState<{ typeId: number; program: TrainingProgram | null } | null>(null);
+  const [pickType, setPickType] = useState(false);
+  const posTypes = (types.data ?? []).filter((t) => t.kind === "position");
+  const all = posTypes.flatMap((t) => t.programs.map((p) => ({ p, t })));
+  const missing = all.filter((x) => x.p.mentors.length === 0).length;
+  const rows = all.filter((x) => (!dep || String(x.p.department_id) === dep) && (!noMentor || x.p.mentors.length === 0));
+  const groups = new Map<string, typeof rows>();
+  for (const x of rows) {
+    const k = x.p.department ?? "Dowolny wydział";
+    groups.set(k, [...(groups.get(k) ?? []), x]);
+  }
+  const sorted = [...groups].sort((a, b) => a[0].localeCompare(b[0], "pl"));
+  const add = () => (posTypes.length > 1 ? setPickType(true) : posTypes[0] && setEdit({ typeId: posTypes[0].id, program: null }));
+  const live = edit?.program ? all.find((x) => x.p.id === edit.program!.id)?.p ?? edit.program : null;
+  return (
+    <Stack gap="md">
+      <PageHead
+        title="Katalog"
+        subtitle={`Szkolenia stanowiskowe · ${all.length} ${all.length === 1 ? "pozycja" : all.length % 10 >= 2 && all.length % 10 <= 4 && (all.length % 100 < 10 || all.length % 100 >= 20) ? "pozycje" : "pozycji"}`}
+        action={posTypes.length ? { label: "Dodaj do katalogu", icon: <IconPlus size={22} />, onClick: add } : undefined}
+      />
+      <Chips
+        items={[
+          { label: departments.data?.find((d) => String(d.id) === dep)?.name ?? "Wydział", active: !!dep, menu: true, onClick: () => setPickDep(true) },
+          ...(missing ? [{ label: `Bez opiekuna · ${missing}`, warn: true, active: noMentor, onClick: () => setNoMentor((x) => !x) }] : []),
+        ]}
+      />
+      {types.isLoading && <Loading rows={4} />}
+      {types.data && posTypes.length === 0 && <CompactEmpty title="Brak rodzaju stanowiskowego" text="Dodaj w „Rodzajach szkoleń” rodzaj typu „Szkolenie stanowiskowe”." />}
+      {types.data && posTypes.length > 0 && rows.length === 0 && <CompactEmpty title={all.length ? "Brak pozycji dla tego filtra" : "Katalog jest pusty"} text={all.length ? undefined : "Dodaj pierwszą pozycję przyciskiem „+”."} />}
+      {sorted.map(([g, items]) => (
+        <Stack key={g} gap={8}>
+          <GroupLabel>{g}</GroupLabel>
+          <div className="ui-group">
+            {items.map(({ p, t }) => (
+              <ListRow
+                key={p.id}
+                onClick={() => setEdit({ typeId: t.id, program: p })}
+                title={p.name}
+                description={
+                  <>
+                    {[p.standard_days ? `Standard ${p.standard_days} dni` : "Bez standardu", posTypes.length > 1 ? t.name : null].filter(Boolean).join(" · ")}
+                    {p.mentors.length ? (
+                      <span className="ui-mentors">
+                        <IconUsers size={12} stroke={2.4} aria-hidden /> {p.mentors.length === 1 ? "1 opiekun" : `${p.mentors.length} opiekunów`}: {p.mentors.map((m) => m.name).join(", ")}
+                      </span>
+                    ) : (
+                      <span className="ui-warn-line">
+                        <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Brak opiekuna
+                      </span>
+                    )}
+                  </>
+                }
+              />
+            ))}
+          </div>
+        </Stack>
+      ))}
+      <PickSheet opened={pickDep} onClose={() => setPickDep(false)} title="Wydział" options={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))} value={dep ? [dep] : []} clearLabel="Wszystkie wydziały" onChange={(v) => setDep(v[0] ?? null)} />
+      <ActionSheet opened={pickType} onClose={() => setPickType(false)} title="Do którego rodzaju?" actions={posTypes.map((t) => ({ label: t.name, onClick: () => setEdit({ typeId: t.id, program: null }) }))} />
+      {edit && <ProgramSheet key={edit.program?.id ?? "new"} typeId={edit.typeId} program={live} onClose={() => setEdit(null)} />}
+    </Stack>
   );
 }
 
@@ -455,7 +590,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
       </DangerZone>
     )
   ) : null;
-  const [prog, setProg] = useState<TrainingProgram | "new" | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!opened) return;
@@ -562,23 +697,13 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
                 <span className="ui-form-label">Katalog szkoleń stanowiskowych</span>
                 <span className="ui-form-hint">Nazwa, wydział i standard wpiszą się same przy dodawaniu szkolenia</span>
                 {live ? (
-                  <>
-                    {live.programs.length > 0 && (
-                      <div className="ui-group">
-                        {live.programs.map((pr) => (
-                          <ListRow
-                            key={pr.id}
-                            onClick={() => setProg(pr)}
-                            title={pr.name}
-                            description={[pr.department ?? "Dowolny wydział", pr.standard_days ? `${pr.standard_days} dni` : null, pr.mentors.length ? `${pr.mentors.length} ${pr.mentors.length === 1 ? "opiekun" : "opiekunów"}` : "brak opiekuna"].filter(Boolean).join(" · ")}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <UnstyledButton className="ui-link-row" onClick={() => setProg("new")}>
-                      <IconPlus size={18} aria-hidden /> Dodaj szkolenie do katalogu
-                    </UnstyledButton>
-                  </>
+                  <div className="ui-group">
+                    <ListRow
+                      onClick={() => { onClose(); navigate("/szkolenia?widok=katalog"); }}
+                      title={`Katalog · ${live.programs.length} ${live.programs.length === 1 ? "pozycja" : live.programs.length % 10 >= 2 && live.programs.length % 10 <= 4 && (live.programs.length % 100 < 10 || live.programs.length % 100 >= 20) ? "pozycje" : "pozycji"}`}
+                      description={live.programs.filter((x) => x.mentors.length === 0).length ? `Bez opiekuna: ${live.programs.filter((x) => x.mentors.length === 0).length}` : "Nazwy, wydziały, standardy i opiekunowie"}
+                    />
+                  </div>
                 ) : (
                   <span className="ui-form-hint">Katalog uzupełnisz po zapisaniu rodzaju.</span>
                 )}
@@ -601,9 +726,6 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
           clearLabel="Brak szablonu"
           onChange={(v) => setF({ ...f, template_id: v[0] ?? null })}
         />
-        {live && prog !== null && (
-          <ProgramSheet typeId={live.id} program={prog === "new" ? null : live.programs.find((x) => x.id === prog.id) ?? prog} onClose={() => setProg(null)} />
-        )}
       </Modal>
     );
   }
@@ -837,7 +959,7 @@ function TrainingsMobilePage({ staff }: { staff: boolean }) {
   const exp = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
   const prog = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress") });
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types"), enabled: sub === "rodzaje" });
-  const SUBS: Record<string, string> = { raport: "Raport", wymagania: "Wymagania stanowisk", rodzaje: "Rodzaje szkoleń" };
+  const SUBS: Record<string, string> = { raport: "Raport", wymagania: "Wymagania stanowisk", katalog: "Katalog", rodzaje: "Rodzaje szkoleń" };
   useMobileHeader(sub && SUBS[sub] ? { title: "Szkolenia", back: "/szkolenia" } : null);
   const open = (w: string) => setParams({ widok: w });
   const addActions = [
@@ -861,6 +983,7 @@ function TrainingsMobilePage({ staff }: { staff: boolean }) {
             <RequirementsMobile />
           </>
         )}
+        {sub === "katalog" && <CatalogMobile />}
         {sub === "rodzaje" && (
           <>
             <PageHead title="Rodzaje" subtitle="Rodzaje szkoleń i uprawnień" action={{ label: "Dodaj rodzaj", icon: <IconPlus size={22} />, onClick: () => setTypeModal({ open: true, editing: null }) }} />
@@ -938,6 +1061,7 @@ function TrainingsMobilePage({ staff }: { staff: boolean }) {
         actions={[
           { label: "Raport", description: "Wszystkie wpisy z filtrami i eksportem", icon: <IconReportAnalytics size={20} />, onClick: () => open("raport") },
           { label: "Wymagania stanowisk", description: "Co jest obowiązkowe na stanowisku", icon: <IconListCheck size={20} />, onClick: () => open("wymagania") },
+          { label: "Katalog szkoleń stanowiskowych", description: "Pozycje, standardy nauki i opiekunowie", icon: <IconBook size={20} />, onClick: () => open("katalog") },
           ...(staff ? [{ label: "Rodzaje szkoleń", description: "Słownik rodzajów, ważność, katalog, szablony", icon: <IconCategory size={20} />, onClick: () => open("rodzaje") }] : []),
           ...(staff ? [{ label: "Import z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/szkolenia/import") }] : []),
         ]}

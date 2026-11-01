@@ -9,7 +9,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -227,6 +227,24 @@ def update_type(
     )
     db.commit()
     return _type_out(db, t)
+
+
+@router.delete("/training-types/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_type(type_id: int, ctx: EditAuth, request: Request, db: DbSession) -> None:
+    """Usuwa rodzaj, który nie ma żadnych wpisanych szkoleń (razem z katalogiem i wymaganiami stanowisk)."""
+    t = db.get(TrainingType, type_id)
+    if t is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono rodzaju szkolenia.")
+    used = db.scalar(select(func.count()).select_from(Training).where(Training.type_id == type_id)) or 0
+    if used:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=f"Tego rodzaju użyto w {used} wpisach szkoleń – nie można go usunąć. Wyłącz go zamiast tego (przełącznik „Aktywny”).",
+        )
+    audit(db, request, "training_type_deleted", user=ctx.user, entity_type="training_type", entity_id=t.id, details={"name": t.name})
+    db.expunge(t)
+    db.execute(sa_delete(TrainingType).where(TrainingType.id == type_id))
+    db.commit()
 
 
 def _program_data(db: Session, body: ProgramIn) -> dict[str, Any]:

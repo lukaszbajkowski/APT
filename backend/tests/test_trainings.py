@@ -349,3 +349,19 @@ def test_medical_reminder_push_without_email(admin_client, make_user, monkeypatc
         assert "Pushowa" not in mine[0][2]  # treść ogólna, bez danych osobowych
     finally:
         push.outbox = None
+
+
+def test_delete_training_type(admin_client):
+    c = admin_client
+    r = c.post("/api/training-types", json={"name": "Do usunięcia", "kind": "position", "validity_months": None, "template_id": None, "is_active": True})
+    assert r.status_code == 201, r.text
+    t = r.json()
+    assert c.post(f"/api/training-types/{t['id']}/programs", json={"name": "Poz", "department_id": None, "standard_days": 5, "is_active": True}).status_code == 201
+    assert c.delete(f"/api/training-types/{t['id']}").status_code == 204
+    assert "Do usunięcia" not in _types(c)
+    # rodzaju z wpisanymi szkoleniami nie da się usunąć
+    bhp = _types(c)["Szkolenie BHP okresowe"]
+    e = _emp(c)
+    assert c.post(f"/api/employees/{e['id']}/trainings", json={"type_id": bhp["id"], "completed_on": "2026-01-15"}).status_code == 201
+    r = c.delete(f"/api/training-types/{bhp['id']}")
+    assert r.status_code == 409 and "Wyłącz" in r.json()["detail"]

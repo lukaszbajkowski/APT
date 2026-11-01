@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, DangerAction, DangerZone, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -427,6 +427,34 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types"), enabled: opened && !!mobile });
   const [pickTpl, setPickTpl] = useState(false);
+  const confirmDel = useConfirm();
+  const del = useMutation({
+    mutationFn: () => api(`/training-types/${editing!.id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["training-types"] });
+      notifications.show({ color: "green", message: `Usunięto rodzaj „${editing?.name}”.` });
+      onClose();
+    },
+    onError: (e) => setError(errorText(e)),
+  });
+  const askDelete = () =>
+    confirmDel({
+      title: "Usunąć rodzaj szkolenia?",
+      message: `Usunąć „${editing?.name}”? Zniknie też jego katalog i wymagania stanowisk z tym szkoleniem.`,
+      confirmLabel: "Usuń",
+      danger: true,
+    }).then((ok) => ok && del.mutate());
+  const deleteBlock = editing ? (
+    editing.in_use > 0 ? (
+      <Text size="sm" c="dimmed">
+        Tego rodzaju użyto w {editing.in_use} wpisach szkoleń, więc nie można go usunąć. Jeśli nie będzie już potrzebny, wyłącz przełącznik „Aktywny”.
+      </Text>
+    ) : (
+      <DangerZone title="Usuwanie">
+        <DangerAction label="Usuń rodzaj szkolenia" description="Nie ma wpisanych szkoleń. Zniknie też katalog i wymagania stanowisk." onClick={askDelete} loading={del.isPending} />
+      </DangerZone>
+    )
+  ) : null;
   const [prog, setProg] = useState<TrainingProgram | "new" | null>(null);
 
   useEffect(() => {
@@ -556,6 +584,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
                 )}
               </div>
             )}
+            {deleteBlock}
           </div>
           <div className="ui-chat-compose">
             <Button size="lg" fullWidth radius="md" loading={save.isPending} disabled={!f.name.trim()} onClick={() => save.mutate()}>
@@ -663,6 +692,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
               Katalog szkoleń stanowiskowych (nazwa, wydział, standard) uzupełnisz po zapisaniu rodzaju.
             </Text>
           ))}
+        {deleteBlock}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             Anuluj

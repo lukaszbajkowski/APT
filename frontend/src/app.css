@@ -661,3 +661,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-drop-title { font-size: 17px; font-weight: 700; }
 .ui-form-scroll > * { flex-shrink: 0; }
 .ui-mentors { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--mantine-primary-color-text); margin-top: 2px; }
+.ui-pick { padding-top: 10px; padding-bottom: 10px; line-height: 1.3; } .ui-pick > svg { flex: none; } .ui-pick > span { min-width: 0; overflow-wrap: anywhere; }

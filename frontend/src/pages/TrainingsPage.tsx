@@ -285,16 +285,14 @@ function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: T
         </SheetHandle>
         <Stack gap="md" px="md" pb="md">
           <TextInput size="md" label="Nazwa" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-          <SimpleGrid cols={2} spacing="sm">
-            <div className="ui-form-field">
+          <div className="ui-form-field">
               <span className="ui-form-label">Wydział</span>
               <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
                 <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
                 <IconChevronRight size={16} aria-hidden />
               </UnstyledButton>
-            </div>
-            <NumberInput size="md" label="Standard" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
-          </SimpleGrid>
+          </div>
+          <NumberInput size="md" label="Standard nauki" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
         </Stack>
         <h2 className="ui-section-title" style={{ padding: "0 20px", margin: "4px 0 6px" }}>Kto może prowadzić</h2>
         {mentors.length === 0 && (

@@ -225,12 +225,16 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
     return () => ro.disconnect();
   }, [index, n]);
 
-  const onTouchStart = (e: TouchEvent) => {
+  // przesuwanie działa w całym ekranie (także w pustym miejscu pod krótką listą i nad nią)
+  const handlers = useRef({ start: (_e: globalThis.TouchEvent) => {}, move: (_e: globalThis.TouchEvent) => {}, end: () => {} });
+  handlers.current.start = (e) => {
     const t = e.target as HTMLElement;
-    const skip = !!t.closest("input, textarea, select, [data-no-swipe], .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer");
+    const skip =
+      typeof t?.closest !== "function" ||
+      !!t.closest("input, textarea, select, [data-no-swipe], .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer, .mantine-Drawer-root, .mantine-Modal-root, .mantine-Popover-dropdown, .ui-chat, .tabbar, .mantine-AppShell-navbar");
     st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, lock: "", skip };
   };
-  const onTouchMove = (e: TouchEvent) => {
+  handlers.current.move = (e) => {
     const c = st.current;
     if (c.skip) return;
     const dx = e.touches[0].clientX - c.x;
@@ -245,7 +249,7 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
     c.dx = edge ? dx / 3 : dx;
     place(c.dx, false);
   };
-  const onTouchEnd = () => {
+  handlers.current.end = () => {
     const c = st.current;
     if (c.lock !== "x") return;
     const w = wrap.current?.offsetWidth ?? 390;
@@ -257,16 +261,27 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
     if (next !== index) onIndex(next);
     else place(0, true);
   };
+  useEffect(() => {
+    const s0 = (e: globalThis.TouchEvent) => handlers.current.start(e);
+    const m0 = (e: globalThis.TouchEvent) => handlers.current.move(e);
+    const e0 = () => handlers.current.end();
+    document.addEventListener("touchstart", s0, { passive: true });
+    document.addEventListener("touchmove", m0, { passive: true });
+    document.addEventListener("touchend", e0, { passive: true });
+    document.addEventListener("touchcancel", e0, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", s0);
+      document.removeEventListener("touchmove", m0);
+      document.removeEventListener("touchend", e0);
+      document.removeEventListener("touchcancel", e0);
+    };
+  }, []);
 
   return (
     <div
       ref={wrap}
       className="ui-pager"
       style={{ height, transition: "height 200ms ease" }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
     >
       <div ref={track} className="ui-pager-track">
         {children.map((c, i) => (

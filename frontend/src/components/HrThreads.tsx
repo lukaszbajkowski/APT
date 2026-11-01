@@ -400,6 +400,29 @@ function dayLabel(iso: string, T: (s: string) => string): string {
 
 type TrState = Record<number, { text: string; source: string | null; target: string } | "loading">;
 
+/** Pełny ekran na telefonie: blokuje przewijanie strony i dopasowuje się do klawiatury iOS. */
+function useChatViewport(box: React.RefObject<HTMLDivElement>, on = true) {
+  useEffect(() => {
+    if (!on) return;
+    const vv = window.visualViewport;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const fit = () => {
+      if (!box.current || !vv) return;
+      box.current.style.height = `${vv.height}px`;
+      box.current.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    fit();
+    vv?.addEventListener("resize", fit);
+    vv?.addEventListener("scroll", fit);
+    return () => {
+      document.body.style.overflow = prev;
+      vv?.removeEventListener("resize", fit);
+      vv?.removeEventListener("scroll", fit);
+    };
+  }, [on]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 /** Rozmowa na telefonie: pełny ekran jak w komunikatorze (makieta „Listy · Rozmowa”). */
 function MobileChat(props: {
   t: Thread | undefined;
@@ -424,26 +447,12 @@ function MobileChat(props: {
   const nav = useNavigate();
   const [menu, setMenu] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  // klawiatura iOS zmniejsza widoczny obszar – okno rozmowy dopasowuje się do niego
-  useEffect(() => {
-    const vv = window.visualViewport;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const fit = () => {
-      if (!box.current || !vv) return;
-      box.current.style.height = `${vv.height}px`;
-      box.current.style.transform = `translateY(${vv.offsetTop}px)`;
-    };
-    fit();
-    vv?.addEventListener("resize", fit);
-    vv?.addEventListener("scroll", fit);
-    return () => {
-      document.body.style.overflow = prev;
-      vv?.removeEventListener("resize", fit);
-      vv?.removeEventListener("scroll", fit);
-    };
-  }, []);
-  const msgs = t?.messages ?? [];
+  useChatViewport(box);
+  const { me: account } = useAuth();
+  const myName = account?.user.full_name;
+  // kolejne zmiany statusu bez wiadomości pomiędzy – pokazujemy tylko ostatnią
+  const all = t?.messages ?? [];
+  const msgs = all.filter((m, i) => !(m.kind === "status" && all[i + 1]?.kind === "status"));
   const lastMine = [...msgs].reverse().find((m) => m.kind === "message" && m.from_staff === staff);
   const seen = !!(lastMine && t?.other_seen_at && t.other_seen_at >= lastMine.created_at);
   let day = "";
@@ -480,18 +489,25 @@ function MobileChat(props: {
           if (m.kind === "status") {
             const label = T(THREAD_STATUS[m.body as ThreadRow["status"]]?.label ?? m.body);
             const text = m.body === "done_auto"
-              ? T("Rozmowa zamknięta automatycznie – brak odpowiedzi przez 3 dni")
+              ? T("Zamknięta automatycznie")
               : m.from_staff
-              ? `${T("Status rozmowy")}: ${label.toLowerCase()}${staff && m.author_name ? ` · ${m.author_name}` : ""}`
-              : T("Rozmowa została otwarta ponownie");
-            return [sep, <span key={m.id} className="ui-chat-event">{text} · {hm(m.created_at)}</span>];
+              ? label
+              : T("Otwarta ponownie");
+            const who = staff && m.author_name && m.author_name !== myName ? ` · ${m.author_name}` : "";
+            return [sep, <div key={m.id} className="ui-chat-event" role="note"><span>{text} · {hm(m.created_at)}{who}</span></div>];
           }
           const mine = m.from_staff === staff;
           const trv = tl?.tr[m.id];
-          const meta = [mine && staff && m.author_name ? m.author_name : null, hm(m.created_at), m === lastMine && seen ? T("przeczytane") : null].filter(Boolean).join(" · ");
+          const idx = msgs.indexOf(m);
+          const nx = msgs[idx + 1];
+          // podpis tylko pod ostatnim dymkiem z serii tej samej osoby
+          const lastInRun = !nx || nx.kind !== "message" || nx.from_staff !== m.from_staff || dayLabel(nx.created_at, T) !== dl;
+          const showMeta = lastInRun || !!trv || (listen?.speakingId === m.id);
+          const meta = [mine && staff && m.author_name && m.author_name !== myName ? m.author_name : null, hm(m.created_at), m === lastMine && seen ? T("przeczytane") : null].filter(Boolean).join(" · ");
+          const canTr = tl && !tl.exhausted && !mine;
           return [
             sep,
-            <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined}>
+            <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined} data-tight={!showMeta || undefined}>
               <div className="ui-chat-bubble">
                 {m.body}
                 {trv && trv !== "loading" && (
@@ -501,9 +517,9 @@ function MobileChat(props: {
                   </div>
                 )}
               </div>
-              <span className="ui-chat-meta">
+              {showMeta && <span className="ui-chat-meta">
                 {meta}
-                {tl && !tl.exhausted && (
+                {canTr && (
                   <>
                     {" · "}
                     {trv === "loading" ? (
@@ -523,7 +539,7 @@ function MobileChat(props: {
                     </button>
                   </>
                 )}
-              </span>
+              </span>}
             </div>,
           ];
         })}
@@ -581,7 +597,7 @@ function MobileChat(props: {
 
 type Preset = { id: string; name: string };
 
-function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; preset?: Preset; onCreated: (id: number) => void; onCancel: () => void }) {
+function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: boolean; preset?: Preset; onCreated: (id: number) => void; onCancel: () => void; mobile?: boolean }) {
   const T = useT();
   const { me: account } = useAuth();
   const qc = useQueryClient();
@@ -589,6 +605,8 @@ function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; pre
   const [custom, setCustom] = useState("");
   const [employee, setEmployee] = useState<string | null>(preset?.id ?? null);
   const [search, setSearch] = useState("");
+  const [pickedName, setPickedName] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const subjects = useQuery({ queryKey: ["thread-subjects"], queryFn: () => api<string[]>("/me/messages/subjects"), enabled: !staff });
@@ -609,6 +627,94 @@ function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; pre
     onError: (e) => setError(errorText(e)),
   });
   const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
+  useChatViewport(box, !!mobile);
+  if (mobile) {
+    const picked = employee
+      ? preset && preset.id === employee
+        ? preset.name
+        : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
+      : null;
+    return (
+      <div className="ui-chat" ref={box}>
+        <header className="ui-chat-head">
+          <UnstyledButton className="ui-chat-btn" onClick={onCancel} aria-label={T("Anuluj")}>
+            <IconChevronLeft size={26} stroke={2.2} />
+          </UnstyledButton>
+          <span className="ui-chat-title">
+            <span className="ui-chat-name">{T("Nowa wiadomość")}</span>
+            <span className="ui-chat-sub">{staff ? "Do pracownika" : T("Do kadr")}</span>
+          </span>
+        </header>
+        <div className="ui-chat-body ui-form-body">
+          {staff ? (
+            <>
+              <div className="ui-form-field">
+                <span className="ui-form-label">Pracownik</span>
+                {picked ? (
+                  <div className="ui-group">
+                    <div className="ui-pick-row">
+                      <span className="ui-thread-avatar" aria-hidden>{initials(picked)}</span>
+                      <span className="ui-thread-name" style={{ flex: 1 }}>{picked}</span>
+                      {!preset && (
+                        <Button variant="subtle" onClick={() => setEmployee(null)}>Zmień</Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
+                    <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
+                    {(people.data ?? []).length > 0 ? (
+                      <div className="ui-group">
+                        {(people.data ?? []).slice(0, 6).map((p) => (
+                          <UnstyledButton key={p.employee_id} className="ui-pick-row" onClick={() => { setEmployee(String(p.employee_id)); setPickedName(p.name); }}>
+                            <span className="ui-thread-avatar" aria-hidden>{initials(p.name)}</span>
+                            <span className="ui-row-text">
+                              <span className="ui-thread-name">{p.name}</span>
+                              <span className="ui-thread-snip">nr {p.number}</span>
+                            </span>
+                          </UnstyledButton>
+                        ))}
+                      </div>
+                    ) : (
+                      search.trim() && <span className="ui-form-hint">Brak pracownika z aktywnym kontem</span>
+                    )}
+                  </>
+                )}
+              </div>
+              <TextInput size="md" label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
+            </>
+          ) : (
+            <Select size="md" label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
+          )}
+          <Textarea
+            size="md"
+            label={T("Treść")}
+            autosize
+            minRows={5}
+            maxRows={12}
+            maxLength={2000}
+            value={body}
+            onChange={(e) => setBody(e.currentTarget.value)}
+            rightSection={<DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />}
+            rightSectionProps={{ style: { alignItems: "flex-end", paddingBottom: 8 } }}
+            rightSectionWidth={52}
+          />
+          {staff && (
+            <span className="ui-form-hint">
+              Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
+            </span>
+          )}
+          {error && <Alert color="red">{error}</Alert>}
+        </div>
+        <div className="ui-chat-compose">
+          <Button size="lg" fullWidth radius="md" leftSection={<IconSend size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
+            {T("Wyślij")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <Stack p="md" maw={560}>
       <Title order={4}>{staff ? "Nowa wiadomość do pracownika" : T("Nowa wiadomość do kadr")}</Title>
@@ -864,7 +970,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
       detail={
         <>
   {composing ? (
-    <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
+    <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} mobile={!!mobile} />
   ) : openId !== null ? (
     <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} mobile={!!mobile} />
   ) : (

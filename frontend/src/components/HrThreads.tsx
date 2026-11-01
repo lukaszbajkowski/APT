@@ -11,7 +11,9 @@ import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
-import { CompactEmpty, PageHead, Segments } from "./Mobile";
+import { useNavigate } from "react-router-dom";
+import { ActionSheet, CompactEmpty, PageHead, Segments } from "./Mobile";
+import { IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
   id: number;
@@ -25,6 +27,7 @@ export interface ThreadRow {
   employee_id: number | null;
   employee_name: string | null;
   employee_number: string | null;
+  unread_count?: number;
 }
 interface Thread {
   id: number;
@@ -34,6 +37,8 @@ interface Thread {
   messages: { id: number; from_staff: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
   employee_name: string | null;
   employee_number: string | null;
+  employee_id?: number | null;
+  other_seen_at?: string | null;
 }
 
 export const THREAD_STATUS: Record<ThreadRow["status"], { label: string; color: string }> = {
@@ -96,7 +101,7 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
   );
 }
 
-function Conversation({ base, id, staff, onBack, showBack }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean }) {
+function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
   const T = useT();
   const qc = useQueryClient();
   const [body, setBody] = useState("");
@@ -196,6 +201,28 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
     onError: (e) => setError(errorText(e)),
   });
   const submit = () => body.trim() && !send.isPending && send.mutate();
+  if (mobile) {
+    return (
+      <MobileChat
+        t={t}
+        staff={staff}
+        onBack={onBack}
+        body={body}
+        setBody={setBody}
+        submit={submit}
+        sending={send.isPending}
+        error={error}
+        speechNote={speechNote}
+        clearSpeechNote={() => setSpeechNote(null)}
+        lang={ownLang ?? "pl"}
+        bottomRef={bottom}
+        setStatus={(v) => setStatus.mutate(v)}
+        archive={(on) => archive.mutate(on)}
+        translate={cfg.data?.enabled ? { exhausted: cfg.data.exhausted, tr, run: translateMessage, hide: (mid) => setTr((x) => { const { [mid]: _d, ...rest } = x; return rest; }), langName } : null}
+        listen={!staff && canSpeak() ? { speakingId, run: listen } : null}
+      />
+    );
+  }
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
       <Group justify="space-between" p="sm" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
@@ -360,6 +387,198 @@ function Conversation({ base, id, staff, onBack, showBack }: { base: string; id:
   );
 }
 
+const hm = (iso: string) => new Date(iso).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+function dayLabel(iso: string, T: (s: string) => string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const y = new Date();
+  y.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return T("Dziś");
+  if (d.toDateString() === y.toDateString()) return T("Wczoraj");
+  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+type TrState = Record<number, { text: string; source: string | null; target: string } | "loading">;
+
+/** Rozmowa na telefonie: pełny ekran jak w komunikatorze (makieta „Listy · Rozmowa”). */
+function MobileChat(props: {
+  t: Thread | undefined;
+  staff: boolean;
+  onBack: () => void;
+  body: string;
+  setBody: (v: string) => void;
+  submit: () => void;
+  sending: boolean;
+  error: string | null;
+  speechNote: string | null;
+  clearSpeechNote: () => void;
+  lang: string;
+  bottomRef: React.RefObject<HTMLDivElement>;
+  setStatus: (v: string) => void;
+  archive: (on: boolean) => void;
+  translate: { exhausted: boolean; tr: TrState; run: (id: number) => void; hide: (id: number) => void; langName: (c: string | null) => string } | null;
+  listen: { speakingId: number | null; run: (m: { id: number; body: string; from_staff: boolean }) => void } | null;
+}) {
+  const { t, staff, translate: tl, listen } = props;
+  const T = useT();
+  const nav = useNavigate();
+  const [menu, setMenu] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // klawiatura iOS zmniejsza widoczny obszar – okno rozmowy dopasowuje się do niego
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const fit = () => {
+      if (!box.current || !vv) return;
+      box.current.style.height = `${vv.height}px`;
+      box.current.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    fit();
+    vv?.addEventListener("resize", fit);
+    vv?.addEventListener("scroll", fit);
+    return () => {
+      document.body.style.overflow = prev;
+      vv?.removeEventListener("resize", fit);
+      vv?.removeEventListener("scroll", fit);
+    };
+  }, []);
+  const msgs = t?.messages ?? [];
+  const lastMine = [...msgs].reverse().find((m) => m.kind === "message" && m.from_staff === staff);
+  const seen = !!(lastMine && t?.other_seen_at && t.other_seen_at >= lastMine.created_at);
+  let day = "";
+  const statusActions = staff && t
+    ? (Object.entries(THREAD_STATUS) as [ThreadRow["status"], { label: string }][])
+        .filter(([v]) => v !== t.status)
+        .map(([v, x]) => ({
+          label: `${T("Oznacz jako")}: ${T(x.label).toLowerCase()}`,
+          icon: v === "done" ? <IconCircleCheck size={20} /> : v === "in_progress" ? <IconProgress size={20} /> : <IconInbox size={20} />,
+          onClick: () => props.setStatus(v),
+        }))
+    : [];
+  return (
+    <div className="ui-chat" ref={box}>
+      <header className="ui-chat-head">
+        <UnstyledButton className="ui-chat-btn" onClick={props.onBack} aria-label={T("Wróć do wiadomości")}>
+          <IconChevronLeft size={26} stroke={2.2} />
+        </UnstyledButton>
+        <span className="ui-chat-title">
+          <span className="ui-chat-name">{staff ? (t?.employee_name ?? "…") : (t?.subject ?? "…")}</span>
+          <span className="ui-chat-sub">
+            {staff ? `${t?.subject ?? ""}${t?.employee_number ? ` · nr ${t.employee_number}` : ""}` : T("Kadry")}
+            {t ? ` · ${T(THREAD_STATUS[t.status].label)}` : ""}
+          </span>
+        </span>
+        <UnstyledButton className="ui-chat-btn" onClick={() => setMenu(true)} aria-label={T("Więcej akcji")} disabled={!t}>
+          <IconDots size={24} />
+        </UnstyledButton>
+      </header>
+      <div className="ui-chat-body">
+        {msgs.map((m) => {
+          const dl = dayLabel(m.created_at, T);
+          const sep = dl !== day ? ((day = dl), <span key={`d${m.id}`} className="ui-chat-day">{dl}</span>) : null;
+          if (m.kind === "status") {
+            const label = T(THREAD_STATUS[m.body as ThreadRow["status"]]?.label ?? m.body);
+            const text = m.body === "done_auto"
+              ? T("Rozmowa zamknięta automatycznie – brak odpowiedzi przez 3 dni")
+              : m.from_staff
+              ? `${T("Status rozmowy")}: ${label.toLowerCase()}${staff && m.author_name ? ` · ${m.author_name}` : ""}`
+              : T("Rozmowa została otwarta ponownie");
+            return [sep, <span key={m.id} className="ui-chat-event">{text} · {hm(m.created_at)}</span>];
+          }
+          const mine = m.from_staff === staff;
+          const trv = tl?.tr[m.id];
+          const meta = [mine && staff && m.author_name ? m.author_name : null, hm(m.created_at), m === lastMine && seen ? T("przeczytane") : null].filter(Boolean).join(" · ");
+          return [
+            sep,
+            <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined}>
+              <div className="ui-chat-bubble">
+                {m.body}
+                {trv && trv !== "loading" && (
+                  <div className="ui-chat-tr">
+                    <span className="ui-chat-tr-label">{T("Tłumaczenie:")} {tl!.langName(trv.source)} → {tl!.langName(trv.target)}</span>
+                    {trv.text}
+                  </div>
+                )}
+              </div>
+              <span className="ui-chat-meta">
+                {meta}
+                {tl && !tl.exhausted && (
+                  <>
+                    {" · "}
+                    {trv === "loading" ? (
+                      T("Tłumaczę…")
+                    ) : (
+                      <button type="button" className="ui-chat-link" onClick={() => (trv ? tl.hide(m.id) : tl.run(m.id))}>
+                        {trv ? T("Ukryj tłumaczenie") : T("Przetłumacz")}
+                      </button>
+                    )}
+                  </>
+                )}
+                {listen && (
+                  <>
+                    {" · "}
+                    <button type="button" className="ui-chat-link" onClick={() => listen.run(m)}>
+                      {listen.speakingId === m.id ? T("Zatrzymaj") : T("Odsłuchaj")}
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>,
+          ];
+        })}
+        <div ref={props.bottomRef} />
+      </div>
+      {props.speechNote && (
+        <Alert color="orange" m="xs" p="xs" withCloseButton onClose={props.clearSpeechNote}>
+          {props.speechNote}
+        </Alert>
+      )}
+      {props.error && (
+        <Alert color="red" m="xs" p="xs">
+          {props.error}
+        </Alert>
+      )}
+      <div className="ui-chat-compose">
+        <Textarea
+          className="ui-chat-input"
+          aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
+          placeholder={staff ? "Napisz odpowiedź" : T("Napisz wiadomość")}
+          autosize
+          minRows={1}
+          maxRows={5}
+          maxLength={2000}
+          radius="xl"
+          size="md"
+          value={props.body}
+          onChange={(e) => props.setBody(e.currentTarget.value)}
+        />
+        <DictateButton lang={props.lang} value={props.body} onChange={props.setBody} />
+        <ActionIcon size={44} radius="xl" variant="filled" loading={props.sending} disabled={!props.body.trim()} onClick={props.submit} aria-label={T("Wyślij")}>
+          <IconArrowRight size={20} stroke={2.2} />
+        </ActionIcon>
+      </div>
+      {t && (
+        <ActionSheet
+          opened={menu}
+          onClose={() => setMenu(false)}
+          title={staff ? (t.employee_name ?? "") : t.subject}
+          subtitle={`${T("Status")}: ${T(THREAD_STATUS[t.status].label).toLowerCase()}${tl ? ` · ${tl.exhausted ? T("Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca.") : T("„Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.")}` : ""}`}
+          actions={[
+            ...statusActions,
+            ...(staff && t.employee_id ? [{ label: "Otwórz kartę pracownika", icon: <IconUser size={20} />, onClick: () => nav(`/pracownicy/${t.employee_id}`) }] : []),
+            ...(t.archived
+              ? [{ label: T("Przywróć z archiwum"), icon: <IconArchiveOff size={20} />, onClick: () => props.archive(false) }]
+              : t.status === "done"
+              ? [{ label: T("Archiwizuj"), icon: <IconArchive size={20} />, onClick: () => props.archive(true) }]
+              : []),
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
 type Preset = { id: string; name: string };
 
 function NewThread({ staff, preset, onCreated, onCancel }: { staff: boolean; preset?: Preset; onCreated: (id: number) => void; onCancel: () => void }) {
@@ -463,6 +682,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     ...LIVE,
   });
   const rows = list.data ?? [];
+  const counts = useQuery({ queryKey: ["hr-count", "seg"], queryFn: () => api<{ new: number; unread: number }>("/hr-messages/count"), enabled: staff && !!mobile, refetchInterval: 10000, ...LIVE });
   const showList = !mobile || (openId === null && !composing);
   const showRight = !mobile || openId !== null || composing;
   const back = () => {
@@ -471,6 +691,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   };
   if (mobile && showList) {
     const unreadN = rows.filter((t) => t.unread).length;
+    const newN = counts.data?.new ?? 0;
     const seg = view === "archive" ? "archive" : status === "new" ? "new" : "all";
     const compose = () => {
       setComposing(true);
@@ -494,7 +715,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           }}
           items={[
             { value: "all", label: T("Wszystkie") },
-            ...(staff ? [{ value: "new", label: "Nowe" }] : []),
+            ...(staff ? [{ value: "new", label: newN ? `Nowe · ${newN}` : "Nowe" }] : []),
             { value: "archive", label: T("Archiwum") },
           ]}
         />
@@ -517,7 +738,9 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                     </span>
                     <span className="ui-thread-line">
                       <span className="ui-thread-snip">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject)}</span>
-                      {t.unread ? <span className="ui-thread-dot" aria-label={T("Nieprzeczytane")} /> : null}
+                      {t.unread ? (
+                        <span className="ui-thread-count" aria-label={`${T("Nieprzeczytane")}: ${t.unread_count || 1}`}>{t.unread_count || 1}</span>
+                      ) : null}
                     </span>
                   </span>
                 </UnstyledButton>
@@ -643,7 +866,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   {composing ? (
     <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} />
   ) : openId !== null ? (
-    <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} />
+    <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} mobile={!!mobile} />
   ) : (
     <Stack h="100%" align="center" justify="center">
       <Text c="dimmed">{T("Wybierz rozmowę")}</Text>

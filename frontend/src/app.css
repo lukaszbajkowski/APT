@@ -546,3 +546,28 @@ html, body { background: var(--apt-ground); }
 .ui-task { display: flex; align-items: center; gap: 2px; min-height: 64px; padding: 4px 0 4px 4px; }
 .ui-link-strong { color: var(--mantine-primary-color-text); font-weight: 600; text-decoration: none; }
 .ui-due[data-warn] { color: var(--mantine-color-orange-text); font-weight: 600; }
+
+/* ——— rozmowa na telefonie (pełny ekran) ——— */
+.ui-thread-count { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.ui-thread[data-unread] .ui-thread-time { color: var(--mantine-primary-color-text); font-weight: 600; }
+.ui-chat { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; z-index: 150; background: var(--apt-ground); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-chat-head { flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-bottom: 1px solid var(--apt-line); }
+.ui-chat-btn { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mantine-color-text); border-radius: 12px; }
+.ui-chat-title { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.ui-chat-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-chat-sub { font-size: 12px; color: var(--mantine-color-dimmed); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-chat-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ui-chat-body > :first-child { margin-top: auto; }
+.ui-chat-day { align-self: center; font-size: 12px; color: var(--mantine-color-dimmed); padding: 2px 10px; border-radius: 10px; background: var(--apt-surface); margin-top: 4px; }
+.ui-chat-event { align-self: center; max-width: 90%; text-align: center; font-size: 12px; color: var(--mantine-color-dimmed); }
+.ui-chat-msg { align-self: flex-start; max-width: 80%; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.ui-chat-msg[data-mine] { align-self: flex-end; align-items: flex-end; }
+.ui-chat-bubble { padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--apt-subtle); color: var(--mantine-color-text); font-size: 16px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+.ui-chat-msg[data-mine] .ui-chat-bubble { border-radius: 16px 16px 4px 16px; background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); }
+.ui-chat-tr { margin-top: 6px; padding-top: 6px; border-top: 1px solid currentColor; display: flex; flex-direction: column; gap: 2px; }
+.ui-chat-tr-label { font-size: 12px; opacity: .8; }
+.ui-chat-meta { font-size: 12px; color: var(--mantine-color-dimmed); }
+.ui-chat-link { border: 0; background: none; padding: 0; font: inherit; color: var(--mantine-primary-color-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ui-chat-compose { flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--apt-line); background: var(--apt-nav); }
+.ui-chat-input { flex: 1; min-width: 0; }
+.ui-chat-compose .mantine-ActionIcon-root { width: 44px; height: 44px; min-width: 44px; }

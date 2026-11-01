@@ -58,6 +58,7 @@ class ThreadOut(BaseModel):
     employee_name: str | None = None
     employee_number: str | None = None
     archived: bool = False
+    other_seen_at: datetime | None = None
 
 
 class ThreadRow(BaseModel):
@@ -68,6 +69,7 @@ class ThreadRow(BaseModel):
     last_from_staff: bool
     preview: str
     unread: bool = False
+    unread_count: int = 0
     archived: bool = False
     employee_id: int | None = None
     employee_name: str | None = None
@@ -91,7 +93,7 @@ def _out(t: HrThread, staff: bool) -> ThreadOut:
                 id=m.id,
                 from_staff=m.from_staff,
                 kind=m.kind,  # type: ignore[arg-type]
-                author_name=m.author.full_name if staff and m.kind == "status" and m.author else None,
+                author_name=m.author.full_name if staff and m.author else None,
                 body=m.body,
                 created_at=m.created_at,
             )
@@ -100,6 +102,7 @@ def _out(t: HrThread, staff: bool) -> ThreadOut:
         employee_id=t.employee_id if staff else None,
         employee_name=f"{t.employee.last_name} {t.employee.first_name}" if staff else None,
         employee_number=format_number(t.employee.number) if staff else None,
+        other_seen_at=t.employee_seen_at if staff else t.staff_seen_at,
     )
 
 
@@ -197,6 +200,12 @@ def _unread(t: HrThread, staff: bool) -> bool:
     return last.from_staff != staff and (seen is None or seen < last.created_at)
 
 
+def _unread_count(t: HrThread, staff: bool) -> int:
+    """Liczba wiadomości od drugiej strony, których jeszcze nie otwarto."""
+    seen = t.staff_seen_at if staff else t.employee_seen_at
+    return sum(1 for m in t.messages if m.kind == "message" and m.from_staff != staff and (seen is None or m.created_at > seen))
+
+
 def _row(t: HrThread, staff: bool) -> ThreadRow:
     last = _last(t)
     return ThreadRow(
@@ -207,6 +216,7 @@ def _row(t: HrThread, staff: bool) -> ThreadRow:
         last_from_staff=last.from_staff,
         preview=last.body[:120],
         unread=_unread(t, staff),
+        unread_count=_unread_count(t, staff),
         archived=_archived(t, staff),
         employee_id=t.employee_id if staff else None,
         employee_name=f"{t.employee.last_name} {t.employee.first_name}" if staff else None,

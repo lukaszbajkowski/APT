@@ -143,7 +143,7 @@ export function ImportMobile(p: {
           <>
             <div className="ui-group">
               <ListRow
-                leading={<IconFileSpreadsheet size={22} color="var(--mantine-primary-color-text)" aria-hidden />}
+                leading={<span style={{ color: "var(--mantine-primary-color-text)", display: "flex" }}><IconFileSpreadsheet size={24} aria-hidden /></span>}
                 title={p.fileName ?? ""}
                 description={p.fileInfo}
                 trailing={

@@ -306,6 +306,7 @@ export interface SheetAction {
   icon?: ReactNode;
   onClick: () => void;
   danger?: boolean;
+  warn?: boolean;
   disabled?: boolean;
 }
 export function ActionSheet({
@@ -343,6 +344,7 @@ export function ActionSheet({
           key={a.label}
           className="ui-sheet-action"
           data-danger={a.danger || undefined}
+          data-warn={a.warn || undefined}
           disabled={a.disabled}
           onClick={() => {
             onClose();
@@ -402,10 +404,12 @@ export function PageHead({
   title,
   subtitle,
   action,
+  extra,
 }: {
   title: string;
   subtitle?: ReactNode;
   action?: { label: string; icon: ReactNode; onClick?: () => void; to?: string; variant?: "primary" | "outline" };
+  extra?: { label: string; icon: ReactNode; onClick: () => void };
 }) {
   const cls = action?.variant === "outline" ? "ui-head-action ui-head-action-outline" : "ui-head-action";
   return (
@@ -414,6 +418,12 @@ export function PageHead({
         <h1 className="ui-head-title">{title}</h1>
         {subtitle && <span className="ui-head-sub">{subtitle}</span>}
       </div>
+      <div style={{ display: "flex", gap: 8, flex: "none" }}>
+      {extra && (
+        <UnstyledButton className="ui-head-action ui-head-action-outline" aria-label={extra.label} onClick={extra.onClick}>
+          {extra.icon}
+        </UnstyledButton>
+      )}
       {action &&
         (action.to ? (
           <Link to={action.to} className={cls} aria-label={action.label}>
@@ -424,6 +434,7 @@ export function PageHead({
             {action.icon}
           </UnstyledButton>
         ))}
+      </div>
     </div>
   );
 }
@@ -436,12 +447,14 @@ export interface Chip {
   count?: number;
   onClick: () => void;
   menu?: boolean;
+  icon?: ReactNode;
 }
 export function Chips({ items }: { items: Chip[] }) {
   return (
     <div className="ui-chips" data-no-swipe>
       {items.map((c) => (
         <UnstyledButton key={c.label} className="ui-chip" data-active={c.active || undefined} data-warn={c.warn || undefined} aria-pressed={!!c.active} onClick={c.onClick}>
+          {c.icon}
           {c.label}
           {c.count !== undefined && <span className="ui-chip-count">{c.count}</span>}
           {c.menu && <IconChevronDown size={13} stroke={2.6} aria-hidden />}

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { SavedFilters } from "../components/SavedFilters";
+import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -8,6 +8,8 @@ import {
   Badge,
   Button,
   Checkbox,
+  Drawer,
+  Modal,
   Paper,
   Group,
   Menu,
@@ -23,7 +25,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight } from "@tabler/icons-react";
+import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -34,7 +36,7 @@ import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { ActionSheet, Chips, ListRow, PageHead, PickSheet, StatusBadge as Status } from "../components/Mobile";
+import { ActionSheet, Chips, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge as Status } from "../components/Mobile";
 
 const PAGE_SIZE = 50;
 
@@ -111,7 +113,18 @@ export function EmployeesPage() {
   const [filtersOpen, setFiltersOpen] = useState(() => !!(params.get("agency") || params.get("department") || params.get("position") || params.getAll("missing").length));
   const activeFilters = [agency, department, position].filter(Boolean).length + (missing.length ? 1 : 0);
   const [docsOpen, setDocsOpen] = useState(false);
-  const [pick, setPick] = useState<null | "status" | "agency" | "department" | "missing" | "add">(null);
+  const [pick, setPick] = useState<null | "status" | "agency" | "department" | "missing" | "add" | "more" | "selmore" | "filters" | "saved">(null);
+  const [sub, setSub] = useState<null | "agency" | "department" | "position" | "missing">(null);
+  const [selMode, setSelMode] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [viewMenu, setViewMenu] = useState<string | null>(null);
+  const saved = useSavedFilters();
+  // domyślny widok: otwiera się sam, gdy wchodzisz na listę bez żadnych filtrów
+  useEffect(() => {
+    if (!params.toString() && saved.defaultView) setParams(new URLSearchParams(saved.defaultView.query), { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [trainingOpen, setTrainingOpen] = useState(false);
   async function exportXlsx(withPesel: boolean, format: "xlsx" | "pdf" = "xlsx") {
     setExporting(true);
@@ -208,31 +221,85 @@ export function EmployeesPage() {
       { value: "all", label: "Wszyscy" },
     ];
     const name = (list: { id: number; name: string }[] | undefined, id: string | null) => list?.find((x) => String(x.id) === id)?.name;
+    const names = {
+      agency: (id: string) => name(agencies.data, id),
+      department: (id: string) => name(departments.data, id),
+      position: (id: string) => name(positions.data, id),
+    };
     const total = list.data?.total;
     const missingOpts = staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value));
     const warnOf = (e: Employee) =>
       [!e.has_photo && "zdjęcia", staff && !e.has_pesel && "PESEL"].filter(Boolean).join(", ");
+    const cur = new URLSearchParams(params);
+    cur.delete("page");
+    const curQuery = cur.toString();
+    const nFilters = activeFilters + (status !== "active" ? 1 : 0);
+    const people = (n: number) => (n === 1 ? "osoba" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "osoby" : "osób");
+    const summary = [name(agencies.data, agency), name(departments.data, department), name(positions.data, position), missing.length ? "z brakami" : null].filter(Boolean).join(", ");
+    const subtitle =
+      total === undefined
+        ? undefined
+        : summary || q.trim()
+        ? `${total} ${people(total)} · ${summary || `„${q.trim()}”`}`
+        : `${total} · ${STATUS.find((x) => x.value === status)?.label.toLowerCase()}`;
+    const positionOpts = (positions.data ?? []).filter((p) => !department || p.department_id === null || p.department_id === Number(department));
+    const exitSel = () => {
+      setSelMode(false);
+      setSelected(new Set());
+    };
+    const openSave = (initial = "") => {
+      setSaveName(initial);
+      setSaveOpen(true);
+    };
+    const curView = saved.items.find((i) => i.query === curQuery);
+    const row = (label: string, value: string | undefined, on: boolean, onClick: () => void) => (
+      <UnstyledButton className="ui-filter-row" onClick={onClick}>
+        <span className="ui-filter-label">{label}</span>
+        <span className="ui-filter-value" data-on={on || undefined}>
+          {value}
+          <IconChevronRight size={16} aria-hidden />
+        </span>
+      </UnstyledButton>
+    );
     return (
-      <Stack gap="md">
-        <PageHead
-          title="Pracownicy"
-          subtitle={total === undefined ? undefined : `${total} ${STATUS.find((x) => x.value === status)?.label.toLowerCase() ?? ""}`}
-          action={staff ? { label: "Dodaj pracownika", icon: <IconPlus size={22} />, onClick: () => setPick("add") } : undefined}
-        />
-        <TextInput
-          aria-label="Szukaj pracownika"
-          placeholder="Nazwisko, imię lub nr karty"
-          leftSection={<IconSearch size={18} aria-hidden />}
-          size="md"
-          value={q}
-          onChange={(e) => update({ q: e.currentTarget.value })}
-        />
+      <Stack gap="md" pb={selMode ? 80 : undefined}>
+        {selMode ? (
+          <div className="ui-selhead">
+            <UnstyledButton className="ui-selhead-btn" onClick={exitSel}>Anuluj</UnstyledButton>
+            <span className="ui-selhead-title" role="status" aria-live="polite">Zaznaczono {selected.size}</span>
+            <UnstyledButton
+              className="ui-selhead-btn"
+              disabled={selectingAll}
+              onClick={() => (selected.size && list.data && selected.size >= list.data.total ? setSelected(new Set()) : selectAllResults())}
+            >
+              {list.data && selected.size >= list.data.total && selected.size > 0 ? "Odznacz" : `Wszystkie (${total ?? 0})`}
+            </UnstyledButton>
+          </div>
+        ) : (
+          <PageHead
+            title="Pracownicy"
+            subtitle={subtitle}
+            extra={{ label: "Więcej akcji", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setPick("more") }}
+            action={staff ? { label: "Dodaj pracownika", icon: <IconPlus size={22} />, onClick: () => setPick("add") } : undefined}
+          />
+        )}
+        {!selMode && (
+          <TextInput
+            aria-label="Szukaj pracownika"
+            placeholder="Nazwisko, imię lub nr karty"
+            leftSection={<IconSearch size={18} aria-hidden />}
+            size="md"
+            value={q}
+            onChange={(e) => update({ q: e.currentTarget.value })}
+          />
+        )}
         <Chips
           items={[
-            { label: STATUS.find((x) => x.value === status)?.label ?? "Aktywni", active: true, menu: true, onClick: () => setPick("status") },
+            { label: nFilters ? `Filtry · ${nFilters}` : "Filtry", icon: <IconAdjustmentsHorizontal size={16} stroke={2.2} aria-hidden />, active: nFilters > 0, onClick: () => setPick("filters") },
+            { label: curView ? curView.name : "Zapisane", icon: <IconBookmark size={15} stroke={2.2} aria-hidden />, active: !!curView, menu: true, onClick: () => setPick("saved") },
+            { label: STATUS.find((x) => x.value === status)?.label ?? "Aktywni", menu: true, onClick: () => setPick("status") },
             { label: missing.length ? `Braki: ${missing.length}` : "Z brakami", warn: true, active: missing.length > 0, menu: true, onClick: () => setPick("missing") },
             { label: name(agencies.data, agency) ?? "Agencja", active: !!agency, menu: true, onClick: () => setPick("agency") },
-            { label: name(departments.data, department) ?? "Wydział", active: !!department, menu: true, onClick: () => setPick("department") },
           ]}
         />
         {list.isLoading && <Loading />}
@@ -249,11 +316,22 @@ export function EmployeesPage() {
           <div className="ui-group">
             {list.data.items.map((e) => {
               const w = warnOf(e);
+              const on = selected.has(e.id);
               return (
                 <ListRow
                   key={e.id}
-                  to={`/pracownicy/${e.id}`}
-                  leading={<EmployeePhoto employee={e} width={40} />}
+                  to={selMode ? undefined : `/pracownicy/${e.id}`}
+                  onClick={selMode ? () => toggle(e.id) : undefined}
+                  leading={
+                    <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {selMode && (
+                        <span className="ui-check" data-on={on || undefined} role="checkbox" aria-checked={on} aria-label={`Zaznacz: ${e.last_name} ${e.first_name}`}>
+                          {on && <IconCheck size={16} stroke={3} aria-hidden />}
+                        </span>
+                      )}
+                      <EmployeePhoto employee={e} width={40} />
+                    </span>
+                  }
                   title={`${e.last_name} ${e.first_name}`}
                   description={
                     <>
@@ -269,7 +347,7 @@ export function EmployeesPage() {
                   trailing={
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontFamily: "var(--mantine-font-family-monospace)", fontSize: 12, color: "var(--mantine-color-dimmed)" }}>{e.number_display}</span>
-                      <IconChevronRight size={16} className="ui-row-chevron" aria-hidden />
+                      {!selMode && <IconChevronRight size={16} className="ui-row-chevron" aria-hidden />}
                     </span>
                   }
                 />
@@ -280,13 +358,157 @@ export function EmployeesPage() {
         {list.data && list.data.total > PAGE_SIZE && (
           <Pagination total={Math.ceil(list.data.total / PAGE_SIZE)} value={page} onChange={(p) => update({ page: p === 1 ? null : String(p) }, false)} />
         )}
-        {list.data && list.data.total > 0 && <Group justify="flex-start">{exportMenu}</Group>}
+
+        {selMode && (
+          <div className="ui-selbar">
+            <Button size="lg" radius="md" style={{ flex: 1 }} leftSection={<IconPrinter size={18} />} disabled={!selected.size} onClick={() => setPrintOpen(true)}>
+              Drukuj karty{selected.size ? ` (${selected.size})` : ""}
+            </Button>
+            {staff && (
+              <ActionIcon size={50} radius="md" variant="default" aria-label="Inne akcje dla zaznaczonych" disabled={!selected.size} onClick={() => setPick("selmore")}>
+                <IconDots size={22} stroke={2.4} />
+              </ActionIcon>
+            )}
+          </div>
+        )}
+
+        {/* menu ⋯ */}
+        <ActionSheet
+          opened={pick === "more"}
+          onClose={() => setPick(null)}
+          title="Pracownicy"
+          subtitle={total !== undefined ? `${total} ${people(total)} w bieżącym widoku` : undefined}
+          actions={[
+            ...(canPrint ? [{ label: "Zaznacz kilka osób", description: staff ? "Druk kart, dokumenty, szkolenie dla grupy" : "Druk kart dla grupy", icon: <IconChecks size={20} />, onClick: () => setSelMode(true) }] : []),
+            { label: "Zapisz ten widok", description: describeQuery(curQuery, names), icon: <IconBookmark size={20} />, onClick: () => openSave(curView?.name ?? "") },
+            { label: "Pobierz listę – Excel", description: "Z bieżącymi filtrami", icon: <IconFileSpreadsheet size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false) },
+            { label: "Pobierz listę – PDF", icon: <IconFileText size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false, "pdf") },
+            ...(staff
+              ? [
+                  { label: "Z numerami PESEL – Excel", description: "Dane wrażliwe · pobranie trafia do dziennika", icon: <IconAlertTriangle size={20} />, warn: true, disabled: exporting || !total, onClick: () => exportXlsx(true) },
+                  { label: "Z numerami PESEL – PDF", description: "Dane wrażliwe · pobranie trafia do dziennika", icon: <IconAlertTriangle size={20} />, warn: true, disabled: exporting || !total, onClick: () => exportXlsx(true, "pdf") },
+                ]
+              : []),
+          ]}
+        />
+        <ActionSheet
+          opened={pick === "selmore"}
+          onClose={() => setPick(null)}
+          title={`Zaznaczone: ${selected.size}`}
+          actions={[
+            { label: "Wystaw dokument", icon: <IconFileText size={20} />, onClick: () => setDocsOpen(true) },
+            { label: "Dodaj szkolenie", description: selected.size > 200 ? "Najwyżej 200 osób naraz" : undefined, icon: <IconCertificate size={20} />, disabled: selected.size > 200, onClick: () => setTrainingOpen(true) },
+          ]}
+        />
+
+        {/* wszystkie filtry */}
+        <Drawer opened={pick === "filters"} onClose={() => setPick(null)} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Filtry">
+          <SheetHandle onClose={() => setPick(null)}>
+            <div className="ui-sheet-head">
+              <div className="ui-sheet-title">Filtry</div>
+            </div>
+          </SheetHandle>
+          <div style={{ padding: "0 16px 10px" }}>
+            <Segments value={status} onChange={(v) => update({ status: v === "active" ? null : v })} items={STATUS} />
+          </div>
+          {row("Agencja", name(agencies.data, agency) ?? "Wszystkie", !!agency, () => setSub("agency"))}
+          {row("Wydział", name(departments.data, department) ?? "Wszystkie", !!department, () => setSub("department"))}
+          {row("Stanowisko", name(positions.data, position) ?? "Wszystkie", !!position, () => setSub("position"))}
+          {row("Braki danych", missing.length ? (missing.length === 1 ? missingOpts.find((m) => m.value === missing[0])?.label : `${missing.length} rodzaje`) : "Bez filtra", missing.length > 0, () => setSub("missing"))}
+          <UnstyledButton className="ui-filter-save" onClick={() => openSave(curView?.name ?? "")}>
+            <IconBookmark size={18} aria-hidden /> Zapisz jako widok…
+          </UnstyledButton>
+          <div className="ui-filter-foot">
+            <Button size="lg" variant="default" radius="md" style={{ flex: 1 }} onClick={() => setParams(new URLSearchParams(q ? { q } : {}), { replace: true })}>
+              Wyczyść
+            </Button>
+            <Button size="lg" radius="md" style={{ flex: 2 }} onClick={() => setPick(null)}>
+              {total === undefined ? "Pokaż" : total === 0 ? "Brak wyników" : `Pokaż ${total} ${people(total)}`}
+            </Button>
+          </div>
+        </Drawer>
+
+        {/* zapisane widoki */}
+        <Drawer opened={pick === "saved"} onClose={() => setPick(null)} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Zapisane widoki">
+          <SheetHandle onClose={() => setPick(null)}>
+            <div className="ui-sheet-head">
+              <div className="ui-sheet-title">Zapisane widoki</div>
+              <div className="ui-row-desc">{saved.items.length ? "Dotknij, aby zastosować. Widoki są zapisane w tej przeglądarce." : "Nie masz jeszcze zapisanych widoków."}</div>
+            </div>
+          </SheetHandle>
+          {saved.items.map((v) => (
+            <div key={v.name} className="ui-view-row">
+              <UnstyledButton
+                className="ui-view-main"
+                onClick={() => {
+                  setParams(new URLSearchParams(v.query), { replace: true });
+                  setPick(null);
+                }}
+              >
+                <IconBookmark size={20} className="ui-view-icon" data-on={v.query === curQuery || undefined} aria-hidden />
+                <span className="ui-row-text">
+                  <span className="ui-row-title">
+                    {v.name}
+                    {v.default && <span className="ui-view-tag"> · domyślny</span>}
+                  </span>
+                  <span className="ui-row-desc">{describeQuery(v.query, names)}</span>
+                </span>
+              </UnstyledButton>
+              <ActionIcon size={44} variant="subtle" color="gray" aria-label={`Opcje widoku ${v.name}`} onClick={() => setViewMenu(v.name)}>
+                <IconDotsVertical size={20} />
+              </ActionIcon>
+            </div>
+          ))}
+          <UnstyledButton className="ui-filter-save" onClick={() => openSave(curView?.name ?? "")}>
+            <IconPlus size={18} aria-hidden /> Zapisz bieżące filtry
+          </UnstyledButton>
+        </Drawer>
+        <ActionSheet
+          opened={viewMenu !== null}
+          onClose={() => setViewMenu(null)}
+          title={viewMenu ?? ""}
+          actions={
+            viewMenu
+              ? [
+                  saved.items.find((i) => i.name === viewMenu)?.default
+                    ? { label: "Przestań używać jako domyślny", icon: <IconStarOff size={20} />, onClick: () => saved.setDefault(null) }
+                    : { label: "Ustaw jako domyślny", description: "Otwiera się sam, gdy wchodzisz na listę bez filtrów", icon: <IconStar size={20} />, onClick: () => saved.setDefault(viewMenu) },
+                  { label: "Zmień nazwę", icon: <IconPencil size={20} />, onClick: () => { setRenaming(viewMenu); setSaveName(viewMenu); setSaveOpen(true); } },
+                  { label: "Usuń widok", icon: <IconTrash size={20} />, danger: true, onClick: () => saved.remove(viewMenu) },
+                ]
+              : []
+          }
+        />
+        <Modal
+          opened={saveOpen}
+          onClose={() => { setSaveOpen(false); setRenaming(null); }}
+          title={renaming ? "Zmień nazwę widoku" : "Zapisz widok"}
+          size="sm"
+        >
+          <Stack>
+            {!renaming && <Text size="sm" c="dimmed">{describeQuery(curQuery, names)}</Text>}
+            <TextInput size="md" label="Nazwa" placeholder="Np. Suszarnia – braki" maxLength={40} value={saveName} onChange={(e) => setSaveName(e.currentTarget.value)} data-autofocus />
+            <Button
+              size="md"
+              disabled={!saveName.trim()}
+              onClick={() => {
+                if (renaming) saved.rename(renaming, saveName.trim());
+                else saved.save(saveName.trim(), curQuery);
+                notifications.show({ color: "green", message: renaming ? "Zmieniono nazwę widoku." : `Zapisano widok „${saveName.trim()}”.` });
+                setSaveOpen(false);
+                setRenaming(null);
+              }}
+            >
+              Zapisz
+            </Button>
+          </Stack>
+        </Modal>
 
         <PickSheet opened={pick === "status"} onClose={() => setPick(null)} title="Pokaż" options={STATUS} value={[status]} onChange={(v) => update({ status: v[0] === "active" ? null : v[0] })} />
-        <PickSheet opened={pick === "missing"} onClose={() => setPick(null)} title="Braki w danych" options={missingOpts} value={missing} multiple clearLabel="Bez filtra" onChange={(v) => update({ missing: v })} />
+        <PickSheet opened={pick === "missing" || sub === "missing"} onClose={() => { setPick((x) => (x === "missing" ? null : x)); setSub(null); }} title="Braki w danych" options={missingOpts} value={missing} multiple clearLabel="Bez filtra" onChange={(v) => update({ missing: v })} />
         <PickSheet
-          opened={pick === "agency"}
-          onClose={() => setPick(null)}
+          opened={pick === "agency" || sub === "agency"}
+          onClose={() => { setPick((x) => (x === "agency" ? null : x)); setSub(null); }}
           title="Agencja (APT)"
           options={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
           value={agency ? [agency] : []}
@@ -294,13 +516,22 @@ export function EmployeesPage() {
           onChange={(v) => update({ agency: v[0] ?? null })}
         />
         <PickSheet
-          opened={pick === "department"}
-          onClose={() => setPick(null)}
+          opened={sub === "department"}
+          onClose={() => setSub(null)}
           title="Wydział"
           options={(departments.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
           value={department ? [department] : []}
           clearLabel="Wszystkie wydziały"
           onChange={(v) => update({ department: v[0] ?? null, position: null })}
+        />
+        <PickSheet
+          opened={sub === "position"}
+          onClose={() => setSub(null)}
+          title="Stanowisko"
+          options={positionOpts.map((a) => ({ value: String(a.id), label: a.name }))}
+          value={position ? [position] : []}
+          clearLabel="Wszystkie stanowiska"
+          onChange={(v) => update({ position: v[0] ?? null })}
         />
         <ActionSheet
           opened={pick === "add"}
@@ -311,6 +542,9 @@ export function EmployeesPage() {
             { label: "Importuj z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/pracownicy/import") },
           ]}
         />
+        {canPrint && <PrintCardsModal ids={[...selected]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
+        {trainingOpen && <TrainingModal employeeIds={[...selected]} editing={null} opened={trainingOpen} onClose={() => setTrainingOpen(false)} />}
+        {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
       </Stack>
     );
   }

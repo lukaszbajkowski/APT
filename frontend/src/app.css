@@ -375,6 +375,7 @@ html, body { background: var(--apt-ground); }
 .ui-sheet-action:hover, .ui-sheet-action:active { background: var(--apt-subtle); }
 .ui-sheet-action[data-danger] .ui-row-title, .ui-sheet-action[data-danger] .ui-sheet-icon { color: var(--mantine-color-red-text); }
 .ui-sheet-action:disabled { opacity: .5; }
+.ui-sheet-action[data-warn] .ui-row-title, .ui-sheet-action[data-warn] .ui-sheet-icon { color: var(--mantine-color-orange-text); }
 .ui-sheet-icon { display: flex; color: var(--mantine-primary-color-text); }
 .ui-sheet-close {
   margin-top: 8px;
@@ -581,3 +582,22 @@ html, body { background: var(--apt-ground); }
 .ui-chat-compose { flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--apt-line); background: var(--apt-nav); }
 .ui-chat-input { flex: 1; min-width: 0; }
 .ui-chat-compose .mantine-ActionIcon-root { width: 44px; height: 44px; min-width: 44px; }
+
+/* ——— filtry i zaznaczanie (lista pracowników, telefon) ——— */
+.ui-filter-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 0 20px; box-sizing: border-box; border-top: 1px solid var(--apt-line); }
+.ui-filter-label { font-size: 16px; font-weight: 600; }
+.ui-filter-value { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--mantine-color-dimmed); min-width: 0; text-align: right; }
+.ui-filter-value[data-on] { color: var(--mantine-color-text); font-weight: 700; }
+.ui-filter-save { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 0 20px; box-sizing: border-box; color: var(--mantine-primary-color-text); font-weight: 700; font-size: 15px; border-top: 1px solid var(--apt-line); }
+.ui-filter-foot { display: flex; gap: 10px; padding: 14px 16px 6px; border-top: 1px solid var(--apt-line); }
+.ui-view-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; border-top: 1px solid var(--apt-line); }
+.ui-view-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 0 6px 20px; text-align: left; }
+.ui-view-icon { flex: none; color: var(--mantine-color-dimmed); }
+.ui-view-icon[data-on] { color: var(--mantine-primary-color-text); }
+.ui-view-tag { font-size: 12px; font-weight: 600; color: var(--mantine-color-dimmed); }
+.ui-selhead { display: flex; align-items: center; justify-content: space-between; min-height: 52px; gap: 8px; }
+.ui-selhead-title { font-size: 18px; font-weight: 800; }
+.ui-selhead-btn { min-height: 44px; padding: 0 4px; font-size: 15px; font-weight: 700; color: var(--mantine-primary-color-text); }
+.ui-check { width: 24px; height: 24px; flex: none; box-sizing: border-box; border-radius: 7px; border: 2px solid var(--mantine-color-default-border); display: flex; align-items: center; justify-content: center; color: var(--mantine-primary-color-contrast); }
+.ui-check[data-on] { background: var(--mantine-primary-color-filled); border-color: var(--mantine-primary-color-filled); }
+.ui-selbar { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 120; display: flex; gap: 8px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }

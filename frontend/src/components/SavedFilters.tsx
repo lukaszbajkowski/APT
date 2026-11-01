@@ -4,9 +4,10 @@ import { IconBookmark, IconBookmarkPlus, IconX } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 
-interface Saved {
+export interface Saved {
   name: string;
   query: string;
+  default?: boolean;
 }
 
 function read(key: string): Saved[] {
@@ -16,6 +17,44 @@ function read(key: string): Saved[] {
   } catch {
     return [];
   }
+}
+
+/** Zapisane widoki listy pracowników (w tej przeglądarce, osobno dla każdego konta). */
+export function useSavedFilters() {
+  const { me } = useAuth();
+  const key = `apt-filters-${me?.user.id ?? 0}`;
+  const [items, setItems] = useState<Saved[]>(() => read(key));
+  function persist(next: Saved[]) {
+    setItems(next);
+    try {
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* tryb prywatny – widoki zostaną tylko do końca tej sesji */
+    }
+  }
+  return {
+    items,
+    save: (name: string, query: string) => persist([...items.filter((i) => i.name !== name), { name, query, default: items.find((i) => i.name === name)?.default }].slice(-20)),
+    remove: (name: string) => persist(items.filter((i) => i.name !== name)),
+    rename: (from: string, to: string) => persist(items.filter((i) => i.name !== to || i.name === from).map((i) => (i.name === from ? { ...i, name: to } : i))),
+    setDefault: (name: string | null) => persist(items.map((i) => ({ ...i, default: i.name === name || undefined }))),
+    defaultView: items.find((i) => i.default) ?? null,
+  };
+}
+
+/** Czytelny opis filtrów widoku, np. „Suszarnia krwi · z brakami”. */
+export function describeQuery(query: string, names: { agency?: (id: string) => string | undefined; department?: (id: string) => string | undefined; position?: (id: string) => string | undefined }): string {
+  const p = new URLSearchParams(query);
+  const parts: string[] = [];
+  const st = p.get("status");
+  parts.push(st === "terminated" ? "Archiwum" : st === "all" ? "Wszyscy" : "Aktywni");
+  const a = p.get("agency"), d = p.get("department"), po = p.get("position");
+  if (a) parts.push(names.agency?.(a) ?? "agencja");
+  if (d) parts.push(names.department?.(d) ?? "wydział");
+  if (po) parts.push(names.position?.(po) ?? "stanowisko");
+  if (p.getAll("missing").length) parts.push("z brakami");
+  if (p.get("q")) parts.push(`„${p.get("q")}”`);
+  return parts.join(" · ");
 }
 
 /**

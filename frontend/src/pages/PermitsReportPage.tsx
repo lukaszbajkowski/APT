@@ -21,6 +21,7 @@ export function PermitsReportPage() {
       <Stack gap="md">
         <PageHead title="Dokumenty pobytowe" subtitle="Nieważne i kończące się w 60 dni" />
         <Segments
+          swipe
           value={all ? "all" : "problems"}
           onChange={(v) => setAll(v === "all")}
           items={[

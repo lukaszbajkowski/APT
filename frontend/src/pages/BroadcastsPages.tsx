@@ -244,6 +244,7 @@ export function BroadcastsPage() {
           action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => { setComposing(true); setOpenId(null); } }}
         />
         <Segments
+          swipe
           value={seg}
           onChange={(v) => {
             setArchive(v === "archive");

@@ -465,7 +465,38 @@ export function Chips({ items }: { items: Chip[] }) {
 }
 
 /* ——— przełącznik 2–3 widoków (pełna szerokość) ——— */
-export function Segments({ value, onChange, items }: { value: string; onChange: (v: string) => void; items: { value: string; label: string }[] }) {
+export function Segments({ value, onChange, items, swipe }: { value: string; onChange: (v: string) => void; items: { value: string; label: string }[]; swipe?: boolean }) {
+  // przesunięcie palcem w bok na ekranie przełącza na sąsiednią zakładkę
+  const cur = useRef({ value, items, onChange });
+  cur.current = { value, items, onChange };
+  useEffect(() => {
+    if (!swipe) return;
+    const st = { x: 0, y: 0, skip: false };
+    const start = (e: globalThis.TouchEvent) => {
+      const t = e.target as HTMLElement;
+      st.skip = typeof t?.closest === "function" && !!t.closest("input, textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer, .ui-chat, nav, .tabbar");
+      st.x = e.touches[0].clientX;
+      st.y = e.touches[0].clientY;
+    };
+    const end = (e: globalThis.TouchEvent) => {
+      if (st.skip) return;
+      const dx = e.changedTouches[0].clientX - st.x;
+      const dy = e.changedTouches[0].clientY - st.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const { value: v, items: its, onChange: go } = cur.current;
+      const i = its.findIndex((x) => x.value === v) + (dx < 0 ? 1 : -1);
+      if (i < 0 || i >= its.length) return;
+      document.body.dataset.slide = dx < 0 ? "l" : "r";
+      window.setTimeout(() => delete document.body.dataset.slide, 260);
+      go(its[i].value);
+    };
+    window.addEventListener("touchstart", start, { passive: true });
+    window.addEventListener("touchend", end, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [swipe]);
   return (
     <div className="ui-seg" role="tablist" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
       {items.map((i) => (

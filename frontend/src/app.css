@@ -601,3 +601,10 @@ html, body { background: var(--apt-ground); }
 .ui-check { width: 24px; height: 24px; flex: none; box-sizing: border-box; border-radius: 7px; border: 2px solid var(--mantine-color-default-border); display: flex; align-items: center; justify-content: center; color: var(--mantine-primary-color-contrast); }
 .ui-check[data-on] { background: var(--mantine-primary-color-filled); border-color: var(--mantine-primary-color-filled); }
 .ui-selbar { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 120; display: flex; gap: 8px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
+
+/* przełączenie zakładki przesunięciem palca – treść wjeżdża z właściwej strony */
+@keyframes ui-in-l { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes ui-in-r { from { transform: translateX(-40px); opacity: .3; } to { transform: none; opacity: 1; } }
+body[data-slide="l"] .ui-group, body[data-slide="l"] .ui-empty { animation: ui-in-l .24s ease-out; }
+body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-in-r .24s ease-out; }
+@media (prefers-reduced-motion: reduce) { body[data-slide] .ui-group, body[data-slide] .ui-empty { animation: none; } }

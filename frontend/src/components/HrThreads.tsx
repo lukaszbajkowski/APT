@@ -814,6 +814,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           <TextInput size="md" aria-label="Szukaj wiadomości" placeholder="Nazwisko lub temat" leftSection={<IconSearch size={18} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
         )}
         <Segments
+          swipe
           value={seg}
           onChange={(v) => {
             setView(v === "archive" ? "archive" : "active");

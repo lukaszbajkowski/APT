@@ -119,6 +119,7 @@ function OpenTasks() {
     return (
       <Stack gap="md">
         <Segments
+          swipe
           value={mine}
           onChange={setMine}
           items={[

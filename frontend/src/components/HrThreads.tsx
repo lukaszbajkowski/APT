@@ -627,7 +627,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
     onError: (e) => setError(errorText(e)),
   });
   const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
-  useChatViewport(box, !!mobile);
+  useChatViewport(box, false);
   if (mobile) {
     const picked = employee
       ? preset && preset.id === employee
@@ -635,7 +635,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
       : null;
     return (
-      <div className="ui-chat" ref={box}>
+      <div className="ui-inpage" ref={box}>
         <header className="ui-chat-head">
           <UnstyledButton className="ui-chat-btn" onClick={onCancel} aria-label={T("Anuluj")}>
             <IconChevronLeft size={26} stroke={2.2} />

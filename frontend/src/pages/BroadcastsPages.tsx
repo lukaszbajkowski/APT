@@ -14,7 +14,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { CompactEmpty, PageHead, Segments } from "../components/Mobile";
+import { CompactEmpty, PageHead, Segments, SwipePager } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -160,6 +160,9 @@ export function BroadcastsPage() {
     queryFn: () => api<Broadcast[]>(`/broadcasts?archived=${archive}`),
     refetchInterval: 15_000,
   });
+  // telefon: obie listy wczytane od razu, żeby przesuwanie zakładek pokazywało gotową treść
+  const live = useQuery({ queryKey: ["broadcasts", false], queryFn: () => api<Broadcast[]>(`/broadcasts?archived=false`), refetchInterval: 15_000, enabled: !!mobile });
+  const arch2 = useQuery({ queryKey: ["broadcasts", true], queryFn: () => api<Broadcast[]>(`/broadcasts?archived=true`), refetchInterval: 15_000, enabled: !!mobile });
   const [openId, setOpenId] = useState<number | null>(null);
   const [tab, setTab] = useState<"content" | "read">("content");
   useEffect(() => setTab("content"), [openId]);
@@ -244,7 +247,6 @@ export function BroadcastsPage() {
           action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => { setComposing(true); setOpenId(null); } }}
         />
         <Segments
-          swipe
           value={seg}
           onChange={(v) => {
             setArchive(v === "archive");
@@ -256,27 +258,44 @@ export function BroadcastsPage() {
             { value: "archive", label: "Archiwum" },
           ]}
         />
-        {list.isLoading && <Loading rows={3} />}
-        {list.data && rows.length === 0 && <CompactEmpty title="Brak komunikatów" text={archive ? undefined : "Nowy komunikat dodasz przyciskiem „+”."} />}
-        {rows.length > 0 && (
-          <div className="ui-group">
-            {rows.map((x) => (
-              <UnstyledButton key={x.id} className="ui-bc" onClick={() => setOpenId(x.id)}>
-                <span className="ui-thread-line">
-                  <span className="ui-thread-name">{x.subject}</span>
-                  <span className="ui-thread-time">{shortTime(x.created_at)}</span>
-                </span>
-                <span className="ui-row-desc">{x.target}{x.kind === "document" ? " · Dokument" : ""}</span>
-                <span className="ui-bc-read">
-                  <span className="ui-bc-bar" role="img" aria-label={`Przeczytało ${x.read} z ${x.total}`}>
-                    <span style={{ width: `${x.total ? Math.round((x.read / x.total) * 100) : 0}%` }} />
-                  </span>
-                  <span>Przeczytało {x.read} z {x.total}</span>
-                </span>
-              </UnstyledButton>
-            ))}
-          </div>
-        )}
+        <SwipePager
+          index={["active", "done", "archive"].indexOf(seg)}
+          onIndex={(i) => {
+            const v = ["active", "done", "archive"][i];
+            setArchive(v === "archive");
+            setStatus(v === "done" ? "done" : v === "active" ? "open" : "");
+          }}
+        >
+          {(["active", "done", "archive"] as const).map((v) => {
+            const src = v === "archive" ? arch2.data : live.data;
+            const items = (src ?? []).filter((x) => v === "archive" || (v === "done") === x.finished);
+            return (
+              <Stack key={v} gap="md">
+                {!src && <Loading rows={3} />}
+                {src && items.length === 0 && <CompactEmpty title="Brak komunikatów" text={v === "archive" ? undefined : "Nowy komunikat dodasz przyciskiem „+”."} />}
+                {items.length > 0 && (
+                  <div className="ui-group">
+                    {items.map((x) => (
+                      <UnstyledButton key={x.id} className="ui-bc" onClick={() => setOpenId(x.id)}>
+                        <span className="ui-thread-line">
+                          <span className="ui-thread-name">{x.subject}</span>
+                          <span className="ui-thread-time">{shortTime(x.created_at)}</span>
+                        </span>
+                        <span className="ui-row-desc">{x.target}{x.kind === "document" ? " · Dokument" : ""}</span>
+                        <span className="ui-bc-read">
+                          <span className="ui-bc-bar" role="img" aria-label={`Przeczytało ${x.read} z ${x.total}`}>
+                            <span style={{ width: `${x.total ? Math.round((x.read / x.total) * 100) : 0}%` }} />
+                          </span>
+                          <span>Przeczytało {x.read} z {x.total}</span>
+                        </span>
+                      </UnstyledButton>
+                    ))}
+                  </div>
+                )}
+              </Stack>
+            );
+          })}
+        </SwipePager>
       </Stack>
     );
   }

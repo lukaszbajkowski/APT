@@ -9,7 +9,7 @@ import { api, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 import { ErrorState, Loading } from "../components/States";
-import { ActionSheet, CompactEmpty, GroupLabel, PageHead, Segments } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, GroupLabel, PageHead, Segments, SwipePager } from "../components/Mobile";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -88,10 +88,14 @@ function OpenTasks() {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<Task | null>(null);
+  // telefon: obie zakładki wczytane od razu – przesuwanie pokazuje gotową treść
+  const other = useQuery({
+    queryKey: ["tasks", mine === "mine" ? "all" : "mine"],
+    queryFn: () => api<Task[]>(`/tasks${mine === "mine" ? "" : "?mine=true"}`),
+    enabled: !!mobile,
+  });
 
   if (mobile) {
-    const late = rows.filter((t) => t.state === "overdue");
-    const rest = rows.filter((t) => t.state !== "overdue");
     const row = (t: Task) => (
       <div key={t.id} className="ui-task">
         <Checkbox
@@ -119,7 +123,6 @@ function OpenTasks() {
     return (
       <Stack gap="md">
         <Segments
-          swipe
           value={mine}
           onChange={setMine}
           items={[
@@ -127,21 +130,33 @@ function OpenTasks() {
             { value: "all", label: "Wszystkie" },
           ]}
         />
-        {q.isLoading && <Loading rows={3} />}
-        {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
-        {q.data && rows.length === 0 && <CompactEmpty title="Brak otwartych zadań" text="Wszystko zrobione." />}
-        {late.length > 0 && (
-          <>
-            <GroupLabel warn>Po terminie · {late.length}</GroupLabel>
-            <div className="ui-group">{late.map(row)}</div>
-          </>
-        )}
-        {rest.length > 0 && (
-          <>
-            <GroupLabel>Najbliższe</GroupLabel>
-            <div className="ui-group">{rest.map(row)}</div>
-          </>
-        )}
+        <SwipePager index={mine === "mine" ? 0 : 1} onIndex={(i) => setMine(i === 0 ? "mine" : "all")}>
+          {(["mine", "all"] as const).map((v) => {
+            const src = v === mine ? q : other;
+            const list = src.data ?? [];
+            const late = list.filter((t) => t.state === "overdue");
+            const rest = list.filter((t) => t.state !== "overdue");
+            return (
+              <Stack key={v} gap="md">
+                {src.isLoading && <Loading rows={3} />}
+                {src.error && <ErrorState error={src.error} onRetry={() => src.refetch()} />}
+                {src.data && list.length === 0 && <CompactEmpty title="Brak otwartych zadań" text="Wszystko zrobione." />}
+                {late.length > 0 && (
+                  <>
+                    <GroupLabel warn>Po terminie · {late.length}</GroupLabel>
+                    <div className="ui-group">{late.map(row)}</div>
+                  </>
+                )}
+                {rest.length > 0 && (
+                  <>
+                    <GroupLabel>Najbliższe</GroupLabel>
+                    <div className="ui-group">{rest.map(row)}</div>
+                  </>
+                )}
+              </Stack>
+            );
+          })}
+        </SwipePager>
         <ActionSheet
           opened={!!sheet}
           onClose={() => setSheet(null)}

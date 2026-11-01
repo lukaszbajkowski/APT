@@ -12,7 +12,7 @@ import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
-import { ActionSheet, CompactEmpty, PageHead, Segments } from "./Mobile";
+import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager } from "./Mobile";
 import { IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
@@ -788,6 +788,22 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     ...LIVE,
   });
   const rows = list.data ?? [];
+  // telefon: wszystkie zakładki wczytane od razu – przesuwanie pokazuje gotową treść
+  const segs: string[] = staff ? ["all", "new", "archive"] : ["all", "archive"];
+  const segQuery = (sv: string) => ({
+    queryKey: ["threads", base, q, sv === "new" ? "new" : "", sv === "archive" ? "archive" : "active"],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (sv === "archive") p.set("archived", "true");
+      if (q.trim()) p.set("q", q.trim());
+      if (sv === "new") p.set("status_filter", "new");
+      return api<ThreadRow[]>(`${base}?${p.toString()}`);
+    },
+    refetchInterval: 4000,
+    enabled: !!mobile && (sv !== "new" || staff),
+    ...LIVE,
+  });
+  const segQ = { all: useQuery(segQuery("all")), new: useQuery(segQuery("new")), archive: useQuery(segQuery("archive")) } as Record<string, ReturnType<typeof useQuery<ThreadRow[]>>>;
   const counts = useQuery({ queryKey: ["hr-count", "seg"], queryFn: () => api<{ new: number; unread: number }>("/hr-messages/count"), enabled: staff && !!mobile, refetchInterval: 10000, ...LIVE });
   const showList = !mobile || (openId === null && !composing);
   const showRight = !mobile || openId !== null || composing;
@@ -814,7 +830,6 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           <TextInput size="md" aria-label="Szukaj wiadomości" placeholder="Nazwisko lub temat" leftSection={<IconSearch size={18} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
         )}
         <Segments
-          swipe
           value={seg}
           onChange={(v) => {
             setView(v === "archive" ? "archive" : "active");
@@ -826,35 +841,52 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
             { value: "archive", label: T("Archiwum") },
           ]}
         />
-        {rows.length === 0 ? (
-          <CompactEmpty
-            title={q.trim() ? `Brak wyników dla „${q.trim()}”` : view === "archive" ? T("Archiwum jest puste") : staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
-            text={view === "archive" ? undefined : staff ? "Możesz sam zacząć rozmowę ikoną ołówka." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
-          />
-        ) : (
-          <div className="ui-group">
-            {rows.map((t) => {
-              const name = staff ? (t.employee_name ?? "") : T("Kadry");
-              return (
-                <UnstyledButton key={t.id} className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
-                  <span className="ui-thread-avatar" aria-hidden>{initials(name)}</span>
-                  <span className="ui-row-text">
-                    <span className="ui-thread-line">
-                      <span className="ui-thread-name">{name}</span>
-                      <span className="ui-thread-time">{shortTime(t.updated_at)}</span>
-                    </span>
-                    <span className="ui-thread-line">
-                      <span className="ui-thread-snip">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject)}</span>
-                      {t.unread ? (
-                        <span className="ui-thread-count" aria-label={`${T("Nieprzeczytane")}: ${t.unread_count || 1}`}>{t.unread_count || 1}</span>
-                      ) : null}
-                    </span>
-                  </span>
-                </UnstyledButton>
-              );
-            })}
-          </div>
-        )}
+        <SwipePager
+          index={Math.max(0, segs.indexOf(seg))}
+          onIndex={(i) => {
+            const v = segs[i];
+            setView(v === "archive" ? "archive" : "active");
+            setStatus(v === "new" ? "new" : "");
+          }}
+        >
+          {segs.map((sv) => {
+            const src = segQ[sv];
+            const rs = src.data ?? [];
+            return (
+              <div key={sv}>
+                {src.data && rs.length === 0 ? (
+                  <CompactEmpty
+                    title={q.trim() ? `Brak wyników dla „${q.trim()}”` : sv === "archive" ? T("Archiwum jest puste") : sv === "new" ? "Brak nowych rozmów" : staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
+                    text={sv === "archive" ? undefined : staff ? "Możesz sam zacząć rozmowę ikoną ołówka." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
+                  />
+                ) : (
+                  <div className="ui-group">
+                    {rs.map((t) => {
+                      const name = staff ? (t.employee_name ?? "") : T("Kadry");
+                      return (
+                        <UnstyledButton key={t.id} className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
+                          <span className="ui-thread-avatar" aria-hidden>{initials(name)}</span>
+                          <span className="ui-row-text">
+                            <span className="ui-thread-line">
+                              <span className="ui-thread-name">{name}</span>
+                              <span className="ui-thread-time">{shortTime(t.updated_at)}</span>
+                            </span>
+                            <span className="ui-thread-line">
+                              <span className="ui-thread-snip">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject)}</span>
+                              {t.unread ? (
+                                <span className="ui-thread-count" aria-label={`${T("Nieprzeczytane")}: ${t.unread_count || 1}`}>{t.unread_count || 1}</span>
+                              ) : null}
+                            </span>
+                          </span>
+                        </UnstyledButton>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </SwipePager>
       </Stack>
     );
   }

@@ -7,7 +7,7 @@ import { api, formatDate, type PermitRow } from "../api";
 import { PERMIT_STATE } from "../components/Permits";
 import { ErrorState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, cap } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap } from "../components/Mobile";
 
 export function PermitsReportPage() {
   const [all, setAll] = useState(false);
@@ -16,47 +16,7 @@ export function PermitsReportPage() {
     queryKey: ["permits-report", all],
     queryFn: () => api<PermitRow[]>(`/permits/report?only_problems=${all ? "false" : "true"}`),
   });
-  if (mobile)
-    return (
-      <Stack gap="md">
-        <PageHead title="Dokumenty pobytowe" subtitle="Nieważne i kończące się w 60 dni" />
-        <Segments
-          swipe
-          value={all ? "all" : "problems"}
-          onChange={(v) => setAll(v === "all")}
-          items={[
-            { value: "problems", label: !all && q.data ? `Wymagają uwagi · ${q.data.length}` : "Wymagają uwagi" },
-            { value: "all", label: "Wszystkie" },
-          ]}
-        />
-        {q.isLoading && <Loading rows={3} />}
-        {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
-        {q.data && q.data.length === 0 && <CompactEmpty title="Nic nie wymaga uwagi" />}
-        {q.data && q.data.length > 0 && (
-          <div className="ui-group">
-            {q.data.map((r, i) => (
-              <ListRow
-                key={`${r.employee_id}-${r.kind_label}-${i}`}
-                to={`/pracownicy/${r.employee_id}`}
-                title={r.employee}
-                description={
-                  <>
-                    {cap(r.kind_label)} · nr {r.number}
-                    <br />
-                    <StatusBadge tone={r.state === "expired" ? "error" : r.state === "expiring" ? "warn" : "ok"}>
-                      {r.state === "expired" ? `Nieważny od ${formatDate(r.valid_until)}` : r.state === "expiring" ? `Kończy się ${formatDate(r.valid_until)}` : `Ważny do ${formatDate(r.valid_until)}`}
-                    </StatusBadge>
-                  </>
-                }
-              />
-            ))}
-          </div>
-        )}
-        <Text size="sm" c="dimmed">
-          Przypomnienie e-mail przychodzi w poniedziałki.
-        </Text>
-      </Stack>
-    );
+  if (mobile) return <PermitsMobile all={all} setAll={setAll} />;
   return (
     <Stack>
       <Group justify="space-between">
@@ -106,6 +66,63 @@ export function PermitsReportPage() {
           </Table>
         </Card>
       )}
+    </Stack>
+  );
+}
+
+function PermitsList({ all }: { all: boolean }) {
+  const q = useQuery({
+    queryKey: ["permits-report", all],
+    queryFn: () => api<PermitRow[]>(`/permits/report?only_problems=${all ? "false" : "true"}`),
+  });
+  return (
+    <Stack gap="md">
+      {q.isLoading && <Loading rows={3} />}
+      {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
+      {q.data && q.data.length === 0 && <CompactEmpty title={all ? "Brak dokumentów pobytowych" : "Nic nie wymaga uwagi"} />}
+      {q.data && q.data.length > 0 && (
+        <div className="ui-group">
+          {q.data.map((r, i) => (
+            <ListRow
+              key={`${r.employee_id}-${r.kind_label}-${i}`}
+              to={`/pracownicy/${r.employee_id}`}
+              title={r.employee}
+              description={
+                <>
+                  {cap(r.kind_label)} · nr {r.number}
+                  <br />
+                  <StatusBadge tone={r.state === "expired" ? "error" : r.state === "expiring" ? "warn" : "ok"}>
+                    {r.state === "expired" ? `Nieważny od ${formatDate(r.valid_until)}` : r.state === "expiring" ? `Kończy się ${formatDate(r.valid_until)}` : `Ważny do ${formatDate(r.valid_until)}`}
+                  </StatusBadge>
+                </>
+              }
+            />
+          ))}
+        </div>
+      )}
+      <Text size="sm" c="dimmed">
+        Przypomnienie e-mail przychodzi w poniedziałki.
+      </Text>
+    </Stack>
+  );
+}
+
+function PermitsMobile({ all, setAll }: { all: boolean; setAll: (v: boolean) => void }) {
+  const problems = useQuery({ queryKey: ["permits-report", false], queryFn: () => api<PermitRow[]>(`/permits/report?only_problems=true`) });
+  return (
+    <Stack gap="md">
+      <PageHead title="Dokumenty pobytowe" subtitle="Nieważne i kończące się w 60 dni" />
+      <Segments
+        value={all ? "all" : "problems"}
+        onChange={(v) => setAll(v === "all")}
+        items={[
+          { value: "problems", label: problems.data ? `Wymagają uwagi · ${problems.data.length}` : "Wymagają uwagi" },
+          { value: "all", label: "Wszystkie" },
+        ]}
+      />
+      <SwipePager index={all ? 1 : 0} onIndex={(i) => setAll(i === 1)}>
+        {[<PermitsList key="p" all={false} />, <PermitsList key="a" all />]}
+      </SwipePager>
     </Stack>
   );
 }

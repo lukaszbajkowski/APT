@@ -638,3 +638,25 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .ui-tag { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--apt-subtle); color: var(--mantine-color-text); }
 .ui-date { font: inherit; font-size: 16px; color: var(--mantine-color-text); background: transparent; border: 1px solid var(--mantine-color-default-border); border-radius: 8px; padding: 6px 8px; color-scheme: light dark; }
+
+/* ——— formularz na pełny ekran (telefon) ——— */
+.ui-form { height: 100dvh; display: flex; flex-direction: column; background: var(--apt-ground); padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-form-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+.ui-option { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 12px 14px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--mantine-color-default-border); background: var(--apt-surface); text-align: left; }
+.ui-option[data-on] { border: 2px solid var(--mantine-primary-color-filled); padding: 11px 13px; background: var(--apt-subtle); }
+.ui-option-dot { width: 22px; height: 22px; flex: none; margin-top: 1px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--mantine-color-default-border); display: flex; align-items: center; justify-content: center; }
+.ui-option[data-on] .ui-option-dot { border-color: var(--mantine-primary-color-filled); }
+.ui-option[data-on] .ui-option-dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--mantine-primary-color-filled); }
+.ui-chips-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.ui-pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--mantine-color-default-border); background: var(--apt-surface); font-size: 16px; color: var(--mantine-color-dimmed); text-align: left; }
+.ui-pick [data-on] { color: var(--mantine-color-text); }
+.ui-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ui-link-row { display: flex; align-items: center; gap: 8px; min-height: 44px; color: var(--mantine-primary-color-text); font-weight: 700; font-size: 15px; }
+.ui-steps { display: flex; flex-direction: column; gap: 8px; }
+.ui-steps-label { font-size: 13px; font-weight: 700; }
+.ui-steps-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.ui-steps-bar span { height: 4px; border-radius: 2px; background: var(--apt-subtle); }
+.ui-steps-bar span[data-on] { background: var(--mantine-primary-color-filled); }
+.ui-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 20px; text-align: center; border: 1.5px dashed var(--mantine-color-default-border); border-radius: 16px; width: 100%; box-sizing: border-box; }
+.ui-drop-title { font-size: 17px; font-weight: 700; }
+.ui-form-scroll > * { flex-shrink: 0; }

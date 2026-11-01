@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
+import { ImportMobile } from "../components/ImportMobile";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -163,6 +165,60 @@ export function TrainingImportPage() {
 
   const rows = (preview?.rows ?? []).filter((r) => filter === "all" || r.status === filter);
   const canImport = preview && preview.summary.to_import > 0 && (preview.summary.errors === 0 || skipErrors);
+
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  if (mobile) {
+    const n = preview?.summary.to_import ?? 0;
+    return (
+      <ImportMobile
+        title="Import szkoleń"
+        backTo="/szkolenia"
+        intro="Jeden wiersz to jedno szkolenie jednej osoby. Przed zapisem zobaczysz, co zostanie dodane."
+        howTo="Pierwszy wiersz z nazwami kolumn zostanie rozpoznany automatycznie, a puste wiersze i tytuły nad tabelą są pomijane. Osobę wskaż numerem, PESEL-em albo nazwiskiem i imieniem. Rodzaj szkolenia musi istnieć w „Rodzajach szkoleń”. Daty wpisz jako dd.mm.rrrr."
+        templateHref={withAcct("/api/trainings/import/template")}
+        step={step}
+        setStep={setStep}
+        error={error}
+        clearError={() => setError(null)}
+        onFile={(f) => {
+          setError(null);
+          setFile(f);
+          analyze.mutate(f);
+        }}
+        analyzing={analyze.isPending}
+        fileName={analysis?.file_name ?? file?.name}
+        fileInfo={analysis ? `${analysis.sheet ? `Arkusz „${analysis.sheet}” · ` : ""}${analysis.total_rows} wierszy` : undefined}
+        fields={fields.data ?? []}
+        headers={analysis?.headers ?? []}
+        sample={analysis?.sample ?? []}
+        mapping={mapping}
+        setMapping={(k, v) => setMapping((m) => ({ ...m, [k]: v }))}
+        required={[...(hasNames ? [] : ["number", "pesel", "full_name"]), ...(hasType ? [] : ["type", "name"])]}
+        mappingHint={!hasNames ? "Przypisz kolumnę, po której rozpoznamy osobę: numer, PESEL albo nazwisko i imię." : !hasType ? "Przypisz kolumnę z rodzajem szkolenia (albo nazwą z katalogu)." : null}
+        onCheck={() => check.mutate()}
+        checking={check.isPending}
+        summary={preview?.summary}
+        rows={(preview?.rows ?? []).map((r) => ({ row: r.row, status: r.status, title: [r.employee, r.training].filter(Boolean).join(" · "), errors: r.errors, warnings: r.warnings }))}
+        skipErrors={skipErrors}
+        setSkipErrors={setSkipErrors}
+        onCommit={() => commit.mutate()}
+        committing={commit.isPending}
+        commitLabel={`Zapisz ${n} ${n === 1 ? "szkolenie" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "szkolenia" : "szkoleń"}`}
+        done={
+          result && (
+            <Stack align="center" gap="md" py="xl">
+              <IconCheck size={48} color="var(--mantine-color-teal-text)" />
+              <Title order={3} ta="center">Zaimportowano szkoleń: {result.imported}</Title>
+              {(result.skipped > 0 || result.errors > 0) && <Text c="dimmed" size="sm" ta="center">Pominięto: {result.skipped}, z błędami: {result.errors}.</Text>}
+              <Button size="lg" radius="md" fullWidth component={Link} to="/szkolenia">Wróć do szkoleń</Button>
+              <Button size="lg" radius="md" fullWidth variant="default" onClick={reset}>Importuj kolejny plik</Button>
+            </Stack>
+          )
+        }
+        onReset={reset}
+      />
+    );
+  }
 
   return (
     <Stack maw={1200}>

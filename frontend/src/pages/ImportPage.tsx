@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
+import { ImportMobile } from "../components/ImportMobile";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,6 +18,7 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Stepper,
   Table,
   Text,
@@ -176,6 +179,84 @@ export function ImportPage() {
 
   const rows = (preview?.rows ?? []).filter((r) => filter === "all" || r.status === filter);
   const canImport = preview && preview.summary.to_import > 0 && (preview.summary.errors === 0 || skipErrors);
+
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // telefon: przełącznik słowników na ekranie sprawdzenia – od razu przelicz podgląd
+  useEffect(() => {
+    if (mobile && step === 2 && file) check.mutate();
+  }, [createMissing]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (mobile) {
+    const dict = Object.entries(preview?.summary.new_dictionary_items ?? {});
+    return (
+      <ImportMobile
+        title="Import pracowników"
+        backTo="/pracownicy"
+        intro="Jeden wiersz to jedna osoba. Imię i nazwisko mogą być w osobnych kolumnach albo razem w jednej."
+        howTo="Pierwszy wiersz z nazwami kolumn zostanie rozpoznany automatycznie, a puste wiersze i tytuły nad tabelą są pomijane. Daty wpisz jako dd.mm.rrrr. Najprościej zacząć od szablonu – otworzysz go w Excelu i w Numbers."
+        templateHref={withAcct("/api/import/template")}
+        step={step}
+        setStep={setStep}
+        error={error}
+        clearError={() => setError(null)}
+        onFile={(f) => {
+          setError(null);
+          setFile(f);
+          analyze.mutate(f);
+        }}
+        analyzing={analyze.isPending}
+        fileName={analysis?.file_name ?? file?.name}
+        fileInfo={analysis ? `${analysis.sheet ? `Arkusz „${analysis.sheet}” · ` : ""}${analysis.total_rows} wierszy` : undefined}
+        fields={fields.data ?? []}
+        headers={analysis?.headers ?? []}
+        sample={analysis?.sample ?? []}
+        mapping={mapping}
+        setMapping={(k, v) => setMapping((m) => ({ ...m, [k]: v }))}
+        required={hasNames ? [] : ["full_name", "last_name", "first_name"]}
+        mappingHint={hasNames ? null : "Przypisz kolumnę z nazwiskiem i imieniem – osobno albo „Nazwisko i imię” w jednej kolumnie."}
+        onCheck={() => check.mutate()}
+        checking={check.isPending}
+        summary={preview?.summary}
+        rows={(preview?.rows ?? []).map((r) => ({ row: r.row, status: r.status, title: r.name ?? "", errors: r.errors, warnings: r.warnings }))}
+        extra={
+          <div className="ui-group" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="ui-switch-row">
+              <span className="ui-row-text">
+                <span className="ui-row-title">Dodaj brakujące do słowników</span>
+                <span className="ui-row-desc">APT, wydziały i stanowiska. Bez tego nieznane nazwy będą błędem.</span>
+              </span>
+              <Switch size="lg" aria-label="Dodaj brakujące do słowników" checked={createMissing} onChange={(e) => setCreateMissing(e.currentTarget.checked)} />
+            </div>
+            {step === 2 && createMissing && dict.length > 0 && (
+              <>
+                <span className="ui-row-desc">Zostaną dodane:</span>
+                <span className="ui-tags">
+                  {dict.flatMap(([k, items]) => items.map((x) => <span key={k + x} className="ui-tag">{DICT_LABELS[k] ?? k}: {x}</span>))}
+                </span>
+              </>
+            )}
+          </div>
+        }
+        skipErrors={skipErrors}
+        setSkipErrors={setSkipErrors}
+        onCommit={() => commit.mutate()}
+        committing={commit.isPending}
+        commitLabel={preview ? `Zapisz ${preview.summary.to_import} ${preview.summary.to_import === 1 ? "osobę" : preview.summary.to_import % 10 >= 2 && preview.summary.to_import % 10 <= 4 && (preview.summary.to_import % 100 < 10 || preview.summary.to_import % 100 >= 20) ? "osoby" : "osób"}` : "Zapisz"}
+        done={
+          result && (
+            <Stack align="center" gap="md" py="xl">
+              <IconCheck size={48} color="var(--mantine-color-teal-text)" />
+              <Title order={3} ta="center">Zaimportowano {result.imported} pracowników</Title>
+              {result.first_number && <Text ta="center">Nadane numery: {result.first_number}{result.last_number !== result.first_number ? ` – ${result.last_number}` : ""}</Text>}
+              {(result.skipped > 0 || result.errors > 0) && <Text c="dimmed" size="sm" ta="center">Pominięto: {result.skipped}, z błędami: {result.errors}.</Text>}
+              <Button size="lg" radius="md" fullWidth component={Link} to="/pracownicy">Przejdź do listy pracowników</Button>
+              <Button size="lg" radius="md" fullWidth variant="default" onClick={reset}>Importuj kolejny plik</Button>
+            </Stack>
+          )
+        }
+        onReset={reset}
+      />
+    );
+  }
 
   return (
     <Stack maw={1200}>

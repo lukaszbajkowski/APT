@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, GroupLabel, ListRow, PageHead, Segments, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -26,9 +26,11 @@ import {
   Text,
   TextInput,
   Title,
+  Drawer,
+  UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 import {
   api,
@@ -227,6 +229,78 @@ function ProgramRow({
   );
 }
 
+/** Telefon: pozycja katalogu w panelu od dołu. */
+function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: TrainingProgram | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
+  const [name, setName] = useState(program?.name ?? "");
+  const [dep, setDep] = useState<string | null>(program?.department_id ? String(program.department_id) : null);
+  const [days, setDays] = useState<number | string>(program?.standard_days ?? "");
+  const [pickDep, setPickDep] = useState(false);
+  const confirm = useConfirm();
+  const onError = (e: unknown) => notifications.show({ color: "red", message: errorText(e) });
+  const save = useMutation({
+    mutationFn: () => {
+      const body = { name, department_id: dep ? Number(dep) : null, standard_days: days === "" ? null : Number(days), is_active: true };
+      return program ? api(`/training-programs/${program.id}`, { method: "PUT", body }) : api(`/training-types/${typeId}/programs`, { method: "POST", body });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["training-types"] });
+      notifications.show({ color: "green", message: program ? "Zapisano pozycję katalogu." : "Dodano do katalogu." });
+      onClose();
+    },
+    onError,
+  });
+  const remove = useMutation({
+    mutationFn: () => api(`/training-programs/${program!.id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["training-types"] });
+      onClose();
+    },
+    onError,
+  });
+  const depName = departments.data?.find((d) => String(d.id) === dep)?.name;
+  return (
+    <>
+      <Drawer opened onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Pozycja katalogu">
+        <SheetHandle onClose={onClose}>
+          <div className="ui-sheet-head">
+            <div className="ui-sheet-title">{program ? "Pozycja katalogu" : "Nowa pozycja katalogu"}</div>
+          </div>
+        </SheetHandle>
+        <Stack gap="md" px="md" pb="sm">
+          <TextInput size="md" label="Nazwa" value={name} onChange={(e) => setName(e.currentTarget.value)} />
+          <div className="ui-form-field">
+            <span className="ui-form-label">Wydział</span>
+            <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
+              <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
+              <IconChevronRight size={16} aria-hidden />
+            </UnstyledButton>
+          </div>
+          <NumberInput size="md" label="Standard nauki" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
+          {program && (
+            <div className="ui-form-field">
+              <span className="ui-form-label">Kto może prowadzić</span>
+              <ProgramMentorsButton program={program} />
+            </div>
+          )}
+        </Stack>
+        <div className="ui-filter-foot">
+          {program && (
+            <Button size="lg" variant="default" color="red" radius="md" c="red" onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>
+              Usuń
+            </Button>
+          )}
+          <Button size="lg" radius="md" style={{ flex: 1 }} disabled={!name.trim()} loading={save.isPending} onClick={() => save.mutate()}>
+            Zapisz
+          </Button>
+        </div>
+      </Drawer>
+      <PickSheet opened={pickDep} onClose={() => setPickDep(false)} title="Wydział" options={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))} value={dep ? [dep] : []} clearLabel="Dowolny wydział" onChange={(v) => setDep(v[0] ?? null)} />
+    </>
+  );
+}
+
 function ProgramsEditor({ type }: { type: TrainingType }) {
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
@@ -350,6 +424,10 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
   const [f, setF] = useState<TypeForm>({ name: "", kind: "general", validity_months: "", template_id: null, is_active: true });
   const [error, setError] = useState<string | null>(null);
   const selectedTemplate = templates.data?.find((t) => String(t.id) === f.template_id);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types"), enabled: opened && !!mobile });
+  const [pickTpl, setPickTpl] = useState(false);
+  const [prog, setProg] = useState<TrainingProgram | "new" | null>(null);
 
   useEffect(() => {
     if (!opened) return;
@@ -388,6 +466,118 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
     onError: (e) => setError(errorText(e)),
   });
 
+  if (mobile) {
+    const live = types.data?.find((t) => t.id === editing?.id) ?? editing;
+    const quick = ["", "12", "24", "36", "60"];
+    return (
+      <Modal opened={opened} onClose={onClose} fullScreen withCloseButton={false} padding={0} transitionProps={{ transition: "slide-left", duration: 180 }} aria-label="Rodzaj szkolenia">
+        <div className="ui-form">
+          <header className="ui-chat-head">
+            <UnstyledButton className="ui-chat-btn" onClick={onClose} aria-label="Wróć">
+              <IconChevronLeft size={26} stroke={2.2} />
+            </UnstyledButton>
+            <span className="ui-chat-title">
+              <span className="ui-chat-name">{editing ? "Rodzaj szkolenia" : "Nowy rodzaj szkolenia"}</span>
+              <span className="ui-chat-sub">{f.name || "Bez nazwy"}</span>
+            </span>
+          </header>
+          <div className="ui-form-scroll">
+            {error && <Alert color="red">{error}</Alert>}
+            <TextInput size="md" label="Nazwa" value={f.name} onChange={(e) => setF({ ...f, name: e.currentTarget.value })} />
+            <div className="ui-form-field">
+              <span className="ui-form-label">Typ</span>
+              {([
+                ["general", "Szkolenie / uprawnienie", "Data ukończenia i ważność, np. BHP, wózek, SEP"],
+                ["position", "Szkolenie stanowiskowe", "Nauka z opiekunem: od–do, egzamin, katalog szkoleń"],
+              ] as const).map(([v, t, d]) => (
+                <UnstyledButton key={v} className="ui-option" data-on={f.kind === v || undefined} role="radio" aria-checked={f.kind === v} onClick={() => setF({ ...f, kind: v })}>
+                  <span className="ui-option-dot" />
+                  <span className="ui-row-text">
+                    <span className="ui-row-title">{t}</span>
+                    <span className="ui-row-desc">{d}</span>
+                  </span>
+                </UnstyledButton>
+              ))}
+            </div>
+            <div className="ui-form-field">
+              <span className="ui-form-label">Okres ważności</span>
+              <span className="ui-form-hint">Po tylu miesiącach szkolenie wygasa</span>
+              <div className="ui-chips-wrap">
+                {quick.map((q) => (
+                  <UnstyledButton key={q} className="ui-chip" data-active={String(f.validity_months) === q || undefined} aria-pressed={String(f.validity_months) === q} onClick={() => setF({ ...f, validity_months: q })}>
+                    {q || "Bez terminu"}
+                  </UnstyledButton>
+                ))}
+              </div>
+              <NumberInput size="md" aria-label="Okres ważności w miesiącach" placeholder="Bez terminu" min={1} max={600} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">miesięcy</Text>} rightSectionWidth={90} value={f.validity_months} onChange={(v) => setF({ ...f, validity_months: v })} />
+            </div>
+            <div className="ui-form-field">
+              <span className="ui-form-label">Szablon dokumentu</span>
+              <span className="ui-form-hint">Opcjonalnie – przy szkoleniu pojawi się „Generuj dokument”</span>
+              <UnstyledButton className="ui-pick" onClick={() => setPickTpl(true)}>
+                <span data-on={!!selectedTemplate || undefined}>{selectedTemplate?.name ?? "Brak"}</span>
+                <IconChevronRight size={16} aria-hidden />
+              </UnstyledButton>
+              {selectedTemplate && selectedTemplate.fields.length > 0 && (
+                <span className="ui-form-hint">Pola przy dodawaniu: {selectedTemplate.fields.map((x) => x.label).join(", ")}</span>
+              )}
+            </div>
+            <div className="ui-switch-row">
+              <span className="ui-row-text">
+                <span className="ui-row-title">Aktywny</span>
+                <span className="ui-row-desc">Do wyboru przy dodawaniu szkolenia</span>
+              </span>
+              <Switch size="lg" aria-label="Aktywny" checked={f.is_active} onChange={(e) => setF({ ...f, is_active: e.currentTarget.checked })} />
+            </div>
+            {f.kind === "position" && (
+              <div className="ui-form-field">
+                <span className="ui-form-label">Katalog szkoleń stanowiskowych</span>
+                <span className="ui-form-hint">Nazwa, wydział i standard wpiszą się same przy dodawaniu szkolenia</span>
+                {live ? (
+                  <>
+                    {live.programs.length > 0 && (
+                      <div className="ui-group">
+                        {live.programs.map((pr) => (
+                          <ListRow
+                            key={pr.id}
+                            onClick={() => setProg(pr)}
+                            title={pr.name}
+                            description={[pr.department ?? "Dowolny wydział", pr.standard_days ? `${pr.standard_days} dni` : null, pr.mentors.length ? `${pr.mentors.length} ${pr.mentors.length === 1 ? "opiekun" : "opiekunów"}` : "brak opiekuna"].filter(Boolean).join(" · ")}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <UnstyledButton className="ui-link-row" onClick={() => setProg("new")}>
+                      <IconPlus size={18} aria-hidden /> Dodaj szkolenie do katalogu
+                    </UnstyledButton>
+                  </>
+                ) : (
+                  <span className="ui-form-hint">Katalog uzupełnisz po zapisaniu rodzaju.</span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="ui-chat-compose">
+            <Button size="lg" fullWidth radius="md" loading={save.isPending} disabled={!f.name.trim()} onClick={() => save.mutate()}>
+              Zapisz
+            </Button>
+          </div>
+        </div>
+        <PickSheet
+          opened={pickTpl}
+          onClose={() => setPickTpl(false)}
+          title="Szablon dokumentu"
+          options={(templates.data ?? []).map((t) => ({ value: String(t.id), label: t.name }))}
+          value={f.template_id ? [f.template_id] : []}
+          clearLabel="Brak szablonu"
+          onChange={(v) => setF({ ...f, template_id: v[0] ?? null })}
+        />
+        {live && prog !== null && (
+          <ProgramSheet typeId={live.id} program={prog === "new" ? null : live.programs.find((x) => x.id === prog.id) ?? prog} onClose={() => setProg(null)} />
+        )}
+      </Modal>
+    );
+  }
   return (
     <Modal opened={opened} onClose={onClose} title={editing ? "Rodzaj szkolenia" : "Nowy rodzaj szkolenia"} size="xl">
       <Stack>

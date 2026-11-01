@@ -29,7 +29,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={confirm}>
       {children}
-      <Modal opened={!!opts} onClose={() => close(false)} title={opts?.title ?? "Potwierdź"} centered size="sm">
+      <Modal opened={!!opts} onClose={() => close(false)} title={opts?.title ?? "Potwierdź"} centered size="sm" zIndex={1000}>
         <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
           {opts?.message}
         </Text>

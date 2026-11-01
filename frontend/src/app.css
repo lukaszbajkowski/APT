@@ -589,7 +589,9 @@ html, body { background: var(--apt-ground); }
 .ui-filter-value { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--mantine-color-dimmed); min-width: 0; text-align: right; }
 .ui-filter-value[data-on] { color: var(--mantine-color-text); font-weight: 700; }
 .ui-filter-save { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 0 20px; box-sizing: border-box; color: var(--mantine-primary-color-text); font-weight: 700; font-size: 15px; border-top: 1px solid var(--apt-line); }
-.ui-filter-foot { display: flex; gap: 10px; padding: 14px 16px 6px; border-top: 1px solid var(--apt-line); }
+.ui-filter-foot { display: flex; gap: 10px; }
+.ui-filter-foot > .mantine-Button-root:first-child { flex: none !important; min-width: 112px; }
+.ui-filter-foot { padding: 14px 16px 6px; border-top: 1px solid var(--apt-line); }
 .ui-view-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; border-top: 1px solid var(--apt-line); }
 .ui-view-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 0 6px 20px; text-align: left; }
 .ui-view-icon { flex: none; color: var(--mantine-color-dimmed); }
@@ -608,3 +610,31 @@ html, body { background: var(--apt-ground); }
 body[data-slide="l"] .ui-group, body[data-slide="l"] .ui-empty { animation: ui-in-l .24s ease-out; }
 body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-in-r .24s ease-out; }
 @media (prefers-reduced-motion: reduce) { body[data-slide] .ui-group, body[data-slide] .ui-empty { animation: none; } }
+
+/* ——— szkolenia na telefonie ——— */
+.ui-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--mantine-color-dimmed); }
+.ui-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.ui-legend [data-tone="ok"] svg { color: var(--mantine-color-teal-text); }
+.ui-legend [data-tone="warn"] svg { color: var(--mantine-color-orange-text); }
+.ui-legend [data-tone="wait"] svg { color: var(--mantine-color-blue-text); }
+.ui-matrix-line { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.ui-matrix-dots { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.ui-matrix-dot { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--apt-subtle); color: var(--mantine-color-dimmed); }
+.ui-matrix-dot[data-tone="ok"] { background: var(--mantine-color-teal-light); color: var(--mantine-color-teal-text); }
+.ui-matrix-dot[data-tone="warn"] { background: var(--mantine-color-orange-light); color: var(--mantine-color-orange-text); }
+.ui-matrix-dot[data-tone="wait"] { background: var(--mantine-color-blue-light); color: var(--mantine-color-blue-text); }
+.ui-matrix-sum { font-size: 12px; font-weight: 700; color: var(--mantine-color-dimmed); }
+.ui-matrix-sum[data-tone="ok"] { color: var(--mantine-color-teal-text); }
+.ui-matrix-sum[data-tone="warn"] { color: var(--mantine-color-orange-text); }
+.ui-matrix-sum[data-tone="wait"] { color: var(--mantine-color-blue-text); }
+.ui-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ui-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--apt-surface); border: 1px solid var(--apt-line); text-align: left; }
+.ui-tile[data-on] { border-color: var(--mantine-color-text); box-shadow: inset 0 0 0 1px var(--mantine-color-text); }
+.ui-tile-n { font-size: 22px; font-weight: 800; }
+.ui-tile-l { font-size: 12px; color: var(--mantine-color-dimmed); }
+.ui-tile[data-tone="warn"] { background: var(--mantine-color-orange-light); }
+.ui-tile[data-tone="warn"] .ui-tile-n { color: var(--mantine-color-orange-text); }
+.ui-tile[data-tone="wait"] .ui-tile-n { color: var(--mantine-color-blue-text); }
+.ui-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ui-tag { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--apt-subtle); color: var(--mantine-color-text); }
+.ui-date { font: inherit; font-size: 16px; color: var(--mantine-color-text); background: transparent; border: 1px solid var(--mantine-color-default-border); border-radius: 8px; padding: 6px 8px; color-scheme: light dark; }

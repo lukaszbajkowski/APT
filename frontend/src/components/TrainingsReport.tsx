@@ -32,7 +32,7 @@ import {
 import { ErrorState, EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
 
-interface Row {
+export interface Row {
   training_id: number;
   employee_id: number;
   number: string;
@@ -54,13 +54,13 @@ interface Row {
   has_scan: boolean;
 }
 
-interface Report {
+export interface Report {
   total: number;
   by_status: Partial<Record<TrainingStatus, number>>;
   rows: Row[];
 }
 
-interface Filters {
+export interface Filters {
   type_id: string | null;
   program_id: string | null;
   department_id: string | null;
@@ -71,7 +71,7 @@ interface Filters {
   employees: "active" | "all";
 }
 
-const EMPTY: Filters = {
+export const EMPTY: Filters = {
   type_id: null,
   program_id: null,
   department_id: null,
@@ -82,9 +82,9 @@ const EMPTY: Filters = {
   employees: "active",
 };
 
-const STATUS_ORDER: TrainingStatus[] = ["overdue", "in_progress", "planned", "expired", "expiring", "valid", "completed", "none"];
+export const STATUS_ORDER: TrainingStatus[] = ["overdue", "in_progress", "planned", "expired", "expiring", "valid", "completed", "none"];
 
-function toQuery(f: Filters): URLSearchParams {
+export function toQuery(f: Filters): URLSearchParams {
   const q = new URLSearchParams();
   for (const k of ["type_id", "program_id", "department_id", "mentor_id", "date_from", "date_to"] as const) {
     if (f[k]) q.set(k, String(f[k]));
@@ -94,7 +94,7 @@ function toQuery(f: Filters): URLSearchParams {
   return q;
 }
 
-function rowDates(r: Row): string {
+export function rowDates(r: Row): string {
   if (r.start_date && !r.completed_on) return `od ${formatDate(r.start_date)}`;
   if (r.start_date && r.completed_on) return `${formatDate(r.start_date)} – ${formatDate(r.completed_on)}`;
   if (r.completed_on) return `ukończone ${formatDate(r.completed_on)}`;

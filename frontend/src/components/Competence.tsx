@@ -43,7 +43,7 @@ export const REQ_STATE: Record<ReqState, { label: string; color: string }> = {
 
 // ---------- wymagania stanowisk ----------
 
-interface Req {
+export interface Req {
   id: number;
   type_id: number;
   program_id: number | null;
@@ -51,7 +51,7 @@ interface Req {
   type_name: string;
 }
 
-interface PositionReqs {
+export interface PositionReqs {
   position_id: number;
   position: string;
   department: string | null;
@@ -59,7 +59,7 @@ interface PositionReqs {
   requirements: Req[];
 }
 
-const reqValue = (type_id: number, program_id: number | null) => (program_id ? `p:${type_id}:${program_id}` : `t:${type_id}`);
+export const reqValue = (type_id: number, program_id: number | null) => (program_id ? `p:${type_id}:${program_id}` : `t:${type_id}`);
 
 function PositionRow({ p, types, staff }: { p: PositionReqs; types: TrainingType[]; staff: boolean }) {
   const qc = useQueryClient();
@@ -218,20 +218,20 @@ export function EmployeeRequirements({ employeeId }: { employeeId: number }) {
 
 // ---------- matryca ----------
 
-interface MatrixColumn {
+export interface MatrixColumn {
   key: string;
   label: string;
   group: string;
   type_id: number;
   program_id: number | null;
 }
-interface MatrixCell {
+export interface MatrixCell {
   state: ReqState;
   required: boolean;
   mentor: boolean;
   valid_until: string | null;
 }
-interface MatrixRow {
+export interface MatrixRow {
   employee_id: number;
   number: string;
   name: string;
@@ -240,7 +240,7 @@ interface MatrixRow {
   cells: Record<string, MatrixCell>;
   problems: number;
 }
-interface Matrix {
+export interface Matrix {
   columns: MatrixColumn[];
   rows: MatrixRow[];
   truncated: boolean;

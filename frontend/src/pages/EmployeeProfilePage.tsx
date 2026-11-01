@@ -196,7 +196,7 @@ export function EmployeeProfilePage() {
   const [rehireOpen, setRehireOpen] = useState(searchParams.get("rehire") === "1");
   const [moreSheet, setMoreSheet] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
-  const [tab, setTab] = useState("dane");
+  const [tab, setTab] = useState(() => searchParams.get("tab") ?? "dane");
   useEffect(() => {
     document.querySelector<HTMLElement>('.profile-tabs [role="tab"][aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [tab]);

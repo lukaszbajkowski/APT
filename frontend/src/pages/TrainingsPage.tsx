@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, GroupLabel, ListRow, PageHead, Segments, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon,
@@ -27,7 +28,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory } from "@tabler/icons-react";
 
 import {
   api,
@@ -537,47 +538,7 @@ export function TrainingsPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
-  const [view, setView] = useState("expiring");
-  const [addOpen, setAddOpen] = useState(false);
-  const navigate = useNavigate();
-  const exp = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring"), enabled: mobile });
-  if (mobile) {
-    const views = [
-      { v: "expiring", l: "Kończące się" },
-      { v: "progress", l: "W trakcie" },
-      { v: "matrix", l: "Matryca" },
-      { v: "report", l: "Raport" },
-      { v: "requirements", l: "Wymagania" },
-      ...(staff ? [{ v: "types", l: "Rodzaje" }] : []),
-    ];
-    const n = exp.data?.length ?? 0;
-    return (
-      <Stack gap="md">
-        <PageHead
-          title="Szkolenia"
-          subtitle={n ? `${n} ${n === 1 ? "kończy się" : "kończą się"} w 30 dni` : "Nic nie kończy się w 30 dni"}
-          action={staff ? { label: "Dodaj szkolenie", icon: <IconPlus size={22} />, onClick: () => setAddOpen(true) } : undefined}
-        />
-        <Chips items={views.map((x) => ({ label: x.l, active: view === x.v, onClick: () => setView(x.v) }))} />
-        {view === "expiring" && <Expiring mobile />}
-        {view === "progress" && <InProgress mobile />}
-        {view === "matrix" && <CompetenceMatrix />}
-        {view === "report" && <TrainingsReport />}
-        {view === "requirements" && <PositionRequirements />}
-        {view === "types" && <Types />}
-        <ActionSheet
-          opened={addOpen}
-          onClose={() => setAddOpen(false)}
-          title="Dodaj szkolenie"
-          actions={[
-            { label: "Jednej osobie", description: "W karcie pracownika, zakładka Szkolenia", icon: <IconPencil size={20} />, onClick: () => navigate("/pracownicy") },
-            { label: "Kilku osobom naraz", description: "Na komputerze: zaznacz osoby na liście pracowników", icon: <IconUsers size={20} />, onClick: () => navigate("/pracownicy") },
-            { label: "Import z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/szkolenia/import") },
-          ]}
-        />
-      </Stack>
-    );
-  }
+  if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
     <Stack>
       <Group justify="space-between" align="flex-start">
@@ -639,6 +600,129 @@ export function TrainingsPage() {
           </Tabs.Panel>
         )}
       </Tabs>
+    </Stack>
+  );
+}
+
+/** Telefon: „Terminy” i „Matryca” jako zakładki (przesuwane palcem), rzadsze widoki pod „⋯” jako osobne ekrany. */
+function TrainingsMobilePage({ staff }: { staff: boolean }) {
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const sub = params.get("widok");
+  const [tab, setTab] = useState(params.get("zakladka") === "matryca" ? "matrix" : "dates");
+  const [addOpen, setAddOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  const [reportMenu, setReportMenu] = useState(false);
+  const [typeModal, setTypeModal] = useState<{ open: boolean; editing: TrainingType | null }>({ open: false, editing: null });
+  const exp = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
+  const prog = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress") });
+  const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types"), enabled: sub === "rodzaje" });
+  const SUBS: Record<string, string> = { raport: "Raport", wymagania: "Wymagania stanowisk", rodzaje: "Rodzaje szkoleń" };
+  useMobileHeader(sub && SUBS[sub] ? { title: "Szkolenia", back: "/szkolenia" } : null);
+  const open = (w: string) => setParams({ widok: w });
+  const addActions = [
+    { label: "Jednej osobie", description: "W karcie pracownika, zakładka Szkolenia", icon: <IconPencil size={20} />, onClick: () => navigate("/pracownicy") },
+    { label: "Kilku osobom naraz", description: "Pracownicy → ⋯ → Zaznacz kilka osób → Dodaj szkolenie", icon: <IconUsers size={20} />, onClick: () => navigate("/pracownicy") },
+    { label: "Import z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/szkolenia/import") },
+  ];
+
+  if (sub && SUBS[sub]) {
+    return (
+      <Stack gap="md">
+        {sub === "raport" && (
+          <>
+            <PageHead title="Raport" subtitle="Wszystkie wpisy szkoleń" extra={{ label: "Pobierz raport", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setReportMenu(true) }} />
+            <ReportMobile menu={reportMenu} onMenuClose={() => setReportMenu(false)} />
+          </>
+        )}
+        {sub === "wymagania" && (
+          <>
+            <PageHead title="Wymagania" subtitle="Szkolenia obowiązkowe na stanowiskach" />
+            <RequirementsMobile />
+          </>
+        )}
+        {sub === "rodzaje" && (
+          <>
+            <PageHead title="Rodzaje" subtitle="Rodzaje szkoleń i uprawnień" action={{ label: "Dodaj rodzaj", icon: <IconPlus size={22} />, onClick: () => setTypeModal({ open: true, editing: null }) }} />
+            {types.isLoading && <Loading rows={4} />}
+            {types.data && (
+              <div className="ui-group">
+                {types.data.map((t) => (
+                  <ListRow
+                    key={t.id}
+                    onClick={() => setTypeModal({ open: true, editing: t })}
+                    title={t.name}
+                    description={
+                      <>
+                        {[
+                          t.kind === "position" ? "Stanowiskowe" : "Szkolenie / uprawnienie",
+                          t.validity_months ? `ważność ${t.validity_months} mies.` : "bez okresu ważności",
+                          t.kind === "position" ? `katalog: ${t.programs.length}` : null,
+                          t.template_name ? `szablon: ${t.template_name}` : null,
+                          `wpisów: ${t.in_use}`,
+                        ].filter(Boolean).join(" · ")}
+                        {!t.is_active && (
+                          <>
+                            <br />
+                            <StatusBadge tone="neutral">Wyłączony</StatusBadge>
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+            <Text size="sm" c="dimmed">Dotknij rodzaju, aby zmienić nazwę, ważność, katalog lub szablon dokumentu.</Text>
+            <TypeModal editing={typeModal.editing} opened={typeModal.open} onClose={() => setTypeModal({ open: false, editing: null })} />
+          </>
+        )}
+      </Stack>
+    );
+  }
+
+  const nExp = exp.data?.length ?? 0;
+  const nProg = prog.data?.length ?? 0;
+  return (
+    <Stack gap="md">
+      <PageHead
+        title="Szkolenia"
+        subtitle={nExp ? `${nExp} ${nExp === 1 ? "kończy się" : "kończą się"} w 30 dni` : "Nic nie kończy się w 30 dni"}
+        extra={{ label: "Więcej widoków", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setMore(true) }}
+        action={staff ? { label: "Dodaj szkolenie", icon: <IconPlus size={22} />, onClick: () => setAddOpen(true) } : undefined}
+      />
+      <Segments
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "dates", label: nExp ? `Terminy · ${nExp}` : "Terminy" },
+          { value: "matrix", label: "Matryca" },
+        ]}
+      />
+      <SwipePager index={tab === "dates" ? 0 : 1} onIndex={(i) => setTab(i === 0 ? "dates" : "matrix")}>
+        {[
+          <Stack key="d" gap="md">
+            <GroupLabel warn={nExp > 0}>Kończą się w 30 dni{nExp ? ` · ${nExp}` : ""}</GroupLabel>
+            <Expiring mobile />
+            <GroupLabel>W trakcie{nProg ? ` · ${nProg}` : ""}</GroupLabel>
+            <InProgress mobile />
+            <Text size="sm" c="dimmed">Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.</Text>
+          </Stack>,
+          <MatrixMobile key="m" />,
+        ]}
+      </SwipePager>
+      <ActionSheet
+        opened={more}
+        onClose={() => setMore(false)}
+        title="Szkolenia"
+        actions={[
+          { label: "Raport", description: "Wszystkie wpisy z filtrami i eksportem", icon: <IconReportAnalytics size={20} />, onClick: () => open("raport") },
+          { label: "Wymagania stanowisk", description: "Co jest obowiązkowe na stanowisku", icon: <IconListCheck size={20} />, onClick: () => open("wymagania") },
+          ...(staff ? [{ label: "Rodzaje szkoleń", description: "Słownik rodzajów, ważność, katalog, szablony", icon: <IconCategory size={20} />, onClick: () => open("rodzaje") }] : []),
+          ...(staff ? [{ label: "Import z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/szkolenia/import") }] : []),
+        ]}
+      />
+      <ActionSheet opened={addOpen} onClose={() => setAddOpen(false)} title="Dodaj szkolenie" actions={addActions} />
     </Stack>
   );
 }

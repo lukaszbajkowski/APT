@@ -689,3 +689,9 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
   .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, 58px) + 72px) !important; left: 16px !important; right: 16px !important; width: auto !important; }
 }
+
+/* ——— telefon: płynne przejście między ekranami (150–250 ms, wyłączane przez „ogranicz ruch”) ——— */
+@keyframes ui-route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 48em) {
+  .ui-route { animation: ui-route-in .2s ease-out; }
+}

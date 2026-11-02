@@ -369,7 +369,7 @@ function AppLayoutInner() {
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
           </Text>
         )}
-        <Box maw={1440} mx="auto">
+        <Box maw={1440} mx="auto" className="ui-route" key={location.pathname}>
           <Outlet />
         </Box>
       </AppShell.Main>

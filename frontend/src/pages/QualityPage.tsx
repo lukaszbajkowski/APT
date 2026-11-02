@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { Chips, ListRow, PageHead, cap } from "../components/Mobile";
+import { Chips, CompactEmpty, ListRow, PageHead, cap } from "../components/Mobile";
 
 import { api, errorText } from "../api";
 import { Loading } from "../components/States";
@@ -64,6 +64,11 @@ export function QualityPage() {
                 .map((c) => ({ label: cap(SHORT[c.key] ?? c.label), count: c.count, active: filter === c.key, onClick: () => setFilter(filter === c.key ? null : c.key) })),
             ]}
           />
+        )}
+        {data.rows.length === 0 && (
+          <div className="ui-group">
+            <CompactEmpty title="Wszystko uzupełnione" text="Żadnemu aktywnemu pracownikowi nie brakuje danych." />
+          </div>
         )}
         {data.rows.length > 0 && (
           <div className="ui-group">

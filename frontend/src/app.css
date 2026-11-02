@@ -542,7 +542,7 @@ html, body { background: var(--apt-ground); }
 .ui-seg-item[data-active] { background: var(--apt-subtle); color: var(--mantine-color-text); font-weight: 700; }
 .ui-section-title[data-warn] { color: var(--mantine-color-orange-text); }
 .ui-list-gap { display: flex; flex-direction: column; gap: 12px; }
-.ui-warn-line { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 14px; font-weight: 700; color: var(--mantine-color-orange-text); }
+.ui-warn-line { display: flex; align-items: flex-start; gap: 4px; margin-top: 2px; font-size: 14px; font-weight: 700; color: var(--mantine-color-orange-text); }
 .ui-thread { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 10px 14px; box-sizing: border-box; text-align: left; }
 .ui-thread:active { background: var(--apt-subtle); }
 .ui-thread-avatar { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--apt-subtle); color: var(--mantine-primary-color-text); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
@@ -721,3 +721,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-count-cell { flex: none; font-size: 14px; color: var(--mantine-color-dimmed); white-space: nowrap; }
 .ui-count-cell b { font-size: 16px; color: var(--mantine-color-text); }
 .ui-hint-warn a { color: inherit; font-weight: 700; }
+.ui-warn-line svg { flex: none; margin-top: 3px; }

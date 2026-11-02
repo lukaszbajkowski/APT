@@ -8,6 +8,18 @@ import { notifications } from "@mantine/notifications";
 import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
 import { ErrorState, Loading } from "../components/States";
+import { useMediaQuery } from "@mantine/hooks";
+import { IconAlertTriangle } from "@tabler/icons-react";
+import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap } from "../components/Mobile";
+import { useConfirm } from "../lib/confirm";
+
+const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+const PERIODS = [
+  { value: "7", label: "Ostatnie 7 dni" },
+  { value: "30", label: "Ostatnie 30 dni" },
+  { value: "90", label: "Ostatnie 90 dni" },
+  { value: "365", label: "Ostatni rok" },
+];
 
 interface UserReview {
   id: number;
@@ -42,10 +54,63 @@ function UsersTab() {
       notifications.show({ color: "green", message: "Konto wyłączone." });
     },
   });
+  const mobile = useMobile();
+  const confirm = useConfirm();
+  const [sel, setSel] = useState<UserReview | null>(null);
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
   const attention = rows.filter((r) => r.flags.some((f) => f !== "pełne uprawnienia")).length;
+  const canDisable = (r: UserReview) => r.is_active && r.id !== me?.user.id && r.flags.some((f) => f.startsWith("brak logowania od") || f.startsWith("nigdy"));
+  if (mobile)
+    return (
+      <Section title={`Konta funkcyjne · ${rows.length}${attention ? ` · wymaga uwagi: ${attention}` : ""}`}>
+        {rows.length === 0 && <CompactEmpty title="Brak kont" />}
+        {rows.map((r) => {
+          const warn = r.flags.filter((f) => f !== "pełne uprawnienia");
+          return (
+            <ListRow
+              key={r.id}
+              muted={!r.is_active}
+              title={r.full_name}
+              description={
+                <>
+                  {[ROLE_LABELS[r.role] ?? r.role, r.scope.length ? r.scope.join(", ") : null, r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : "nigdy się nie logował", `2FA: ${r.mfa ? "tak" : "nie"}`].filter(Boolean).join(" · ")}
+                  {warn.length > 0 && (
+                    <span className="ui-warn-line">
+                      <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> {cap(warn.join(", "))}
+                    </span>
+                  )}
+                </>
+              }
+              trailing={!r.is_active ? <StatusBadge tone="neutral">Wyłączone</StatusBadge> : warn.length ? <StatusBadge tone="warn">Uwaga</StatusBadge> : <StatusBadge tone="ok">OK</StatusBadge>}
+              onClick={canDisable(r) ? () => setSel(r) : undefined}
+            />
+          );
+        })}
+        <ActionSheet
+          opened={!!sel}
+          onClose={() => setSel(null)}
+          title={sel?.full_name ?? ""}
+          subtitle={sel ? cap(sel.flags.join(", ")) : undefined}
+          actions={
+            sel
+              ? [
+                  {
+                    label: "Wyłącz konto",
+                    description: "Użytkownik nie zaloguje się, dopóki go nie włączysz",
+                    danger: true,
+                    onClick: () => {
+                      const r = sel;
+                      confirm({ title: "Wyłączyć konto?", message: `${r.full_name} (${r.username}) nie zaloguje się do aplikacji.`, confirmLabel: "Wyłącz", danger: true }).then((ok) => ok && disable.mutate(r.id));
+                    },
+                  },
+                ]
+              : []
+          }
+        />
+      </Section>
+    );
   return (
     <Stack>
       <Text size="sm" c="dimmed">
@@ -123,6 +188,42 @@ function UsersTab() {
 function PeselTab() {
   const [days, setDays] = useState("30");
   const q = useQuery({ queryKey: ["access-pesel", days], queryFn: () => api<PeselReport>(`/access-review/pesel?days=${days}`) });
+  const mobile = useMobile();
+  const [pick, setPick] = useState(false);
+  if (mobile)
+    return (
+      <Stack gap={24}>
+        <Chips items={[{ label: PERIODS.find((p) => p.value === days)?.label ?? days, active: true, menu: true, onClick: () => setPick(true) }]} />
+        {q.isLoading && <Loading />}
+        {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
+        {q.data && (
+          <>
+            <Section title={`Kto odsłaniał PESEL · ${q.data.total}`}>
+              {q.data.users.length === 0 ? (
+                <CompactEmpty title="Nikt nie odsłaniał PESEL" text="Każde odsłonięcie trafia do dziennika zdarzeń." />
+              ) : (
+                q.data.users.map((u) => <ListRow key={u.username} title={u.username} description={`Odsłonięć: ${u.views} · pracowników: ${u.employees} · ostatnio ${formatDateTime(u.last_at)}`} />)
+              )}
+            </Section>
+            {q.data.recent.length > 0 && (
+              <Section title="Ostatnie odsłonięcia">
+                {q.data.recent.map((e, i) => (
+                  <ListRow key={i} title={`Pracownik nr ${e.number ?? e.employee_id}`} description={`${formatDateTime(e.ts)} · ${e.username ?? "—"}`} />
+                ))}
+              </Section>
+            )}
+            <Section title="Kto oglądał ten raport">
+              {q.data.report_views.length === 0 ? (
+                <CompactEmpty title="Nikt" />
+              ) : (
+                q.data.report_views.map((v, i) => <ListRow key={i} title={v.username ?? "—"} description={formatDateTime(v.ts)} />)
+              )}
+            </Section>
+          </>
+        )}
+        <PickSheet opened={pick} onClose={() => setPick(false)} title="Okres" options={PERIODS} value={[days]} onChange={(v) => v[0] && setDays(v[0])} />
+      </Stack>
+    );
   return (
     <Stack>
       <Group>
@@ -208,6 +309,21 @@ function PeselTab() {
 
 export function AccessReviewPage() {
   const [tab, setTab] = useState("users");
+  const mobile = useMobile();
+  const tabs = [
+    { value: "users", label: "Uprawnienia kont" },
+    { value: "pesel", label: "Dostęp do PESEL" },
+  ];
+  if (mobile)
+    return (
+      <Stack gap={16}>
+        <PageHead title="Przegląd dostępu" subtitle="Konta pracowników są w „Kontach pracowników”" />
+        <Segments value={tab} onChange={setTab} items={tabs} />
+        <SwipePager index={tabs.findIndex((x) => x.value === tab)} onIndex={(i) => setTab(tabs[i].value)}>
+          {[<UsersTab key="u" />, <PeselTab key="p" />]}
+        </SwipePager>
+      </Stack>
+    );
   return (
     <Stack>
       <Title order={2}>Przegląd dostępu</Title>

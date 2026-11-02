@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 
 import { api, errorText } from "../api";
 import { Loading } from "../components/States";
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, PageHead, Section } from "../components/Mobile";
 
 interface Item {
   title: string;
@@ -24,9 +26,29 @@ interface Queue {
 
 export function WorkQueuePage() {
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<Queue>("/work-queue"), refetchInterval: 60_000 });
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const d = q.data!;
+  if (mobile)
+    return (
+      <Stack gap={24}>
+        <PageHead title="Do zrobienia" subtitle={d.total ? `Czeka na kadry: ${d.total}` : undefined} />
+        {d.groups.length === 0 && (
+          <div className="ui-group">
+            <CompactEmpty title="Wszystko zrobione" text="Nic nie czeka na Twoją uwagę." />
+          </div>
+        )}
+        {d.groups.map((g) => (
+          <Section key={g.key} title={`${g.label} · ${g.count}`} action={{ label: "Wszystkie", to: g.url }}>
+            {g.items.map((it, i) => (
+              <ListRow key={i} title={it.title} description={it.detail ?? undefined} to={it.url} />
+            ))}
+            {g.count > g.items.length && <ListRow title={`Pokaż wszystkie (${g.count})`} muted to={g.url} />}
+          </Section>
+        ))}
+      </Stack>
+    );
   return (
     <Stack>
       <div>

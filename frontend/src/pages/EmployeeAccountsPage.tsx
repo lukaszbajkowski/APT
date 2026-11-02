@@ -5,7 +5,9 @@ import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, Text
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
-import { EmptyState, Loading } from "../components/States";
+import { EmptyState, ErrorState, Loading } from "../components/States";
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
 
 interface Row {
   employee_id: number;
@@ -36,6 +38,58 @@ export function EmployeeAccountsPage() {
       return api<Row[]>(`/employee-accounts?${p.toString()}`);
     },
   });
+
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  if (mobile) {
+    const TONE = { active: "ok", pending: "wait", disabled: "neutral" } as const;
+    const SHORT = { active: "Aktywne", pending: "Czeka", disabled: "Wyłączone" } as const;
+    return (
+      <Stack gap={16}>
+        <PageHead title="Konta pracowników" subtitle="Zaproszenie i reset dostępu – w karcie pracownika" />
+        <TextInput
+          aria-label="Szukaj konta"
+          placeholder="Nazwisko, imię lub login"
+          leftSection={<IconSearch size={18} aria-hidden />}
+          size="md"
+          value={q}
+          onChange={(e) => setQ(e.currentTarget.value)}
+        />
+        <Segments
+          swipe
+          value={status}
+          onChange={setStatus}
+          items={[
+            { value: "", label: "Wszystkie" },
+            { value: "pending", label: "Czekają" },
+            { value: "active", label: "Aktywne" },
+            { value: "disabled", label: "Wyłączone" },
+          ]}
+        />
+        {list.isError && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
+        {list.isLoading && <Loading />}
+        {list.data && (
+          <div className="ui-group">
+            {list.data.length === 0 ? (
+              <CompactEmpty
+                title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak kont"}
+                text={q.trim() ? "Sprawdź pisownię albo wybierz „Wszystkie”." : "Zaproszenie wyślesz z karty pracownika."}
+              />
+            ) : (
+              list.data.map((r) => (
+                <ListRow
+                  key={r.employee_id}
+                  to={`/pracownicy/${r.employee_id}`}
+                  title={r.name}
+                  description={[`nr ${r.number}`, r.username, r.status === "pending" && r.invite_pending ? "zaproszenie wysłane" : r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : null].filter(Boolean).join(" · ")}
+                  trailing={<StatusBadge tone={TONE[r.status]}>{SHORT[r.status]}</StatusBadge>}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </Stack>
+    );
+  }
 
   return (
     <Stack>

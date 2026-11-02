@@ -271,7 +271,7 @@ export function LoginPage() {
                   {T("Nie pamiętasz hasła?")}
                 </Anchor>
               ) : (
-                <Text size="xs" c="dimmed" ta="center">
+                <Text size="sm" c="dimmed" ta="center">
                   {T("Nie pamiętasz hasła? Poproś administratora o reset.")}
                 </Text>
               )}

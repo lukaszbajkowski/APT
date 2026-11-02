@@ -665,4 +665,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* nowa wiadomość na telefonie – w obrębie strony, jak nowy komunikat (górny i dolny pasek zostają) */
 .ui-inpage { display: flex; flex-direction: column; }
 .ui-inpage .ui-chat-body { overflow: visible; flex: 1; }
-.ui-inpage .ui-chat-compose { padding: 12px 16px; background: var(--apt-surface); border-top: 1px solid var(--apt-line); border-radius: 0 0 var(--mantine-radius-md) var(--mantine-radius-md); }
+.ui-inpage .ui-chat-compose { position: sticky; bottom: 0; z-index: 5; padding: 12px 16px; background: var(--apt-surface); border-top: 1px solid var(--apt-line); border-radius: 0 0 var(--mantine-radius-md) var(--mantine-radius-md); }

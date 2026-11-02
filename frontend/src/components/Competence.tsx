@@ -1,21 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Group,
-  MultiSelect,
-  Paper,
-  Select,
-  Stack,
-  Switch,
-  Text,
-  Tooltip,
-} from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Group, MultiSelect, Paper, Stack, Switch, Text, Tooltip } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,

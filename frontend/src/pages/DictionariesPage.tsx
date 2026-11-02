@@ -1,21 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import {
-  ActionIcon,
-  Alert,
-  Badge,
-  Button,
-  Group,
-  Modal,
-  Select,
-  Stack,
-  Switch,
-  Table,
-  Tabs,
-  Text,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus } from "@tabler/icons-react";
 

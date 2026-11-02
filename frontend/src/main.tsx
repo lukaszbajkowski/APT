@@ -53,7 +53,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
-      <Notifications position="bottom-right" />
+      <Notifications position="bottom-center" autoClose={3000} />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>

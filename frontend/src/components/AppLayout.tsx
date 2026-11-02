@@ -129,7 +129,7 @@ function MobileTopBar() {
   const navigate = useNavigate();
   const own = useMobileHeaderValue();
   const auto = headerFor(location.pathname);
-  const back = own.back ?? auto.back;
+  const back = own.onBack ? "#" : own.back ?? auto.back;
   const [scrolled, setScrolled] = useState(false);
   const [deep, setDeep] = useState(false);
   useEffect(() => {
@@ -151,7 +151,7 @@ function MobileTopBar() {
         <UnstyledButton
           className="topbar-btn"
           aria-label="Wróć"
-          onClick={() => navigate(back)}
+          onClick={() => (own.onBack ? own.onBack() : navigate(back))}
         >
           <IconChevronLeft size={26} stroke={2.2} />
         </UnstyledButton>

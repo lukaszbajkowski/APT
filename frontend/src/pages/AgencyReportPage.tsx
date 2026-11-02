@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Group, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDownload, IconMail } from "@tabler/icons-react";
 

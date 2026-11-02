@@ -2,28 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  ActionIcon,
-  Collapse,
-  Badge,
-  Button,
-  Checkbox,
-  Drawer,
-  Modal,
-  Paper,
-  Group,
-  Menu,
-  MultiSelect,
-  Pagination,
-  SegmentedControl,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  UnstyledButton,
-} from "@mantine/core";
+import { ActionIcon, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Menu, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPencil, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
@@ -12,7 +13,7 @@ import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
-import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager, useNavHeightVar } from "./Mobile";
+import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
@@ -630,28 +631,26 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
   useChatViewport(box, false);
   useNavHeightVar();
+  const picked = employee
+    ? preset && preset.id === employee
+      ? preset.name
+      : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
+    : null;
+  const twoSteps = staff && !preset;
+  const onTresc = !twoSteps || step === 2;
+  const goBack = () => (twoSteps && step === 2 ? setStep(1) : onCancel());
+  useMobileHeader(
+    mobile
+      ? {
+          title: T("Nowa wiadomość"),
+          subtitle: twoSteps ? (step === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · do ${picked ?? ""}`) : staff ? `Do: ${picked ?? ""}` : T("Do kadr"),
+          onBack: goBack,
+        }
+      : null,
+  );
   if (mobile) {
-    const picked = employee
-      ? preset && preset.id === employee
-        ? preset.name
-        : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
-      : null;
-    const twoSteps = staff && !preset;
-    const onTresc = !twoSteps || step === 2;
-    const goBack = () => (twoSteps && step === 2 ? setStep(1) : onCancel());
     return (
       <div className="ui-inpage" ref={box}>
-        <header className="ui-chat-head">
-          <UnstyledButton className="ui-chat-btn" onClick={goBack} aria-label={twoSteps && step === 2 ? "Wróć do wyboru pracownika" : T("Anuluj")}>
-            <IconChevronLeft size={26} stroke={2.2} />
-          </UnstyledButton>
-          <span className="ui-chat-title">
-            <span className="ui-chat-name">{T("Nowa wiadomość")}</span>
-            <span className="ui-chat-sub">
-              {twoSteps ? (step === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · do ${picked ?? ""}`) : staff ? `Do: ${picked ?? ""}` : T("Do kadr")}
-            </span>
-          </span>
-        </header>
         <div className="ui-chat-body ui-form-body">
           {!onTresc ? (
             <div className="ui-form-field">

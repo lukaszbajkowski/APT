@@ -1,21 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Group,
-  MultiSelect,
-  Paper,
-  SegmentedControl,
-  Select,
-  SimpleGrid,
-  Stack,
-  Table,
-  Text,
-} from "@mantine/core";
+import { Anchor, Badge, Button, Card, Group, MultiSelect, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconFileSpreadsheet, IconFileTypePdf, IconFilterOff } from "@tabler/icons-react";
 

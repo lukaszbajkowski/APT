@@ -1,25 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Group,
-  Modal,
-  SegmentedControl,
-  Select,
-  SimpleGrid,
-  Stack,
-  Table,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 

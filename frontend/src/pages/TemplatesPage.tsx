@@ -1,22 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  FileInput,
-  Group,
-  Modal,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-  Title,
-} from "@mantine/core";
+import { Alert, Badge, Button, Card, FileInput, Group, Modal, SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";

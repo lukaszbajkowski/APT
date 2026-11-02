@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Card, Group, Loader, Text, Title } from "@mantine/core";
+import { Alert, Button, Card, Group, Skeleton, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
@@ -97,7 +97,7 @@ export function PushCard() {
       <Text size="sm" c="dimmed" mb="sm">
         {t("Dostaniesz krótkie powiadomienie na tym urządzeniu (telefonie, tablecie lub komputerze), gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest ogólna – bez nazwisk i szczegółów.")}
       </Text>
-      {on === null && <Loader size="sm" />}
+      {on === null && <Skeleton height={44} radius="md" aria-busy="true" aria-label="Ładowanie" />}
       {needInstall && (
         <Alert color="blue" icon={<IconInfoCircle size={18} />} mb="sm">
           {t("Na iPhonie powiadomienia działają po dodaniu aplikacji do ekranu początkowego: w Safari wybierz „Udostępnij” → „Dodaj do ekranu początkowego”, otwórz aplikację z ikony i wróć tutaj.")}

@@ -1,4 +1,5 @@
-import { ActionIcon, Button, Code, Group, Paper, Select, SimpleGrid, Stack, Switch, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Button, Code, Group, Paper, SimpleGrid, Stack, Switch, Text, TextInput } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { IconArrowDown, IconArrowUp, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { type FieldType, type TemplateField } from "../api";

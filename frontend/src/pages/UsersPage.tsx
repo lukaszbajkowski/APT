@@ -1,25 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ActionIcon,
-  Alert,
-  Badge,
-  Button,
-  Code,
-  CopyButton,
-  Group,
-  Menu,
-  Modal,
-  MultiSelect,
-  Select,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus } from "@tabler/icons-react";
 

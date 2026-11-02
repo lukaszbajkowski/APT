@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconArrowRight, IconChevronLeft, IconChevronRight, IconPaperclip, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -14,7 +15,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { CompactEmpty, PageHead, Segments, SwipePager, useNavHeightVar } from "../components/Mobile";
+import { CompactEmpty, PageHead, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -242,19 +243,17 @@ export function BroadcastsPage() {
     ? "wszyscy aktywni"
     : [agencies.data?.find((x) => String(x.id) === agency)?.name, departments.data?.find((x) => String(x.id) === dept)?.name].filter(Boolean).join(", ");
   const canSend = hasTarget && !!preview.data?.total && !!subject.trim() && (kind === "document" ? files.length > 0 : !!body.trim() || files.length > 0);
+  useMobileHeader(
+    mobile && composing
+      ? {
+          title: "Nowy komunikat",
+          subtitle: cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}${preview.data ? `, ${preview.data.total} os.` : ""}`,
+          onBack: () => (cStep === 2 ? setCStep(1) : back()),
+        }
+      : null,
+  );
   const mobileComposer = (
     <div className="ui-inpage">
-      <header className="ui-chat-head">
-        <UnstyledButton className="ui-chat-btn" onClick={() => (cStep === 2 ? setCStep(1) : back())} aria-label={cStep === 2 ? "Wróć do wyboru odbiorców" : "Anuluj"}>
-          <IconChevronLeft size={26} stroke={2.2} />
-        </UnstyledButton>
-        <span className="ui-chat-title">
-          <span className="ui-chat-name">Nowy komunikat</span>
-          <span className="ui-chat-sub">
-            {cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}${preview.data ? `, ${preview.data.total} os.` : ""}`}
-          </span>
-        </span>
-      </header>
       <div className="ui-chat-body ui-form-body">
         {cStep === 1 ? (
           <>

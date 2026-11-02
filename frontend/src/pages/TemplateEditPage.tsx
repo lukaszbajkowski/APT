@@ -1,26 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Anchor,
-  Button,
-  Card,
-  Code,
-  CopyButton,
-  FileButton,
-  Grid,
-  Group,
-  SegmentedControl,
-  Select,
-  Stack,
-  Switch,
-  Text,
-  TextInput,
-  Textarea,
-  Title,
-  Tooltip,
-} from "@mantine/core";
+import { Alert, Anchor, Button, Card, Code, CopyButton, FileButton, Grid, Group, SegmentedControl, Stack, Switch, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,

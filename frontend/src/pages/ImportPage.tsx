@@ -3,27 +3,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ImportMobile } from "../components/ImportMobile";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  FileButton,
-  Group,
-  List,
-  Paper,
-  SegmentedControl,
-  Select,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Stepper,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, List, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Stepper, Table, Text, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, withAcct } from "../api";

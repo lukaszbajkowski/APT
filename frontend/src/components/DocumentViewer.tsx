@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Box, Button, Center, Group, Loader, Modal, Portal, Stack, Text } from "@mantine/core";
+import { Badge, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
@@ -110,9 +110,7 @@ export function DocumentViewer({
         style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", position: "relative" }}
       >
         {q.isLoading && (
-          <Center py="xl">
-            <Loader />
-          </Center>
+          <Skeleton height="60dvh" radius="md" aria-busy="true" aria-label="Ładowanie dokumentu" />
         )}
         {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
         {q.data && (

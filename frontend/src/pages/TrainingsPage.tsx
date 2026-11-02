@@ -4,31 +4,8 @@ import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ActionIcon,
-  Menu,
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Group,
-  Modal,
-  NumberInput,
-  Paper,
-  SegmentedControl,
-  Select,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Table,
-  Tabs,
-  Text,
-  TextInput,
-  Title,
-  Drawer,
-  UnstyledButton,
-} from "@mantine/core";
+import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Title, Drawer, UnstyledButton } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
 

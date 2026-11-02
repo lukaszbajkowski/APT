@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Group, SegmentedControl, Select, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Badge, Button, Group, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 
 import { notifications } from "@mantine/notifications";
 

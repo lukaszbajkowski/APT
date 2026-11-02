@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Box, Button, Group, Menu, Select, Text } from "@mantine/core";
+import { Alert, Box, Button, Group, Menu, Text } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconUserCog } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";

@@ -300,7 +300,7 @@ html, body { background: var(--apt-ground); }
 .ui-section { display: flex; flex-direction: column; gap: 8px; }
 .ui-section + .ui-section { margin-top: 12px; }
 .ui-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
-.ui-section-title { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mantine-color-dimmed); }
+.ui-section-title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mantine-color-dimmed); }
 .ui-text-action {
   display: inline-flex;
   align-items: center;
@@ -330,8 +330,8 @@ html, body { background: var(--apt-ground); }
   padding: 6px 14px;
   box-sizing: border-box;
 }
-.ui-info-k { font-size: 15px; color: var(--mantine-color-dimmed); flex: none; max-width: 45%; }
-.ui-info-v { margin: 0; font-size: 15px; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.ui-info-k { font-size: 16px; color: var(--mantine-color-dimmed); flex: none; max-width: 45%; }
+.ui-info-v { margin: 0; font-size: 16px; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
 .ui-info-stacked { flex-direction: column; align-items: stretch; gap: 2px; padding: 10px 14px; }
 .ui-info-stacked .ui-info-k { max-width: none; }
 .ui-info-stacked .ui-info-v { text-align: left; }
@@ -350,9 +350,9 @@ html, body { background: var(--apt-ground); }
 .ui-row[data-interactive]:active, .ui-row[data-interactive]:hover { background: var(--apt-subtle); }
 .ui-row-leading { flex: none; display: flex; align-items: center; justify-content: center; }
 .ui-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ui-row-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.ui-row-title { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .ui-row-title[data-muted] { color: var(--mantine-color-dimmed); font-weight: 500; }
-.ui-row-desc { font-size: 13px; color: var(--mantine-color-dimmed); overflow-wrap: anywhere; }
+.ui-row-desc { font-size: 14px; color: var(--mantine-color-dimmed); overflow-wrap: anywhere; }
 .ui-row-chevron { flex: none; color: var(--mantine-color-dimmed); }
 .ui-sheet { padding: 8px 12px calc(16px + env(safe-area-inset-bottom)); height: auto !important; max-height: 85dvh; flex: none !important; width: 100% !important; }
 .ui-sheet .mantine-Drawer-body { padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -432,7 +432,7 @@ html, body { background: var(--apt-ground); }
 /* ——— karta pracownika (telefon) ——— */
 .profile-tabs .mantine-Tabs-list { gap: 4px; }
 .profile-tabs .mantine-Tabs-list::before { border-color: var(--apt-line); }
-.profile-tabs .mantine-Tabs-tab { height: 44px; padding: 0 10px; font-size: 15px; color: var(--mantine-color-dimmed); }
+.profile-tabs .mantine-Tabs-tab { height: 44px; padding: 0 10px; font-size: 16px; color: var(--mantine-color-dimmed); }
 .profile-tabs .mantine-Tabs-tab[data-active] { color: var(--mantine-color-text); font-weight: 700; border-color: var(--mantine-primary-color-filled); }
 .profile-tabs .mantine-Tabs-tab:hover { background: transparent; }
 .profile-tabs .mantine-Tabs-tabSection { margin-left: 6px; }
@@ -527,13 +527,13 @@ html, body { background: var(--apt-ground); }
 .ui-seg-item[data-active] { background: var(--apt-subtle); color: var(--mantine-color-text); font-weight: 700; }
 .ui-section-title[data-warn] { color: var(--mantine-color-orange-text); }
 .ui-list-gap { display: flex; flex-direction: column; gap: 12px; }
-.ui-warn-line { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--mantine-color-orange-text); }
+.ui-warn-line { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 14px; font-weight: 700; color: var(--mantine-color-orange-text); }
 .ui-thread { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 10px 14px; box-sizing: border-box; text-align: left; }
 .ui-thread:active { background: var(--apt-subtle); }
 .ui-thread-avatar { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--apt-subtle); color: var(--mantine-primary-color-text); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
 .ui-thread-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
 .ui-thread-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui-thread-time { font-size: 13px; color: var(--mantine-color-dimmed); flex: none; }
+.ui-thread-time { font-size: 14px; color: var(--mantine-color-dimmed); flex: none; }
 .ui-thread-snip { font-size: 14px; color: var(--mantine-color-dimmed); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-thread[data-unread] .ui-thread-name { font-weight: 800; }
 .ui-thread[data-unread] .ui-thread-snip { color: var(--mantine-color-text); }
@@ -541,7 +541,7 @@ html, body { background: var(--apt-ground); }
 .ui-thread-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--mantine-primary-color-filled); }
 .ui-bc { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px 14px; box-sizing: border-box; text-align: left; }
 .ui-bc:active { background: var(--apt-subtle); }
-.ui-bc-read { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+.ui-bc-read { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
 .ui-bc-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--apt-subtle); overflow: hidden; }
 .ui-bc-bar > span { display: block; height: 6px; background: var(--mantine-primary-color-filled); }
 .ui-task { display: flex; align-items: center; gap: 2px; min-height: 64px; padding: 4px 0 4px 4px; }
@@ -567,8 +567,8 @@ html, body { background: var(--apt-ground); }
 .ui-form-body { gap: 18px; }
 .ui-form-body > :first-child { margin-top: 0; }
 .ui-form-field { display: flex; flex-direction: column; gap: 8px; }
-.ui-form-label { font-size: 15px; font-weight: 600; }
-.ui-form-hint { font-size: 13px; color: var(--mantine-color-dimmed); }
+.ui-form-label { font-size: 16px; font-weight: 600; }
+.ui-form-hint { font-size: 14px; color: var(--mantine-color-dimmed); }
 .ui-pick-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 8px 14px; box-sizing: border-box; text-align: left; }
 .ui-pick-row + .ui-pick-row { border-top: 1px solid var(--apt-line); }
 .ui-chat-msg { align-self: flex-start; max-width: 80%; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
@@ -640,7 +640,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-date { font: inherit; font-size: 16px; color: var(--mantine-color-text); background: transparent; border: 1px solid var(--mantine-color-default-border); border-radius: 8px; padding: 6px 8px; color-scheme: light dark; }
 
 /* ——— formularz na pełny ekran (telefon) ——— */
-.ui-form { height: 100dvh; display: flex; flex-direction: column; background: var(--apt-ground); padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-form { height: 100dvh; display: flex; flex-direction: column; background: var(--apt-ground); box-sizing: border-box; }
 .ui-form-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; display: flex; flex-direction: column; gap: 20px; }
 .ui-option { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 12px 14px; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--mantine-color-default-border); background: var(--apt-surface); text-align: left; }
 .ui-option[data-on] { border: 2px solid var(--mantine-primary-color-filled); padding: 11px 13px; background: var(--apt-subtle); }
@@ -664,7 +664,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-pick { padding-top: 10px; padding-bottom: 10px; line-height: 1.3; } .ui-pick > svg { flex: none; } .ui-pick > span { min-width: 0; overflow-wrap: anywhere; }
 /* nowa wiadomość na telefonie – w obrębie strony, jak nowy komunikat (górny i dolny pasek zostają) */
 /* formularz na telefonie (makiety WiadDoKogo/KomNowy): cały ekran nad dolnym menu, treść przewija się, przyciski stoją tuż nad menu */
-.ui-inpage { position: fixed; left: 0; right: 0; top: 0; bottom: var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))); z-index: 120; display: flex; flex-direction: column; background: var(--apt-ground); padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-inpage { position: fixed; left: 0; right: 0; top: calc(52px + env(safe-area-inset-top)); bottom: var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))); z-index: 120; display: flex; flex-direction: column; background: var(--apt-ground); box-sizing: border-box; }
 .ui-inpage .ui-chat-body { flex: 1; min-height: 0; overflow-y: auto; gap: 16px; }
 .ui-inpage .ui-chat-body > :first-child { margin-top: 0; }
 .ui-inpage .ui-chat-compose { flex: none; display: flex; gap: 10px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
@@ -681,3 +681,11 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-seg2 > button { min-height: 44px; padding: 4px 8px; border-radius: 9px; text-align: center; font-size: 14px; line-height: 1.25; color: var(--mantine-color-text); }
 .ui-seg2 > button[data-on] { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-weight: 700; }
 .ui-hint-warn { font-size: 13px; line-height: 1.45; color: var(--mantine-color-orange-text); }
+
+/* ——— telefon: cele dotyku min. 44 px (zasada „System mobilny”) ——— */
+@media (max-width: 48em) {
+  .mantine-Button-root[data-size="xs"], .mantine-Button-root[data-size="sm"], .mantine-Button-root[data-size="compact-xs"], .mantine-Button-root[data-size="compact-sm"] { --button-height: 44px; }
+  .mantine-ActionIcon-root[data-size="xs"], .mantine-ActionIcon-root[data-size="sm"], .mantine-ActionIcon-root[data-size="md"] { --ai-size: 44px; }
+  /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
+  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, 58px) + 72px) !important; left: 16px !important; right: 16px !important; width: auto !important; }
+}

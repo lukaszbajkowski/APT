@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Checkbox, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Badge, Button, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconArrowRight, IconFileZip } from "@tabler/icons-react";
 

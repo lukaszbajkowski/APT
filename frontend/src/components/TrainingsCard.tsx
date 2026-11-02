@@ -2,27 +2,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ActionIcon,
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  FileButton,
-  Group,
-  Menu,
-  Modal,
-  NumberInput,
-  Paper,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileButton, Group, Menu, Modal, NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Alert, Code, Group, Pagination, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 
 import { ACTION_LABELS, api, ApiError, formatDateTime, type AuditEntry, type Page } from "../api";

@@ -1,23 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Anchor,
-  Button,
-  Card,
-  Group,
-  Modal,
-  SegmentedControl,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  Paper,
-  TextInput,
-  Textarea,
-  Title,
-} from "@mantine/core";
+import { Alert, Anchor, Button, Card, Group, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea, Title } from "@mantine/core";
+import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconArrowLeft } from "@tabler/icons-react";
 

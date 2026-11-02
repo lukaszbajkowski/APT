@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import jsQR from "jsqr";
-import { Alert, Badge, Box, Button, Card, Group, Loader, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Badge, Box, Button, Card, Group, Skeleton, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee } from "../api";
@@ -236,9 +236,7 @@ export function ScannerPage() {
       )}
 
       {loading && (
-        <Group justify="center">
-          <Loader />
-        </Group>
+        <Skeleton height={72} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />
       )}
       {lookupError && (
         <Alert color="red" icon={<IconAlertTriangle size={18} />} title="Nie rozpoznano karty">

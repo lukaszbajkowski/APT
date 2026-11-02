@@ -14,6 +14,8 @@ export interface MobileHeader {
   title?: string;
   subtitle?: string;
   back?: string;
+  /** własna akcja strzałki (np. cofnięcie kroku formularza) – ma pierwszeństwo przed `back` */
+  onBack?: () => void;
   /** tytuł po przewinięciu poniżej nagłówka ekranu (np. imię i nazwisko zamiast „Pracownik”) */
   scrolledTitle?: string;
   scrolledSubtitle?: string;
@@ -28,9 +30,11 @@ export function MobileHeaderProvider({ children }: { children: ReactNode }) {
 /** Ekran ustawia własny tytuł (np. imię i nazwisko) i adres powrotu w pasku górnym telefonu. */
 export function useMobileHeader(h: MobileHeader | null) {
   const { set } = useContext(HeaderCtx);
-  const key = JSON.stringify(h);
+  const cb = useRef(h?.onBack);
+  cb.current = h?.onBack;
+  const key = JSON.stringify(h) + (h?.onBack ? "+cb" : "");
   useEffect(() => {
-    set(h);
+    set(h && h.onBack ? { ...h, onBack: () => cb.current?.() } : h);
     return () => set(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

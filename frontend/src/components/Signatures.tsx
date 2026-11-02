@@ -37,6 +37,7 @@ import {
 
 import { api, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
 import { Loading } from "./States";
+import { useConfirm } from "../lib/confirm";
 
 interface RoleState {
   role: string;
@@ -333,6 +334,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
     qc.invalidateQueries({ queryKey: ["signatures", doc.id] });
     qc.invalidateQueries({ queryKey: ["documents", employee.id] });
   };
+  const ask = useConfirm();
   const cancel = useMutation({
     mutationFn: (id: number) => api(`/signatures/${id}`, { method: "DELETE" }),
     onSuccess: refresh,
@@ -445,7 +447,7 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                           ? `Czeka w koncie pracownika${r.sent_to ? ` · powiadomiono: ${r.sent_to}` : ""}`
                           : `Wysłano ${r.channel === "link" ? "jako link" : `na ${r.sent_to}`} · ważny do ${formatDateTime(r.expires_at)}`}
                       </Text>
-                      <Button size="compact-xs" variant="subtle" color="red" leftSection={<IconX size={12} />} onClick={() => r.request_id && cancel.mutate(r.request_id)}>
+                      <Button size="compact-xs" variant="subtle" color="red" leftSection={<IconX size={12} />} onClick={() => r.request_id && ask({ title: "Anulować prośbę o podpis?", message: "Pracownik nie podpisze już tego dokumentu.", confirmLabel: "Anuluj prośbę", danger: true }).then((ok) => ok && cancel.mutate(r.request_id!))}>
                         Anuluj
                       </Button>
                     </Group>

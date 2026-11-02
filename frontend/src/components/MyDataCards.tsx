@@ -8,6 +8,7 @@ import { IconCamera, IconMail, IconPhone } from "@tabler/icons-react";
 import { api, errorText, formatDate, withAcct, type Employee } from "../api";
 import { useT } from "../lib/i18n";
 import { PhotoEditor } from "./PhotoEditor";
+import { useConfirm } from "../lib/confirm";
 
 export interface MyEmployee {
   number: string;
@@ -94,6 +95,7 @@ export function ContactEditor({
     },
     onError: (e) => setError(errorText(e)),
   });
+  const ask = useConfirm();
   const remove = useMutation({
     mutationFn: () => api<unknown>(`${base}/${kind}`, { method: "DELETE" }),
     onSuccess: done,
@@ -110,7 +112,7 @@ export function ContactEditor({
           {current && <Badge color={verified ? "green" : "gray"}>{verified ? t("potwierdzony") : t("niepotwierdzony")}</Badge>}
         </Group>
         {current && (
-          <Button size="xs" variant="subtle" color="red" loading={remove.isPending} onClick={() => remove.mutate()}>
+          <Button size="xs" variant="subtle" color="red" loading={remove.isPending} onClick={() => ask({ title: "Usunąć dane?", message: "Usunąć ten wpis z Twoich danych?", confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>
             {t("Usuń")}
           </Button>
         )}

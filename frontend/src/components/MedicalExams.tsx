@@ -11,6 +11,7 @@ import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
 import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
+import { useConfirm } from "../lib/confirm";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
   valid: { label: "Ważne", color: "teal" },
@@ -124,6 +125,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
     queryFn: () => api<MedicalExam[]>(`/employees/${employee.id}/medical-exams`),
   });
   const [open, setOpen] = useState(false);
+  const ask = useConfirm();
   const del = useMutation({
     mutationFn: (id: number) => api(`/medical-exams/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -137,7 +139,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
   if (mobile) {
     const acts: SheetAction[] = [];
     if (sheet?.has_file) acts.push({ label: "Pokaż orzeczenie", icon: <IconFileText size={20} />, onClick: () => window.open(withAcct(`/api/medical-exams/${sheet.id}/file`), "_blank") });
-    if (sheet?.can_delete) acts.push({ label: "Usuń badanie", icon: <IconTrash size={20} />, danger: true, onClick: () => del.mutate(sheet.id) });
+    if (sheet?.can_delete) acts.push({ label: "Usuń badanie", icon: <IconTrash size={20} />, danger: true, onClick: () => ask({ title: "Usunąć badanie?", message: "Badanie zostanie usunięte z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(sheet.id)) });
     return (
       <>
         <Section title="Badania lekarskie" action={canAdd ? { label: "Dodaj", icon: <IconPlus size={16} />, onClick: () => setOpen(true) } : undefined}>
@@ -222,7 +224,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
                     )}
                     {x.can_delete && (
                       <Tooltip label="Usuń badanie">
-                        <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń badanie" loading={del.isPending} onClick={() => del.mutate(x.id)}>
+                        <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń badanie" loading={del.isPending} onClick={() => ask({ title: "Usunąć badanie?", message: "Badanie zostanie usunięte z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id))}>
                           <IconTrash size={14} />
                         </ActionIcon>
                       </Tooltip>

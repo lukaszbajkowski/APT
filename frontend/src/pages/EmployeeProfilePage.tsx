@@ -231,6 +231,7 @@ export function EmployeeProfilePage() {
     },
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
+  const askDelete = useConfirm();
   const deletePhoto = useMutation({
     mutationFn: () => api(`/employees/${id}/photo`, { method: "DELETE" }),
     onSuccess: () => {
@@ -374,7 +375,7 @@ export function EmployeeProfilePage() {
       { label: e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie", icon: <IconCamera size={20} />, onClick: () => setPhotoOpen(true) },
     ];
     if (e.has_photo && staff)
-      photoActions.push({ label: "Usuń zdjęcie", description: "Bez zdjęcia nie wydrukujesz karty.", icon: <IconTrash size={20} />, danger: true, onClick: () => deletePhoto.mutate() });
+      photoActions.push({ label: "Usuń zdjęcie", description: "Bez zdjęcia nie wydrukujesz karty.", icon: <IconTrash size={20} />, danger: true, onClick: () => askDelete({ title: "Usunąć zdjęcie?", message: "Bez zdjęcia nie wydrukujesz karty.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && deletePhoto.mutate()) });
     const tabs = [
       { v: "dane", l: "Dane", show: true },
       { v: "dokumenty", l: "Dokumenty", show: canEdit || isAgency || staff, n: docsQ.data?.length },
@@ -592,7 +593,7 @@ export function EmployeeProfilePage() {
                     color="red"
                     aria-label="Usuń zdjęcie"
                     loading={deletePhoto.isPending}
-                    onClick={() => deletePhoto.mutate()}
+                    onClick={() => askDelete({ title: "Usunąć zdjęcie?", message: "Bez zdjęcia nie wydrukujesz karty.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && deletePhoto.mutate())}
                   >
                     <IconTrash size={14} />
                   </Button>

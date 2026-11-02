@@ -481,7 +481,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                           )}
                         </FileButton>
                         {t.has_scan && (
-                          <Menu.Item leftSection={<IconPaperclip size={14} />} onClick={() => removeScan.mutate(t.id)}>
+                          <Menu.Item leftSection={<IconPaperclip size={14} />} onClick={() => confirm({ title: "Usunąć skan?", message: "Skan zostanie odłączony od szkolenia.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && removeScan.mutate(t.id))}>
                             Usuń skan
                           </Menu.Item>
                         )}

@@ -10,6 +10,7 @@ import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
 import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
+import { useConfirm } from "../lib/confirm";
 
 export const PERMIT_KINDS = [
   { value: "karta_pobytu", label: "Karta pobytu" },
@@ -84,6 +85,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["permits", employee.id], queryFn: () => api<Permit[]>(`/employees/${employee.id}/permits`) });
   const [open, setOpen] = useState(false);
+  const ask = useConfirm();
   const del = useMutation({
     mutationFn: (id: number) => api(`/permits/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -122,7 +124,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
           onClose={() => setSheet(null)}
           title={cap(sheet?.kind_label)}
           subtitle={sheet?.notes ?? undefined}
-          actions={sheet ? [{ label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => del.mutate(sheet.id) }] : []}
+          actions={sheet ? [{ label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(sheet.id)) }] : []}
         />
         <AddPermit employee={employee} opened={open} onClose={() => setOpen(false)} />
       </>
@@ -170,7 +172,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
                 </Table.Td>
                 <Table.Td ta="right">
                   <Tooltip label="Usuń dokument">
-                    <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" loading={del.isPending} onClick={() => del.mutate(x.id)}>
+                    <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" loading={del.isPending} onClick={() => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id))}>
                       <IconTrash size={14} />
                     </ActionIcon>
                   </Tooltip>

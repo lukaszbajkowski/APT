@@ -23,6 +23,7 @@ import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type E
 import { useAuth } from "../auth";
 import { EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
+import { useConfirm } from "../lib/confirm";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -68,6 +69,7 @@ function PlannedList({ employee }: { employee: Employee }) {
     queryKey: ["planned-changes", employee.id],
     queryFn: () => api<Planned[]>(`/employees/${employee.id}/planned-changes`),
   });
+  const ask = useConfirm();
   const cancel = useMutation({
     mutationFn: (pid: number) => api(`/planned-changes/${pid}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -94,7 +96,7 @@ function PlannedList({ employee }: { employee: Employee }) {
               </Text>
             </div>
             {hasRole("admin", "hr", "manager") && (
-              <Button size="xs" variant="default" color="red" onClick={() => cancel.mutate(p.id)} loading={cancel.isPending}>
+              <Button size="xs" variant="default" color="red" onClick={() => ask({ title: "Anulować zaplanowaną zmianę?", message: "Zaplanowana zmiana nie zostanie wykonana.", confirmLabel: "Anuluj zmianę", danger: true }).then((ok) => ok && cancel.mutate(p.id))} loading={cancel.isPending}>
                 Anuluj
               </Button>
             )}

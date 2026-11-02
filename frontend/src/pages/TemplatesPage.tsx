@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, FileInput, Group, Modal, SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
 import { ErrorState, Loading } from "../components/States";
+import { CompactEmpty, ListRow, PageHead, StatusBadge } from "../components/Mobile";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -14,6 +16,7 @@ export function TemplatesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const templates = useQuery({ queryKey: ["templates", "all"], queryFn: () => api<DocTemplate[]>("/templates") });
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("pl");
@@ -38,9 +41,19 @@ export function TemplatesPage() {
     onError: (e) => setError(errorText(e)),
   });
 
+  const openNew = () => {
+    setName("");
+    setDescription("");
+    setFile(null);
+    setLanguage("pl");
+    setError(null);
+    setOpen(true);
+  };
+
   return (
     <Stack>
-      <Group justify="space-between">
+      {mobile && <PageHead title="Szablony" subtitle="Dokumenty Word ze znacznikami" action={{ label: "Dodaj szablon", icon: <IconPlus size={22} />, onClick: openNew }} />}
+      {!mobile && <Group justify="space-between">
         <div>
           <Title order={2}>Szablony dokumentów</Title>
           <Text size="sm" c="dimmed">
@@ -61,17 +74,37 @@ export function TemplatesPage() {
         >
           Dodaj szablon
         </Button>
-      </Group>
+      </Group>}
 
       {templates.isLoading && <Loading />}
       {templates.error && <ErrorState error={templates.error} onRetry={() => templates.refetch()} />}
-      {templates.data && templates.data.length === 0 && (
+      {mobile && templates.data && templates.data.length === 0 && (
+        <div className="ui-group">
+          <CompactEmpty title="Brak szablonów" text="Dodaj pierwszy plik Word ze znacznikami {{ … }}." action={{ label: "Dodaj szablon", onClick: openNew }} />
+        </div>
+      )}
+      {mobile && templates.data && templates.data.length > 0 && (
+        <div className="ui-group">
+          {templates.data.map((t) => (
+            <ListRow
+              key={t.id}
+              to={`/szablony/${t.id}`}
+              muted={!t.is_active}
+              leading={<IconFileTypeDocx size={26} color="var(--mantine-primary-color-filled)" aria-hidden />}
+              title={t.name}
+              description={`${LANGUAGES[t.language] ?? t.language} · wersja ${t.version} · pól: ${t.fields.length}`}
+              trailing={!t.is_active ? <StatusBadge tone="neutral">Wyłączony</StatusBadge> : undefined}
+            />
+          ))}
+        </div>
+      )}
+      {!mobile && templates.data && templates.data.length === 0 && (
         <Alert color="blue">
           Brak szablonów. Dodaj pierwszy plik Word ze znacznikami {"{{ … }}"}.
         </Alert>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+      {!mobile && <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
         {templates.data?.map((t) => (
           <Card
             key={t.id}
@@ -118,7 +151,7 @@ export function TemplatesPage() {
             </Text>
           </Card>
         ))}
-      </SimpleGrid>
+      </SimpleGrid>}
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Nowy szablon">
         <form

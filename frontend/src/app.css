@@ -676,7 +676,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-pick-row[data-on] { background: var(--apt-subtle); }
 .ui-pick-check { margin-left: auto; color: var(--mantine-primary-color-text); display: flex; }
 .ui-drop-row { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1.5px dashed var(--apt-line-strong, #807670); border-radius: 12px; }
-.ui-drop-row[data-warn] { border-color: var(--mantine-color-orange-6); }
+.ui-drop-row[data-warn] { border-color: var(--mantine-color-orange-text); }
 .ui-seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--apt-nav); border: 1px solid var(--apt-line); border-radius: 12px; }
 .ui-seg2 > button { min-height: 44px; padding: 4px 8px; border-radius: 9px; text-align: center; font-size: 14px; line-height: 1.25; color: var(--mantine-color-text); }
 .ui-seg2 > button[data-on] { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-weight: 700; }

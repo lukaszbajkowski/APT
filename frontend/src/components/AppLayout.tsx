@@ -364,7 +364,7 @@ function AppLayoutInner() {
       <AppShell.Main>
         <SimulationBanner />
         <NetworkBanner />
-        {lang && hasRole("employee") && (
+        {lang && lang !== "pl" && hasRole("employee") && (
           <Text size="xs" c="dimmed" mb="sm">
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
           </Text>

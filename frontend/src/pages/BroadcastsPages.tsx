@@ -734,22 +734,41 @@ export function MyBroadcastsPage() {
       showRight={showRight}
       list={
         <>
-  <Stack p="sm" gap="xs">
-    <Title order={4}>{t("Komunikaty")}</Title>
-    <SegmentedControl
-      size="xs"
-      fullWidth
-      value={view}
-      onChange={(v) => {
-        stop();
-        setView(v as "active" | "archive");
-        setOpenId(null);
-      }}
-      data={[
-        { value: "active", label: t("Aktywne") },
-        { value: "archive", label: t("Archiwum") },
-      ]}
-    />
+  <Stack p={mobile ? 0 : "sm"} gap="md" pb={mobile ? "md" : undefined}>
+    {mobile ? (
+      <PageHead title={t("Komunikaty")} subtitle={view === "active" && rows.some((x) => !x.read_at) ? `${rows.filter((x) => !x.read_at).length} ${t("nieprzeczytane")}` : undefined} />
+    ) : (
+      <Title order={4}>{t("Komunikaty")}</Title>
+    )}
+    {mobile ? (
+      <Segments
+        value={view}
+        onChange={(v) => {
+          stop();
+          setView(v as "active" | "archive");
+          setOpenId(null);
+        }}
+        items={[
+          { value: "active", label: t("Aktywne") },
+          { value: "archive", label: t("Archiwum") },
+        ]}
+      />
+    ) : (
+      <SegmentedControl
+        size="xs"
+        fullWidth
+        value={view}
+        onChange={(v) => {
+          stop();
+          setView(v as "active" | "archive");
+          setOpenId(null);
+        }}
+        data={[
+          { value: "active", label: t("Aktywne") },
+          { value: "archive", label: t("Archiwum") },
+        ]}
+      />
+    )}
   </Stack>
   <ScrollArea style={{ flex: 1 }}>
     {q.isLoading && <Loading />}
@@ -780,7 +799,7 @@ export function MyBroadcastsPage() {
           </Avatar>
           <Box style={{ flex: 1, minWidth: 0 }}>
             <Group justify="space-between" wrap="nowrap" gap={4}>
-              <Text size="sm" fw={x.read_at ? 500 : 700} lineClamp={1}>
+              <Text size={mobile ? "md" : "sm"} fw={x.read_at ? 500 : 700} lineClamp={1}>
                 {x.subject}
               </Text>
               <Text size="xs" c="dimmed">
@@ -788,7 +807,7 @@ export function MyBroadcastsPage() {
               </Text>
             </Group>
             <Group justify="space-between" wrap="nowrap" gap={4}>
-              <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+              <Text size={mobile ? "sm" : "xs"} c="dimmed" lineClamp={1} style={{ flex: 1 }}>
                 {x.body || (x.files.length ? x.files[0].name : "")}
               </Text>
               {!x.read_at ? (

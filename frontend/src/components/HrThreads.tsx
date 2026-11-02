@@ -608,6 +608,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const [pickedName, setPickedName] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState("");
+  const [step, setStep] = useState<1 | 2>(preset ? 2 : 1);
   const [error, setError] = useState<string | null>(null);
   const subjects = useQuery({ queryKey: ["thread-subjects"], queryFn: () => api<string[]>("/me/messages/subjects"), enabled: !staff });
   const people = useQuery({
@@ -634,87 +635,111 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         ? preset.name
         : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
       : null;
+    const twoSteps = staff && !preset;
+    const onTresc = !twoSteps || step === 2;
+    const goBack = () => (twoSteps && step === 2 ? setStep(1) : onCancel());
     return (
       <div className="ui-inpage" ref={box}>
         <header className="ui-chat-head">
-          <UnstyledButton className="ui-chat-btn" onClick={onCancel} aria-label={T("Anuluj")}>
+          <UnstyledButton className="ui-chat-btn" onClick={goBack} aria-label={twoSteps && step === 2 ? "Wróć do wyboru pracownika" : T("Anuluj")}>
             <IconChevronLeft size={26} stroke={2.2} />
           </UnstyledButton>
           <span className="ui-chat-title">
             <span className="ui-chat-name">{T("Nowa wiadomość")}</span>
-            <span className="ui-chat-sub">{staff ? "Do pracownika" : T("Do kadr")}</span>
+            <span className="ui-chat-sub">
+              {twoSteps ? (step === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · do ${picked ?? ""}`) : staff ? `Do: ${picked ?? ""}` : T("Do kadr")}
+            </span>
           </span>
         </header>
         <div className="ui-chat-body ui-form-body">
-          {staff ? (
-            <>
-              <div className="ui-form-field">
-                <span className="ui-form-label">Pracownik</span>
-                {picked ? (
-                  <div className="ui-group">
-                    <div className="ui-pick-row">
-                      <span className="ui-thread-avatar" aria-hidden>{initials(picked)}</span>
-                      <span className="ui-thread-name" style={{ flex: 1 }}>{picked}</span>
-                      {!preset && (
-                        <Button variant="subtle" onClick={() => setEmployee(null)}>Zmień</Button>
-                      )}
-                    </div>
+          {!onTresc ? (
+            <div className="ui-form-field">
+              <span className="ui-form-label">Pracownik</span>
+              {picked ? (
+                <div className="ui-group">
+                  <div className="ui-pick-row">
+                    <span className="ui-thread-avatar" aria-hidden>{initials(picked)}</span>
+                    <span className="ui-thread-name" style={{ flex: 1 }}>{picked}</span>
+                    <Button variant="subtle" onClick={() => setEmployee(null)}>Zmień</Button>
                   </div>
-                ) : (
-                  <>
-                    <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
-                    <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
-                    {(people.data ?? []).length > 0 ? (
-                      <div className="ui-group">
-                        {(people.data ?? []).slice(0, 6).map((p) => (
-                          <UnstyledButton key={p.employee_id} className="ui-pick-row" onClick={() => { setEmployee(String(p.employee_id)); setPickedName(p.name); }}>
-                            <span className="ui-thread-avatar" aria-hidden>{initials(p.name)}</span>
-                            <span className="ui-row-text">
-                              <span className="ui-thread-name">{p.name}</span>
-                              <span className="ui-thread-snip">nr {p.number}</span>
-                            </span>
-                          </UnstyledButton>
-                        ))}
-                      </div>
-                    ) : (
-                      search.trim() && <span className="ui-form-hint">Brak pracownika z aktywnym kontem</span>
-                    )}
-                  </>
-                )}
-              </div>
-              <TextInput size="md" label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
-            </>
+                </div>
+              ) : (
+                <>
+                  <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
+                  <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
+                  {(people.data ?? []).length > 0 ? (
+                    <div className="ui-group">
+                      {(people.data ?? []).slice(0, 6).map((p) => (
+                        <UnstyledButton key={p.employee_id} className="ui-pick-row" onClick={() => { setEmployee(String(p.employee_id)); setPickedName(p.name); }}>
+                          <span className="ui-thread-avatar" aria-hidden>{initials(p.name)}</span>
+                          <span className="ui-row-text">
+                            <span className="ui-thread-name">{p.name}</span>
+                            <span className="ui-thread-snip">nr {p.number}</span>
+                          </span>
+                        </UnstyledButton>
+                      ))}
+                    </div>
+                  ) : (
+                    search.trim() && <span className="ui-form-hint">Brak pracownika z aktywnym kontem</span>
+                  )}
+                </>
+              )}
+            </div>
           ) : (
-            <Select size="md" label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
-          )}
-          <Textarea
-            size="md"
-            label={T("Treść")}
-            autosize
-            minRows={5}
-            maxRows={12}
-            maxLength={2000}
-            value={body}
-            onChange={(e) => setBody(e.currentTarget.value)}
-            rightSection={<DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />}
-            rightSectionProps={{ style: { alignItems: "flex-end", paddingBottom: 8 } }}
-            rightSectionWidth={52}
-          />
-          {staff && (
-            <span className="ui-form-hint">
-              Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
-            </span>
+            <>
+              {staff ? (
+                <>
+                  <TextInput size="md" label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
+                  <span className="ui-form-hint" style={{ textAlign: "right" }}>{custom.length}/80</span>
+                </>
+              ) : (
+                <Select size="md" label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
+              )}
+              <Textarea
+                size="md"
+                label={T("Treść")}
+                autosize
+                minRows={5}
+                maxRows={12}
+                maxLength={2000}
+                value={body}
+                onChange={(e) => setBody(e.currentTarget.value)}
+                rightSection={<DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />}
+                rightSectionProps={{ style: { alignItems: "flex-end", paddingBottom: 8 } }}
+                rightSectionWidth={52}
+              />
+              <span className="ui-form-hint" style={{ textAlign: "right" }}>{body.length}/2000</span>
+              {staff && (
+                <span className="ui-form-hint">
+                  Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
+                </span>
+              )}
+            </>
           )}
           {error && <Alert color="red">{error}</Alert>}
         </div>
         <div className="ui-chat-compose">
-          <Button size="lg" fullWidth radius="md" leftSection={<IconSend size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
-            {T("Wyślij")}
-          </Button>
+          {!onTresc ? (
+            <Button size="lg" fullWidth radius="md" disabled={!employee} onClick={() => setStep(2)}>
+              Dalej – treść
+            </Button>
+          ) : (
+            <>
+              {twoSteps && (
+                <Button size="lg" radius="md" variant="default" onClick={() => setStep(1)} style={{ flex: "none", minWidth: 110 }}>
+                  Wstecz
+                </Button>
+              )}
+              <Button size="lg" fullWidth radius="md" leftSection={<IconSend size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
+                {T("Wyślij")}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
   }
+
   return (
     <Stack p="md" maw={560}>
       <Title order={4}>{staff ? "Nowa wiadomość do pracownika" : T("Nowa wiadomość do kadr")}</Title>

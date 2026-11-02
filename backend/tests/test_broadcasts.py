@@ -34,16 +34,27 @@ def test_broadcast_flow(me, hr, emp):  # noqa: F811
     assert hr.get("/api/broadcasts").json()[0]["read"] == 1
     assert hr.get(f"/api/broadcasts/{bid}/recipients").json()[0]["read_at"] is not None
     # dokument do zapoznania się + przypomnienie
+    # dokument wymaga pliku, treść do 2000 znaków, temat do 80
+    assert (
+        hr.post(
+            "/api/broadcasts", data={"kind": "document", "subject": "Regulamin", "body": "x", "agency_id": ag["id"]}
+        ).status_code
+        == 400
+    )
+    assert (
+        hr.post("/api/broadcasts", data={"subject": "a" * 81, "body": "x", "agency_id": ag["id"]}).status_code == 422
+    )
     d = hr.post(
         "/api/broadcasts",
-        data={"kind": "document", "subject": "Regulamin", "body": "x" * 5000, "agency_id": ag["id"]},
+        data={"kind": "document", "subject": "Regulamin", "body": "x" * 2000, "agency_id": ag["id"]},
+        files=[("files", ("regulamin.pdf", b"%PDF-1.4 test", "application/pdf"))],
     )
     assert d.status_code == 201 and d.json()["kind"] == "document"
     assert (
         hr.post(
             "/api/broadcasts", data={"subject": "a", "body": "x" * 2001, "agency_id": ag["id"]}
         ).status_code
-        == 400
+        in (400, 422)
     )
     assert hr.post(f"/api/broadcasts/{d.json()['id']}/remind").json()["unread"] == 1
     # pracownik nie ma dostępu do funkcji kadr

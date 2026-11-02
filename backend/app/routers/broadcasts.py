@@ -61,8 +61,8 @@ class TargetIn(BaseModel):
 
 class BroadcastIn(TargetIn):
     kind: Literal["info", "document"] = "info"
-    subject: str = Field(min_length=1, max_length=120)
-    body: str = Field(min_length=1, max_length=20000)
+    subject: str = Field(min_length=1, max_length=80)
+    body: str = Field(min_length=1, max_length=2000)
 
 
 def _recipients(db, t: TargetIn) -> list[Employee]:
@@ -229,20 +229,22 @@ async def create(
     request: Request,
     db: DbSession,
     tasks: BackgroundTasks,
-    subject: Annotated[str, Form(min_length=1, max_length=120)],
-    body: Annotated[str, Form(max_length=20000)] = "",
+    subject: Annotated[str, Form(min_length=1, max_length=80)],
+    body: Annotated[str, Form(max_length=2000)] = "",
     kind: Annotated[Literal["info", "document"], Form()] = "info",
     agency_id: Annotated[int | None, Form()] = None,
     department_id: Annotated[int | None, Form()] = None,
     everyone: Annotated[bool, Form()] = False,
     files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> BroadcastOut:
-    if kind == "info" and len(body) > 2000:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Komunikat może mieć do 2000 znaków.")
+    if len(body) > 2000:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Treść może mieć do 2000 znaków.")
     emps = _recipients(db, TargetIn(agency_id=agency_id, department_id=department_id, everyone=everyone))
     if not emps:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="W tej grupie nie ma aktywnych pracowników.")
     uploads = [f for f in (files or []) if f.filename]
+    if kind == "document" and not uploads:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Dokument do zapoznania się wymaga pliku.")
     if not body.strip() and not uploads:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz treść albo dodaj dokument.")
     if len(uploads) > MAX_FILES:

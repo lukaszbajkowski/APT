@@ -175,6 +175,10 @@ export function BroadcastsPage() {
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [cStep, setCStep] = useState<1 | 2>(1);
+  useEffect(() => {
+    if (composing) setCStep(1);
+  }, [composing]);
   const arch = useMutation({
     mutationFn: (v: { id: number; on: boolean }) => api(`/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
     onSuccess: () => {
@@ -233,6 +237,99 @@ export function BroadcastsPage() {
   const hasRight = composing || b !== null;
   const showList = !mobile || !hasRight;
   const showRight = !mobile || hasRight;
+  const audience = everyone
+    ? "wszyscy aktywni"
+    : [agencies.data?.find((x) => String(x.id) === agency)?.name, departments.data?.find((x) => String(x.id) === dept)?.name].filter(Boolean).join(", ");
+  const canSend = hasTarget && !!preview.data?.total && !!subject.trim() && (kind === "document" ? files.length > 0 : !!body.trim() || files.length > 0);
+  const mobileComposer = (
+    <div className="ui-inpage">
+      <header className="ui-chat-head">
+        <UnstyledButton className="ui-chat-btn" onClick={() => (cStep === 2 ? setCStep(1) : back())} aria-label={cStep === 2 ? "Wróć do wyboru odbiorców" : "Wróć"}>
+          <IconArrowLeft size={22} />
+        </UnstyledButton>
+        <span className="ui-chat-title">
+          <span className="ui-chat-name">Nowy komunikat</span>
+          <span className="ui-chat-sub">{cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}`}</span>
+        </span>
+      </header>
+      <div className="ui-chat-body ui-form-body">
+        {cStep === 1 ? (
+          <>
+            <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
+            <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
+            <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
+            {preview.data && (
+              <Text size="sm">
+                Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
+                {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
+              </Text>
+            )}
+            {!hasTarget && <span className="ui-form-hint ui-warn-line">Wybierz agencję, wydział albo „Wszyscy”, żeby przejść dalej.</span>}
+            {hasTarget && preview.data?.total === 0 && <span className="ui-form-hint ui-warn-line">Brak aktywnych pracowników w tej grupie – wybierz inną.</span>}
+          </>
+        ) : (
+          <>
+            <SegmentedControl
+              fullWidth
+              value={kind}
+              onChange={(v) => setKind(v as "info" | "document")}
+              data={[
+                { value: "info", label: "Komunikat" },
+                { value: "document", label: "Dokument do zapoznania się" },
+              ]}
+            />
+            <TextInput label="Temat" maxLength={80} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+            <span className="ui-form-hint" style={{ textAlign: "right" }}>{subject.length}/80</span>
+            <Textarea
+              label={kind === "document" ? "Treść (opcjonalna)" : "Treść"}
+              autosize
+              minRows={4}
+              maxLength={2000}
+              value={body}
+              onChange={(e) => setBody(e.currentTarget.value)}
+            />
+            <span className="ui-form-hint" style={{ textAlign: "right" }}>{body.length}/2000</span>
+            <FileInput
+              label={kind === "document" ? "Dokument * (wymagany)" : "Dokumenty (opcjonalne)"}
+              description="PDF, JPG, PNG – do 5 plików, po 15 MB. Pracownik zobaczy je w aplikacji, bez pobierania."
+              placeholder="Dodaj pliki"
+              accept="application/pdf,image/jpeg,image/png"
+              multiple
+              clearable
+              value={files}
+              onChange={(v) => setFiles((v ?? []).slice(0, 5))}
+            />
+            {kind === "document" && files.length === 0 && <span className="ui-form-hint ui-warn-line">Dokument do zapoznania się wymaga pliku.</span>}
+          </>
+        )}
+        {error && <Alert color="red">{error}</Alert>}
+      </div>
+      <div className="ui-chat-compose">
+        {cStep === 1 ? (
+          <Button size="lg" fullWidth radius="md" disabled={!hasTarget || !preview.data?.total} onClick={() => setCStep(2)}>
+            Dalej – treść
+          </Button>
+        ) : (
+          <>
+            <Button size="lg" radius="md" variant="default" onClick={() => setCStep(1)} style={{ flex: "none", minWidth: 110 }}>
+              Wstecz
+            </Button>
+            <Button
+              size="lg"
+              fullWidth
+              radius="md"
+              loading={send.isPending}
+              disabled={!canSend}
+              onClick={() => confirm({ title: "Wysłać komunikat?", message: `Komunikat „${subject.trim()}” trafi do ${preview.data?.total ?? 0} osób. Tej operacji nie da się cofnąć.`, confirmLabel: "Wyślij" }).then((ok) => ok && send.mutate())}
+            >
+              Wyślij
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   const back = () => {
     setComposing(false);
     setOpenId(null);
@@ -400,7 +497,9 @@ export function BroadcastsPage() {
       }
       detail={
         <>
-  {composing ? (
+  {composing && mobile ? (
+    mobileComposer
+  ) : composing ? (
     <>
       <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
         {mobile && (
@@ -436,8 +535,8 @@ export function BroadcastsPage() {
               { value: "document", label: "Dokument do zapoznania się" },
             ]}
           />
-          <TextInput label="Temat" maxLength={120} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={kind === "document" ? 20000 : 2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <TextInput label="Temat" maxLength={80} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
           <FileInput
             label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
             placeholder="Dodaj pliki"
@@ -457,12 +556,14 @@ export function BroadcastsPage() {
             ? "Brak aktywnych pracowników w tej grupie – wybierz inną."
             : !subject.trim()
             ? "Wpisz temat komunikatu."
+            : kind === "document" && files.length === 0
+            ? "Dokument do zapoznania się wymaga pliku."
             : !body.trim() && files.length === 0
             ? "Dodaj treść albo dokument."
             : ""}
         </Text>
         <Button
-          disabled={!hasTarget || !subject.trim() || (!body.trim() && files.length === 0) || !preview.data?.total}
+          disabled={!canSend}
           loading={send.isPending}
           onClick={() => {
             confirm({ title: "Wysłać komunikat?", message: `Komunikat „${subject.trim()}” trafi do ${preview.data?.total ?? 0} osób. Tej operacji nie da się cofnąć.`, confirmLabel: "Wyślij" }).then((ok) => ok && send.mutate());

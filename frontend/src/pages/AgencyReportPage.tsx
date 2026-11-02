@@ -4,7 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconMail } from "@tabler/icons-react";
+import { IconDots, IconDownload, IconMail } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge } from "../components/Mobile";
+import { useConfirm } from "../lib/confirm";
 
 import { useAuth } from "../auth";
 import { api, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
@@ -79,6 +82,98 @@ export function AgencyReportPage() {
   });
 
   const r = report.data;
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [pick, setPick] = useState<null | "agency" | "month" | "more">(null);
+  const confirm = useConfirm();
+
+  if (mobile) {
+    const agencyName = agencies.data?.find((a) => String(a.id) === agencyId)?.name ?? r?.agency;
+    const monthLabel = months.find((m) => m.value === month)?.label ?? month;
+    const xlsx = withAcct(`/api/agency-report/xlsx?${params}`);
+    const askSend = () =>
+      confirm({
+        title: "Wysłać zestawienie?",
+        message: `Zestawienie za ${r?.label ?? monthLabel} trafi na: ${r?.recipients.join(", ")}.`,
+        confirmLabel: "Wyślij",
+      }).then((ok) => ok && send.mutate());
+    return (
+      <Stack gap={16}>
+        <PageHead
+          title="Zestawienie dla agencji"
+          subtitle={[agencyName, monthLabel].filter(Boolean).join(" · ")}
+          extra={{ label: "Więcej akcji", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setPick("more") }}
+        />
+        <Chips
+          items={[
+            ...(staff ? [{ label: agencyName ?? "APT", active: true, menu: true, onClick: () => setPick("agency") }] : []),
+            { label: monthLabel, active: true, menu: true, onClick: () => setPick("month") },
+          ]}
+        />
+        {staff && agencies.data?.length === 0 && <CompactEmpty title="Brak APT" text="Dodaj APT w Słownikach, żeby przygotować zestawienie." />}
+        {report.isLoading && <Loading />}
+        {report.error && <ErrorState error={report.error} onRetry={() => report.refetch()} />}
+        {r && (
+          <>
+            {staff && !r.recipients.length && (
+              <div className="ui-hint-warn">
+                APT nie ma adresu e-mail – zestawienie nie wyjdzie automatycznie. Uzupełnij go w <Link to="/slowniki">Słownikach</Link>.
+              </div>
+            )}
+            <Section title="Podsumowanie">
+              <InfoRow label="Osób">{r.people}</InfoRow>
+              <InfoRow label="Przyjętych">{r.came}</InfoRow>
+              <InfoRow label="Odchodzących">{r.left}</InfoRow>
+              {staff && r.recipients.length > 0 && <InfoRow label="Adres agencji" stacked>{r.recipients.join(", ")}</InfoRow>}
+              {r.last_sent_at && <InfoRow label="Wysłano">{formatDateTime(r.last_sent_at)}</InfoRow>}
+            </Section>
+            <Section title={`Osoby · ${r.rows.length}`}>
+              {r.rows.length === 0 ? (
+                <CompactEmpty title={`Brak osób w: ${r.label}`} text="W tym okresie nikt nie pracował w tej APT." />
+              ) : (
+                r.rows.map((x) => (
+                  <ListRow
+                    key={`${x.employee_id}-${x.period_from}`}
+                    title={`${x.last_name} ${x.first_name}`}
+                    description={[`nr ${x.number}`, x.department, `${formatDate(x.period_from)} – ${formatDate(x.period_to)}`, `${x.days} dni`].filter(Boolean).join(" · ")}
+                    trailing={x.change ? <StatusBadge tone={x.change === "przyjęty" ? "ok" : x.change === "odszedł" ? "warn" : "neutral"}>{x.change}</StatusBadge> : undefined}
+                    to={`/pracownicy/${x.employee_id}`}
+                  />
+                ))
+              )}
+            </Section>
+            {staff ? (
+              <Button size="lg" fullWidth leftSection={<IconMail size={20} />} loading={send.isPending} disabled={!r.recipients.length} onClick={askSend}>
+                Wyślij do agencji
+              </Button>
+            ) : (
+              <Button size="lg" fullWidth leftSection={<IconDownload size={20} />} component="a" href={xlsx}>
+                Pobierz Excel
+              </Button>
+            )}
+          </>
+        )}
+        <PickSheet
+          opened={pick === "agency"}
+          onClose={() => setPick(null)}
+          title="APT (agencja pracy)"
+          options={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
+          value={agencyId ? [agencyId] : []}
+          onChange={(v) => v[0] && setAgencyId(v[0])}
+        />
+        <PickSheet opened={pick === "month"} onClose={() => setPick(null)} title="Miesiąc" options={months} value={[month]} onChange={(v) => v[0] && setMonth(v[0])} />
+        <ActionSheet
+          opened={pick === "more"}
+          onClose={() => setPick(null)}
+          title="Zestawienie"
+          actions={[
+            { label: "Pobierz Excel", description: "Lista osób z okresami zatrudnienia", icon: <IconDownload size={20} />, disabled: !r, onClick: () => window.location.assign(xlsx) },
+            ...(staff ? [{ label: "Wyślij do agencji", description: r?.recipients.length ? r.recipients.join(", ") : "APT nie ma adresu e-mail", icon: <IconMail size={20} />, disabled: !r || !r.recipients.length, onClick: askSend }] : []),
+          ]}
+        />
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       <div>

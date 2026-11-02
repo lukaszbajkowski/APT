@@ -714,3 +714,10 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* informacja o tłumaczeniu automatycznym (telefon, pod treścią ekranu) */
 .ui-lang-note { display: flex; gap: 8px; align-items: flex-start; margin: 24px 0 0; font-size: 14px; line-height: 1.4; color: var(--mantine-color-dimmed); }
 .ui-lang-note svg { flex: none; margin-top: 2px; }
+
+/* pola w panelu filtrów i przyciski stron listy */
+.ui-filter-fields { display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 16px; }
+.ui-pager-btns { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ui-count-cell { flex: none; font-size: 14px; color: var(--mantine-color-dimmed); white-space: nowrap; }
+.ui-count-cell b { font-size: 16px; color: var(--mantine-color-text); }
+.ui-hint-warn a { color: inherit; font-weight: 700; }

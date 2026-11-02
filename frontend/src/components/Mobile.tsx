@@ -6,7 +6,7 @@
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
-import { Drawer, UnstyledButton } from "@mantine/core";
+import { Button, Drawer, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
@@ -622,4 +622,58 @@ export function useNavHeightVar() {
     ro.observe(nav);
     return () => ro.disconnect();
   }, []);
+}
+
+/* ——— panel filtrów od dołu: „Filtry”, pola, Wyczyść + Pokaż N (wzorzec listy pracowników) ——— */
+export function FilterSheet({
+  opened,
+  onClose,
+  onClear,
+  showLabel = "Pokaż",
+  title = "Filtry",
+  children,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onClear: () => void;
+  showLabel?: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Drawer opened={opened} onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label={title}>
+      <SheetHandle onClose={onClose}>
+        <div className="ui-sheet-head">
+          <div className="ui-sheet-title">{title}</div>
+        </div>
+      </SheetHandle>
+      <div className="ui-filter-fields">{children}</div>
+      <div className="ui-filter-foot">
+        <Button size="lg" variant="default" radius="md" style={{ flex: 1 }} onClick={onClear}>
+          Wyczyść
+        </Button>
+        <Button size="lg" radius="md" style={{ flex: 2 }} onClick={onClose}>
+          {showLabel}
+        </Button>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ——— przyciski stron listy: wcześniejsze / następne ——— */
+export function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
+  if (pages <= 1) return null;
+  return (
+    <div className="ui-pager-btns">
+      <Button variant="default" size="md" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        Poprzednie
+      </Button>
+      <span className="ui-row-desc">
+        {page} z {pages}
+      </span>
+      <Button variant="default" size="md" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+        Następne
+      </Button>
+    </div>
+  );
 }

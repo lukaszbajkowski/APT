@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
+import { IconDots, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
 import { EmptyState, Loading } from "../components/States";
@@ -65,6 +67,35 @@ function CountTable({ title, rows, limit = 12 }: { title: string; rows: ReportRo
   );
 }
 
+/* telefon: rozkład jako wiersze grupy – nazwa, pasek, liczba i procent */
+function MobileCounts({ title, rows, limit = 5 }: { title: string; rows: ReportRow[]; limit?: number }) {
+  const [all, setAll] = useState(false);
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const max = Math.max(0, ...rows.map((r) => r.count));
+  const shown = all ? rows : rows.slice(0, limit);
+  return (
+    <Section title={title} action={rows.length > limit ? { label: all ? "Pokaż mniej" : `Wszystkie (${rows.length})`, onClick: () => setAll((a) => !a) } : undefined}>
+      {rows.length === 0 ? (
+        <CompactEmpty title="Brak danych" text="Pojawią się, gdy w kartotece będą pracownicy." />
+      ) : (
+        shown.map((r) => (
+          <ListRow
+            key={r.name}
+            title={r.name}
+            muted={r.name === "(brak)"}
+            description={<Bar value={r.count} max={max} />}
+            trailing={
+              <span className="ui-count-cell">
+                <b>{r.count}</b> {total ? Math.round((r.count / total) * 100) : 0}%
+              </span>
+            }
+          />
+        ))
+      )}
+    </Section>
+  );
+}
+
 export function ReportsPage() {
   const data = useQuery({ queryKey: ["report-summary"], queryFn: () => api<ReportSummary>("/reports/summary") });
   const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null);
@@ -80,10 +111,56 @@ export function ReportsPage() {
     }
   }
 
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [more, setMore] = useState(false);
   if (data.isLoading) return <Loading />;
   if (!data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const s = data.data;
   const maxMonth = Math.max(1, ...s.months.flatMap((m) => [m.hired, m.terminated]));
+
+  if (mobile) {
+    const n = (v: number) => <span className="ui-count-cell"><b>{v.toLocaleString("pl-PL")}</b></span>;
+    return (
+      <Stack gap={24}>
+        <PageHead
+          title="Raporty"
+          subtitle={`Stan na ${formatDateTime(s.generated_at)}`}
+          extra={{ label: "Pobierz raport", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setMore(true) }}
+        />
+        <Section title="Pracownicy">
+          <ListRow title="Aktywni" trailing={n(s.active)} to="/pracownicy" />
+          <ListRow title="W archiwum" trailing={n(s.terminated)} to="/pracownicy?status=terminated" />
+          <ListRow title="Bez zdjęcia" description={s.missing_photo ? "Karta się nie wydrukuje" : undefined} trailing={s.missing_photo ? <StatusBadge tone="warn">{s.missing_photo}</StatusBadge> : n(0)} to="/pracownicy?missing=photo" />
+          {s.missing_pesel !== null && <ListRow title="Bez PESEL" trailing={s.missing_pesel ? <StatusBadge tone="warn">{s.missing_pesel}</StatusBadge> : n(0)} to="/pracownicy?missing=pesel" />}
+        </Section>
+        <MobileCounts title="APT" rows={s.by_agency} />
+        <MobileCounts title="Wydziały" rows={s.by_department} />
+        <MobileCounts title="Stanowiska" rows={s.by_position} />
+        <MobileCounts title="Obywatelstwo" rows={s.by_country} />
+        <Section title="Zatrudnienia i zwolnienia">
+          {s.months.map((m) => (
+            <ListRow key={m.month} title={m.label} description={`Zatrudnieni: ${m.hired} · zwolnieni: ${m.terminated}`} />
+          ))}
+        </Section>
+        <Section title="APT × wydział">
+          {s.agency_department.length === 0 ? (
+            <CompactEmpty title="Brak danych" />
+          ) : (
+            s.agency_department.map((r) => <ListRow key={`${r.agency}|${r.department}`} title={r.agency} description={r.department} trailing={n(r.count)} />)
+          )}
+        </Section>
+        <ActionSheet
+          opened={more}
+          onClose={() => setMore(false)}
+          title="Pobierz raport"
+          actions={[
+            { label: busy === "xlsx" ? "Pobieranie…" : "Excel", description: "Wszystkie tabele w arkuszu", icon: <IconFileSpreadsheet size={20} />, onClick: () => download("xlsx") },
+            { label: busy === "pdf" ? "Pobieranie…" : "PDF", description: "Do wydruku lub wysłania", icon: <IconFileTypePdf size={20} />, onClick: () => download("pdf") },
+          ]}
+        />
+      </Stack>
+    );
+  }
 
   return (
     <Stack maw={1200}>

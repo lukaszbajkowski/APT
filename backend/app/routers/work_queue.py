@@ -41,7 +41,7 @@ def _group(key: str, label: str, url: str, items: list[QueueItem], count: int | 
 def queue(ctx: StaffAuth, db: DbSession) -> QueueOut:
     from app.routers.lifecycle import open_tasks
     from app.routers.permits import KINDS, latest_permits, permit_state
-    from app.routers.quality import summary
+    from app.routers.quality import CHECKS, summary
     from app.routers.trainings import expiring
 
     user = ctx.user
@@ -144,7 +144,7 @@ def queue(ctx: StaffAuth, db: DbSession) -> QueueOut:
             [
                 QueueItem(
                     title=f"{r.last_name} {r.first_name}",
-                    detail=", ".join(r.missing),
+                    detail="Brak: " + ", ".join(CHECKS.get(m, m).removeprefix("Brak ") for m in r.missing),
                     url=f"/pracownicy/{r.id}",
                 )
                 for r in q.rows

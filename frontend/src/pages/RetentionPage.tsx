@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -23,6 +23,9 @@ import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-reac
 import { api, errorText, formatDate, type RetentionItem, type RetentionOverview } from "../api";
 import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useMediaQuery } from "@mantine/hooks";
+import { IconDots } from "@tabler/icons-react";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge } from "../components/Mobile";
 
 const CONFIRM = "USUŃ";
 
@@ -83,6 +86,9 @@ export function RetentionPage() {
   const [holdUntil, setHoldUntil] = useState("");
   const [holdReason, setHoldReason] = useState("");
   const [holdError, setHoldError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<null | { kind: "all" | "due" | "held"; item?: RetentionItem }>(null);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const navigate = useNavigate();
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["retention"] });
@@ -127,6 +133,151 @@ export function RetentionPage() {
   const d = data.data;
   const allDue = d.due.map((i) => i.id);
   const toggle = (id: number) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const openHold = (i: RetentionItem) => {
+    setHoldFor(i);
+    setHoldUntil("");
+    setHoldReason("");
+    setHoldError(null);
+  };
+
+  const modals = (
+    <>
+      <Modal opened={confirmOpen} onClose={() => setConfirmOpen(false)} title="Trwałe usunięcie danych" centered>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            purge.mutate();
+          }}
+        >
+          <Stack>
+            <Alert color="red" icon={<IconAlertTriangle size={18} />}>
+              Usuniesz trwale dane {selected.length} os.: dane osobowe, PESEL, zdjęcie i wygenerowane dokumenty. Tej
+              operacji nie można cofnąć.
+            </Alert>
+            <TextInput
+              label={`Aby potwierdzić, wpisz ${CONFIRM}`}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.currentTarget.value)}
+              autoFocus
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setConfirmOpen(false)}>
+                Anuluj
+              </Button>
+              <Button
+                type="submit"
+                color="red"
+                loading={purge.isPending}
+                disabled={confirmText.trim().toUpperCase() !== CONFIRM}
+              >
+                Usuń trwale
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      <Modal opened={!!holdFor} onClose={() => setHoldFor(null)} title="Wstrzymanie usunięcia" centered>
+        {holdFor && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setHoldError(null);
+              hold.mutate({ item: holdFor });
+            }}
+          >
+            <Stack>
+              <Text size="sm">
+                {holdFor.name} ({holdFor.number}) – dane zostaną zachowane do podanej daty.
+              </Text>
+              {holdError && <Alert color="red">{holdError}</Alert>}
+              <DateField label="Wstrzymaj do"  required value={holdUntil} onChange={(e) => setHoldUntil(e.currentTarget.value)} />
+              <Textarea
+                label="Powód"
+                required
+                autosize
+                minRows={2}
+                maxLength={500}
+                placeholder="np. postępowanie przed sądem pracy, kontrola PIP"
+                value={holdReason}
+                onChange={(e) => setHoldReason(e.currentTarget.value)}
+              />
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setHoldFor(null)}>
+                  Anuluj
+                </Button>
+                <Button type="submit" loading={hold.isPending}>
+                  Wstrzymaj
+                </Button>
+              </Group>
+            </Stack>
+          </form>
+        )}
+      </Modal>
+    </>
+  );
+
+  if (mobile) {
+    const desc = (i: RetentionItem) => [i.number, i.agency, i.termination_date ? `zwolniony ${formatDate(i.termination_date)}` : null].filter(Boolean).join(" · ");
+    return (
+      <Stack gap={24}>
+        <PageHead
+          title="Retencja danych"
+          subtitle={`Dane zwolnionych trzymamy ${d.years} lat od końca roku zwolnienia`}
+          extra={d.due.length ? { label: "Więcej akcji", icon: <IconDots size={22} stroke={2.4} />, onClick: () => setSheet({ kind: "all" }) } : undefined}
+        />
+        <MSection title={`Do usunięcia · ${d.due.length}`}>
+          {d.due.length === 0 ? (
+            <CompactEmpty title="Nic do usunięcia" text="Nikomu nie minął jeszcze okres przechowywania." />
+          ) : (
+            d.due.map((i) => <ListRow key={i.id} title={i.name} description={desc(i)} trailing={<StatusBadge tone="warn">Termin minął</StatusBadge>} onClick={() => setSheet({ kind: "due", item: i })} />)
+          )}
+        </MSection>
+        <MSection title={`Wkrótce · ${d.upcoming.length}`}>
+          {d.upcoming.length === 0 ? (
+            <CompactEmpty title="Brak" text="W ciągu 12 miesięcy nikomu nie kończy się okres przechowywania." />
+          ) : (
+            d.upcoming.map((i) => <ListRow key={i.id} title={i.name} description={desc(i)} trailing={<span className="ui-count-cell">do {formatDate(i.delete_after)}</span>} to={`/pracownicy/${i.id}`} />)
+          )}
+        </MSection>
+        {d.held.length > 0 && (
+          <MSection title={`Wstrzymane · ${d.held.length}`}>
+            {d.held.map((i) => (
+              <ListRow key={i.id} title={i.name} description={`do ${formatDate(i.hold_until)} · ${i.hold_reason ?? ""}`} trailing={<StatusBadge tone="wait">Wstrzymane</StatusBadge>} onClick={() => setSheet({ kind: "held", item: i })} />
+            ))}
+          </MSection>
+        )}
+        {d.missing_date.length > 0 && (
+          <MSection title={`Bez daty zwolnienia · ${d.missing_date.length}`}>
+            {d.missing_date.map((i) => <ListRow key={i.id} title={i.name} description="Uzupełnij datę zwolnienia w profilu" trailing={<StatusBadge tone="warn">Brak daty</StatusBadge>} to={`/pracownicy/${i.id}`} />)}
+          </MSection>
+        )}
+        <ActionSheet
+          opened={!!sheet}
+          onClose={() => setSheet(null)}
+          title={sheet?.kind === "all" ? "Do usunięcia" : sheet?.item?.name ?? ""}
+          subtitle={sheet?.item ? desc(sheet.item) : undefined}
+          actions={
+            sheet?.kind === "all"
+              ? [{ label: `Usuń trwale wszystkich (${d.due.length})`, description: "Dane osobowe, PESEL, zdjęcie i dokumenty", danger: true, onClick: () => { setSelected(allDue); setConfirmText(""); setConfirmOpen(true); } }]
+              : sheet?.kind === "due" && sheet.item
+                ? [
+                    { label: "Otwórz kartę", onClick: () => navigate(`/pracownicy/${sheet.item!.id}`) },
+                    { label: "Wstrzymaj usunięcie", description: "Np. postępowanie sądowe lub kontrola", icon: <IconClockPause size={20} />, onClick: () => openHold(sheet.item!) },
+                    { label: "Usuń trwale", description: "Tej operacji nie można cofnąć", icon: <IconTrash size={20} />, danger: true, onClick: () => { setSelected([sheet.item!.id]); setConfirmText(""); setConfirmOpen(true); } },
+                  ]
+                : sheet?.kind === "held" && sheet.item
+                  ? [
+                      { label: "Otwórz kartę", onClick: () => navigate(`/pracownicy/${sheet.item!.id}`) },
+                      { label: "Znieś wstrzymanie", description: "Dane wrócą na listę „Do usunięcia”", onClick: () => hold.mutate({ item: sheet.item!, clear: true }) },
+                    ]
+                  : []
+          }
+        />
+        {modals}
+      </Stack>
+    );
+  }
 
   return (
     <Stack maw={1100}>
@@ -276,78 +427,7 @@ export function RetentionPage() {
         </Section>
       )}
 
-      <Modal opened={confirmOpen} onClose={() => setConfirmOpen(false)} title="Trwałe usunięcie danych">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            purge.mutate();
-          }}
-        >
-          <Stack>
-            <Alert color="red" icon={<IconAlertTriangle size={18} />}>
-              Usuniesz trwale dane {selected.length} os.: dane osobowe, PESEL, zdjęcie i wygenerowane dokumenty. Tej
-              operacji nie można cofnąć.
-            </Alert>
-            <TextInput
-              label={`Aby potwierdzić, wpisz ${CONFIRM}`}
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.currentTarget.value)}
-              autoFocus
-            />
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setConfirmOpen(false)}>
-                Anuluj
-              </Button>
-              <Button
-                type="submit"
-                color="red"
-                loading={purge.isPending}
-                disabled={confirmText.trim().toUpperCase() !== CONFIRM}
-              >
-                Usuń trwale
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
-
-      <Modal opened={!!holdFor} onClose={() => setHoldFor(null)} title="Wstrzymanie usunięcia">
-        {holdFor && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setHoldError(null);
-              hold.mutate({ item: holdFor });
-            }}
-          >
-            <Stack>
-              <Text size="sm">
-                {holdFor.name} ({holdFor.number}) – dane zostaną zachowane do podanej daty.
-              </Text>
-              {holdError && <Alert color="red">{holdError}</Alert>}
-              <DateField label="Wstrzymaj do"  required value={holdUntil} onChange={(e) => setHoldUntil(e.currentTarget.value)} />
-              <Textarea
-                label="Powód"
-                required
-                autosize
-                minRows={2}
-                maxLength={500}
-                placeholder="np. postępowanie przed sądem pracy, kontrola PIP"
-                value={holdReason}
-                onChange={(e) => setHoldReason(e.currentTarget.value)}
-              />
-              <Group justify="flex-end">
-                <Button variant="default" onClick={() => setHoldFor(null)}>
-                  Anuluj
-                </Button>
-                <Button type="submit" loading={hold.isPending}>
-                  Wstrzymaj
-                </Button>
-              </Group>
-            </Stack>
-          </form>
-        )}
-      </Modal>
+      {modals}
     </Stack>
   );
 }

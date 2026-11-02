@@ -12,6 +12,29 @@ import { options, useAgencies, useCountries, useDepartments, usePositions } from
 import { parsePesel } from "../pesel";
 import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useMediaQuery } from "@mantine/hooks";
+import { UnstyledButton } from "@mantine/core";
+import { useMobileHeader, useNavHeightVar } from "../components/Mobile";
+import type { ReactNode } from "react";
+
+/* Grupa pól: na komputerze karta, na telefonie etykieta sekcji bez ramki (formularz na pełnym ekranie). */
+function Block({ mobile, title, children }: { mobile: boolean; title: string; children: ReactNode }) {
+  if (mobile)
+    return (
+      <section className="ui-form-group">
+        <h2 className="ui-section-title">{title}</h2>
+        {children}
+      </section>
+    );
+  return (
+    <Card withBorder padding="lg">
+      <Title order={4} mb="sm">
+        {title}
+      </Title>
+      {children}
+    </Card>
+  );
+}
 
 interface FormState {
   last_name: string;
@@ -91,6 +114,8 @@ export function EmployeeFormPage() {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  useNavHeightVar();
 
   const employee = useQuery({
     queryKey: ["employee", id],
@@ -210,6 +235,15 @@ export function EmployeeFormPage() {
     save.mutate(false);
   }
 
+  useMobileHeader(
+    mobile
+      ? {
+          title: editing ? "Edycja danych" : "Nowy pracownik",
+          subtitle: editing ? (employee.data ? `${employee.data.last_name} ${employee.data.first_name} · nr ${employee.data.number_display}` : undefined) : "Numer nada się po zapisaniu",
+          back: editing ? `/pracownicy/${id}` : "/pracownicy",
+        }
+      : null,
+  );
   if (editing && employee.isLoading) return <Loading />;
   if (editing && employee.error) return <Alert color="red">{errorText(employee.error)}</Alert>;
 
@@ -220,9 +254,9 @@ export function EmployeeFormPage() {
   );
 
   return (
-    <form onSubmit={submit}>
-      <Stack maw={900}>
-        <Group justify="space-between">
+    <form onSubmit={submit} className={mobile ? "ui-inpage" : undefined}>
+      <Stack maw={900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
+        <Group justify="space-between" visibleFrom="sm">
           <div>
             <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" visibleFrom="sm">
               <Group gap={4}>
@@ -245,6 +279,9 @@ export function EmployeeFormPage() {
           </div>
         </Group>
 
+        {mobile && (!form.last_name.trim() || !form.first_name.trim()) && (
+          <span className="ui-hint-warn">Wpisz nazwisko i imię – reszta danych jest nieobowiązkowa.</span>
+        )}
         {!editing && peselDuplicate?.archived && (
           <Alert color="blue" title="Ta osoba jest już w kartotece (archiwum)">
             {peselDuplicate.name} (nr {peselDuplicate.number}) – zwolniona
@@ -276,11 +313,8 @@ export function EmployeeFormPage() {
           </Alert>
         )}
 
-        <Card withBorder padding="lg">
-          <Title order={4} mb="sm">
-            Dane osobowe
-          </Title>
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <Block mobile={!!mobile} title="Dane osobowe">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <TextInput
               label="Nazwisko"
               required
@@ -348,16 +382,29 @@ export function EmployeeFormPage() {
               <Text size="sm" fw={500} mb={4}>
                 Płeć
               </Text>
-              <SegmentedControl
-                disabled={personalLocked || !!peselCheck?.valid}
-                value={form.sex || "none"}
-                onChange={(v) => set("sex", v === "none" ? "" : (v as "K" | "M"))}
-                data={[
-                  { value: "K", label: "Kobieta" },
-                  { value: "M", label: "Mężczyzna" },
-                  { value: "none", label: "Nie podano" },
-                ]}
-              />
+              {mobile ? (
+                <div className="ui-seg2" role="radiogroup" aria-label="Płeć" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+                  {([["K", "Kobieta"], ["M", "Mężczyzna"], ["none", "Nie podano"]] as const).map(([v, l]) => {
+                    const on = (form.sex || "none") === v;
+                    return (
+                      <UnstyledButton key={v} role="radio" aria-checked={on} data-on={on || undefined} disabled={personalLocked || !!peselCheck?.valid} onClick={() => set("sex", v === "none" ? "" : v)}>
+                        {l}
+                      </UnstyledButton>
+                    );
+                  })}
+                </div>
+              ) : (
+                <SegmentedControl
+                  disabled={personalLocked || !!peselCheck?.valid}
+                  value={form.sex || "none"}
+                  onChange={(v) => set("sex", v === "none" ? "" : (v as "K" | "M"))}
+                  data={[
+                    { value: "K", label: "Kobieta" },
+                    { value: "M", label: "Mężczyzna" },
+                    { value: "none", label: "Nie podano" },
+                  ]}
+                />
+              )}
             </div>
             {staff && (
               <Select
@@ -370,13 +417,10 @@ export function EmployeeFormPage() {
               />
             )}
           </SimpleGrid>
-        </Card>
+        </Block>
 
-        <Card withBorder padding="lg">
-          <Title order={4} mb="sm">
-            Zatrudnienie
-          </Title>
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <Block mobile={!!mobile} title="Zatrudnienie">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <Select
               label="APT (agencja pracy)"
               searchable
@@ -454,17 +498,29 @@ export function EmployeeFormPage() {
             value={form.notes}
             onChange={(e) => set("notes", e.currentTarget.value)}
           />
-        </Card>
+        </Block>
 
-        <Group justify="flex-end">
-          <Button variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"}>
+        {!mobile && (
+          <Group justify="flex-end">
+            <Button variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"}>
+              Anuluj
+            </Button>
+            <Button type="submit" loading={save.isPending}>
+              {editing ? "Zapisz zmiany" : "Dodaj pracownika"}
+            </Button>
+          </Group>
+        )}
+      </Stack>
+      {mobile && (
+        <div className="ui-chat-compose">
+          <Button size="lg" radius="md" variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} style={{ flex: "none", minWidth: 110 }}>
             Anuluj
           </Button>
-          <Button type="submit" loading={save.isPending}>
+          <Button size="lg" radius="md" fullWidth type="submit" loading={save.isPending} disabled={!form.last_name.trim() || !form.first_name.trim()}>
             {editing ? "Zapisz zmiany" : "Dodaj pracownika"}
           </Button>
-        </Group>
-      </Stack>
+        </div>
+      )}
 
       <Modal opened={possibleDuplicate !== null} onClose={() => setPossibleDuplicate(null)} title="Możliwy duplikat">
         <Stack>

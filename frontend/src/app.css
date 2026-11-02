@@ -722,3 +722,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-count-cell b { font-size: 16px; color: var(--mantine-color-text); }
 .ui-hint-warn a { color: inherit; font-weight: 700; }
 .ui-warn-line svg { flex: none; margin-top: 3px; }
+/* formularz na pełnym ekranie (telefon): grupa pól z etykietą sekcji zamiast karty */
+.ui-form-group { display: flex; flex-direction: column; gap: 12px; }
+.ui-seg2 > button:disabled { opacity: .55; }

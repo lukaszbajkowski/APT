@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
@@ -8,6 +9,7 @@ import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
+import { ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -272,6 +274,7 @@ export function EmployeeRequestsPage() {
   const { hasRole } = useAuth();
   const isAgency = hasRole("agency");
   const q = useQuery({ queryKey: ["employee-requests"], queryFn: () => api<EmployeeRequest[]>("/employee-requests") });
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [newOpen, setNewOpen] = useState(false);
   const [deciding, setDeciding] = useState<EmployeeRequest | null>(null);
   const [show, setShow] = useState<"pending" | "all">("pending");
@@ -280,36 +283,61 @@ export function EmployeeRequestsPage() {
 
   return (
     <Stack>
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Zgłoszenia nowych osób</Title>
-          <Text c="dimmed" size="sm">
-            {isAgency
-              ? "Zgłoś osobę, która ma zacząć pracę – kadry sprawdzą dane i dodadzą ją do kartoteki."
-              : "Osoby zgłoszone przez agencje pracy. Zatwierdzenie dodaje osobę do kartoteki (te same kontrole co przy ręcznym dodaniu)."}
-          </Text>
-        </div>
-        <Group gap="sm">
-          <SegmentedControl
-            size="xs"
-            value={show}
-            onChange={(x) => setShow(x as "pending" | "all")}
-            data={[
-              { value: "pending", label: `Oczekujące (${pending})` },
-              { value: "all", label: "Wszystkie" },
-            ]}
+      {mobile ? (
+        <>
+          <PageHead
+            title="Zgłoszenia"
+            subtitle={isAgency ? "Nowe osoby do kartoteki" : "Od agencji pracy"}
+            action={isAgency ? { label: "Zgłoś osobę", icon: <IconPlus size={22} />, onClick: () => setNewOpen(true) } : undefined}
           />
-          {isAgency && (
-            <Button leftSection={<IconPlus size={16} />} onClick={() => setNewOpen(true)}>
-              Zgłoś osobę
-            </Button>
-          )}
+          <Segments value={show} onChange={(x) => setShow(x as "pending" | "all")} items={[{ value: "pending", label: `Oczekujące · ${pending}` }, { value: "all", label: "Wszystkie" }]} swipe />
+        </>
+      ) : (
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={2}>Zgłoszenia nowych osób</Title>
+            <Text c="dimmed" size="sm">
+              {isAgency
+                ? "Zgłoś osobę, która ma zacząć pracę – kadry sprawdzą dane i dodadzą ją do kartoteki."
+                : "Osoby zgłoszone przez agencje pracy. Zatwierdzenie dodaje osobę do kartoteki (te same kontrole co przy ręcznym dodaniu)."}
+            </Text>
+          </div>
+          <Group gap="sm">
+            <SegmentedControl
+              size="xs"
+              value={show}
+              onChange={(x) => setShow(x as "pending" | "all")}
+              data={[
+                { value: "pending", label: `Oczekujące (${pending})` },
+                { value: "all", label: "Wszystkie" },
+              ]}
+            />
+            {isAgency && (
+              <Button leftSection={<IconPlus size={16} />} onClick={() => setNewOpen(true)}>
+                Zgłoś osobę
+              </Button>
+            )}
+          </Group>
         </Group>
-      </Group>
+      )}
       {q.isLoading && <Loading />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
-      {q.data && rows.length === 0 && <EmptyState compact title={show === "pending" ? "Brak oczekujących zgłoszeń" : "Brak zgłoszeń"} text="Gdy pracownik zgłosi zmianę swoich danych, pojawi się tutaj do akceptacji." />}
-      {rows.length > 0 && (
+      {q.data && rows.length === 0 && <EmptyState compact title={show === "pending" ? "Brak oczekujących zgłoszeń" : "Brak zgłoszeń"} text={isAgency ? "Zgłoś osobę przyciskiem „+”, a kadry ją sprawdzą." : "Gdy agencja zgłosi nową osobę, pojawi się tutaj do rozpatrzenia."} />}
+      {mobile && rows.length > 0 && (
+        <div className="ui-group">
+          {rows.map((r) => (
+            <ListRow
+              key={r.id}
+              title={`${r.last_name} ${r.first_name}`}
+              description={`${isAgency ? "" : `${r.agency.name} · `}start ${formatDate(r.hire_date)}`}
+              trailing={<StatusBadge tone={r.status === "pending" ? "wait" : r.status === "rejected" ? "error" : "ok"}>{STATUS[r.status].label}</StatusBadge>}
+              onClick={!isAgency && r.status === "pending" ? () => setDeciding(r) : r.employee_id ? undefined : undefined}
+              to={r.employee_id ? `/pracownicy/${r.employee_id}` : undefined}
+            />
+          ))}
+        </div>
+      )}
+      {!mobile && rows.length > 0 && (
         <Card withBorder padding={0}>
           <Table.ScrollContainer minWidth={720}>
             <Table verticalSpacing="xs" fz="sm" highlightOnHover>

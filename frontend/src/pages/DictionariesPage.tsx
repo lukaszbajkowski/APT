@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
@@ -8,6 +9,7 @@ import { IconPencil, IconPlus } from "@tabler/icons-react";
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, Loading } from "../components/States";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
 
 interface Item {
   id: number;
@@ -28,8 +30,9 @@ const CONFIG: Record<Kind, { title: string; noun: string; codeLabel?: string; co
   countries: { title: "Kraje", noun: "kraj", codeLabel: "Kod ISO (2 litery, opcjonalnie)", codeKey: "iso_code" },
 };
 
-function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item[]> }) {
+function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQueryResult<Item[]>; addSignal?: number }) {
   const cfg = CONFIG[kind];
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
   const departments = useDepartments();
   const [editing, setEditing] = useState<Item | "new" | null>(null);
@@ -59,6 +62,11 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
     }
   }
 
+  useEffect(() => {
+    if (addSignal > 0) open("new");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addSignal]);
+
   const save = useMutation({
     mutationFn: () => {
       const body: Record<string, unknown> = { name };
@@ -83,18 +91,38 @@ function DictionaryTab({ kind, query }: { kind: Kind; query: UseQueryResult<Item
 
   return (
     <Stack mt="md">
-      <Group justify="space-between">
-        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
-        <Button leftSection={<IconPlus size={16} />} onClick={() => open("new")}>
-          Dodaj {cfg.noun}
-        </Button>
-      </Group>
+      {mobile ? (
+        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} />
+      ) : (
+        <Group justify="space-between">
+          <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
+          <Button leftSection={<IconPlus size={16} />} onClick={() => open("new")}>
+            Dodaj {cfg.noun}
+          </Button>
+        </Group>
+      )}
       {query.isLoading && <Loading />}
       {query.error && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {query.data && query.data.length === 0 && (
+      {query.data && query.data.length === 0 && (mobile ? (
+        <div className="ui-group"><CompactEmpty title="Słownik jest pusty" text="Dodaj pierwszą pozycję przyciskiem „+”." /></div>
+      ) : (
         <Text c="dimmed">Słownik jest pusty. Dodaj pierwszą pozycję przyciskiem powyżej.</Text>
+      ))}
+      {mobile && rows.length > 0 && (
+        <div className="ui-group">
+          {rows.map((i) => (
+            <ListRow
+              key={i.id}
+              muted={!i.is_active}
+              title={i.name}
+              description={[cfg.codeKey ? i[cfg.codeKey] : null, kind === "positions" ? deptName(i.department_id) : null, kind === "agencies" ? i.email : null].filter(Boolean).join(" · ") || undefined}
+              trailing={!i.is_active ? <StatusBadge tone="neutral">Wyłączone</StatusBadge> : undefined}
+              onClick={() => open(i)}
+            />
+          ))}
+        </div>
       )}
-      {rows.length > 0 && (
+      {!mobile && rows.length > 0 && (
         <Table highlightOnHover verticalSpacing="xs">
           <Table.Thead>
             <Table.Tr>
@@ -203,6 +231,19 @@ export function DictionariesPage() {
   const departments = useDepartments();
   const positions = usePositions();
   const countries = useCountries();
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [tab, setTab] = useState<Kind>("agencies");
+  const [addSignal, setAddSignal] = useState(0);
+  if (mobile) {
+    const q = { agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>;
+    return (
+      <Stack>
+        <PageHead title="Słowniki" subtitle="Pozycje do wyboru w kartotece" action={{ label: `Dodaj ${CONFIG[tab].noun}`, icon: <IconPlus size={22} />, onClick: () => setAddSignal((n) => n + 1) }} />
+        <Segments value={tab} onChange={(v) => { setTab(v as Kind); setAddSignal(0); }} items={(Object.keys(CONFIG) as Kind[]).map((k) => ({ value: k, label: CONFIG[k].title }))} swipe />
+        <DictionaryTab key={tab} kind={tab} query={q} addSignal={addSignal} />
+      </Stack>
+    );
+  }
   return (
     <Stack>
       <Title order={2}>Słowniki</Title>

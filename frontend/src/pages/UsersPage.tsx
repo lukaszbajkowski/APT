@@ -4,11 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconPlus } from "@tabler/icons-react";
+import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, EmptyState, Loading } from "../components/States";
+import { ActionSheet, ListRow, PageHead, Segments, StatusBadge, type SheetAction } from "../components/Mobile";
+import { useConfirm } from "../lib/confirm";
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => r !== "employee").map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 
@@ -48,6 +51,10 @@ export function UsersPage() {
   const [tempOpen, setTempOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const confirm = useConfirm();
+  const [sheetUser, setSheetUser] = useState<User | null>(null);
+  const [search, setSearch] = useState("");
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string; inviteTo?: string } | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
@@ -148,16 +155,57 @@ export function UsersPage() {
   const disabledCount = users.data?.filter((u) => !u.is_active).length;
   const visible = users.data?.filter((u) => u.is_active !== showDisabled) ?? [];
 
+  // akcje wymagające potwierdzenia: reset hasła, reset 2FA, wyłączenie konta
+  const run = async (u: User, kind: "reset" | "unlock" | "toggle" | "mfa" | "link") => {
+    const asks: Record<string, { title: string; message: string; label: string } | undefined> = {
+      reset: { title: "Zresetować hasło?", message: `Konto ${u.username} dostanie nowe hasło tymczasowe, stare przestanie działać.`, label: "Resetuj" },
+      mfa: { title: "Zresetować logowanie dwuetapowe?", message: `${u.username} skonfiguruje je od nowa przy następnym logowaniu.`, label: "Resetuj" },
+      toggle: u.is_active ? { title: "Wyłączyć konto?", message: `${u.username} nie zaloguje się do aplikacji.`, label: "Wyłącz" } : undefined,
+    };
+    const a = asks[kind];
+    if (a && !(await confirm({ title: a.title, message: a.message, confirmLabel: a.label, danger: kind === "toggle" }))) return;
+    action.mutate({ user: u, kind });
+  };
+  const userActions = (u: User): SheetAction[] => {
+    const acts: SheetAction[] = [
+      { label: "Edytuj", onClick: () => { setSheetUser(null); openEdit(u); } },
+      { label: "Resetuj hasło", onClick: () => { setSheetUser(null); void run(u, "reset"); } },
+    ];
+    if (u.email && u.is_active) acts.push({ label: "Wyślij link do ustawienia hasła", onClick: () => { setSheetUser(null); void run(u, "link"); } });
+    if (isLocked(u)) acts.push({ label: "Odblokuj", onClick: () => { setSheetUser(null); void run(u, "unlock"); } });
+    if (u.mfa_enabled && u.id !== me?.user.id) acts.push({ label: "Resetuj logowanie dwuetapowe", onClick: () => { setSheetUser(null); void run(u, "mfa"); } });
+    if (u.id !== me?.user.id) acts.push({ label: u.is_active ? "Wyłącz konto" : "Włącz konto", danger: u.is_active, onClick: () => { setSheetUser(null); void run(u, "toggle"); } });
+    return acts;
+  };
+
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Użytkownicy</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
-          Dodaj użytkownika
-        </Button>
-      </Group>
+      {mobile ? (
+        <PageHead title="Użytkownicy" subtitle="Konta systemu" action={{ label: "Dodaj użytkownika", icon: <IconPlus size={22} />, onClick: openNew }} />
+      ) : (
+        <Group justify="space-between">
+          <Title order={2}>Użytkownicy</Title>
+          <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
+            Dodaj użytkownika
+          </Button>
+        </Group>
+      )}
 
-      <Tabs
+      {mobile && (
+        <>
+          <TextInput aria-label="Szukaj użytkownika" placeholder="Szukaj" leftSection={<IconSearch size={18} aria-hidden />} size="md" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+          <Segments
+            value={showDisabled ? "wylaczeni" : "aktywni"}
+            onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
+            items={[
+              { value: "aktywni", label: `Aktywni${activeCount !== undefined ? ` · ${activeCount}` : ""}` },
+              { value: "wylaczeni", label: `Wyłączeni${disabledCount !== undefined ? ` · ${disabledCount}` : ""}` },
+            ]}
+          />
+        </>
+      )}
+
+      {!mobile && <Tabs
         value={showDisabled ? "wylaczeni" : "aktywni"}
         onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
       >
@@ -175,7 +223,7 @@ export function UsersPage() {
             Wyłączeni
           </Tabs.Tab>
         </Tabs.List>
-      </Tabs>
+      </Tabs>}
 
       {users.isLoading && <Loading />}
       {users.error && <ErrorState error={users.error} onRetry={() => users.refetch()} />}
@@ -184,7 +232,24 @@ export function UsersPage() {
         <EmptyState compact title={showDisabled ? "Brak wyłączonych kont" : "Brak aktywnych kont"} text={showDisabled ? "Wyłączone konta pojawią się tutaj." : "Dodaj pierwszego użytkownika przyciskiem powyżej."} />
       )}
 
-      {users.data && visible.length > 0 && (
+      {mobile && users.data && visible.length > 0 && (
+        <div className="ui-group">
+          {visible
+            .filter((u) => !search.trim() || `${u.full_name} ${u.username}`.toLowerCase().includes(search.trim().toLowerCase()))
+            .map((u) => (
+              <ListRow
+                key={u.id}
+                leading={<span className="ui-thread-avatar" aria-hidden>{u.full_name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}</span>}
+                title={u.full_name}
+                description={`${ROLE_LABELS[u.role]} · ${u.last_login_at ? formatDateTime(u.last_login_at) : "nie logował się"}`}
+                trailing={isLocked(u) ? <StatusBadge tone="error">Zablokowany</StatusBadge> : u.mfa_enabled ? <StatusBadge tone="ok">2FA</StatusBadge> : undefined}
+                onClick={() => setSheetUser(u)}
+              />
+            ))}
+        </div>
+      )}
+
+      {!mobile && users.data && visible.length > 0 && (
         <Table.ScrollContainer minWidth={760}>
           <Table striped highlightOnHover verticalSpacing="xs">
             <Table.Thead>
@@ -267,26 +332,26 @@ export function UsersPage() {
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item onClick={() => openEdit(u)}>Edytuj</Menu.Item>
-                        <Menu.Item onClick={() => action.mutate({ user: u, kind: "reset" })}>
+                        <Menu.Item onClick={() => void run(u, "reset")}>
                           Resetuj hasło
                         </Menu.Item>
                         {u.email && u.is_active && (
-                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "link" })}>
+                          <Menu.Item onClick={() => void run(u, "link")}>
                             Wyślij link do ustawienia hasła
                           </Menu.Item>
                         )}
                         {isLocked(u) && (
-                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "unlock" })}>Odblokuj</Menu.Item>
+                          <Menu.Item onClick={() => void run(u, "unlock")}>Odblokuj</Menu.Item>
                         )}
                         {u.mfa_enabled && u.id !== me?.user.id && (
-                          <Menu.Item onClick={() => action.mutate({ user: u, kind: "mfa" })}>
+                          <Menu.Item onClick={() => void run(u, "mfa")}>
                             Resetuj logowanie dwuetapowe
                           </Menu.Item>
                         )}
                         {u.id !== me?.user.id && (
                           <Menu.Item
                             color={u.is_active ? "red" : undefined}
-                            onClick={() => action.mutate({ user: u, kind: "toggle" })}
+                            onClick={() => void run(u, "toggle")}
                           >
                             {u.is_active ? "Wyłącz konto" : "Włącz konto"}
                           </Menu.Item>
@@ -300,6 +365,14 @@ export function UsersPage() {
           </Table>
         </Table.ScrollContainer>
       )}
+
+      <ActionSheet
+        opened={!!sheetUser}
+        onClose={() => setSheetUser(null)}
+        title={sheetUser?.full_name ?? ""}
+        subtitle={sheetUser ? `${sheetUser.username} · ${ROLE_LABELS[sheetUser.role]}` : undefined}
+        actions={sheetUser ? userActions(sheetUser) : []}
+      />
 
       <Modal
         opened={formOpen}

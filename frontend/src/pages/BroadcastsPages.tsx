@@ -74,7 +74,7 @@ function InlineDoc({ base }: { base: string }) {
           <PageSheet key={i} index={i} src={`/api${base}/page/${i}`} />
         ))}
       </Stack>
-      {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} />}
+      {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} variant="attachment" />}
     </Stack>
   );
 }

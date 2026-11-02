@@ -761,3 +761,19 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .mantine-Tabs-list { box-shadow: inset 0 calc(-1 * var(--tabs-list-border-size, 2px)) 0 var(--tab-border-color); }
   .mantine-Tabs-tab:not([data-active]) { border-bottom-color: var(--tab-border-color); }
 }
+/* podgląd dokumentu na pełnym ekranie: tytuł skracany, „×” zawsze widoczny, nic nie przewija się w bok */
+.doc-viewer-title { flex: 1; min-width: 0; overflow: hidden; }
+.doc-viewer-content { overflow-x: hidden; }
+.doc-viewer img { max-width: 100%; height: auto; }
+@media (max-width: 48em) {
+  html, body { overflow-x: hidden; }
+  .mantine-AppShell-main { overflow-x: clip; }
+}
+/* telefon, lista/szczegóły (komunikaty): wewnętrzne przewijanie wyłączone – przewija się tylko strona */
+@media (max-width: 48em) {
+  .ui-md-mobile .mantine-ScrollArea-root { height: auto !important; overflow: visible !important; }
+  .ui-md-mobile .mantine-ScrollArea-viewport { overflow: visible !important; height: auto !important; }
+}
+@media (max-width: 48em) {
+  .ui-md-mobile .mantine-ScrollArea-scrollbar, .ui-md-mobile .mantine-ScrollArea-corner { display: none !important; }
+}

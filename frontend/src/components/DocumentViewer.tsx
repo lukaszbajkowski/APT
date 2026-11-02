@@ -25,10 +25,13 @@ export function DocumentViewer({
   onClose,
   base,
   downloadUrl,
+  variant = base ? "signed" : "document",
 }: {
   docId: string;
   opened: boolean;
   onClose: () => void;
+  /** document – dokument z kartoteki (znak wodny, ochrona przed zrzutem); signed – podpisany dokument pracownika; attachment – załącznik komunikatu (bez ochrony i bez stopki) */
+  variant?: "document" | "signed" | "attachment";
   /** Własne źródło podglądu (np. podpisany dokument pracownika): `${base}` zwraca informacje, `${base}/page/{i}` strony. */
   base?: string;
   downloadUrl?: string;
@@ -48,8 +51,9 @@ export function DocumentViewer({
   });
   const [hidden, setHidden] = useState(false);
 
+  const protect = variant !== "attachment";
   useEffect(() => {
-    if (!opened) return;
+    if (!opened || !protect) return;
     const hide = () => setHidden(true);
     const onKey = (e: KeyboardEvent) => {
       const k = e.key;
@@ -77,7 +81,7 @@ export function DocumentViewer({
       document.removeEventListener("copy", block, true);
       document.body.classList.remove("doc-viewer-open");
     };
-  }, [opened]);
+  }, [opened, protect]);
 
   return (
     <Modal
@@ -85,9 +89,10 @@ export function DocumentViewer({
       onClose={onClose}
       fullScreen
       zIndex={500}
+      classNames={{ title: "doc-viewer-title", content: "doc-viewer-content" }}
       title={
-        <Group gap="xs">
-          <Text fw={600}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
+        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
           {downloadUrl && (
             <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
               {T("Pobierz PDF")}
@@ -120,12 +125,12 @@ export function DocumentViewer({
             ))}
           </Stack>
         )}
-        {hidden && (
+        {protect && hidden && (
           <Portal>
           <Center style={{ position: "fixed", inset: 0, zIndex: 1000, cursor: "pointer" }} onClick={() => setHidden(false)}>
-            <Stack align="center" gap={6} bg="white" p="lg" style={{ borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,.15)" }}>
+            <Stack align="center" gap={6} p="lg" style={{ borderRadius: 14, background: "var(--apt-surface)", color: "var(--mantine-color-text)", border: "1px solid var(--apt-line)", boxShadow: "0 8px 28px rgba(0,0,0,.35)", margin: 16 }}>
               <IconEyeOff size={36} color="var(--mantine-color-dimmed)" />
-              <Text fw={600}>{T("Podgląd ukryty")}</Text>
+              <Text fw={700} size="lg">{T("Podgląd ukryty")}</Text>
               <Text size="sm" c="dimmed" ta="center" maw={320}>
                 {T("Dokument ukrywa się, gdy okno traci fokus albo przy próbie zrzutu ekranu lub druku. Kliknij, aby wrócić.")}
               </Text>
@@ -133,12 +138,14 @@ export function DocumentViewer({
           </Center>
           </Portal>
         )}
-        <Group justify="center" gap={6} pb="md">
-          <IconShieldLock size={14} color="var(--mantine-color-dimmed)" />
-          <Text size="xs" c="dimmed">
-            {base ? T("Twój podpisany dokument") : T("Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku")}
-          </Text>
-        </Group>
+        {variant !== "attachment" && (
+          <Group justify="center" gap={6} pb="md" px="md" wrap="nowrap" align="flex-start">
+            <IconShieldLock size={16} color="var(--mantine-color-dimmed)" style={{ flex: "none", marginTop: 2 }} />
+            <Text size="sm" c="dimmed">
+              {variant === "signed" ? T("Twój podpisany dokument") : T("Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku")}
+            </Text>
+          </Group>
+        )}
       </Box>
     </Modal>
   );

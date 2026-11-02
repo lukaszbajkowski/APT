@@ -17,6 +17,13 @@ export function MasterDetail({
   detail: ReactNode;
   plainDetail?: boolean;
 }) {
+  // telefon: widać jedną część naraz – naturalna wysokość, przewija się tylko strona (bez drugiego paska przewijania w środku)
+  if (mobile)
+    return (
+      <Box className="ui-md-mobile">
+        {showList ? <Stack gap={0}>{list}</Stack> : showRight ? <Box>{detail}</Box> : null}
+      </Box>
+    );
   return (
     <Paper withBorder radius="md" style={{ display: "flex", height: "calc(100dvh - 110px)", minHeight: 420, overflow: "hidden" }}>
       {showList && (

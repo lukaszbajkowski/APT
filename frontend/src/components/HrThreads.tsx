@@ -12,7 +12,7 @@ import { useT } from "../lib/i18n";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
-import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager } from "./Mobile";
+import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager, useNavHeightVar } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
@@ -629,6 +629,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   });
   const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
   useChatViewport(box, false);
+  useNavHeightVar();
   if (mobile) {
     const picked = employee
       ? preset && preset.id === employee

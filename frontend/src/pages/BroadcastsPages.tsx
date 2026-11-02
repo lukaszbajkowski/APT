@@ -14,7 +14,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { CompactEmpty, PageHead, Segments, SwipePager } from "../components/Mobile";
+import { CompactEmpty, PageHead, Segments, SwipePager, useNavHeightVar } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -176,6 +176,7 @@ export function BroadcastsPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cStep, setCStep] = useState<1 | 2>(1);
+  useNavHeightVar();
   useEffect(() => {
     if (composing) setCStep(1);
   }, [composing]);

@@ -4,7 +4,7 @@
  * linia opisu + strzałka, akcje wiersza w arkuszu od dołu z podpisami, pusta sekcja = jeden wiersz,
  * akcje nieodwracalne osobno w ramce z opisem skutku, stan zawsze z ikoną i słowem.
  */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
 import { Drawer, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
@@ -605,4 +605,17 @@ export function PickSheet({
       )}
     </Drawer>
   );
+}
+
+/* Wysokość dolnego menu (razem z paskiem iPhone'a) jako --apt-nav-h – formularze na telefonie kończą się tuż nad menu. */
+export function useNavHeightVar() {
+  useLayoutEffect(() => {
+    const nav = document.querySelector<HTMLElement>(".mantine-AppShell-footer");
+    if (!nav) return;
+    const set = () => document.documentElement.style.setProperty("--apt-nav-h", `${nav.getBoundingClientRect().height}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, []);
 }

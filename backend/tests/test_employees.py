@@ -153,6 +153,19 @@ def test_birth_date_change_must_match_pesel(hr):
     assert r.status_code == 400
 
 
+def test_sex_locked_by_pesel(hr):
+    e = create(hr, pesel=PESEL_JAN).json()
+    sex = e["sex"]
+    other = "K" if sex == "M" else "M"
+    # ani zmiana, ani usunięcie płci przy zapisanym PESEL
+    assert hr.patch(f"/api/employees/{e['id']}", json={"sex": other}).status_code == 400
+    assert hr.patch(f"/api/employees/{e['id']}", json={"sex": None}).status_code == 400
+    # zapis formularza z tymi samymi danymi przechodzi
+    r = hr.patch(f"/api/employees/{e['id']}", json={"sex": sex, "birth_date": e["birth_date"], "first_name": "Jan"})
+    assert r.status_code == 200, r.text
+    assert r.json()["sex"] == sex
+
+
 def test_history_hides_personal_values(hr, dicts):
     e = create(hr, pesel=PESEL_JAN).json()
     hr.patch(

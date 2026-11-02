@@ -316,8 +316,8 @@ def _validate(db: Session, e: Employee, values: dict[str, Any], *, creating: boo
         info = parse(crypto.decrypt(e.pesel_enc))
         if "birth_date" in values and values["birth_date"] != info.birth_date:
             raise _bad("Data urodzenia nie zgadza się z numerem PESEL.")
-        if "sex" in values and values["sex"] is not None and Sex(values["sex"]).value != info.sex:
-            raise _bad("Płeć nie zgadza się z numerem PESEL.")
+        if "sex" in values and (values["sex"] is None or Sex(values["sex"]).value != info.sex):
+            raise _bad("Płeć wynika z numeru PESEL – nie można jej zmienić ani usunąć.")
 
     born = out.get("birth_date", e.birth_date)
     if born is not None and (born > date.today() or born.year < 1900):

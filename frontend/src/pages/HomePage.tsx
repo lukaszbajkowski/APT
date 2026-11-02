@@ -25,10 +25,28 @@ import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
+import { CompactEmpty, ListRow, Section, StatusBadge, cap } from "../components/Mobile";
+
+const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+/** ton plakietki zdarzenia: zaległe i nieważne – bursztyn, terminy – oczekiwanie, reszta – neutralnie */
+const EVENT_TONE: Record<UpcomingEvent["kind"], "warn" | "wait" | "neutral" | "ok"> = {
+  exam: "wait",
+  start: "wait",
+  standard_end: "warn",
+  valid_until: "warn",
+  hire: "ok",
+  transfer: "neutral",
+  task: "neutral",
+  task_overdue: "warn",
+  permit: "warn",
+  permit_expired: "warn",
+  medical: "warn",
+  medical_expired: "warn",
+};
 
 interface UpcomingEvent {
   date: string;
-  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "transfer" | "task" | "task_overdue" | "permit" | "permit_expired";
+  kind: "exam" | "start" | "standard_end" | "valid_until" | "hire" | "transfer" | "task" | "task_overdue" | "permit" | "permit_expired" | "medical" | "medical_expired";
   title: string;
   employee_id: number;
   employee: string;
@@ -45,6 +63,8 @@ const EVENT_COLOR: Record<UpcomingEvent["kind"], string> = {
   task_overdue: "red",
   permit: "orange",
   permit_expired: "red",
+  medical: "orange",
+  medical_expired: "red",
 };
 const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   exam: "egzamin",
@@ -57,6 +77,8 @@ const EVENT_LABEL: Record<UpcomingEvent["kind"], string> = {
   task_overdue: "zaległe",
   permit: "dokument pobytu",
   permit_expired: "nieważny dokument",
+  medical: "badania",
+  medical_expired: "nieważne badania",
 };
 
 function dayLabel(iso: string): string {
@@ -75,6 +97,53 @@ function UpcomingCard() {
   const events = q.data ?? [];
   const [all, setAll] = useState(false);
   const shown = all ? events : events.slice(0, 8);
+  const mobile = useMobile();
+  if (mobile) {
+    // grupy: zaległe na górze, potem kolejne dni
+    const overdue = (e: UpcomingEvent) => e.kind === "task_overdue" || e.kind === "permit_expired" || e.kind === "medical_expired";
+    const groups: { key: string; label: string; warn?: boolean; items: UpcomingEvent[] }[] = [];
+    for (const e of shown) {
+      const key = overdue(e) ? "overdue" : e.date;
+      let g = groups.find((x) => x.key === key);
+      if (!g) {
+        g = { key, label: key === "overdue" ? "Zaległe" : cap(dayLabel(e.date)), warn: key === "overdue", items: [] };
+        if (key === "overdue") groups.unshift(g);
+        else groups.push(g);
+      }
+      g.items.push(e);
+    }
+    return (
+      <Section title="Najbliższe 14 dni" action={hasRole("agency") ? undefined : { label: "Zadania", to: "/zadania" }}>
+        {q.isLoading ? (
+          <Loading rows={3} />
+        ) : events.length === 0 ? (
+          <CompactEmpty title="Nic nie jest zaplanowane" text="Brak egzaminów, końców ważności i nowych osób w najbliższym czasie." />
+        ) : (
+          <>
+            {groups.map((g) => (
+              <div key={g.key} className="ui-day-group">
+                <div className="ui-day-label" data-warn={g.warn || undefined}>
+                  {g.warn && <IconAlertTriangle size={14} stroke={2.6} aria-hidden />}
+                  {g.label} · {g.items.length}
+                </div>
+                {g.items.map((e, i) => (
+                  <ListRow
+                    key={i}
+                    title={cap(e.title)}
+                    description={g.warn && e.date ? `${e.employee} · termin ${dayLabel(e.date)}` : e.employee}
+                    trailing={<StatusBadge tone={EVENT_TONE[e.kind] ?? "neutral"}>{EVENT_LABEL[e.kind] ?? "termin"}</StatusBadge>}
+                    to={`/pracownicy/${e.employee_id}`}
+                  />
+                ))}
+              </div>
+            ))}
+            {events.length > 8 && <ListRow title={all ? "Pokaż mniej" : `Pokaż wszystkie (${events.length})`} onClick={() => setAll((a) => !a)} />}
+            {!hasRole("agency") && <ListRow title="Terminy szkoleń" description="Kończące się i trwające szkolenia" to="/szkolenia" />}
+          </>
+        )}
+      </Section>
+    );
+  }
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
@@ -103,8 +172,8 @@ function UpcomingCard() {
               <Text size="sm" fw={600} w={92} style={{ flexShrink: 0 }}>
                 {dayLabel(e.date)}
               </Text>
-              <Badge color={EVENT_COLOR[e.kind]} variant="light" size="sm" w={92} style={{ flexShrink: 0 }}>
-                {EVENT_LABEL[e.kind]}
+              <Badge color={EVENT_COLOR[e.kind] ?? "gray"} variant="light" size="sm" w={92} style={{ flexShrink: 0 }}>
+                {EVENT_LABEL[e.kind] ?? "termin"}
               </Badge>
               <Text size="sm" style={{ minWidth: 0 }} truncate>
                 <Text component={Link} to={`/pracownicy/${e.employee_id}`} fw={500} className="brand-link" span>
@@ -159,6 +228,27 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
     if (hasMissingRows && /^Braki w danych/.test(g.label)) continue; // te same braki już widać wyżej jako zdjęcia i PESEL
     rows.push({ key: g.key, label: g.label, count: g.count, url: g.url, sample: g.items[0] ? `${g.items[0].title}${g.items[0].detail ? " · " + g.items[0].detail : ""}` : undefined, color: "orange", icon: IconAlertTriangle, action: "Przejrzyj" });
   }
+  if (mobile)
+    return (
+      <Section title="Do zrobienia" action={full ? { label: "Pełna lista", to: "/do-zrobienia" } : undefined}>
+        {full && q.isLoading ? (
+          <Loading rows={3} />
+        ) : rows.length === 0 ? (
+          <ListRow leading={<span className="ui-row-icon" aria-hidden><IconCircleCheck size={22} /></span>} title="Wszystko zrobione" description="Nic nie czeka na kadry. Najbliższe terminy zobaczysz niżej." />
+        ) : (
+          rows.map((r) => (
+            <ListRow
+              key={r.key}
+              leading={<span className="ui-row-icon" data-tone="warn" aria-hidden><r.icon size={22} /></span>}
+              title={cap(r.label)}
+              description={r.hint ?? (r.sample ? `np. ${r.sample}` : undefined)}
+              trailing={<span className="ui-thread-count" aria-label={`Liczba: ${r.count}`}>{r.count}</span>}
+              to={r.url}
+            />
+          ))
+        )}
+      </Section>
+    );
   return (
     <Card withBorder padding={0}>
       <Group justify="space-between" px="lg" py="md" style={{ borderBottom: "1px solid var(--apt-line)" }}>
@@ -308,6 +398,26 @@ function Summary({ d, manager }: { d: Dashboard; manager: boolean }) {
 }
 
 function RecentCard({ d }: { d: Dashboard }) {
+  const mobile = useMobile();
+  if (mobile)
+    return (
+      <Section title="Ostatnio dodani" action={{ label: "Wszyscy", to: "/pracownicy" }}>
+        {d.recent.length === 0 ? (
+          <CompactEmpty title="Kartoteka jest pusta" text="Dodaj pierwszego pracownika przyciskiem „+” na liście." />
+        ) : (
+          d.recent.map((e) => (
+            <ListRow
+              key={e.id}
+              leading={<EmployeePhoto employee={e} width={40} />}
+              title={`${e.last_name} ${e.first_name}`}
+              description={[e.department?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+              trailing={<span className="ui-count-cell ui-mono">{e.number_display}</span>}
+              to={`/pracownicy/${e.id}`}
+            />
+          ))
+        )}
+      </Section>
+    );
   return (
     <Card withBorder padding={0}>
       <Group justify="space-between" px="lg" py="md">

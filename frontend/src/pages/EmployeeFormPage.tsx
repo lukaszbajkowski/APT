@@ -248,6 +248,8 @@ export function EmployeeFormPage() {
   if (editing && employee.error) return <Alert color="red">{errorText(employee.error)}</Alert>;
 
   const personalLocked = !staff;
+  // z numerem PESEL (nowym albo zapisanym w kartotece) data urodzenia i płeć wynikają z niego – nie da się ich zmienić
+  const fromPesel = !!peselCheck?.valid || (editing && !!employee.data?.has_pesel && !form.clear_pesel && !form.pesel.trim());
   const current = employee.data;
   const positionOptions = options(positions.data, num(form.position_id), (p) =>
     !form.department_id ? true : p.department_id === null || p.department_id === Number(form.department_id),
@@ -372,22 +374,27 @@ export function EmployeeFormPage() {
             {staff && (
               <DateField
                 label="Data urodzenia"
-                
-                disabled={!!peselCheck?.valid}
+                description={fromPesel ? "Wynika z numeru PESEL" : undefined}
+                disabled={fromPesel}
                 value={form.birth_date}
                 onChange={(e) => set("birth_date", e.currentTarget.value)}
               />
             )}
             <div>
-              <Text size="sm" fw={500} mb={4}>
+              <Text size="sm" fw={500} mb={fromPesel ? 0 : 4}>
                 Płeć
               </Text>
+              {fromPesel && (
+                <Text size="xs" c="dimmed" mb={4}>
+                  Wynika z numeru PESEL
+                </Text>
+              )}
               {mobile ? (
                 <div className="ui-seg2" role="radiogroup" aria-label="Płeć" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
                   {([["K", "Kobieta"], ["M", "Mężczyzna"], ["none", "Nie podano"]] as const).map(([v, l]) => {
                     const on = (form.sex || "none") === v;
                     return (
-                      <UnstyledButton key={v} role="radio" aria-checked={on} data-on={on || undefined} disabled={personalLocked || !!peselCheck?.valid} onClick={() => set("sex", v === "none" ? "" : v)}>
+                      <UnstyledButton key={v} role="radio" aria-checked={on} data-on={on || undefined} disabled={personalLocked || fromPesel} onClick={() => set("sex", v === "none" ? "" : v)}>
                         {l}
                       </UnstyledButton>
                     );
@@ -395,7 +402,7 @@ export function EmployeeFormPage() {
                 </div>
               ) : (
                 <SegmentedControl
-                  disabled={personalLocked || !!peselCheck?.valid}
+                  disabled={personalLocked || fromPesel}
                   value={form.sex || "none"}
                   onChange={(v) => set("sex", v === "none" ? "" : (v as "K" | "M"))}
                   data={[

@@ -6,6 +6,7 @@
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { Button, Drawer, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
 
@@ -675,5 +676,50 @@ export function Pager({ page, pages, onPage }: { page: number; pages: number; on
         Następne
       </Button>
     </div>
+  );
+}
+
+/*
+ * Formularz na pełnym ekranie (telefon): tytuł i podtytuł w górnym pasku (strzałka = Anuluj), treść przewijana,
+ * pasek akcji tuż nad dolnym menu – Anuluj po lewej, główny przycisk po prawej. Po zamknięciu pasek górny wraca
+ * do stanu sprzed otwarcia formularza.
+ */
+export function FormScreen({
+  title,
+  subtitle,
+  onClose,
+  children,
+  primary,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+  primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
+}) {
+  const { header, set } = useContext(HeaderCtx);
+  const prev = useRef(header);
+  const cb = useRef(onClose);
+  cb.current = onClose;
+  useNavHeightVar();
+  useEffect(() => {
+    set({ title, subtitle, onBack: () => cb.current() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, subtitle]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => set(prev.current), []);
+  return createPortal(
+    <div className="ui-inpage" role="dialog" aria-label={title}>
+      <div className="ui-chat-body ui-form-body">{children}</div>
+      <div className="ui-chat-compose">
+        <Button size="lg" radius="md" variant="default" onClick={onClose} style={{ flex: "none", minWidth: 110 }}>
+          Anuluj
+        </Button>
+        <Button size="lg" radius="md" fullWidth disabled={primary.disabled} loading={primary.loading} onClick={primary.onClick}>
+          {primary.label}
+        </Button>
+      </div>
+    </div>,
+    document.body,
   );
 }

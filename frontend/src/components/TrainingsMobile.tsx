@@ -22,7 +22,7 @@ import { api, apiDownload, errorText, formatDate, TRAINING_STATUS, type Dictiona
 import { useAuth } from "../auth";
 import { REQ_STATE, reqValue, type Matrix, type MatrixCell, type MatrixRow, type PositionReqs, type ReqState } from "./Competence";
 import { EMPTY, STATUS_ORDER, rowDates, toQuery, type Filters, type Report } from "./TrainingsReport";
-import { ActionSheet, Chips, CompactEmpty, ListRow, PickSheet, Segments, SheetHandle, StatusBadge } from "./Mobile";
+import { ActionSheet, Chips, CompactEmpty, FormScreen, ListRow, PickSheet, Segments, SheetHandle, StatusBadge } from "./Mobile";
 import { ErrorState, Loading } from "./States";
 
 type Tone = "ok" | "warn" | "error" | "neutral" | "wait";
@@ -496,28 +496,31 @@ export function RequirementsMobile() {
       <Text size="sm" c="dimmed">Braki widać w karcie pracownika, w matrycy, w „Brakach w danych” i w poniedziałkowym e-mailu.</Text>
       <PickSheet opened={pickDep} onClose={() => setPickDep(false)} title="Wydział" options={deps.map((d) => ({ value: d, label: d }))} value={dep ? [dep] : []} clearLabel="Wszystkie wydziały" onChange={(v) => setDep(v[0] ?? null)} />
 
-      <Sheet opened={!!edit} onClose={() => setEdit(null)} title={edit ? `${edit.position}${edit.department ? ` · ${edit.department}` : ""}` : ""} subtitle="Pracownicy na tym stanowisku muszą mieć:">
-        {value.length === 0 && <div className="ui-filter-row"><span className="ui-row-desc">Brak wymagań.</span></div>}
-        {value.map((v) => (
-          <div key={v} className="ui-filter-row" style={{ paddingRight: 8 }}>
-            <span className="ui-filter-label" style={{ fontWeight: 600 }}>{labelOf(v)}</span>
-            <UnstyledButton className="ui-chat-btn" aria-label={`Usuń wymaganie: ${labelOf(v)}`} onClick={() => setValue((x) => x.filter((y) => y !== v))}>
-              <IconX size={18} stroke={2.4} />
-            </UnstyledButton>
+      {edit && (
+        <FormScreen
+          title="Wymagane szkolenia"
+          subtitle={`${edit.position}${edit.department ? ` · ${edit.department}` : ""}`}
+          onClose={() => setEdit(null)}
+          primary={{ label: "Zapisz", onClick: () => save.mutate(), loading: save.isPending }}
+        >
+          <Text size="sm" c="dimmed">Pracownicy na tym stanowisku muszą mieć:</Text>
+          <div className="ui-group">
+            {value.length === 0 && <CompactEmpty title="Brak wymagań" text="Dodaj szkolenia, które są obowiązkowe na tym stanowisku." />}
+            {value.map((v) => (
+              <ListRow
+                key={v}
+                title={labelOf(v)}
+                trailing={
+                  <UnstyledButton className="ui-chat-btn" aria-label={`Usuń wymaganie: ${labelOf(v)}`} onClick={() => setValue((x) => x.filter((y) => y !== v))}>
+                    <IconX size={18} stroke={2.4} />
+                  </UnstyledButton>
+                }
+              />
+            ))}
+            <ListRow leading={<span className="ui-row-icon" aria-hidden><IconPlus size={20} /></span>} title="Dodaj wymaganie" onClick={() => setAdding(true)} />
           </div>
-        ))}
-        <UnstyledButton className="ui-filter-save" onClick={() => setAdding(true)}>
-          <IconPlus size={18} aria-hidden /> Dodaj wymaganie
-        </UnstyledButton>
-        <div className="ui-filter-foot">
-          <Button size="lg" variant="default" radius="md" style={{ flex: 1 }} onClick={() => setEdit(null)}>
-            Anuluj
-          </Button>
-          <Button size="lg" radius="md" style={{ flex: 2 }} loading={save.isPending} onClick={() => save.mutate()}>
-            Zapisz
-          </Button>
-        </div>
-      </Sheet>
+        </FormScreen>
+      )}
       <PickSheet opened={adding} onClose={() => setAdding(false)} title="Wymagane szkolenia" options={options} value={value} multiple onChange={setValue} />
     </Stack>
   );

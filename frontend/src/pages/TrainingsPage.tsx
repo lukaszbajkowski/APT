@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, GroupLabel, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Title, Drawer, UnstyledButton } from "@mantine/core";
@@ -208,7 +208,7 @@ function ProgramRow({
   );
 }
 
-/** Telefon: pozycja katalogu w panelu od dołu – nazwa, wydział, standard i opiekunowie. */
+/** Telefon: pozycja katalogu na pełnym ekranie – nazwa, wydział, standard i opiekunowie. */
 function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: TrainingProgram | null; onClose: () => void }) {
   const qc = useQueryClient();
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
@@ -251,61 +251,64 @@ function ProgramSheet({ typeId, program, onClose }: { typeId: number; program: T
     onError,
   });
   const depName = departments.data?.find((d) => String(d.id) === dep)?.name;
+  const initials = (n: string) => n.split(" ").map((x) => x[0]).slice(0, 2).join("");
   return (
     <>
-      <Drawer opened onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Pozycja katalogu">
-        <SheetHandle onClose={onClose}>
-          <div className="ui-sheet-head">
-            <div className="ui-sheet-title">{program ? program.name : "Nowa pozycja katalogu"}</div>
-            {program && <div className="ui-row-desc">{program.department ?? "Dowolny wydział"}</div>}
-          </div>
-        </SheetHandle>
-        <Stack gap="md" px="md" pb="md">
-          <TextInput size="md" label="Nazwa" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-          <div className="ui-form-field">
-              <span className="ui-form-label">Wydział</span>
-              <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
-                <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
-                <IconChevronRight size={16} aria-hidden />
-              </UnstyledButton>
-          </div>
-          <NumberInput size="md" label="Standard nauki" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
-        </Stack>
-        <h2 className="ui-section-title" style={{ padding: "0 20px", margin: "4px 0 6px" }}>Kto może prowadzić</h2>
-        {mentors.length === 0 && (
-          <div className="ui-filter-row">
-            <span className="ui-warn-line">
-              <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Nikt jeszcze nie może prowadzić tego szkolenia
-            </span>
-          </div>
-        )}
-        {mentors.map((m) => (
-          <div key={m.id} className="ui-filter-row" style={{ paddingRight: 8 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span className="ui-thread-avatar" style={{ width: 36, height: 36, fontSize: 13 }} aria-hidden>
-                {m.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}
-              </span>
-              <span className="ui-filter-label" style={{ fontWeight: 600 }}>{m.name}</span>
-            </span>
-            <UnstyledButton className="ui-chat-btn" aria-label={`Usuń opiekuna: ${m.name}`} onClick={() => setMentors((x) => x.filter((y) => y.id !== m.id))}>
-              <IconX size={18} stroke={2.4} />
-            </UnstyledButton>
-          </div>
-        ))}
-        <UnstyledButton className="ui-filter-save" onClick={() => { setQ(""); setFinding(true); }}>
-          <IconPlus size={18} aria-hidden /> Dodaj opiekuna
-        </UnstyledButton>
-        <div className="ui-filter-foot">
-          {program && (
-            <Button size="lg" variant="default" radius="md" c="red" loading={remove.isPending} onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>
-              Usuń
-            </Button>
-          )}
-          <Button size="lg" radius="md" style={{ flex: 1 }} disabled={!name.trim()} loading={save.isPending} onClick={() => save.mutate()}>
-            Zapisz
-          </Button>
+      <FormScreen
+        title={program ? "Pozycja katalogu" : "Nowa pozycja katalogu"}
+        subtitle={program ? program.name : "Szkolenie stanowiskowe"}
+        onClose={onClose}
+        primary={{ label: program ? "Zapisz zmiany" : "Dodaj do katalogu", onClick: () => save.mutate(), disabled: !name.trim(), loading: save.isPending }}
+      >
+        {!name.trim() && <span className="ui-hint-warn">Wpisz nazwę szkolenia – reszta jest nieobowiązkowa.</span>}
+        <TextInput size="md" label="Nazwa" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+        <div className="ui-form-field">
+          <span className="ui-form-label">Wydział</span>
+          <UnstyledButton className="ui-pick" onClick={() => setPickDep(true)}>
+            <span data-on={!!dep || undefined}>{depName ?? "Dowolny"}</span>
+            <IconChevronRight size={16} aria-hidden />
+          </UnstyledButton>
         </div>
-      </Drawer>
+        <NumberInput size="md" label="Standard nauki" description="Ile dni zwykle trwa nauka na tym stanowisku" min={0} max={3650} allowDecimal={false} hideControls rightSection={<Text size="sm" c="dimmed" pr="sm">dni</Text>} value={days} onChange={setDays} />
+        <Section title="Kto może prowadzić">
+          {mentors.length === 0 && (
+            <ListRow
+              title={
+                <span className="ui-warn-line" style={{ marginTop: 0 }}>
+                  <IconAlertTriangle size={12} stroke={2.6} aria-hidden /> Nikt jeszcze nie może prowadzić
+                </span>
+              }
+              description="Dodaj co najmniej jednego opiekuna."
+            />
+          )}
+          {mentors.map((m) => (
+            <ListRow
+              key={m.id}
+              leading={<span className="ui-thread-avatar" style={{ width: 36, height: 36, fontSize: 13 }} aria-hidden>{initials(m.name)}</span>}
+              title={m.name}
+              trailing={
+                <UnstyledButton className="ui-chat-btn" aria-label={`Usuń opiekuna: ${m.name}`} onClick={() => setMentors((x) => x.filter((y) => y.id !== m.id))}>
+                  <IconX size={18} stroke={2.4} />
+                </UnstyledButton>
+              }
+            />
+          ))}
+          <ListRow leading={<span className="ui-row-icon" aria-hidden><IconPlus size={20} /></span>} title="Dodaj opiekuna" onClick={() => { setQ(""); setFinding(true); }} />
+        </Section>
+        {program && (
+          <Button
+            variant="subtle"
+            color="red"
+            size="md"
+            leftSection={<IconTrash size={18} />}
+            loading={remove.isPending}
+            style={{ alignSelf: "flex-start" }}
+            onClick={() => confirm({ title: "Usunąć z katalogu?", message: `Usunąć „${program.name}” z katalogu? Wpisane szkolenia zostaną.`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}
+          >
+            Usuń z katalogu
+          </Button>
+        )}
+      </FormScreen>
       <PickSheet opened={pickDep} onClose={() => setPickDep(false)} title="Wydział" options={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))} value={dep ? [dep] : []} clearLabel="Dowolny wydział" onChange={(v) => setDep(v[0] ?? null)} />
       <Drawer opened={finding} onClose={() => setFinding(false)} position="bottom" size="85%" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label="Dodaj opiekuna">
         <SheetHandle onClose={() => setFinding(false)}>

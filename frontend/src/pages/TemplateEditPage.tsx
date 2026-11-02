@@ -87,7 +87,7 @@ export function TemplateEditPage() {
 
   return (
     <Stack maw={1200}>
-      <Anchor component={Link} to="/szablony" size="sm">
+      <Anchor component={Link} to="/szablony" size="sm" visibleFrom="sm">
         <Group gap={4}>
           <IconArrowLeft size={14} /> Szablony
         </Group>

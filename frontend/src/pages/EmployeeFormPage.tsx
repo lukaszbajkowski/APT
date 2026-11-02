@@ -224,12 +224,12 @@ export function EmployeeFormPage() {
       <Stack maw={900}>
         <Group justify="space-between">
           <div>
-            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm">
+            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" visibleFrom="sm">
               <Group gap={4}>
                 <IconArrowLeft size={14} /> {editing ? "Wróć do profilu" : "Wróć do listy"}
               </Group>
             </Anchor>
-            <Title order={2} mt={4}>
+            <Title order={2} mt={4} visibleFrom="sm">
               {editing ? `Edycja: ${current?.last_name} ${current?.first_name}` : "Nowy pracownik"}
             </Title>
             {editing && current && (

@@ -67,8 +67,7 @@ export function TemplatesPage() {
       {templates.error && <ErrorState error={templates.error} onRetry={() => templates.refetch()} />}
       {templates.data && templates.data.length === 0 && (
         <Alert color="blue">
-          Nie ma jeszcze żadnego szablonu. Dodaj pierwszy, np. deklarację Medicover (plik{" "}
-          <code>examples/szablony/medicover_deklaracja.docx</code> w repozytorium).
+          Brak szablonów. Dodaj pierwszy plik Word ze znacznikami {"{{ … }}"}.
         </Alert>
       )}
 

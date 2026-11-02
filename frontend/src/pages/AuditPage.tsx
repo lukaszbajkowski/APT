@@ -31,7 +31,11 @@ function describe(e: AuditEntry): string {
     case "mfa_failed":
       return d.locked ? "błędny kod – konto zablokowane" : d.failed_count ? `błędny kod (${String(d.failed_count)})` : "błędny kod";
     default:
-      return e.details ? JSON.stringify(e.details) : "";
+      return e.details
+        ? Object.entries(e.details)
+            .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+            .join(", ")
+        : "";
   }
 }
 
@@ -95,11 +99,11 @@ export function AuditPage() {
         {log.isLoading && <Loading />}
         {log.error && <ErrorState error={log.error} onRetry={() => log.refetch()} />}
         {log.data && (
+          log.data.items.length === 0 ? (
+            <CompactEmpty title="Brak zdarzeń" text="Zmień filtry albo wyczyść wyszukiwanie." />
+          ) : (
           <div className="ui-group">
-            {log.data.items.length === 0 ? (
-              <CompactEmpty title="Brak zdarzeń" text="Zmień filtry albo wyczyść wyszukiwanie." />
-            ) : (
-              log.data.items.map((e) => {
+            {log.data.items.map((e) => {
                 const extra = describe(e);
                 return (
                   <ListRow
@@ -108,9 +112,9 @@ export function AuditPage() {
                     description={[formatDateTime(e.ts), e.username ?? "—", e.entity_type ? `${e.entity_type} #${e.entity_id}` : null, extra || null].filter(Boolean).join(" · ")}
                   />
                 );
-              })
-            )}
+              })}
           </div>
+          )
         )}
         {log.data && <Pager page={page} pages={Math.ceil(log.data.total / PAGE_SIZE)} onPage={setPage} />}
         <FilterSheet

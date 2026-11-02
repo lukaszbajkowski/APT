@@ -66,9 +66,7 @@ export function QualityPage() {
           />
         )}
         {data.rows.length === 0 && (
-          <div className="ui-group">
-            <CompactEmpty title="Wszystko uzupełnione" text="Żadnemu aktywnemu pracownikowi nie brakuje danych." />
-          </div>
+          <CompactEmpty title="Wszystko uzupełnione" text="Żadnemu aktywnemu pracownikowi nie brakuje danych." />
         )}
         {data.rows.length > 0 && (
           <div className="ui-group">

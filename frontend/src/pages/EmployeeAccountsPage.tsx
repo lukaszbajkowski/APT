@@ -68,14 +68,14 @@ export function EmployeeAccountsPage() {
         {list.isError && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
         {list.isLoading && <Loading />}
         {list.data && (
-          <div className="ui-group">
-            {list.data.length === 0 ? (
+          list.data.length === 0 ? (
               <CompactEmpty
                 title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak kont"}
                 text={q.trim() ? "Sprawdź pisownię albo wybierz „Wszystkie”." : "Zaproszenie wyślesz z karty pracownika."}
               />
-            ) : (
-              list.data.map((r) => (
+          ) : (
+            <div className="ui-group">
+              {list.data.map((r) => (
                 <ListRow
                   key={r.employee_id}
                   to={`/pracownicy/${r.employee_id}`}
@@ -83,9 +83,9 @@ export function EmployeeAccountsPage() {
                   description={[`nr ${r.number}`, r.username, r.status === "pending" && r.invite_pending ? "zaproszenie wysłane" : r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : null].filter(Boolean).join(" · ")}
                   trailing={<StatusBadge tone={TONE[r.status]}>{SHORT[r.status]}</StatusBadge>}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </Stack>
     );

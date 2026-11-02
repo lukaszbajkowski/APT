@@ -35,9 +35,7 @@ export function WorkQueuePage() {
       <Stack gap={24}>
         <PageHead title="Do zrobienia" subtitle={d.total ? `Czeka na kadry: ${d.total}` : undefined} />
         {d.groups.length === 0 && (
-          <div className="ui-group">
-            <CompactEmpty title="Wszystko zrobione" text="Nic nie czeka na Twoją uwagę." />
-          </div>
+          <CompactEmpty title="Wszystko zrobione" text="Nic nie czeka na Twoją uwagę." />
         )}
         {d.groups.map((g) => (
           <Section key={g.key} title={`${g.label} · ${g.count}`} action={{ label: "Wszystkie", to: g.url }}>

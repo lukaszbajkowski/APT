@@ -702,7 +702,10 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .mantine-Button-root[data-size="xs"], .mantine-Button-root[data-size="sm"], .mantine-Button-root[data-size="compact-xs"], .mantine-Button-root[data-size="compact-sm"] { --button-height: 44px; }
   .mantine-ActionIcon-root[data-size="xs"], .mantine-ActionIcon-root[data-size="sm"], .mantine-ActionIcon-root[data-size="md"] { --ai-size: 44px; }
   /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
-  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, 58px) + 72px) !important; left: 16px !important; right: 16px !important; width: auto !important; }
+  /* Mantine centruje przez left:50% + translateX(-50%) – przy własnych marginesach przesunięcie trzeba zdjąć */
+  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
+  /* otwarty formularz: toast nad paskiem „Anuluj / Zapisz” */
+  body:has(.ui-inpage) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))) + 84px) !important; }
 }
 
 /* ——— telefon: płynne przejście między ekranami (150–250 ms, wyłączane przez „ogranicz ruch”) ——— */

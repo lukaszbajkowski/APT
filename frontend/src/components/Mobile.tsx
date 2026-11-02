@@ -613,7 +613,7 @@ export function PickSheet({
 }
 
 /* Wysokość dolnego menu (razem z paskiem iPhone'a) jako --apt-nav-h – formularze na telefonie kończą się tuż nad menu. */
-export function useNavHeightVar() {
+export function useNavHeightVar(dep?: unknown) {
   useLayoutEffect(() => {
     const nav = document.querySelector<HTMLElement>(".mantine-AppShell-footer");
     if (!nav) return;
@@ -622,7 +622,7 @@ export function useNavHeightVar() {
     const ro = new ResizeObserver(set);
     ro.observe(nav);
     return () => ro.disconnect();
-  }, []);
+  }, [dep]);
 }
 
 /* ——— panel filtrów od dołu: „Filtry”, pola, Wyczyść + Pokaż N (wzorzec listy pracowników) ——— */

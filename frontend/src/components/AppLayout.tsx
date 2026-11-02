@@ -64,7 +64,7 @@ import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
-import { MobileHeaderProvider, useMobileHeaderValue } from "./Mobile";
+import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string; /** krótsza etykieta w dolnym menu telefonu */ tab?: string };
 
@@ -180,6 +180,8 @@ export function AppLayout() {
 
 function AppLayoutInner() {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // wysokość dolnego menu (z paskiem iPhone'a) jako --apt-nav-h – formularze i toasty ustawiają się tuż nad nim
+  useNavHeightVar(mobile);
   const [moreOpen, setMoreOpen] = useState(false);
   useResponsiveTables();
   const { hasRole } = useAuth();

@@ -105,7 +105,7 @@ export function EmployeeHome() {
             />
           )}
           {d?.has_photo && <ListRow leading={icon(IconCamera)} title={t("Zmień zdjęcie")} description={t("Do karty identyfikacyjnej")} onClick={() => setParams({ zdjecie: "1" })} />}
-          <ListRow leading={icon(IconFingerprint)} title={t("Klucze i powiadomienia")} description={t("Powiadomienia, drugie urządzenie")} to="/moje-konto/klucze" />
+          <ListRow leading={icon(IconFingerprint)} title={t("Logowanie i powiadomienia")} description={t("Klucze dostępu, powiadomienia, aplikacja")} to="/moje-konto/klucze" />
         </Section>
         <MyDataCards />
       </Stack>
@@ -135,7 +135,7 @@ export function EmployeeHome() {
           badge={noContact ? t("uzupełnij") : undefined}
           onClick={() => document.getElementById("kontakt")?.scrollIntoView({ behavior: "smooth" })}
         />
-        <Tile icon={IconFingerprint} title={t("Klucze i powiadomienia")} hint={t("Powiadomienia, drugie urządzenie")} to="/moje-konto/klucze" />
+        <Tile icon={IconFingerprint} title={t("Logowanie i powiadomienia")} hint={t("Klucze dostępu, powiadomienia, aplikacja")} to="/moje-konto/klucze" />
       </SimpleGrid>
       <MyDataCards />
     </Stack>

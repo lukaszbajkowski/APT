@@ -4,7 +4,9 @@ import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } f
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { useState } from "react";
+import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 
 function runState(run: Run | null | undefined, staleHours: number) {
   const stale = run ? Date.now() - new Date(run.at).getTime() > staleHours * 3600_000 : false;
@@ -13,9 +15,19 @@ function runState(run: Run | null | undefined, staleHours: number) {
   if (stale) return { tone: "warn" as const, label: "Dawno" };
   return { tone: "ok" as const, label: "OK" };
 }
-function RunRow({ label, run, staleHours }: { label: string; run: Run | null | undefined; staleHours: number }) {
+/** „Dziś, 21:59” / „Wczoraj, 22:03” / „30.10.2026, 22:03” */
+function when(at: string) {
+  const d = new Date(at);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(new Date()) - day(d)) / 86_400_000);
+  const time = d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  return diff === 0 ? `Dziś, ${time}` : diff === 1 ? `Wczoraj, ${time}` : formatDateTime(at);
+}
+const STATE_TEXT = { ok: "", warn: "Dawno się nie wykonała – sprawdź serwer", error: "Ostatnia próba się nie udała", neutral: "Jeszcze się nie wykonała" } as const;
+function RunRow({ label, run, staleHours, onOpen }: { label: string; run: Run | null | undefined; staleHours: number; onOpen: (d: { title: string; info: string }) => void }) {
   const st = runState(run, staleHours);
-  return <ListRow title={label} description={run ? `${formatDateTime(run.at)}${run.info ? ` · ${run.info}` : ""}` : "Jeszcze się nie wykonała"} trailing={<StatusBadge tone={st.tone}>{st.label}</StatusBadge>} />;
+  const desc = !run ? STATE_TEXT.neutral : st.tone === "ok" ? when(run.at) : `${when(run.at)} · ${STATE_TEXT[st.tone]}`;
+  return <ListRow title={label} description={desc} trailing={<StatusBadge tone={st.tone}>{st.label}</StatusBadge>} onClick={run?.info ? () => onOpen({ title: label, info: `${formatDateTime(run.at)} · ${run.info}` }) : undefined} />;
 }
 
 interface Run {
@@ -59,6 +71,7 @@ function RunLine({ label, run, staleHours }: { label: string; run: Run | null | 
 export function SystemStatusPage() {
   const q = useQuery({ queryKey: ["system-status"], queryFn: () => api<Status>("/system/status"), refetchInterval: 60_000 });
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const [detail, setDetail] = useState<{ title: string; info: string } | null>(null);
   if (q.isLoading) return <Loading />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const s = q.data!;
@@ -68,6 +81,24 @@ export function SystemStatusPage() {
     return (
       <Stack gap={24}>
         <PageHead title="Stan systemu" subtitle={`Wersja ${s.version} · migracja ${s.migration ?? "?"}`} />
+        {(() => {
+          const states = [runState(s.backup?.local, 36), runState(s.backup?.offsite, 36), runState(s.restore_test, 15 * 24)];
+          const problems =
+            states.filter((x) => x.tone !== "ok").length +
+            s.unusual.length +
+            (s.disk && s.disk.used_percent > 85 ? 1 : 0) +
+            (s.mail_enabled ? 0 : 1) +
+            (s.retention_due ? 1 : 0);
+          return (
+            <div className="ui-group">
+              <ListRow
+                leading={<span className="ui-row-icon" data-tone={problems ? "warn" : undefined} aria-hidden>{problems ? <IconAlertTriangle size={22} /> : <IconCircleCheck size={22} />}</span>}
+                title={problems ? `Wymaga uwagi: ${problems}` : "Wszystko działa"}
+                description={problems ? "Szczegóły w wierszach oznaczonych niżej" : "Kopie zapasowe, dysk i wysyłka są w porządku"}
+              />
+            </div>
+          );
+        })()}
         {s.unusual.length > 0 && (
           <Section title="Nietypowa aktywność (24 godz.)">
             {s.unusual.map((x) => (
@@ -76,24 +107,25 @@ export function SystemStatusPage() {
           </Section>
         )}
         <Section title="Kopie zapasowe">
-          <RunRow label="Kopia lokalna" run={s.backup?.local} staleHours={36} />
-          <RunRow label="Kopia poza serwerem" run={s.backup?.offsite} staleHours={36} />
-          <RunRow label="Test odtwarzania" run={s.restore_test} staleHours={15 * 24} />
+          <RunRow label="Kopia na serwerze" run={s.backup?.local} staleHours={36} onOpen={setDetail} />
+          <RunRow label="Kopia poza serwerem" run={s.backup?.offsite} staleHours={36} onOpen={setDetail} />
+          <RunRow label="Test odtwarzania (co tydzień)" run={s.restore_test} staleHours={15 * 24} onOpen={setDetail} />
         </Section>
         <Section title="Serwer">
           {s.disk ? (
             <ListRow
               title="Dysk"
-              description={`Wolne ${s.disk.free_gb} GB z ${s.disk.total_gb} GB`}
-              trailing={<StatusBadge tone={s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok"}>{`Zajęte ${s.disk.used_percent}%`}</StatusBadge>}
+              description={`Wolne ${String(s.disk.free_gb).replace(".", ",")} GB z ${String(s.disk.total_gb).replace(".", ",")} GB`}
+              trailing={<StatusBadge tone={s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok"}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>}
             />
           ) : (
             <CompactEmpty title="Dysk: brak danych" text="Pojawią się po pierwszym uruchomieniu zadań cyklicznych." />
           )}
           <ListRow
             title="Tłumaczenia"
-            description={s.translation.enabled ? `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w miesiącu` : "Brak klucza – pracownik widzi teksty po polsku"}
-            trailing={s.translation.enabled ? <StatusBadge tone={pctTone(tPct)}>{`${tPct}%`}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>}
+            description={s.translation.enabled ? `Wykorzystano ${tPct}% miesięcznego limitu` : "Brak klucza – pracownik widzi teksty po polsku"}
+            trailing={s.translation.enabled ? <StatusBadge tone={pctTone(tPct)}>{tPct > 90 ? "Kończy się" : "OK"}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>}
+            onClick={s.translation.enabled ? () => setDetail({ title: "Tłumaczenia", info: `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu` }) : undefined}
           />
           <ListRow title="Wysyłka e-mail" trailing={<StatusBadge tone={s.mail_enabled ? "ok" : "warn"}>{s.mail_enabled ? "Włączona" : "Wyłączona"}</StatusBadge>} />
           <ListRow
@@ -102,6 +134,7 @@ export function SystemStatusPage() {
             to={s.retention_due ? "/retencja" : undefined}
           />
         </Section>
+        <ActionSheet opened={!!detail} onClose={() => setDetail(null)} title={detail?.title ?? ""} subtitle={detail?.info} actions={[]} />
       </Stack>
     );
   }

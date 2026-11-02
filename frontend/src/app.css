@@ -725,3 +725,13 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* formularz na pełnym ekranie (telefon): grupa pól z etykietą sekcji zamiast karty */
 .ui-form-group { display: flex; flex-direction: column; gap: 12px; }
 .ui-seg2 > button:disabled { opacity: .55; }
+/* edytor pól szablonu (telefon) */
+.ui-mono { font-family: var(--mantine-font-family-monospace); font-size: 13px; overflow-wrap: anywhere; }
+.ui-field-body { display: flex; flex-direction: column; gap: 16px; padding: 14px 16px 16px; border-top: 1px solid var(--apt-line); border-bottom: 1px solid var(--apt-line); }
+.ui-opt-card { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 16px; background: var(--apt-surface); border: 1px solid var(--apt-line); border-radius: 14px; }
+.ui-opt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* aplikacja z ekranu początkowego (iOS, pasek statusu przezroczysty): ekrany bez nagłówka aplikacji
+   (logowanie, podpis z linku) nie wchodzą pod godzinę i baterię */
+@media (display-mode: standalone) {
+  body:not(:has(.mantine-AppShell-root)) { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}

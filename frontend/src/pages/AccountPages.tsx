@@ -169,6 +169,8 @@ export function MyAccountPage() {
 
   // Safari wymaga otwarcia okna klucza od razu po dotknięciu: wyzwanie pobieramy w osobnym kroku.
   const [prepared, setPrepared] = useState<Options | null>(null);
+  // telefon (kadry): hasło do potwierdzenia pojawia się dopiero po „Dodaj klucz”
+  const [adding, setAdding] = useState(false);
   const prepare = useMutation({
     mutationFn: () =>
       api<Options>("/passkeys/options", { method: "POST", body: reauth ? { password: pw, code: code || null } : {} }),
@@ -207,10 +209,11 @@ export function MyAccountPage() {
   if (!hasRole("employee") && !hasRole("admin", "hr", "manager", "viewer", "agency")) return <Navigate to="/" replace />;
 
   const addKey = () => (prepared ? add.mutate() : prepare.mutate());
+
   if (mobile)
     return (
       <Stack gap={24}>
-        <PageHead title={t("Klucze i powiadomienia")} />
+        <PageHead title={t("Logowanie i powiadomienia")} />
         {error && (
           <Alert color="red" icon={<IconAlertCircle size={18} />}>
             {error}
@@ -242,8 +245,9 @@ export function MyAccountPage() {
             <CompactEmpty title={t("Nie masz jeszcze klucza dostępu")} text={t("Dodaj klucz, żeby logować się twarzą lub odciskiem palca.")} />
           )}
         </Section>
-        {reauth && (
+        {reauth && adding && (
           <Stack gap={16}>
+            <span className="ui-hint-warn">{t("Potwierdź, że to Ty – wpisz hasło, potem utwórz klucz.")}</span>
             <PasswordInput label={t("Obecne hasło")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
             {me?.user.mfa_enabled && (
               <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
@@ -251,8 +255,15 @@ export function MyAccountPage() {
           </Stack>
         )}
         <Stack gap={8}>
-          <Button size="lg" fullWidth leftSection={<IconFingerprint size={20} />} loading={add.isPending || prepare.isPending} disabled={!passkeysSupported() || (!prepared && reauth && !pw)} onClick={addKey}>
-            {prepared ? t("Utwórz klucz na tym urządzeniu") : t("Dodaj klucz")}
+          <Button
+            size="lg"
+            fullWidth
+            leftSection={<IconFingerprint size={20} />}
+            loading={add.isPending || prepare.isPending}
+            disabled={!passkeysSupported() || (adding && !prepared && reauth && !pw)}
+            onClick={() => (reauth && !adding ? setAdding(true) : addKey())}
+          >
+            {prepared ? t("Utwórz klucz na tym urządzeniu") : adding ? t("Dalej") : t("Dodaj klucz")}
           </Button>
           <Text size="sm" c="dimmed">
             {t("Dodaj klucz także na drugim urządzeniu, żeby nie stracić dostępu po zgubieniu telefonu.")}
@@ -265,7 +276,7 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>{t("Klucze i powiadomienia")}</Title>
+      <Title order={2}>{t("Logowanie i powiadomienia")}</Title>
       <InstallApp />
       <PushCard />
       {error && (

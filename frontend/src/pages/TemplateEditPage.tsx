@@ -16,6 +16,10 @@ import { FieldsEditor } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { Loading } from "../components/States";
+import { useMediaQuery } from "@mantine/hooks";
+import { useNavigate } from "react-router-dom";
+import { UnstyledButton } from "@mantine/core";
+import { FormScreen, ListRow, Section, StatusBadge } from "../components/Mobile";
 
 export function TemplateEditPage() {
   const { id } = useParams();
@@ -32,6 +36,8 @@ export function TemplateEditPage() {
   const [strictPdf, setStrictPdf] = useState(false);
   const [formats, setFormats] = useState<DownloadFormats>("both");
   const [error, setError] = useState<string | null>(null);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const t = template.data;
@@ -83,6 +89,88 @@ export function TemplateEditPage() {
   if (!template.data) return <Alert color="red">Nie znaleziono szablonu.</Alert>;
   const t = template.data;
   const builtinLabel = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;
+
+  if (mobile) {
+    const sw = (label: string, description: string | undefined, checked: boolean, on: (v: boolean) => void) => (
+      <ListRow title={label} description={description} trailing={<Switch size="md" checked={checked} onChange={(e) => on(e.currentTarget.checked)} aria-label={label} />} />
+    );
+    const copy = (text: string) =>
+      navigator.clipboard?.writeText(text).then(
+        () => notifications.show({ message: `Skopiowano ${text}` }),
+        () => notifications.show({ color: "red", message: "Nie udało się skopiować." }),
+      );
+    return (
+      <FormScreen
+        title="Szablon"
+        subtitle={t.name}
+        onClose={() => navigate("/szablony")}
+        primary={{ label: "Zapisz szablon", onClick: () => save.mutate(), loading: save.isPending, disabled: !name.trim() }}
+      >
+        {error && (
+          <Alert color="red" withCloseButton onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        <Section title="Plik">
+          <ListRow title={t.original_filename} description={`Wersja ${t.version}`} trailing={t.sensitive ? <StatusBadge tone="warn">PESEL</StatusBadge> : undefined} />
+          <ListRow leading={<span className="ui-row-icon" aria-hidden><IconDownload size={20} /></span>} title="Pobierz .docx" onClick={() => window.location.assign(withAcct(`/api/templates/${t.id}/file`))} />
+          <FileButton accept=".docx" onChange={(f) => f && replace.mutate(f)}>
+            {(props) => (
+              <ListRow
+                leading={<span className="ui-row-icon" aria-hidden><IconUpload size={20} /></span>}
+                title={replace.isPending ? "Wgrywanie…" : "Wgraj nową wersję"}
+                description="Ustawienia pól zostaną zachowane"
+                onClick={props.onClick}
+              />
+            )}
+          </FileButton>
+        </Section>
+
+        <div className="ui-form-group">
+          <h2 className="ui-section-title">Ustawienia</h2>
+          <TextInput size="md" label="Nazwa" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+          <Select size="md" label="Język" data={LANGUAGE_OPTIONS} allowDeselect={false} value={language} onChange={(v) => v && setLanguage(v)} />
+          <Textarea size="md" label="Opis" autosize minRows={2} value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
+          <div className="ui-form-field">
+            <span className="ui-form-label">Pobieranie</span>
+            <div className="ui-seg2" role="radiogroup" aria-label="Pobieranie" style={{ gridTemplateColumns: `repeat(${Object.keys(DOWNLOAD_FORMAT_LABELS).length}, minmax(0, 1fr))` }}>
+              {(Object.keys(DOWNLOAD_FORMAT_LABELS) as DownloadFormats[]).map((v) => (
+                <UnstyledButton key={v} role="radio" aria-checked={formats === v} data-on={formats === v || undefined} onClick={() => setFormats(v)}>
+                  {DOWNLOAD_FORMAT_LABELS[v]}
+                </UnstyledButton>
+              ))}
+            </div>
+            <Text size="sm" c="dimmed" mt={6}>Podgląd online (PDF) jest dostępny zawsze.</Text>
+          </div>
+        </div>
+        <div className="ui-group">
+          {sw("Aktywny", "Dostępny przy generowaniu dokumentów", active, setActive)}
+          {sw("Dostępny dla kierownika", t.sensitive ? "Pola PESEL i data urodzenia zostaną puste" : undefined, allowManager, setAllowManager)}
+          {sw("Ścisła kontrola podpisu", "Podpisany plik musi zawierać pobrany dokument bez zmian", strictPdf, setStrictPdf)}
+        </div>
+
+        <div className="ui-form-group">
+          <h2 className="ui-section-title">Pola formularza · {fields.length}</h2>
+          <Text size="sm" c="dimmed">O te dane aplikacja zapyta przed wygenerowaniem dokumentu.</Text>
+          {fields.length === 0 ? <Text size="sm">Ten szablon używa tylko danych z kartoteki.</Text> : <FieldsEditor fields={fields} onChange={setFields} />}
+        </div>
+
+        <Section title={`Dane z kartoteki · ${t.builtins.length}`}>
+          {t.builtins.length === 0 ? (
+            <ListRow title="Brak" description="Szablon nie używa danych z kartoteki." />
+          ) : (
+            t.builtins.map((b) => <ListRow key={b} title={builtinLabel(b)} description={<span className="ui-mono">{`{{ ${b} }}`}</span>} />)
+          )}
+        </Section>
+
+        <Section title="Ściąga znaczników – dotknij, aby skopiować">
+          {builtins.data?.map((b) => (
+            <ListRow key={b.key} title={b.label} description={<span className="ui-mono">{`{{ ${b.key} }}`}</span>} trailing={<IconCopy size={18} color="var(--mantine-color-dimmed)" aria-hidden />} onClick={() => copy(`{{ ${b.key} }}`)} />
+          ))}
+        </Section>
+      </FormScreen>
+    );
+  }
 
 
   return (

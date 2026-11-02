@@ -105,7 +105,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/moje-konto/do-podpisu": "Do podpisu",
   "/moje-konto/komunikaty": "Komunikaty",
   "/moje-konto/wiadomosci": "Napisz do kadr",
-  "/moje-konto/klucze": "Klucze logowania",
+  "/moje-konto/klucze": "Logowanie i powiadomienia",
 };
 // ekrany „pierwszego poziomu”: bez strzałki powrotu
 const TOP_LEVEL = new Set(["/moje-konto", "/moje-konto/do-podpisu", "/moje-konto/komunikaty", "/moje-konto/wiadomosci", "/moje-konto/klucze"]);
@@ -129,7 +129,9 @@ function MobileTopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const own = useMobileHeaderValue();
+  const { hasRole: role } = useAuth();
   const auto = headerFor(location.pathname);
+  if (location.pathname === "/moje-konto" && !role("employee")) auto.title = "Logowanie i powiadomienia";
   const back = own.onBack ? "#" : own.back ?? auto.back;
   const [scrolled, setScrolled] = useState(false);
   const [deep, setDeep] = useState(false);
@@ -239,7 +241,7 @@ function AppLayoutInner() {
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
     { to: "/moje-konto/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: hasRole("employee"), badge: bcCount.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", tab: "Wiadomości", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
-    { to: "/moje-konto/klucze", label: "Klucze logowania", icon: IconFingerprint, show: hasRole("employee"), group: "Ustawienia" },
+    { to: "/moje-konto/klucze", label: "Logowanie i powiadomienia", icon: IconFingerprint, show: hasRole("employee"), group: "Ustawienia" },
     // personel
     { to: "/", label: "Dziś", icon: IconHome, show: !hasRole("employee") },
     { to: "/pracownicy", label: "Pracownicy", icon: IconUsersGroup, show: !hasRole("employee") },
@@ -589,7 +591,7 @@ function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
           </>
         )}
         <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
-          {t("Klucze i powiadomienia")}
+          {t("Logowanie i powiadomienia")}
         </Menu.Item>
         <Menu.Item
           color="red"

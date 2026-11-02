@@ -699,8 +699,12 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 
 /* ——— telefon: cele dotyku min. 44 px (zasada „System mobilny”) ——— */
 @media (max-width: 48em) {
-  .mantine-Button-root[data-size="xs"], .mantine-Button-root[data-size="sm"], .mantine-Button-root[data-size="compact-xs"], .mantine-Button-root[data-size="compact-sm"] { --button-height: 44px; }
-  .mantine-ActionIcon-root[data-size="xs"], .mantine-ActionIcon-root[data-size="sm"], .mantine-ActionIcon-root[data-size="md"] { --ai-size: 44px; }
+  /* Mantine definiuje rozmiary jako zmienne na klasie komponentu (.m_77c9d27d itd.) – nadpisujemy je tam, wyżej specyficznie */
+  .mantine-Button-root.mantine-Button-root { --button-height-xs: 44px; --button-height-sm: 44px; --button-height-compact-xs: 44px; --button-height-compact-sm: 44px; --button-height-compact-md: 44px; }
+  .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-xs: 44px; --ai-size-sm: 44px; --ai-size-md: 44px; }
+  .mantine-Input-wrapper.mantine-Input-wrapper { --input-height-xs: 44px; --input-height-sm: 44px; --input-height-md: 44px; }
+  /* przycisk kalendarza w polu daty mieści się w polu 44 px */
+  .mantine-Input-section .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-md: 40px; }
   /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
   /* Mantine centruje przez left:50% + translateX(-50%) – przy własnych marginesach przesunięcie trzeba zdjąć */
   .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
@@ -737,4 +741,12 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
    (logowanie, podpis z linku) nie wchodzą pod godzinę i baterię */
 @media (display-mode: standalone) {
   body:not(:has(.mantine-AppShell-root)) { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}
+/* większe pole dotyku bez zmiany wyglądu (małe linki tekstowe, ikona aparatu przy zdjęciu) – min. 44 px */
+.ui-hit { position: relative; }
+.ui-hit::after { content: ""; position: absolute; inset: -12px -6px; }
+/* ekran z formularzem / rozmową na pełnym ekranie: samo przenikanie – transform w animacji przesunąłby elementy position:fixed */
+@keyframes ui-route-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 48em) and (prefers-reduced-motion: no-preference) {
+  .ui-route:has(.ui-inpage, .ui-chat) { animation-name: ui-route-fade; }
 }

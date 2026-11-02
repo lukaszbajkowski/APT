@@ -393,6 +393,7 @@ export function EmployeeProfilePage() {
             {canPhoto && (
               <ActionIcon
                 aria-label={e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie"}
+                className="ui-hit"
                 radius="xl"
                 size={32}
                 variant="default"

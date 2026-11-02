@@ -7,7 +7,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Button, Drawer, UnstyledButton } from "@mantine/core";
+import { Button, Drawer, Group, Modal, UnstyledButton } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
@@ -690,17 +691,23 @@ export function FormScreen({
   onClose,
   children,
   primary,
+  cancel = "Anuluj",
+  onCancel,
 }: {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  /** lewy przycisk i strzałka w pasku (np. cofnięcie kroku); domyślnie onClose */
+  onCancel?: () => void;
   children: ReactNode;
-  primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
+  primary: { label: string; onClick?: () => void; disabled?: boolean; loading?: boolean; color?: string; formId?: string };
+  /** etykieta przycisku po lewej; false = bez niego (np. ekran „Gotowe”) */
+  cancel?: string | false;
 }) {
   const { header, set } = useContext(HeaderCtx);
   const prev = useRef(header);
   const cb = useRef(onClose);
-  cb.current = onClose;
+  cb.current = onCancel ?? onClose;
   useNavHeightVar();
   useEffect(() => {
     set({ title, subtitle, onBack: () => cb.current() });
@@ -712,14 +719,65 @@ export function FormScreen({
     <div className="ui-inpage" role="dialog" aria-label={title}>
       <div className="ui-chat-body ui-form-body">{children}</div>
       <div className="ui-chat-compose">
-        <Button size="lg" radius="md" variant="default" onClick={onClose} style={{ flex: "none", minWidth: 110 }}>
-          Anuluj
-        </Button>
-        <Button size="lg" radius="md" fullWidth disabled={primary.disabled} loading={primary.loading} onClick={primary.onClick}>
+        {cancel !== false && (
+          <Button size="lg" radius="md" variant="default" onClick={onCancel ?? onClose} style={{ flex: "none", minWidth: 110 }}>
+            {cancel}
+          </Button>
+        )}
+        <Button size="lg" radius="md" fullWidth color={primary.color} disabled={primary.disabled} loading={primary.loading} onClick={primary.onClick} {...(primary.formId ? { type: "submit" as const, form: primary.formId } : {})}>
           {primary.label}
         </Button>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * Formularz w oknie: na komputerze okno na środku z przyciskami Anuluj / główny, na telefonie formularz na pełnym
+ * ekranie (FormScreen) – tytuł w górnym pasku, pasek akcji nad dolnym menu. Treść (pola) jest ta sama.
+ */
+export function FormDialog({
+  opened,
+  onClose,
+  title,
+  subtitle,
+  primary,
+  size,
+  children,
+  cancel = "Anuluj",
+  onCancel,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  primary: { label: string; onClick?: () => void; disabled?: boolean; loading?: boolean; color?: string; formId?: string };
+  size?: string;
+  children: ReactNode;
+  cancel?: string | false;
+  onCancel?: () => void;
+}) {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  if (mobile)
+    return opened ? (
+      <FormScreen title={title} subtitle={subtitle} onClose={onClose} primary={primary} cancel={cancel} onCancel={onCancel}>
+        {children}
+      </FormScreen>
+    ) : null;
+  return (
+    <Modal opened={opened} onClose={onClose} title={title} size={size}>
+      {children}
+      <Group justify="flex-end" mt="md">
+        {cancel !== false && (
+          <Button variant="default" onClick={onCancel ?? onClose}>
+            {cancel}
+          </Button>
+        )}
+        <Button color={primary.color} onClick={primary.onClick} loading={primary.loading} disabled={primary.disabled} {...(primary.formId ? { type: "submit" as const, form: primary.formId } : {})}>
+          {primary.label}
+        </Button>
+      </Group>
+    </Modal>
   );
 }

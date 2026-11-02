@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Checkbox, Group, Modal, SegmentedControl, Stack, Text } from "@mantine/core";
+import { Alert, Anchor,  Checkbox,  SegmentedControl, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPrinter } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText } from "../api";
 import { Loading } from "./States";
 import { DateField } from "./DateField";
+import { FormDialog } from "./Mobile";
 
 interface PersonRef {
   id: number;
@@ -95,7 +95,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
   const sheets = Math.ceil(ids.length / 10);
 
   return (
-    <Modal opened={opened} onClose={onClose} title={ids.length === 1 ? "Druk karty" : `Druk kart (${ids.length})`}>
+    <FormDialog opened={opened} onClose={onClose} title={ids.length === 1 ? "Druk karty" : `Druk kart (${ids.length})`} primary={{ label: "Pobierz PDF", onClick: print, loading: busy, disabled: !check.data || (withExpiry && !validUntil) }}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         {check.isLoading && <Loading />}
@@ -142,20 +142,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
           <DateField  label="Ważna do" value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
         )}
 
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            Anuluj
-          </Button>
-          <Button
-            leftSection={<IconPrinter size={16} />}
-            loading={busy}
-            disabled={!check.data || (withExpiry && !validUntil)}
-            onClick={print}
-          >
-            Pobierz PDF
-          </Button>
-        </Group>
       </Stack>
-    </Modal>
+    </FormDialog>
   );
 }

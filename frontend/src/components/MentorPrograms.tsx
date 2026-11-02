@@ -1,8 +1,8 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog } from "./Mobile";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Badge, Button, Card, Group, Modal, MultiSelect, Popover, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Badge, Button, Card, Group,  MultiSelect, Popover, Stack, Text, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -184,19 +184,11 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
               : []
           }
         />
-        <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Może prowadzić szkolenie">
+        <FormDialog opened={addOpen} onClose={() => setAddOpen(false)} title="Może prowadzić szkolenie" primary={{ label: "Dodaj", onClick: () => addId && save.mutate([...ids, Number(addId)]), loading: save.isPending, disabled: !addId }}>
           <Stack>
             <Select label="Szkolenie stanowiskowe" placeholder="Wybierz z katalogu" searchable data={addable} value={addId} onChange={setAddId} size="md" />
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setAddOpen(false)}>
-                Anuluj
-              </Button>
-              <Button disabled={!addId} loading={save.isPending} onClick={() => addId && save.mutate([...ids, Number(addId)])}>
-                Dodaj
-              </Button>
-            </Group>
           </Stack>
-        </Modal>
+        </FormDialog>
       </>
     );
   }

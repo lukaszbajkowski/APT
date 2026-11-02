@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader } from "../components/Mobile";
+import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Title, Drawer, UnstyledButton } from "@mantine/core";
@@ -708,7 +708,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
     );
   }
   return (
-    <Modal opened={opened} onClose={onClose} title={editing ? "Rodzaj szkolenia" : "Nowy rodzaj szkolenia"} size="xl">
+    <FormDialog opened={opened} onClose={onClose} title={editing ? "Rodzaj szkolenia" : "Nowy rodzaj szkolenia"} size="xl" primary={{ label: "Zapisz", onClick: () => save.mutate(), loading: save.isPending }}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -793,16 +793,8 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
             </Text>
           ))}
         {deleteBlock}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            Anuluj
-          </Button>
-          <Button onClick={() => save.mutate()} loading={save.isPending}>
-            Zapisz
-          </Button>
-        </Group>
       </Stack>
-    </Modal>
+    </FormDialog>
   );
 }
 

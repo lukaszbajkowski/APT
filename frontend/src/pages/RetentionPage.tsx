@@ -25,7 +25,7 @@ import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog } from "../components/Mobile";
 
 const CONFIRM = "USUŃ";
 
@@ -177,9 +177,9 @@ export function RetentionPage() {
         </form>
       </Modal>
 
-      <Modal opened={!!holdFor} onClose={() => setHoldFor(null)} title="Wstrzymanie usunięcia" centered>
+      <FormDialog opened={!!holdFor} onClose={() => setHoldFor(null)} title="Wstrzymanie usunięcia" primary={{ label: "Wstrzymaj", formId: "fd-hold", loading: hold.isPending }}>
         {holdFor && (
-          <form
+          <form id="fd-hold"
             onSubmit={(e) => {
               e.preventDefault();
               setHoldError(null);
@@ -202,18 +202,10 @@ export function RetentionPage() {
                 value={holdReason}
                 onChange={(e) => setHoldReason(e.currentTarget.value)}
               />
-              <Group justify="flex-end">
-                <Button variant="default" onClick={() => setHoldFor(null)}>
-                  Anuluj
-                </Button>
-                <Button type="submit" loading={hold.isPending}>
-                  Wstrzymaj
-                </Button>
-              </Group>
             </Stack>
           </form>
         )}
-      </Modal>
+      </FormDialog>
     </>
   );
 

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, FileInput, Group, Modal, SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, FileInput, Group,  SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, ListRow, PageHead, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, StatusBadge, FormDialog } from "../components/Mobile";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -153,8 +153,8 @@ export function TemplatesPage() {
         ))}
       </SimpleGrid>}
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Nowy szablon">
-        <form
+      <FormDialog opened={open} onClose={() => setOpen(false)} title="Nowy szablon" primary={{ label: "Wgraj i sprawdź", formId: "fd-template", loading: create.isPending, disabled: !file || !name.trim() }}>
+        <form id="fd-template"
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
@@ -190,17 +190,9 @@ export function TemplatesPage() {
               value={description}
               onChange={(e) => setDescription(e.currentTarget.value)}
             />
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setOpen(false)}>
-                Anuluj
-              </Button>
-              <Button type="submit" loading={create.isPending} disabled={!file || !name.trim()}>
-                Wgraj i sprawdź
-              </Button>
-            </Group>
           </Stack>
         </form>
-      </Modal>
+      </FormDialog>
     </Stack>
   );
 }

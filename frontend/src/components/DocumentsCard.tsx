@@ -1,5 +1,5 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Collapse, Badge, Button, Card, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
@@ -108,7 +108,7 @@ function EmailDocument({ doc, size, opened, onClose }: { doc: GeneratedDoc; size
           E-mail
         </Button>
       )}
-      <Modal opened={open} onClose={() => setOpen(false)} title="Wyślij dokument e-mailem" size="md">
+      <FormDialog opened={open} onClose={() => setOpen(false)} title="Wyślij dokument e-mailem" size="md" primary={{ label: "Wyślij", onClick: () => send.mutate(), loading: send.isPending }}>
         <Stack>
           <Text size="sm">
             <b>{doc.template_name}</b> zostanie wysłany jako załącznik (wersja podpisana, jeśli dokument jest podpisany).
@@ -126,16 +126,8 @@ function EmailDocument({ doc, size, opened, onClose }: { doc: GeneratedDoc; size
               Wysłanie jest zapisywane w dzienniku zdarzeń. E-mail nie jest szyfrowany – nie wysyłaj dokumentów z danymi wrażliwymi na obce adresy.
             </Text>
           )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setOpen(false)}>
-              Anuluj
-            </Button>
-            <Button loading={send.isPending} onClick={() => send.mutate()}>
-              Wyślij
-            </Button>
-          </Group>
         </Stack>
-      </Modal>
+      </FormDialog>
     </>
   );
 }
@@ -366,7 +358,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
 
   const generateModal = (
     <>
-      <Modal opened={open} onClose={() => setOpen(false)} title="Nowy dokument" size="lg">
+      <FormDialog opened={open} onClose={() => setOpen(false)} title={done ? "Dokument gotowy" : "Nowy dokument"} size="lg" cancel={done ? false : "Anuluj"} primary={done ? { label: "Gotowe", onClick: () => setOpen(false) } : { label: "Generuj", formId: "fd-newdoc", loading: generate.isPending, disabled: !template || missing.length > 0 || !!peselError || formatErrors.length > 0 }}>
         {done ? (
           <Stack>
             <Group gap="sm" wrap="nowrap">
@@ -404,14 +396,11 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               </Button>
               <Group gap="xs">
                 <DocActions doc={done} size="sm" />
-                <Button variant="default" onClick={() => setOpen(false)}>
-                  Zamknij
-                </Button>
               </Group>
             </Group>
           </Stack>
         ) : (
-        <form
+        <form id="fd-newdoc"
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
@@ -492,18 +481,10 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 Ten szablon zawiera PESEL lub datę urodzenia – w Twoim dokumencie te pola zostaną puste.
               </Alert>
             )}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setOpen(false)}>
-                Anuluj
-              </Button>
-              <Button type="submit" loading={generate.isPending} disabled={!template || missing.length > 0 || !!peselError || formatErrors.length > 0}>
-                Generuj
-              </Button>
-            </Group>
           </Stack>
         </form>
         )}
-      </Modal>
+      </FormDialog>
     </>
   );
   const openGenerate = () => {

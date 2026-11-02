@@ -5,11 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, FormDialog } from "../components/Mobile";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -201,7 +201,18 @@ function Decide({ r, onClose }: { r: EmployeeRequest; onClose: () => void }) {
     onError: (e) => setError(errorText(e)),
   });
   return (
-    <Modal opened onClose={onClose} title={`Zgłoszenie: ${r.last_name} ${r.first_name} (${r.agency.name})`} size="lg">
+    <FormDialog
+      opened
+      onClose={onClose}
+      title={`Zgłoszenie: ${r.last_name} ${r.first_name}`}
+      subtitle={r.agency.name}
+      size="lg"
+      primary={
+        mode === "approve"
+          ? { label: "Zatwierdź i dodaj do kartoteki", color: "teal", loading: approve.isPending, onClick: () => approve.mutate() }
+          : { label: "Odrzuć zgłoszenie", color: "red", loading: reject.isPending, disabled: reason.trim().length < 3, onClick: () => reject.mutate() }
+      }
+    >
       <Stack>
         <SegmentedControl
           value={mode}
@@ -236,14 +247,6 @@ function Decide({ r, onClose }: { r: EmployeeRequest; onClose: () => void }) {
                 </Stack>
               </Alert>
             )}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={onClose}>
-                Anuluj
-              </Button>
-              <Button leftSection={<IconCheck size={16} />} color="teal" loading={approve.isPending} onClick={() => approve.mutate()}>
-                Zatwierdź i dodaj do kartoteki
-              </Button>
-            </Group>
           </>
         ) : (
           <>
@@ -255,18 +258,10 @@ function Decide({ r, onClose }: { r: EmployeeRequest; onClose: () => void }) {
               value={reason}
               onChange={(e) => setReason(e.currentTarget.value)}
             />
-            <Group justify="flex-end">
-              <Button variant="default" onClick={onClose}>
-                Anuluj
-              </Button>
-              <Button color="red" leftSection={<IconX size={16} />} loading={reject.isPending} disabled={reason.trim().length < 3} onClick={() => reject.mutate()}>
-                Odrzuć zgłoszenie
-              </Button>
-            </Group>
           </>
         )}
       </Stack>
-    </Modal>
+    </FormDialog>
   );
 }
 

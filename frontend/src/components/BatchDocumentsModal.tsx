@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Badge, Checkbox, Group, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconArrowRight, IconFileZip } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, LANGUAGES, type DocTemplate, type Employee } from "../api";
 import { useAuth } from "../auth";
 import { FieldInput, useFieldFormats, type Values } from "./DocumentsCard";
 import { fieldProblem, peselProblem } from "../masks";
 import { Loading } from "./States";
+import { FormDialog } from "./Mobile";
 
 const MAX = 50;
 
@@ -157,7 +157,22 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
   const person = !same && step >= 1 ? list[step - 1] : null;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={`Dokument dla ${ids.length} os.`} size="lg">
+    <FormDialog
+      opened={opened}
+      onClose={onClose}
+      title={`Dokument dla ${ids.length} os.`}
+      subtitle={step === 0 ? "Krok 1 · Szablon" : person ? `Osoba ${step} z ${list.length}` : "Pola dokumentu"}
+      size="lg"
+      cancel={step > 0 ? "Wstecz" : "Anuluj"}
+      onCancel={step > 0 ? () => setStep((s) => s - 1) : undefined}
+      primary={
+        ids.length > MAX
+          ? { label: "Zamknij", onClick: onClose }
+          : lastStep
+            ? { label: `Generuj paczkę ZIP (${list.length})`, onClick: generate, loading: busy, disabled: !template }
+            : { label: "Dalej", onClick: goNext, disabled: !template }
+      }
+    >
       {ids.length > MAX ? (
         <Alert color="orange">Naraz można wygenerować dokumenty dla najwyżej {MAX} osób. Zawęź zaznaczenie.</Alert>
       ) : templates.isLoading || people.isLoading ? (
@@ -243,26 +258,6 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
             </>
           )}
 
-          <Group justify="space-between">
-            {step > 0 ? (
-              <Button variant="default" leftSection={<IconArrowLeft size={16} />} onClick={() => setStep((s) => s - 1)}>
-                Wstecz
-              </Button>
-            ) : (
-              <Button variant="default" onClick={onClose}>
-                Anuluj
-              </Button>
-            )}
-            {lastStep ? (
-              <Button leftSection={<IconFileZip size={16} />} onClick={generate} loading={busy} disabled={!template}>
-                Generuj paczkę ZIP ({list.length})
-              </Button>
-            ) : (
-              <Button rightSection={<IconArrowRight size={16} />} onClick={goNext} disabled={!template}>
-                Dalej
-              </Button>
-            )}
-          </Group>
           {busy && (
             <Text size="xs" c="dimmed" ta="right">
               Generowanie może potrwać kilka–kilkadziesiąt sekund.
@@ -270,6 +265,6 @@ export function BatchDocumentsModal({ ids, opened, onClose }: { ids: number[]; o
           )}
         </Stack>
       )}
-    </Modal>
+    </FormDialog>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu, Modal, MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Timeline, Title } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Timeline, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -16,7 +16,6 @@ import {
   IconPlayerSkipForward,
   IconPlus,
   IconTrash,
-  IconUserCheck,
 } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
@@ -262,7 +261,7 @@ export function RehireModal({ employee, opened, onClose }: { employee: Employee;
 
   const opts = (d?: DictionaryItem[]) => (d ?? []).filter((x) => x.is_active).map((x) => ({ value: String(x.id), label: x.name }));
   return (
-    <Modal opened={opened} onClose={onClose} title={`Ponowne zatrudnienie: ${employee.last_name} ${employee.first_name}`} size="lg">
+    <FormDialog opened={opened} onClose={onClose} title={`Ponowne zatrudnienie: ${employee.last_name} ${employee.first_name}`} size="lg" primary={{ label: "Zatrudnij ponownie", onClick: () => save.mutate(), loading: save.isPending }}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         <Text size="sm" c="dimmed">
@@ -295,16 +294,8 @@ export function RehireModal({ employee, opened, onClose }: { employee: Employee;
           />
         </SimpleGrid>
         <Checkbox label="Utwórz checklistę wdrożenia" checked={checklist} onChange={(e) => setChecklist(e.currentTarget.checked)} />
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            Anuluj
-          </Button>
-          <Button leftSection={<IconUserCheck size={16} />} onClick={() => save.mutate()} loading={save.isPending}>
-            Zatrudnij ponownie
-          </Button>
-        </Group>
       </Stack>
-    </Modal>
+    </FormDialog>
   );
 }
 
@@ -420,23 +411,11 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
           </Menu.Dropdown>
         </Menu>
       ) : null}
-      <Modal opened={dueOpen} onClose={() => setDueOpen(false)} title={`Termin: ${it.label}`} size="sm">
+      <FormDialog opened={dueOpen} onClose={() => setDueOpen(false)} title={`Termin: ${it.label}`} size="sm" primary={{ label: "Zapisz termin", onClick: () => patch.mutate({ due_date: due }, { onSuccess: () => setDueOpen(false) }), loading: patch.isPending, disabled: !due || due === it.due_date }}>
         <Stack>
           <DateField label="Nowy termin" value={due} onChange={(e) => setDue(e.currentTarget.value)} />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setDueOpen(false)}>
-              Anuluj
-            </Button>
-            <Button
-              disabled={!due || due === it.due_date}
-              loading={patch.isPending}
-              onClick={() => patch.mutate({ due_date: due }, { onSuccess: () => setDueOpen(false) })}
-            >
-              Zapisz termin
-            </Button>
-          </Group>
         </Stack>
-      </Modal>
+      </FormDialog>
     </Group>
   );
 }

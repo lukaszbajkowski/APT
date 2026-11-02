@@ -1,8 +1,8 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Group, Modal, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Card, Group,  SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
@@ -51,8 +51,8 @@ function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: 
     onError: (e) => setError(errorText(e)),
   });
   return (
-    <Modal opened={opened} onClose={onClose} title="Dodaj dokument pobytowy lub zezwolenie" size="md">
-      <form
+    <FormDialog opened={opened} onClose={onClose} title="Dokument pobytowy" subtitle="Karta pobytu, wiza lub zezwolenie na pracę" size="md" primary={{ label: "Zapisz", formId: "fd-permit", loading: save.isPending }}>
+      <form id="fd-permit"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           setError(null);
@@ -67,17 +67,9 @@ function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: 
             <DateField label="Ważne do"  required min={from || undefined} value={until} onChange={(e) => setUntil(e.currentTarget.value)} />
           </SimpleGrid>
           <TextInput label="Uwagi" maxLength={500} value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Anuluj
-            </Button>
-            <Button type="submit" loading={save.isPending}>
-              Zapisz
-            </Button>
-          </Group>
         </Stack>
       </form>
-    </Modal>
+    </FormDialog>
   );
 }
 

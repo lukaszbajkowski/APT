@@ -166,7 +166,7 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
           Do zrobienia
         </Title>
         {full && (
-          <Text component={Link} to="/do-zrobienia" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link">
+          <Text component={Link} to="/do-zrobienia" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link ui-hit">
             Pełna lista
           </Text>
         )}
@@ -314,7 +314,7 @@ function RecentCard({ d }: { d: Dashboard }) {
         <Title order={3} size="h4">
           Ostatnio dodani
         </Title>
-        <Text component={Link} to="/pracownicy" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link">
+        <Text component={Link} to="/pracownicy" size="sm" fw={600} c="var(--mantine-primary-color-text)" className="brand-link ui-hit">
           Wszyscy
         </Text>
       </Group>

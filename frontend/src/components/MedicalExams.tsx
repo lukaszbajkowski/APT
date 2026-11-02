@@ -1,8 +1,8 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileInput, Group, Modal, SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileInput, Group,  SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconFileText, IconPlus, IconStethoscope, IconTrash } from "@tabler/icons-react";
@@ -58,8 +58,8 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
     onError: (e) => setError(errorText(e)),
   });
   return (
-    <Modal opened={opened} onClose={onClose} title="Dodaj badanie lekarskie" size="md">
-      <form
+    <FormDialog opened={opened} onClose={onClose} title="Dodaj badanie lekarskie" size="md" primary={{ label: "Zapisz", formId: "fd-medical", loading: save.isPending }}>
+      <form id="fd-medical"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           setError(null);
@@ -102,17 +102,9 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
             onChange={setFile}
           />
           <TextInput label="Uwagi" maxLength={500} value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Anuluj
-            </Button>
-            <Button type="submit" loading={save.isPending}>
-              Zapisz
-            </Button>
-          </Group>
         </Stack>
       </form>
-    </Modal>
+    </FormDialog>
   );
 }
 

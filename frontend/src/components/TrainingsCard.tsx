@@ -1,8 +1,8 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, Section, StatusBadge } from "./Mobile";
+import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileButton, Group, Menu, Modal, NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileButton, Group, Menu,  NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -219,7 +219,7 @@ export function TrainingModal({
     .map((t) => ({ value: String(t.id), label: t.name }));
 
   return (
-    <Modal opened={opened} onClose={onClose} title={batch ? `Nowe szkolenie dla ${employeeIds!.length} os.` : editing ? "Edycja szkolenia" : "Nowe szkolenie"} size="lg">
+    <FormDialog opened={opened} onClose={onClose} title={batch ? `Nowe szkolenie dla ${employeeIds!.length} os.` : editing ? "Edycja szkolenia" : "Nowe szkolenie"} size="lg" primary={{ label: "Zapisz", onClick: () => save.mutate(), loading: save.isPending, disabled: !type }}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         <Select
@@ -367,16 +367,8 @@ export function TrainingModal({
         {type && (
           <Textarea label="Uwagi" autosize minRows={2} value={form.notes} onChange={(e) => set("notes", e.currentTarget.value)} />
         )}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            Anuluj
-          </Button>
-          <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!type}>
-            Zapisz
-          </Button>
-        </Group>
       </Stack>
-    </Modal>
+    </FormDialog>
   );
 }
 

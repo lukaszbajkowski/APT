@@ -9,7 +9,7 @@ import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
-import { ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -290,7 +290,7 @@ export function EmployeeRequestsPage() {
             subtitle={isAgency ? "Nowe osoby do kartoteki" : "Od agencji pracy"}
             action={isAgency ? { label: "Zgłoś osobę", icon: <IconPlus size={22} />, onClick: () => setNewOpen(true) } : undefined}
           />
-          <Segments value={show} onChange={(x) => setShow(x as "pending" | "all")} items={[{ value: "pending", label: `Oczekujące · ${pending}` }, { value: "all", label: "Wszystkie" }]} swipe />
+          <Segments value={show} onChange={(x) => setShow(x as "pending" | "all")} items={[{ value: "pending", label: `Oczekujące · ${pending}` }, { value: "all", label: "Wszystkie" }]} />
         </>
       ) : (
         <Group justify="space-between" align="flex-end">
@@ -322,20 +322,34 @@ export function EmployeeRequestsPage() {
       )}
       {q.isLoading && <Loading />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
-      {q.data && rows.length === 0 && <EmptyState compact title={show === "pending" ? "Brak oczekujących zgłoszeń" : "Brak zgłoszeń"} text={isAgency ? "Zgłoś osobę przyciskiem „+”, a kadry ją sprawdzą." : "Gdy agencja zgłosi nową osobę, pojawi się tutaj do rozpatrzenia."} />}
-      {mobile && rows.length > 0 && (
-        <div className="ui-group">
-          {rows.map((r) => (
-            <ListRow
-              key={r.id}
-              title={`${r.last_name} ${r.first_name}`}
-              description={`${isAgency ? "" : `${r.agency.name} · `}start ${formatDate(r.hire_date)}`}
-              trailing={<StatusBadge tone={r.status === "pending" ? "wait" : r.status === "rejected" ? "error" : "ok"}>{STATUS[r.status].label}</StatusBadge>}
-              onClick={!isAgency && r.status === "pending" ? () => setDeciding(r) : r.employee_id ? undefined : undefined}
-              to={r.employee_id ? `/pracownicy/${r.employee_id}` : undefined}
-            />
-          ))}
-        </div>
+      {!mobile && q.data && rows.length === 0 && <EmptyState compact title={show === "pending" ? "Brak oczekujących zgłoszeń" : "Brak zgłoszeń"} text={isAgency ? "Zgłoś osobę przyciskiem „+”, a kadry ją sprawdzą." : "Gdy agencja zgłosi nową osobę, pojawi się tutaj do rozpatrzenia."} />}
+      {/* telefon: obie zakładki wczytane od razu – sąsiednia lista jedzie za palcem */}
+      {mobile && q.data && (
+        <SwipePager index={show === "pending" ? 0 : 1} onIndex={(i) => setShow(i === 0 ? "pending" : "all")}>
+          {(["pending", "all"] as const).map((tab) => {
+            const list = (q.data ?? []).filter((r) => tab === "all" || r.status === "pending");
+            return list.length === 0 ? (
+              <CompactEmpty
+                key={tab}
+                title={tab === "pending" ? "Brak oczekujących zgłoszeń" : "Brak zgłoszeń"}
+                text={isAgency ? "Zgłoś osobę przyciskiem „+”, a kadry ją sprawdzą." : "Gdy agencja zgłosi nową osobę, pojawi się tutaj do rozpatrzenia."}
+              />
+            ) : (
+              <div key={tab} className="ui-group">
+                {list.map((r) => (
+                  <ListRow
+                    key={r.id}
+                    title={`${r.last_name} ${r.first_name}`}
+                    description={`${isAgency ? "" : `${r.agency.name} · `}start ${formatDate(r.hire_date)}`}
+                    trailing={<StatusBadge tone={r.status === "pending" ? "wait" : r.status === "rejected" ? "error" : "ok"}>{STATUS[r.status].label}</StatusBadge>}
+                    onClick={!isAgency && r.status === "pending" ? () => setDeciding(r) : undefined}
+                    to={r.employee_id ? `/pracownicy/${r.employee_id}` : undefined}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </SwipePager>
       )}
       {!mobile && rows.length > 0 && (
         <Card withBorder padding={0}>

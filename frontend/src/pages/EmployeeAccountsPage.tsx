@@ -7,7 +7,7 @@ import { IconSearch } from "@tabler/icons-react";
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, ErrorState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
 
 interface Row {
   employee_id: number;
@@ -29,7 +29,9 @@ const STATUS: Record<Row["status"], { label: string; color: string }> = {
 export function EmployeeAccountsPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const list = useQuery({
+    enabled: !mobile,
     queryKey: ["employee-accounts", q, status],
     queryFn: () => {
       const p = new URLSearchParams();
@@ -39,10 +41,21 @@ export function EmployeeAccountsPage() {
     },
   });
 
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // telefon: jedna lista bez filtra statusu – każda zakładka filtruje ją u siebie, więc sąsiednia jest gotowa przy przesuwaniu
+  const all = useQuery({
+    queryKey: ["employee-accounts", q, "all"],
+    queryFn: () => api<Row[]>(`/employee-accounts?${new URLSearchParams(q.trim() ? { q: q.trim() } : {}).toString()}`),
+    enabled: !!mobile,
+  });
   if (mobile) {
     const TONE = { active: "ok", pending: "wait", disabled: "neutral" } as const;
     const SHORT = { active: "Aktywne", pending: "Czeka", disabled: "Wyłączone" } as const;
+    const TABS = [
+      { value: "", label: "Wszystkie" },
+      { value: "pending", label: "Czekają" },
+      { value: "active", label: "Aktywne" },
+      { value: "disabled", label: "Wyłączone" },
+    ];
     return (
       <Stack gap={16}>
         <PageHead title="Konta pracowników" subtitle="Zaproszenie i reset dostępu – w karcie pracownika" />
@@ -54,38 +67,34 @@ export function EmployeeAccountsPage() {
           value={q}
           onChange={(e) => setQ(e.currentTarget.value)}
         />
-        <Segments
-          swipe
-          value={status}
-          onChange={setStatus}
-          items={[
-            { value: "", label: "Wszystkie" },
-            { value: "pending", label: "Czekają" },
-            { value: "active", label: "Aktywne" },
-            { value: "disabled", label: "Wyłączone" },
-          ]}
-        />
-        {list.isError && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
-        {list.isLoading && <Loading />}
-        {list.data && (
-          list.data.length === 0 ? (
-              <CompactEmpty
-                title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak kont"}
-                text={q.trim() ? "Sprawdź pisownię albo wybierz „Wszystkie”." : "Zaproszenie wyślesz z karty pracownika."}
-              />
-          ) : (
-            <div className="ui-group">
-              {list.data.map((r) => (
-                <ListRow
-                  key={r.employee_id}
-                  to={`/pracownicy/${r.employee_id}`}
-                  title={r.name}
-                  description={[`nr ${r.number}`, r.username, r.status === "pending" && r.invite_pending ? "zaproszenie wysłane" : r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : null].filter(Boolean).join(" · ")}
-                  trailing={<StatusBadge tone={TONE[r.status]}>{SHORT[r.status]}</StatusBadge>}
+        <Segments value={status} onChange={setStatus} items={TABS} />
+        {all.isError && <ErrorState error={all.error} onRetry={() => all.refetch()} />}
+        {all.isLoading && <Loading />}
+        {all.data && (
+          <SwipePager index={TABS.findIndex((t) => t.value === status)} onIndex={(i) => setStatus(TABS[i].value)}>
+            {TABS.map((tab) => {
+              const rows = all.data.filter((r) => !tab.value || r.status === tab.value);
+              return rows.length === 0 ? (
+                <CompactEmpty
+                  key={tab.value}
+                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : tab.value ? `Brak kont: ${tab.label.toLowerCase()}` : "Brak kont"}
+                  text={q.trim() ? "Sprawdź pisownię albo wybierz „Wszystkie”." : "Zaproszenie wyślesz z karty pracownika."}
                 />
-              ))}
-            </div>
-          )
+              ) : (
+                <div key={tab.value} className="ui-group">
+                  {rows.map((r) => (
+                    <ListRow
+                      key={r.employee_id}
+                      to={`/pracownicy/${r.employee_id}`}
+                      title={r.name}
+                      description={[`nr ${r.number}`, r.username, r.status === "pending" && r.invite_pending ? "zaproszenie wysłane" : r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : null].filter(Boolean).join(" · ")}
+                      trailing={<StatusBadge tone={TONE[r.status]}>{SHORT[r.status]}</StatusBadge>}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </SwipePager>
         )}
       </Stack>
     );

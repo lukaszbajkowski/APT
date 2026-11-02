@@ -9,7 +9,7 @@ import { IconPencil, IconPlus } from "@tabler/icons-react";
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
 
 interface Item {
   id: number;
@@ -104,7 +104,7 @@ function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQ
       {query.isLoading && <Loading />}
       {query.error && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {query.data && query.data.length === 0 && (mobile ? (
-        <div className="ui-group"><CompactEmpty title="Słownik jest pusty" text="Dodaj pierwszą pozycję przyciskiem „+”." /></div>
+        <CompactEmpty title="Słownik jest pusty" text="Dodaj pierwszą pozycję przyciskiem „+”." />
       ) : (
         <Text c="dimmed">Słownik jest pusty. Dodaj pierwszą pozycję przyciskiem powyżej.</Text>
       ))}
@@ -161,8 +161,55 @@ function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQ
         </Table>
       )}
 
+      {mobile && editing !== null && (
+        <FormScreen
+          title={editing === "new" ? "Nowa pozycja" : "Edycja"}
+          subtitle={editing === "new" ? cfg.title : `${cfg.title} · ${editing.name}`}
+          onClose={() => setEditing(null)}
+          primary={{ label: editing === "new" ? "Dodaj" : "Zapisz zmiany", onClick: () => { setError(null); save.mutate(); }, disabled: !name.trim(), loading: save.isPending }}
+        >
+          {!name.trim() && <span className="ui-hint-warn">Wpisz nazwę, żeby zapisać.</span>}
+            {error && <Alert color="red">{error}</Alert>}
+            <TextInput label="Nazwa" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+            {cfg.codeLabel && (
+              <TextInput
+                label={cfg.codeLabel}
+                maxLength={cfg.codeKey === "iso_code" ? 2 : 32}
+                value={code}
+                onChange={(e) => setCode(e.currentTarget.value)}
+              />
+            )}
+            {kind === "agencies" && (
+              <TextInput
+                label="E-mail do zestawień"
+                description="Na ten adres 1. dnia miesiąca trafia zestawienie osób za poprzedni miesiąc. Kilka adresów – oddziel przecinkiem."
+                placeholder="kadry@agencja.pl"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+              />
+            )}
+            {kind === "positions" && (
+              <Select
+                label="Wydział"
+                description="Puste = stanowisko dostępne we wszystkich wydziałach"
+                clearable
+                searchable
+                data={options(departments.data, departmentId ? Number(departmentId) : null)}
+                value={departmentId}
+                onChange={setDepartmentId}
+              />
+            )}
+            {editing !== "new" && (
+              <Switch
+                label="Aktywne (wyłączonej pozycji nie można przypisać nowym pracownikom)"
+                checked={active}
+                onChange={(e) => setActive(e.currentTarget.checked)}
+              />
+            )}
+        </FormScreen>
+      )}
       <Modal
-        opened={editing !== null}
+        opened={!mobile && editing !== null}
         onClose={() => setEditing(null)}
         title={editing === "new" ? `Nowa pozycja: ${cfg.title}` : `Edycja: ${cfg.title}`}
       >
@@ -235,12 +282,22 @@ export function DictionariesPage() {
   const [tab, setTab] = useState<Kind>("agencies");
   const [addSignal, setAddSignal] = useState(0);
   if (mobile) {
-    const q = { agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>;
+    // wszystkie zakładki wczytane od razu – przy przesuwaniu palcem sąsiednia lista jest już gotowa
+    const queries = { agencies, departments, positions, countries } as Record<Kind, UseQueryResult<Item[]>>;
+    const kinds = Object.keys(CONFIG) as Kind[];
+    const go = (k: Kind) => {
+      setTab(k);
+      setAddSignal(0);
+    };
     return (
       <Stack>
         <PageHead title="Słowniki" subtitle="Pozycje do wyboru w kartotece" action={{ label: `Dodaj ${CONFIG[tab].noun}`, icon: <IconPlus size={22} />, onClick: () => setAddSignal((n) => n + 1) }} />
-        <Segments value={tab} onChange={(v) => { setTab(v as Kind); setAddSignal(0); }} items={(Object.keys(CONFIG) as Kind[]).map((k) => ({ value: k, label: CONFIG[k].title }))} swipe />
-        <DictionaryTab key={tab} kind={tab} query={q} addSignal={addSignal} />
+        <Segments value={tab} onChange={(v) => go(v as Kind)} items={kinds.map((k) => ({ value: k, label: CONFIG[k].title }))} />
+        <SwipePager index={kinds.indexOf(tab)} onIndex={(i) => go(kinds[i])}>
+          {kinds.map((k) => (
+            <DictionaryTab key={k} kind={k} query={queries[k]} addSignal={k === tab ? addSignal : 0} />
+          ))}
+        </SwipePager>
       </Stack>
     );
   }

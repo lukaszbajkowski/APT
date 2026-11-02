@@ -55,6 +55,7 @@ import {
   IconUserCog,
   IconUserPlus,
   IconUsersGroup,
+  IconLanguage,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -65,7 +66,7 @@ import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
 import { MobileHeaderProvider, useMobileHeaderValue } from "./Mobile";
 
-type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string };
+type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string; /** krótsza etykieta w dolnym menu telefonu */ tab?: string };
 
 const ADMIN_GROUP = "Administracja";
 
@@ -237,7 +238,7 @@ function AppLayoutInner() {
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
     { to: "/moje-konto/do-podpisu", label: "Do podpisu", icon: IconSignature, show: hasRole("employee"), badge: sigCount.data?.pending ?? 0 },
     { to: "/moje-konto/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: hasRole("employee"), badge: bcCount.data?.unread ?? 0, group: "Komunikacja" },
-    { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
+    { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", tab: "Wiadomości", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/moje-konto/klucze", label: "Klucze logowania", icon: IconFingerprint, show: hasRole("employee"), group: "Ustawienia" },
     // personel
     { to: "/", label: "Dziś", icon: IconHome, show: !hasRole("employee") },
@@ -323,27 +324,27 @@ function AppLayoutInner() {
         <AppShell.Footer>
           <nav aria-label={t("Menu główne")} className="tabbar">
             {tabs.slice(0, 2).map((i) => (
-              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.label)} />
+              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.tab ?? i.label)} />
             ))}
             {canScan ? (
               <Link to="/skaner" className="tabbar-item tabbar-scan" aria-current={location.pathname === "/skaner" ? "page" : undefined} data-active={location.pathname === "/skaner" || undefined}>
                 <span className="tabbar-icon">
                   <IconScan size={22} stroke={2} />
                 </span>
-                <span>{t("Skanuj")}</span>
+                <span className="tabbar-label">{t("Skanuj")}</span>
               </Link>
             ) : (
-              tabs[2] && <TabLink item={tabs[2]} active={isActivePath(tabs[2].to, location.pathname)} label={t(tabs[2].label)} />
+              tabs[2] && <TabLink item={tabs[2]} active={isActivePath(tabs[2].to, location.pathname)} label={t(tabs[2].tab ?? tabs[2].label)} />
             )}
             {tabs.slice(canScan ? 2 : 3, canScan ? 3 : 4).map((i) => (
-              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.label)} />
+              <TabLink key={i.to} item={i} active={isActivePath(i.to, location.pathname)} label={t(i.tab ?? i.label)} />
             ))}
             <UnstyledButton className="tabbar-item" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" data-active={moreOpen || undefined}>
               <span className="tabbar-icon">
                 <IconMenu2 size={22} stroke={1.9} />
                 {moreBadge > 0 && <span className="tabbar-badge">{moreBadge}</span>}
               </span>
-              <span>{t("Więcej")}</span>
+              <span className="tabbar-label">{t("Więcej")}</span>
             </UnstyledButton>
           </nav>
         </AppShell.Footer>
@@ -364,7 +365,7 @@ function AppLayoutInner() {
       <AppShell.Main>
         <SimulationBanner />
         <NetworkBanner />
-        {lang && lang !== "pl" && hasRole("employee") && (
+        {lang && lang !== "pl" && hasRole("employee") && !mobile && (
           <Text size="xs" c="dimmed" mb="sm">
             {t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}
           </Text>
@@ -372,6 +373,13 @@ function AppLayoutInner() {
         <Box maw={1440} mx="auto" className="ui-route" key={location.pathname}>
           <Outlet />
         </Box>
+        {/* na telefonie informacja nie spycha tytułu ekranu – stoi pod treścią */}
+        {lang && lang !== "pl" && hasRole("employee") && mobile && (
+          <p className="ui-lang-note">
+            <IconLanguage size={16} aria-hidden />
+            <span>{t("Tłumaczenie automatyczne. W razie wątpliwości wiążąca jest polska wersja dokumentów i wiadomości.")}</span>
+          </p>
+        )}
       </AppShell.Main>
     </AppShell>
   );
@@ -407,7 +415,7 @@ function TabLink({ item, active, label }: { item: NavItem; active: boolean; labe
         <item.icon size={22} stroke={1.9} />
         {!!item.badge && <span className="tabbar-badge">{item.badge}</span>}
       </span>
-      <span>{label}</span>
+      <span className="tabbar-label">{label}</span>
     </Link>
   );
 }

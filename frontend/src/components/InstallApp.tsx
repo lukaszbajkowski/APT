@@ -3,6 +3,7 @@ import { Button, Card, Group, List, Modal, Text, Title } from "@mantine/core";
 import { IconDeviceMobile, IconDownload } from "@tabler/icons-react";
 
 import { useT } from "../lib/i18n";
+import { ListRow, Section, StatusBadge } from "./Mobile";
 import { clearInstallPrompt, getInstallPrompt, isIos, isMobile, isStandalone, onInstallChange } from "../lib/install";
 
 /**
@@ -33,7 +34,7 @@ function helpBody(t: (s: string) => string) {
   );
 }
 
-export function InstallApp({ compact = false }: { compact?: boolean }) {
+export function InstallApp({ compact = false, rows = false }: { compact?: boolean; rows?: boolean }) {
   const t = useT();
   const [, force] = useState(0);
   const [help, setHelp] = useState(false);
@@ -41,6 +42,12 @@ export function InstallApp({ compact = false }: { compact?: boolean }) {
 
   if (!isMobile() && !isStandalone()) return null; // na komputerze nie ma „ekranu głównego”
   if (compact && isStandalone()) return null;
+  if (rows && isStandalone())
+    return (
+      <Section title={t("Aplikacja")}>
+        <ListRow leading={<span className="ui-row-icon" aria-hidden><IconDeviceMobile size={22} /></span>} title={t("Aplikacja zainstalowana")} trailing={<StatusBadge tone="ok">{t("Gotowe")}</StatusBadge>} />
+      </Section>
+    );
   if (isStandalone()) {
     return (
       <Card withBorder padding="md">
@@ -68,6 +75,14 @@ export function InstallApp({ compact = false }: { compact?: boolean }) {
       {helpBody(t)}
     </Modal>
   );
+  if (rows) {
+    return (
+      <Section title={t("Aplikacja")}>
+        <ListRow leading={<span className="ui-row-icon" aria-hidden><IconDownload size={22} /></span>} title={t("Zainstaluj aplikację")} description={t("Otworzy się jak zwykła aplikacja i wyśle powiadomienia.")} onClick={install} />
+        {modal}
+      </Section>
+    );
+  }
   if (compact) {
     return (
       <>

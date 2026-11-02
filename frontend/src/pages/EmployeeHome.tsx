@@ -1,12 +1,14 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconChevronRight, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
 import { Messenger } from "../components/HrThreads";
 import { useT } from "../lib/i18n";
+import { ListRow, PageHead, Section, CompactEmpty, StatusBadge } from "../components/Mobile";
 
 export function EmployeeMessagesPage() {
   return <Messenger staff={false} />;
@@ -60,6 +62,56 @@ export function EmployeeHome() {
   const t = useT();
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+
+  if (mobile) {
+    const sign = toSign.data?.pending ?? 0;
+    const msg = unread.data?.unread ?? 0;
+    const news = bc.data?.unread ?? 0;
+    const icon = (I: typeof IconMessage, warn?: boolean) => (
+      <span className="ui-row-icon" data-tone={warn ? "warn" : undefined} aria-hidden>
+        <I size={22} />
+      </span>
+    );
+    const count = (n: number) => <span className="ui-thread-count">{n}</span>;
+    // pilne sprawy na górze, w kolejności: podpis, odpowiedź kadr, komunikaty, braki w danych
+    const todo = [
+      sign > 0 && <ListRow key="sign" leading={icon(IconSignature, true)} title={t("Podpisz dokumenty")} description={t("Czekają na Twój podpis: {n}", { n: sign })} trailing={count(sign)} to="/moje-konto/do-podpisu" />,
+      msg > 0 && <ListRow key="msg" leading={icon(IconMessage)} title={t("Odpowiedź od kadr")} description={t("Nieprzeczytane wiadomości: {n}", { n: msg })} trailing={count(msg)} to="/moje-konto/wiadomosci" />,
+      news > 0 && <ListRow key="bc" leading={icon(IconSpeakerphone)} title={t("Nowe komunikaty")} description={t("Nieprzeczytane: {n}", { n: news })} trailing={count(news)} to="/moje-konto/komunikaty" />,
+      d && !d.has_photo && <ListRow key="photo" leading={icon(IconCamera, true)} title={t("Dodaj zdjęcie")} description={t("Bez zdjęcia nie dostaniesz karty identyfikacyjnej")} trailing={<StatusBadge tone="warn">{t("Brak")}</StatusBadge>} onClick={() => setParams({ zdjecie: "1" })} />,
+      noContact && <ListRow key="contact" leading={icon(IconPhone, true)} title={t("Potwierdź telefon lub e-mail")} description={t("Dostaniesz kod, który wpiszesz w aplikacji")} trailing={<StatusBadge tone="warn">{t("Uzupełnij")}</StatusBadge>} onClick={() => document.getElementById("kontakt")?.scrollIntoView({ behavior: "smooth" })} />,
+    ].filter(Boolean);
+    return (
+      <Stack gap={24}>
+        <PageHead title={d ? t("Dzień dobry, {name}", { name: d.first_name }) : t("Moje konto")} />
+        <Section title={t("Do załatwienia")}>
+          {mine.isLoading ? (
+            <CompactEmpty title="…" />
+          ) : todo.length ? (
+            todo
+          ) : (
+            <ListRow leading={icon(IconCircleCheck)} title={t("Wszystko załatwione")} description={t("Nic na Ciebie nie czeka. Damy znać, gdy coś się pojawi.")} />
+          )}
+        </Section>
+        <Section title={t("Na skróty")}>
+          <ListRow leading={icon(IconMessage)} title={t("Napisz do kadr")} description={t("Zadaj pytanie lub zgłoś sprawę")} to="/moje-konto/wiadomosci" />
+          {toSign.data?.last_signed && (
+            <ListRow
+              leading={icon(IconFileCheck)}
+              title={t("Ostatnio podpisany")}
+              description={`${toSign.data.last_signed.document}${toSign.data.last_signed.signed_at ? ` · ${formatDate(toSign.data.last_signed.signed_at)}` : ""}`}
+              to={`/moje-konto/do-podpisu/podpisane/${toSign.data.last_signed.id}`}
+            />
+          )}
+          {d?.has_photo && <ListRow leading={icon(IconCamera)} title={t("Zmień zdjęcie")} description={t("Do karty identyfikacyjnej")} onClick={() => setParams({ zdjecie: "1" })} />}
+          <ListRow leading={icon(IconFingerprint)} title={t("Klucze i powiadomienia")} description={t("Powiadomienia, drugie urządzenie")} to="/moje-konto/klucze" />
+        </Section>
+        <MyDataCards />
+      </Stack>
+    );
+  }
+
   return (
     <Stack maw={760}>
       <Title order={2}>{d ? t("Dzień dobry, {name}", { name: d.first_name }) : t("Moje konto")}</Title>

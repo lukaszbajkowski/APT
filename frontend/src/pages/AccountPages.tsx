@@ -13,6 +13,8 @@ import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, PageHead, Section } from "../components/Mobile";
 
 interface Options {
   challenge_id: string;
@@ -201,7 +203,65 @@ export function MyAccountPage() {
     onError: (e) => setError(errorText(e)),
   });
 
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   if (!hasRole("employee") && !hasRole("admin", "hr", "manager", "viewer", "agency")) return <Navigate to="/" replace />;
+
+  const addKey = () => (prepared ? add.mutate() : prepare.mutate());
+  if (mobile)
+    return (
+      <Stack gap={24}>
+        <PageHead title={t("Klucze i powiadomienia")} />
+        {error && (
+          <Alert color="red" icon={<IconAlertCircle size={18} />}>
+            {error}
+          </Alert>
+        )}
+        <Section title={t("Klucze logowania")}>
+          {keys.isLoading ? (
+            <Loading rows={1} />
+          ) : keys.data?.length ? (
+            keys.data.map((k) => (
+              <ListRow
+                key={k.id}
+                leading={<span className="ui-row-icon" aria-hidden><IconFingerprint size={22} /></span>}
+                title={k.name}
+                description={k.last_used_at ? t("ostatnio {date}", { date: formatDateTime(k.last_used_at) }) : t("dodany {date}", { date: formatDateTime(k.created_at) })}
+                trailing={
+                  <Button
+                    variant="subtle"
+                    color="red"
+                    loading={remove.isPending && remove.variables === k.id}
+                    onClick={() => confirm({ title: t("Usunąć klucz?"), message: t("Na tym urządzeniu nie zalogujesz się już tym kluczem."), confirmLabel: t("Usuń"), danger: true }).then((ok) => ok && remove.mutate(k.id))}
+                  >
+                    {t("Usuń")}
+                  </Button>
+                }
+              />
+            ))
+          ) : (
+            <CompactEmpty title={t("Nie masz jeszcze klucza dostępu")} text={t("Dodaj klucz, żeby logować się twarzą lub odciskiem palca.")} />
+          )}
+        </Section>
+        {reauth && (
+          <Stack gap={16}>
+            <PasswordInput label={t("Obecne hasło")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+            {me?.user.mfa_enabled && (
+              <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
+            )}
+          </Stack>
+        )}
+        <Stack gap={8}>
+          <Button size="lg" fullWidth leftSection={<IconFingerprint size={20} />} loading={add.isPending || prepare.isPending} disabled={!passkeysSupported() || (!prepared && reauth && !pw)} onClick={addKey}>
+            {prepared ? t("Utwórz klucz na tym urządzeniu") : t("Dodaj klucz")}
+          </Button>
+          <Text size="sm" c="dimmed">
+            {t("Dodaj klucz także na drugim urządzeniu, żeby nie stracić dostępu po zgubieniu telefonu.")}
+          </Text>
+        </Stack>
+        <PushCard rows />
+        <InstallApp rows />
+      </Stack>
+    );
 
   return (
     <Stack maw={640}>

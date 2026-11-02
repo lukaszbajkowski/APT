@@ -5,6 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
 import { useT } from "../lib/i18n";
+import { ListRow, Section, StatusBadge } from "./Mobile";
 import { api } from "../api";
 import { isIos, isStandalone } from "../lib/install";
 
@@ -20,7 +21,7 @@ const supported = () => "serviceWorker" in navigator && "PushManager" in window 
  * Powiadomienia push na tym urządzeniu. Treść powiadomień jest ogólna (np. „Masz dokument do podpisu”) –
  * nazwiska, tytuły dokumentów i treść wiadomości nie opuszczają aplikacji.
  */
-export function PushCard() {
+export function PushCard({ rows = false }: { rows?: boolean } = {}) {
   const t = useT();
   const [on, setOn] = useState<boolean | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>(supported() ? Notification.permission : "denied");
@@ -89,6 +90,33 @@ export function PushCard() {
   });
 
   const needInstall = isIos() && !isStandalone();
+
+  // telefon: sekcja z wierszami zamiast karty z akapitem
+  if (rows) {
+    const blocked = permission === "denied" && supported() && !on;
+    return (
+      <Section title={t("Powiadomienia")}>
+        {on === null ? (
+          <Skeleton height={60} aria-busy="true" aria-label="Ładowanie" />
+        ) : needInstall ? (
+          <ListRow title={t("Najpierw zainstaluj aplikację")} description={t("Na iPhonie powiadomienia działają tylko w aplikacji dodanej do ekranu początkowego.")} trailing={<StatusBadge tone="neutral">{t("Wyłączone")}</StatusBadge>} />
+        ) : !supported() ? (
+          <ListRow title={t("Powiadomienia niedostępne")} description={t("Ta przeglądarka nie obsługuje powiadomień push.")} />
+        ) : blocked ? (
+          <ListRow title={t("Powiadomienia zablokowane")} description={t("Odblokuj je w ustawieniach przeglądarki dla tej strony.")} trailing={<StatusBadge tone="warn">{t("Zablokowane")}</StatusBadge>} />
+        ) : on ? (
+          <>
+            <ListRow leading={<span className="ui-row-icon" aria-hidden><IconBell size={22} /></span>} title={t("Powiadomienia włączone")} description={t("Bez nazwisk i szczegółów – tylko krótka informacja.")} trailing={<StatusBadge tone="ok">{t("Włączone")}</StatusBadge>} />
+            <ListRow title={test.isPending ? t("Wysyłanie…") : t("Wyślij testowe powiadomienie")} onClick={() => test.mutate()} />
+            <ListRow leading={<span className="ui-row-icon" aria-hidden><IconBellOff size={22} /></span>} title={disable.isPending ? t("Wyłączanie…") : t("Wyłącz na tym urządzeniu")} onClick={() => disable.mutate()} />
+          </>
+        ) : (
+          <ListRow leading={<span className="ui-row-icon" aria-hidden><IconBell size={22} /></span>} title={enable.isPending ? t("Włączanie…") : t("Włącz powiadomienia")} description={t("Dowiesz się od razu o dokumencie do podpisu i odpowiedzi kadr.")} onClick={() => enable.mutate()} />
+        )}
+      </Section>
+    );
+  }
+
   return (
     <Card withBorder padding="lg">
       <Title order={4} mb={4}>

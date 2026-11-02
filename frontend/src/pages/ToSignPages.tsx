@@ -12,6 +12,8 @@ import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey"
 import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
 import { EmptyState, Loading } from "../components/States";
+import { useMediaQuery } from "@mantine/hooks";
+import { CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -28,6 +30,50 @@ const LIVE = { refetchInterval: 8000, refetchOnWindowFocus: true } as const;
 export function ToSignListPage() {
   const t = useT();
   const list = useQuery({ queryKey: ["my-signatures"], queryFn: () => api<ListOut>("/me/signatures"), ...LIVE });
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  if (mobile) {
+    const pending = list.data?.pending ?? [];
+    const signed = list.data?.signed ?? [];
+    return (
+      <Stack gap={24}>
+        <PageHead title={t("Do podpisu")} subtitle={pending.length ? t("Czeka na podpis: {n}", { n: pending.length }) : undefined} />
+        {list.isLoading ? (
+          <Loading />
+        ) : (
+          <>
+            <Section title={t("Czekają na podpis")}>
+              {pending.length ? (
+                pending.map((p) => (
+                  <ListRow
+                    key={p.id}
+                    leading={<span className="ui-row-icon" data-tone="warn" aria-hidden><IconSignature size={22} /></span>}
+                    title={p.document}
+                    description={t("Od {date}", { date: formatDateTime(p.requested_at) }) + (p.requested_by ? ` · ${p.requested_by}` : "")}
+                    to={`/moje-konto/do-podpisu/${p.id}`}
+                  />
+                ))
+              ) : (
+                <CompactEmpty title={t("Nie masz dokumentów do podpisu")} text={t("O nowym dokumencie dostaniesz powiadomienie.")} />
+              )}
+            </Section>
+            {signed.length > 0 && (
+              <Section title={t("Podpisane")}>
+                {signed.map((d) => (
+                  <ListRow
+                    key={d.id}
+                    title={d.document}
+                    description={d.signed_at ? formatDateTime(d.signed_at) : undefined}
+                    trailing={<StatusBadge tone="ok">{t("Podpisany")}</StatusBadge>}
+                    to={`/moje-konto/do-podpisu/podpisane/${d.id}`}
+                  />
+                ))}
+              </Section>
+            )}
+          </>
+        )}
+      </Stack>
+    );
+  }
   return (
     <Stack maw={640}>
       <Title order={2}>{t("Do podpisu")}</Title>

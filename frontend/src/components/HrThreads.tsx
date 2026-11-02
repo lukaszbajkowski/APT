@@ -885,17 +885,19 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                 ) : (
                   <div className="ui-group">
                     {rs.map((t) => {
-                      const name = staff ? (t.employee_name ?? "") : T("Kadry");
+                      // pracownik rozmawia zawsze z kadrami, więc wiersz rozpoznaje po temacie
+                      const name = staff ? (t.employee_name ?? "") : t.subject;
+                      const snip = (t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject);
                       return (
                         <UnstyledButton key={t.id} className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
-                          <span className="ui-thread-avatar" aria-hidden>{initials(name)}</span>
+                          <span className="ui-thread-avatar" aria-hidden>{initials(staff ? name : T("Kadry"))}</span>
                           <span className="ui-row-text">
                             <span className="ui-thread-line">
                               <span className="ui-thread-name">{name}</span>
                               <span className="ui-thread-time">{shortTime(t.updated_at)}</span>
                             </span>
                             <span className="ui-thread-line">
-                              <span className="ui-thread-snip">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject)}</span>
+                              <span className="ui-thread-snip">{staff ? `${t.subject} · ${snip}` : snip}</span>
                               {t.unread ? (
                                 <span className="ui-thread-count" aria-label={`${T("Nieprzeczytane")}: ${t.unread_count || 1}`}>{t.unread_count || 1}</span>
                               ) : null}

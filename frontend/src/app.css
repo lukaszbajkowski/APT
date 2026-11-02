@@ -663,6 +663,21 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-mentors { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--mantine-primary-color-text); margin-top: 2px; }
 .ui-pick { padding-top: 10px; padding-bottom: 10px; line-height: 1.3; } .ui-pick > svg { flex: none; } .ui-pick > span { min-width: 0; overflow-wrap: anywhere; }
 /* nowa wiadomość na telefonie – w obrębie strony, jak nowy komunikat (górny i dolny pasek zostają) */
-.ui-inpage { display: flex; flex-direction: column; }
-.ui-inpage .ui-chat-body { overflow: visible; flex: 1; }
-.ui-inpage .ui-chat-compose { position: sticky; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 5; padding: 12px 16px; background: var(--apt-surface); border-top: 1px solid var(--apt-line); border-radius: 0 0 var(--mantine-radius-md) var(--mantine-radius-md); }
+/* formularz na telefonie (makiety WiadDoKogo/KomNowy): cały ekran nad dolnym menu, treść przewija się, przyciski stoją tuż nad menu */
+.ui-inpage { position: fixed; left: 0; right: 0; top: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 120; display: flex; flex-direction: column; background: var(--apt-ground); padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-inpage .ui-chat-body { flex: 1; min-height: 0; overflow-y: auto; gap: 16px; }
+.ui-inpage .ui-chat-body > :first-child { margin-top: 0; }
+.ui-inpage .ui-chat-compose { flex: none; display: flex; gap: 10px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
+.ui-inpage .ui-chat-compose .mantine-Button-root[data-disabled], .ui-inpage .ui-chat-compose .mantine-Button-root:disabled { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); opacity: .45; }
+.ui-inpage .ui-chat-compose .mantine-Button-root[data-variant="default"][data-disabled] { background: transparent; color: var(--mantine-color-text); }
+.ui-count { margin-top: -10px; text-align: right; font-size: 12px; color: var(--mantine-color-dimmed); }
+.ui-summary { background: var(--apt-surface); border: 1px solid var(--apt-line); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+.ui-summary small { display: block; font-size: 13px; color: var(--mantine-color-dimmed); }
+.ui-pick-row[data-on] { background: var(--apt-subtle); }
+.ui-pick-check { margin-left: auto; color: var(--mantine-primary-color-text); display: flex; }
+.ui-drop-row { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1.5px dashed var(--apt-line-strong, #807670); border-radius: 12px; }
+.ui-drop-row[data-warn] { border-color: var(--mantine-color-orange-6); }
+.ui-seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--apt-nav); border: 1px solid var(--apt-line); border-radius: 12px; }
+.ui-seg2 > button { min-height: 44px; padding: 4px 8px; border-radius: 9px; text-align: center; font-size: 14px; line-height: 1.25; color: var(--mantine-color-text); }
+.ui-seg2 > button[data-on] { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-weight: 700; }
+.ui-hint-warn { font-size: 13px; line-height: 1.45; color: var(--mantine-color-orange-text); }

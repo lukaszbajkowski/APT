@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Select, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowRight, IconChevronLeft, IconChevronRight, IconPaperclip, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -244,69 +244,94 @@ export function BroadcastsPage() {
   const mobileComposer = (
     <div className="ui-inpage">
       <header className="ui-chat-head">
-        <UnstyledButton className="ui-chat-btn" onClick={() => (cStep === 2 ? setCStep(1) : back())} aria-label={cStep === 2 ? "Wróć do wyboru odbiorców" : "Wróć"}>
-          <IconArrowLeft size={22} />
+        <UnstyledButton className="ui-chat-btn" onClick={() => (cStep === 2 ? setCStep(1) : back())} aria-label={cStep === 2 ? "Wróć do wyboru odbiorców" : "Anuluj"}>
+          <IconChevronLeft size={26} stroke={2.2} />
         </UnstyledButton>
         <span className="ui-chat-title">
           <span className="ui-chat-name">Nowy komunikat</span>
-          <span className="ui-chat-sub">{cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}`}</span>
+          <span className="ui-chat-sub">
+            {cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}${preview.data ? `, ${preview.data.total} os.` : ""}`}
+          </span>
         </span>
       </header>
       <div className="ui-chat-body ui-form-body">
         {cStep === 1 ? (
           <>
-            <Select label="Agencja" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
-            <Select label="Wydział" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
-            <Checkbox label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
+            <Text size="sm" c="dimmed">Pracownik dostaje powiadomienie i e-mail w swoim języku, czyta komunikat w aplikacji i potwierdza przeczytanie.</Text>
+            {!hasTarget && <span className="ui-hint-warn">Wybierz agencję, wydział albo „Wszyscy”, żeby przejść dalej.</span>}
+            {hasTarget && preview.data?.total === 0 && <span className="ui-hint-warn">Brak aktywnych pracowników w tej grupie – wybierz inną.</span>}
+            <Group grow align="flex-start" gap={10}>
+              <Select size="md" label="Agencja" placeholder="Wszystkie" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
+              <Select size="md" label="Wydział" placeholder="Wszystkie" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
+            </Group>
+            <Checkbox size="md" label="Wszyscy aktywni pracownicy" checked={everyone} onChange={(e) => setEveryone(e.currentTarget.checked)} />
             {preview.data && (
-              <Text size="sm">
-                Odbiorców: <b>{preview.data.total}</b> (z kontem w aplikacji: {preview.data.with_account}, z e-mailem: {preview.data.with_email}
-                {preview.data.unreachable > 0 ? `, bez żadnego kontaktu: ${preview.data.unreachable}` : ""}).
-              </Text>
+              <div className="ui-summary">
+                Odbiorców: <b>{preview.data.total}</b>
+                <small>
+                  z kontem w aplikacji: {preview.data.with_account} · z e-mailem: {preview.data.with_email}
+                  {preview.data.unreachable > 0 ? ` · bez żadnego kontaktu: ${preview.data.unreachable}` : ""}
+                </small>
+              </div>
             )}
-            {!hasTarget && <span className="ui-form-hint ui-warn-line">Wybierz agencję, wydział albo „Wszyscy”, żeby przejść dalej.</span>}
-            {hasTarget && preview.data?.total === 0 && <span className="ui-form-hint ui-warn-line">Brak aktywnych pracowników w tej grupie – wybierz inną.</span>}
           </>
         ) : (
           <>
-            <SegmentedControl
-              fullWidth
-              value={kind}
-              onChange={(v) => setKind(v as "info" | "document")}
-              data={[
-                { value: "info", label: "Komunikat" },
-                { value: "document", label: "Dokument do zapoznania się" },
-              ]}
-            />
-            <TextInput label="Temat" maxLength={80} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-            <span className="ui-form-hint" style={{ textAlign: "right" }}>{subject.length}/80</span>
+            <div className="ui-seg2" role="radiogroup" aria-label="Rodzaj">
+              {([["info", "Komunikat"], ["document", "Dokument do zapoznania się"]] as const).map(([v, l]) => (
+                <UnstyledButton key={v} role="radio" aria-checked={kind === v} data-on={kind === v || undefined} onClick={() => setKind(v)}>
+                  {l}
+                </UnstyledButton>
+              ))}
+            </div>
+            <TextInput size="md" label="Temat" maxLength={80} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+            <span className="ui-count">{subject.length}/80</span>
             <Textarea
-              label={kind === "document" ? "Treść (opcjonalna)" : "Treść"}
+              size="md"
+              label={kind === "document" ? <>Treść <Text span c="dimmed" fw={400} inherit>(opcjonalna)</Text></> : "Treść"}
               autosize
               minRows={4}
               maxLength={2000}
               value={body}
               onChange={(e) => setBody(e.currentTarget.value)}
             />
-            <span className="ui-form-hint" style={{ textAlign: "right" }}>{body.length}/2000</span>
-            <FileInput
-              label={kind === "document" ? "Dokument * (wymagany)" : "Dokumenty (opcjonalne)"}
-              description="PDF, JPG, PNG – do 5 plików, po 15 MB. Pracownik zobaczy je w aplikacji, bez pobierania."
-              placeholder="Dodaj pliki"
-              accept="application/pdf,image/jpeg,image/png"
-              multiple
-              clearable
-              value={files}
-              onChange={(v) => setFiles((v ?? []).slice(0, 5))}
-            />
-            {kind === "document" && files.length === 0 && <span className="ui-form-hint ui-warn-line">Dokument do zapoznania się wymaga pliku.</span>}
+            <span className="ui-count">{body.length}/2000</span>
+            <div className="ui-form-field">
+              {kind === "document" && (
+                <span className="ui-form-label">
+                  Dokument <span className="ui-warn-line" style={{ display: "inline" }}>* wymagany</span>
+                </span>
+              )}
+              <FileButton multiple accept="application/pdf,image/jpeg,image/png" onChange={(v) => setFiles([...files, ...(v ?? [])].slice(0, 5))}>
+                {(props) => (
+                  <UnstyledButton {...props} className="ui-drop-row" data-warn={(kind === "document" && files.length === 0) || undefined}>
+                    <span style={{ color: "var(--mantine-primary-color-text)", display: "flex", flex: "none" }}><IconPaperclip size={22} aria-hidden /></span>
+                    <span className="ui-row-text">
+                      <span className="ui-row-title">Dodaj pliki</span>
+                      <span className="ui-row-desc">PDF, JPG, PNG – do 5 plików, po 15 MB. Pracownik zobaczy je w aplikacji, bez pobierania.</span>
+                    </span>
+                  </UnstyledButton>
+                )}
+              </FileButton>
+              {files.length > 0 && (
+                <div className="ui-group">
+                  {files.map((f, i) => (
+                    <div key={i} className="ui-pick-row">
+                      <IconFileText size={20} aria-hidden />
+                      <span className="ui-row-text"><span className="ui-row-title">{f.name}</span></span>
+                      <Button variant="subtle" onClick={() => setFiles(files.filter((_, j) => j !== i))}>Usuń</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
         {error && <Alert color="red">{error}</Alert>}
       </div>
       <div className="ui-chat-compose">
         {cStep === 1 ? (
-          <Button size="lg" fullWidth radius="md" disabled={!hasTarget || !preview.data?.total} onClick={() => setCStep(2)}>
+          <Button size="lg" fullWidth radius="md" rightSection={<IconChevronRight size={18} />} disabled={!hasTarget || !preview.data?.total} onClick={() => setCStep(2)}>
             Dalej – treść
           </Button>
         ) : (
@@ -318,6 +343,7 @@ export function BroadcastsPage() {
               size="lg"
               fullWidth
               radius="md"
+              leftSection={<IconArrowRight size={18} />}
               loading={send.isPending}
               disabled={!canSend}
               onClick={() => confirm({ title: "Wysłać komunikat?", message: `Komunikat „${subject.trim()}” trafi do ${preview.data?.total ?? 0} osób. Tej operacji nie da się cofnąć.`, confirmLabel: "Wyślij" }).then((ok) => ok && send.mutate())}

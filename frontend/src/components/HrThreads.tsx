@@ -13,7 +13,7 @@ import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
 import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager } from "./Mobile";
-import { IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
+import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
   id: number;
@@ -655,42 +655,40 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
           {!onTresc ? (
             <div className="ui-form-field">
               <span className="ui-form-label">Pracownik</span>
-              {picked ? (
-                <div className="ui-group">
-                  <div className="ui-pick-row">
-                    <span className="ui-thread-avatar" aria-hidden>{initials(picked)}</span>
-                    <span className="ui-thread-name" style={{ flex: 1 }}>{picked}</span>
-                    <Button variant="subtle" onClick={() => setEmployee(null)}>Zmień</Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
-                  <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
-                  {(people.data ?? []).length > 0 ? (
-                    <div className="ui-group">
-                      {(people.data ?? []).slice(0, 6).map((p) => (
-                        <UnstyledButton key={p.employee_id} className="ui-pick-row" onClick={() => { setEmployee(String(p.employee_id)); setPickedName(p.name); }}>
+              <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
+              <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
+              {(() => {
+                const list = (people.data ?? []).slice(0, 8);
+                const rows = employee && picked && !list.some((p) => String(p.employee_id) === employee)
+                  ? [{ employee_id: Number(employee), number: "", name: picked }, ...list]
+                  : list;
+                return rows.length > 0 ? (
+                  <div className="ui-group">
+                    {rows.map((p) => {
+                      const on = String(p.employee_id) === employee;
+                      return (
+                        <UnstyledButton key={p.employee_id} className="ui-pick-row" data-on={on || undefined} aria-pressed={on} onClick={() => { setEmployee(on ? null : String(p.employee_id)); setPickedName(p.name); }}>
                           <span className="ui-thread-avatar" aria-hidden>{initials(p.name)}</span>
                           <span className="ui-row-text">
                             <span className="ui-thread-name">{p.name}</span>
-                            <span className="ui-thread-snip">nr {p.number}</span>
+                            {p.number && <span className="ui-thread-snip">nr {p.number}</span>}
                           </span>
+                          {on && <span className="ui-pick-check"><IconCheck size={20} stroke={2.4} aria-hidden /></span>}
                         </UnstyledButton>
-                      ))}
-                    </div>
-                  ) : (
-                    search.trim() && <span className="ui-form-hint">Brak pracownika z aktywnym kontem</span>
-                  )}
-                </>
-              )}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  search.trim() && <span className="ui-form-hint">Brak pracownika z aktywnym kontem</span>
+                );
+              })()}
             </div>
           ) : (
             <>
               {staff ? (
                 <>
                   <TextInput size="md" label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
-                  <span className="ui-form-hint" style={{ textAlign: "right" }}>{custom.length}/80</span>
+                  <span className="ui-count">{custom.length}/80</span>
                 </>
               ) : (
                 <Select size="md" label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
@@ -708,7 +706,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
                 rightSectionProps={{ style: { alignItems: "flex-end", paddingBottom: 8 } }}
                 rightSectionWidth={52}
               />
-              <span className="ui-form-hint" style={{ textAlign: "right" }}>{body.length}/2000</span>
+              <span className="ui-count">{body.length}/2000</span>
               {staff && (
                 <span className="ui-form-hint">
                   Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
@@ -720,7 +718,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         </div>
         <div className="ui-chat-compose">
           {!onTresc ? (
-            <Button size="lg" fullWidth radius="md" disabled={!employee} onClick={() => setStep(2)}>
+            <Button size="lg" fullWidth radius="md" disabled={!employee} rightSection={<IconChevronRight size={18} />} onClick={() => setStep(2)}>
               Dalej – treść
             </Button>
           ) : (
@@ -730,7 +728,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
                   Wstecz
                 </Button>
               )}
-              <Button size="lg" fullWidth radius="md" leftSection={<IconSend size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
+              <Button size="lg" fullWidth radius="md" leftSection={<IconArrowRight size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
                 {T("Wyślij")}
               </Button>
             </>

@@ -20,6 +20,9 @@ EMPLOYEE_PATHS = (
     # komunikaty techniczne (przerwa, awaria) – pracownik też musi je widzieć
     "/api/service-notices/current",
 )
+# Zapytania wysyłane przez aplikację samoczynnie w tle (np. sprawdzanie przerwy technicznej co pół minuty):
+# nie są aktywnością użytkownika, więc nie przedłużają sesji – autowylogowanie po bezczynności działa dalej.
+PASSIVE_PATHS = ("/api/service-notices/current",)
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -158,7 +161,7 @@ def _load_session(request: Request, db: Session) -> AuthContext:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Nieprawidłowy token CSRF.")
 
     # Odświeżamy "ostatnio widziano" najwyżej raz na minutę, żeby nie pisać przy każdym żądaniu.
-    if now - sess.last_seen_at > timedelta(seconds=60):
+    if now - sess.last_seen_at > timedelta(seconds=60) and request.url.path not in PASSIVE_PATHS:
         sess.last_seen_at = now
         db.commit()
 

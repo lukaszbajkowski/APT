@@ -144,6 +144,9 @@ Po godzinie zakończenia komunikat znika sam, „Zakończ teraz” chowa go od r
 
 - **Przerwa blokująca** (przełącznik „blokuje aplikację”, wymaga godziny końca) – w podanym czasie wszyscy poza
   administratorem widzą po zalogowaniu ekran „Przerwa techniczna” z wyjaśnieniem i planowanym końcem.
+  Osoby zalogowane w chwili rozpoczęcia przerwy dostają ten ekran same (aplikacja sprawdza co 30 s). Po końcu
+  przerwy (godzina końca albo „Zakończ teraz”) wracają na ekran główny. Sprawdzanie w tle nie przedłuża sesji –
+  kto w tym czasie przekroczy czas bezczynności, zostanie wylogowany jak zwykle.
 - **Serwer nie odpowiada** (aktualizacja `aptid-aktualizuj`, restart, awaria) – serwer WWW zwraca czytelną odpowiedź 503,
   a aplikacja pokazuje ogólny ekran „Serwis chwilowo niedostępny” (zalogowanym – z ostatnim znanym komunikatem)
   i co 15 s sama sprawdza, czy wrócił.

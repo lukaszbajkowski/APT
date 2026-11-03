@@ -77,3 +77,26 @@ def test_employee_current(me):  # noqa: F811
     r = me.get("/api/service-notices/current")
     assert r.status_code == 200 and r.json() == []
     assert me.get("/api/service-notices").status_code == 403
+
+
+def test_polling_does_not_extend_session(admin_client):
+    # sprawdzanie przerwy w tle nie jest aktywnością – nie odsuwa autowylogowania
+    from datetime import timedelta as td
+
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import UserSession
+
+    old = utcnow() - td(minutes=5)
+    with SessionLocal() as db:
+        s = db.scalar(select(UserSession))
+        s.last_seen_at = old
+        db.commit()
+    assert admin_client.get("/api/service-notices/current").status_code == 200
+    with SessionLocal() as db:
+        assert db.scalar(select(UserSession)).last_seen_at == old
+    # zwykłe zapytanie – już tak
+    assert admin_client.get("/api/auth/me").status_code == 200
+    with SessionLocal() as db:
+        assert db.scalar(select(UserSession)).last_seen_at > old

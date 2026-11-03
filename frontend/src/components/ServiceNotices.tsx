@@ -1,7 +1,8 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Loader, Text } from "@mantine/core";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCalendarTime,
@@ -123,7 +124,9 @@ export function useServiceNotices() {
       return list;
     },
     placeholderData: () => (signedIn ? read<ServiceNotice[]>(CACHE, []) : []),
-    refetchInterval: 60_000,
+    // co 30 s: zalogowani zobaczą przerwę (i jej koniec) bez odświeżania strony; nie przedłuża to sesji
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     staleTime: 30_000,
   });
@@ -258,6 +261,8 @@ export function ServiceGate({ children }: { children: ReactNode }) {
   const now = useNow(down ? 15_000 : 30_000);
   const [checking, setChecking] = useState(false);
   const admin = isAdmin(me);
+  const navigate = useNavigate();
+  const t = useT();
 
   const check = async () => {
     setChecking(true);
@@ -281,12 +286,29 @@ export function ServiceGate({ children }: { children: ReactNode }) {
 
   const list = me ? q.data ?? [] : [];
   const blocking = list.find((n) => n.blocking && isOngoing(n, now)) ?? null;
+  const blocked = !!blocking && !admin;
+  // koniec przerwy: kto był nią zablokowany (i nie został w tym czasie wylogowany za bezczynność),
+  // wraca na ekran główny z odświeżonymi danymi
+  const wasBlocked = useRef(false);
+  useEffect(() => {
+    if (blocked) {
+      wasBlocked.current = true;
+      return;
+    }
+    if (!wasBlocked.current) return;
+    wasBlocked.current = false;
+    if (!me) return;
+    navigate("/", { replace: true });
+    qc.invalidateQueries();
+    notifications.show({ color: "teal", title: t("Przerwa techniczna zakończona"), message: t("Aplikacja znów działa normalnie.") });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked, me]);
   if (down) {
     // ostatni znany komunikat, który trwa (najpierw przerwa blokująca)
     const known = blocking ?? list.find((n) => n.kind !== "info" && isOngoing(n, now)) ?? null;
     return <OutageScreen down notice={known} onRetry={check} checking={checking} />;
   }
-  if (blocking && !admin) {
+  if (blocked && blocking) {
     return <OutageScreen down={false} notice={blocking} onRetry={() => q.refetch()} checking={q.isFetching} />;
   }
   return <>{children}</>;

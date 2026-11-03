@@ -24,6 +24,8 @@
   --mantine-color-body: var(--apt-surface);
 }
 
+/* obszary bezpieczne iPhone'a (aplikacja z ekranu początkowego): w przeglądarce 0 */
+:root { --apt-safe-top: env(safe-area-inset-top, 0px); --apt-safe-bottom: env(safe-area-inset-bottom, 0px); }
 html, body { background: var(--apt-ground); }
 .mantine-AppShell-main { background: var(--apt-ground); }
 .mantine-AppShell-navbar, .mantine-AppShell-header, .mantine-AppShell-footer {
@@ -155,9 +157,11 @@ html, body { background: var(--apt-ground); }
   input, textarea, select, .mantine-Input-input { font-size: 16px !important; }
 
   /* pasek dolny nad wskaźnikiem iPhone'a, treść nie chowa się pod paskiem */
-  .mantine-AppShell-footer { box-sizing: content-box; padding-bottom: env(safe-area-inset-bottom); }
-  .mantine-AppShell-main { padding-bottom: calc(58px + env(safe-area-inset-bottom) + 24px) !important; }
-  .mantine-AppShell-header { padding-top: env(safe-area-inset-top); box-sizing: content-box; }
+  .mantine-AppShell-footer { box-sizing: content-box; padding-bottom: var(--apt-safe-bottom); }
+  .mantine-AppShell-main { padding-bottom: calc(58px + var(--apt-safe-bottom) + 24px) !important; }
+  .mantine-AppShell-header { padding-top: var(--apt-safe-top); box-sizing: content-box; }
+  /* pasek górny jest wyższy o obszar pod godziną – treść zaczyna się pod nim (inaczej początek ekranu chowa się pod paskiem) */
+  .mantine-AppShell-main { padding-top: calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding, 0rem) + var(--apt-safe-top)) !important; }
 
   /* zakładki przewijane w bok zamiast łamania w kilka wierszy */
   .mantine-Tabs-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -369,7 +373,7 @@ html, body { background: var(--apt-ground); }
 .ui-row-title[data-muted] { color: var(--mantine-color-dimmed); font-weight: 500; }
 .ui-row-desc { font-size: 14px; color: var(--mantine-color-dimmed); overflow-wrap: anywhere; }
 .ui-row-chevron { flex: none; color: var(--mantine-color-dimmed); }
-.ui-sheet { padding: 8px 12px calc(16px + env(safe-area-inset-bottom)); height: auto !important; max-height: 85dvh; flex: none !important; width: 100% !important; }
+.ui-sheet { padding: 8px 12px calc(16px + var(--apt-safe-bottom)); height: auto !important; max-height: 85dvh; flex: none !important; width: 100% !important; }
 .ui-sheet .mantine-Drawer-body { padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .ui-sheet-drag { display: flex; flex-direction: column; touch-action: none; }
 .ui-sheet-grip {
@@ -485,7 +489,7 @@ html, body { background: var(--apt-ground); }
     width: auto !important;
     max-height: 80dvh;
     overflow-y: auto;
-    padding: 12px 12px calc(16px + env(safe-area-inset-bottom)) !important;
+    padding: 12px 12px calc(16px + var(--apt-safe-bottom)) !important;
     border-radius: 18px 18px 0 0 !important;
     border: 0 !important;
     box-shadow: none !important;
@@ -566,7 +570,7 @@ html, body { background: var(--apt-ground); }
 /* ——— rozmowa na telefonie (pełny ekran) ——— */
 .ui-thread-count { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
 .ui-thread[data-unread] .ui-thread-time { color: var(--mantine-primary-color-text); font-weight: 600; }
-.ui-chat { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; z-index: 150; background: var(--apt-ground); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+.ui-chat { position: fixed; left: 0; right: 0; top: 0; height: 100dvh; z-index: 150; background: var(--apt-ground); display: flex; flex-direction: column; padding-top: var(--apt-safe-top); box-sizing: border-box; }
 .ui-chat-head { flex: none; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-bottom: 1px solid var(--apt-line); }
 .ui-chat-btn { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--mantine-color-text); border-radius: 12px; }
 .ui-chat-title { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
@@ -594,7 +598,7 @@ html, body { background: var(--apt-ground); }
 .ui-chat-tr-label { font-size: 12px; opacity: .8; }
 .ui-chat-meta { font-size: 12px; color: var(--mantine-color-dimmed); }
 .ui-chat-link { border: 0; background: none; padding: 0; font: inherit; color: var(--mantine-primary-color-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.ui-chat-compose { flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--apt-line); background: var(--apt-nav); }
+.ui-chat-compose { flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 8px 12px calc(8px + var(--apt-safe-bottom)); border-top: 1px solid var(--apt-line); background: var(--apt-nav); }
 .ui-chat-input { flex: 1; min-width: 0; }
 .ui-chat-compose .mantine-ActionIcon-root { width: 44px; height: 44px; min-width: 44px; }
 
@@ -617,7 +621,7 @@ html, body { background: var(--apt-ground); }
 .ui-selhead-btn { min-height: 44px; padding: 0 4px; font-size: 15px; font-weight: 700; color: var(--mantine-primary-color-text); }
 .ui-check { width: 24px; height: 24px; flex: none; box-sizing: border-box; border-radius: 7px; border: 2px solid var(--mantine-color-default-border); display: flex; align-items: center; justify-content: center; color: var(--mantine-primary-color-contrast); }
 .ui-check[data-on] { background: var(--mantine-primary-color-filled); border-color: var(--mantine-primary-color-filled); }
-.ui-selbar { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 120; display: flex; gap: 8px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
+.ui-selbar { position: fixed; left: 0; right: 0; bottom: calc(58px + var(--apt-safe-bottom)); z-index: 120; display: flex; gap: 8px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
 
 /* przełączenie zakładki przesunięciem palca – treść wjeżdża z właściwej strony */
 @keyframes ui-in-l { from { transform: translateX(40px); opacity: .3; } to { transform: none; opacity: 1; } }
@@ -679,7 +683,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-pick { padding-top: 10px; padding-bottom: 10px; line-height: 1.3; } .ui-pick > svg { flex: none; } .ui-pick > span { min-width: 0; overflow-wrap: anywhere; }
 /* nowa wiadomość na telefonie – w obrębie strony, jak nowy komunikat (górny i dolny pasek zostają) */
 /* formularz na telefonie (makiety WiadDoKogo/KomNowy): cały ekran nad dolnym menu, treść przewija się, przyciski stoją tuż nad menu */
-.ui-inpage { position: fixed; left: 0; right: 0; top: calc(52px + env(safe-area-inset-top)); bottom: var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))); z-index: 120; display: flex; flex-direction: column; background: var(--apt-ground); box-sizing: border-box; }
+.ui-inpage { position: fixed; left: 0; right: 0; top: calc(52px + var(--apt-safe-top)); bottom: var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))); z-index: 120; display: flex; flex-direction: column; background: var(--apt-ground); box-sizing: border-box; }
 .ui-inpage .ui-chat-body { flex: 1; min-height: 0; overflow-y: auto; gap: 16px; }
 .ui-inpage .ui-chat-body > :first-child { margin-top: 0; }
 .ui-inpage .ui-chat-compose { flex: none; display: flex; gap: 10px; padding: 10px 16px; background: var(--apt-nav); border-top: 1px solid var(--apt-line); }
@@ -707,9 +711,9 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .mantine-Input-section .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-md: 40px; }
   /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
   /* Mantine centruje przez left:50% + translateX(-50%) – przy własnych marginesach przesunięcie trzeba zdjąć */
-  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
+  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
   /* otwarty formularz: toast nad paskiem „Anuluj / Zapisz” */
-  body:has(.ui-inpage) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))) + 84px) !important; }
+  body:has(.ui-inpage) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 84px) !important; }
 }
 
 /* ——— telefon: płynne przejście między ekranami (150–250 ms, wyłączane przez „ogranicz ruch”) ——— */
@@ -740,7 +744,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* aplikacja z ekranu początkowego (iOS, pasek statusu przezroczysty): ekrany bez nagłówka aplikacji
    (logowanie, podpis z linku) nie wchodzą pod godzinę i baterię */
 @media (display-mode: standalone) {
-  body:not(:has(.mantine-AppShell-root)) { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  body:not(:has(.mantine-AppShell-root)) { padding-top: var(--apt-safe-top); padding-bottom: var(--apt-safe-bottom); }
 }
 /* większe pole dotyku bez zmiany wyglądu (małe linki tekstowe, ikona aparatu przy zdjęciu) – min. 44 px */
 .ui-hit { position: relative; }
@@ -778,7 +782,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .ui-md-mobile .mantine-ScrollArea-scrollbar, .ui-md-mobile .mantine-ScrollArea-corner { display: none !important; }
 }
 /* skaner kart (telefon, aparat włączony): obraz z aparatu zajmuje całą wolną wysokość między paskiem a menu */
-.ui-scan-live { position: fixed; left: 0; right: 0; top: calc(52px + env(safe-area-inset-top)); bottom: var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))); z-index: 120; display: flex; flex-direction: column; gap: 12px !important; padding: 12px 16px; background: var(--apt-ground); box-sizing: border-box; }
+.ui-scan-live { position: fixed; left: 0; right: 0; top: calc(52px + var(--apt-safe-top)); bottom: var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))); z-index: 120; display: flex; flex-direction: column; gap: 12px !important; padding: 12px 16px; background: var(--apt-ground); box-sizing: border-box; }
 .ui-scan-live .ui-scan-head { display: none; }
 .ui-scan-live .ui-scan-video { flex: 1 1 auto; min-height: 0; }
 .ui-scan-live .ui-scan-manual { order: 2; flex: none; }

@@ -1,6 +1,6 @@
 {
   "name": "Identyfikacja pracowników APT",
-  "short_name": "APT",
+  "short_name": "APT ID",
   "description": "Identyfikacja pracowników: karty, dokumenty, podpisy.",
   "lang": "pl",
   "start_url": "/",

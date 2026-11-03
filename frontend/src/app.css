@@ -777,3 +777,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 @media (max-width: 48em) {
   .ui-md-mobile .mantine-ScrollArea-scrollbar, .ui-md-mobile .mantine-ScrollArea-corner { display: none !important; }
 }
+/* skaner kart (telefon, aparat włączony): obraz z aparatu zajmuje całą wolną wysokość między paskiem a menu */
+.ui-scan-live { position: fixed; left: 0; right: 0; top: calc(52px + env(safe-area-inset-top)); bottom: var(--apt-nav-h, calc(58px + env(safe-area-inset-bottom))); z-index: 120; display: flex; flex-direction: column; gap: 12px !important; padding: 12px 16px; background: var(--apt-ground); box-sizing: border-box; }
+.ui-scan-live .ui-scan-head { display: none; }
+.ui-scan-live .ui-scan-video { flex: 1 1 auto; min-height: 0; }
+.ui-scan-live .ui-scan-manual { order: 2; flex: none; }

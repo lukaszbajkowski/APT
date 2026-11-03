@@ -6,6 +6,8 @@ import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } fr
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
+import { useMediaQuery } from "@mantine/hooks";
+import { useMobileHeader, useNavHeightVar } from "../components/Mobile";
 
 type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 declare global {
@@ -76,6 +78,10 @@ export function ScannerPage() {
   const busyRef = useRef(false);
 
   const [scanning, setScanning] = useState(false);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // telefon, aparat włączony: ekran skanera zajmuje całą przestrzeń między paskiem górnym a menu
+  const live = !!mobile && scanning;
+  useNavHeightVar();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -182,9 +188,11 @@ export function ScannerPage() {
     lookup(manual);
   }
 
+  useMobileHeader(live ? { title: "Skaner kart", onBack: stop } : null);
+
   return (
-    <Stack maw={560}>
-      <div>
+    <Stack maw={live ? undefined : 560} className={live ? "ui-scan-live" : undefined}>
+      <div className="ui-scan-head">
         <Title order={2}>Skaner kart</Title>
         <Text c="dimmed" size="sm">
           Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem.
@@ -193,11 +201,12 @@ export function ScannerPage() {
 
       <Box
         pos="relative"
+        className="ui-scan-video"
         style={{
           borderRadius: 12,
           overflow: "hidden",
           background: "#000",
-          aspectRatio: "4 / 3",
+          aspectRatio: live ? undefined : "4 / 3",
           display: scanning ? "block" : "none",
         }}
       >
@@ -205,7 +214,7 @@ export function ScannerPage() {
         <Box
           style={{
             position: "absolute",
-            inset: "18% 24%",
+            ...(live ? { left: "50%", top: "50%", width: "min(68vw, 52vh)", aspectRatio: "1", transform: "translate(-50%, -50%)" } : { inset: "18% 24%" }),
             border: "3px solid rgba(255,255,255,0.85)",
             borderRadius: 16,
             boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
@@ -223,7 +232,7 @@ export function ScannerPage() {
       )}
 
       {scanning ? (
-        <Button variant="default" onClick={stop}>
+        <Button variant="default" size={live ? "lg" : undefined} fullWidth={live} onClick={stop} style={live ? { order: 3 } : undefined}>
           Zatrzymaj aparat
         </Button>
       ) : (
@@ -252,8 +261,8 @@ export function ScannerPage() {
       )}
       {employee && <ResultCard employee={employee} onNext={start} />}
 
-      <form onSubmit={submitManual}>
-        <Group align="flex-end" gap="xs">
+      <form onSubmit={submitManual} className="ui-scan-manual">
+        <Group align="flex-end" gap="xs" wrap="nowrap">
           <TextInput
             label="Albo wpisz numer z karty"
             placeholder="np. 000123"

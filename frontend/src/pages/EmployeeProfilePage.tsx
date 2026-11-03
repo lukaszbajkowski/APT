@@ -197,6 +197,13 @@ export function EmployeeProfilePage() {
   const [moreSheet, setMoreSheet] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [tab, setTab] = useState(() => searchParams.get("tab") ?? "dane");
+  // aktywna zakładka zawsze widoczna w pasku przewijanym w bok (np. po wejściu z Kont pracowników na „Konto”)
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>(".profile-tabs .mantine-Tabs-tab[data-active]");
+    const list = el?.parentElement;
+    if (!el || !list) return;
+    list.scrollTo({ left: el.offsetLeft - (list.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
+  }, [tab, !!employee.data]);
   useEffect(() => {
     document.querySelector<HTMLElement>('.profile-tabs [role="tab"][aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [tab]);

@@ -85,7 +85,7 @@ export function EmployeeAccountsPage() {
                   {rows.map((r) => (
                     <ListRow
                       key={r.employee_id}
-                      to={`/pracownicy/${r.employee_id}`}
+                      to={`/pracownicy/${r.employee_id}?tab=konto`}
                       title={r.name}
                       description={[`nr ${r.number}`, r.username, r.status === "pending" && r.invite_pending ? "zaproszenie wysłane" : r.last_login_at ? `ostatnio ${formatDateTime(r.last_login_at)}` : null].filter(Boolean).join(" · ")}
                       trailing={<StatusBadge tone={TONE[r.status]}>{SHORT[r.status]}</StatusBadge>}
@@ -144,7 +144,7 @@ export function EmployeeAccountsPage() {
               {list.data.map((r) => (
                 <Table.Tr key={r.employee_id}>
                   <Table.Td>
-                    <Anchor component={Link} to={`/pracownicy/${r.employee_id}`}>
+                    <Anchor component={Link} to={`/pracownicy/${r.employee_id}?tab=konto`}>
                       {r.name}
                     </Anchor>
                     <Text size="xs" c="dimmed">

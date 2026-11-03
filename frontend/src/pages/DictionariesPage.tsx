@@ -4,7 +4,7 @@ import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/reac
 import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconPencil, IconPlus } from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
@@ -30,7 +30,7 @@ const CONFIG: Record<Kind, { title: string; noun: string; codeLabel?: string; co
   countries: { title: "Kraje", noun: "kraj", codeLabel: "Kod ISO (2 litery, opcjonalnie)", codeKey: "iso_code" },
 };
 
-function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQueryResult<Item[]>; addSignal?: number }) {
+function DictionaryTab({ kind, query, addSignal = 0, search }: { kind: Kind; query: UseQueryResult<Item[]>; addSignal?: number; /** wyszukiwanie z nagłówka ekranu (telefon) */ search?: string }) {
   const cfg = CONFIG[kind];
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const qc = useQueryClient();
@@ -87,12 +87,13 @@ function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQ
 
   const deptName = (id?: number | null) =>
     id ? (departments.data?.find((d) => d.id === id)?.name ?? `#${id}`) : "wszystkie wydziały";
-  const rows = (query.data ?? []).filter((i) => i.name.toLowerCase().includes(filter.toLowerCase()));
+  const term = (search ?? filter).trim().toLowerCase();
+  const rows = (query.data ?? []).filter((i) => i.name.toLowerCase().includes(term));
 
   return (
-    <Stack mt="md">
+    <Stack mt={mobile ? 0 : "md"}>
       {mobile ? (
-        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} />
+        search === undefined && <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} />
       ) : (
         <Group justify="space-between">
           <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
@@ -108,6 +109,9 @@ function DictionaryTab({ kind, query, addSignal = 0 }: { kind: Kind; query: UseQ
       ) : (
         <Text c="dimmed">Słownik jest pusty. Dodaj pierwszą pozycję przyciskiem powyżej.</Text>
       ))}
+      {mobile && term && rows.length === 0 && !!query.data?.length && (
+        <CompactEmpty title={`Brak wyników dla „${(search ?? filter).trim()}”`} text="Sprawdź pisownię albo zajrzyj do innej zakładki." />
+      )}
       {mobile && rows.length > 0 && (
         <div className="ui-group">
           {rows.map((i) => (
@@ -281,6 +285,7 @@ export function DictionariesPage() {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [tab, setTab] = useState<Kind>("agencies");
   const [addSignal, setAddSignal] = useState(0);
+  const [search, setSearch] = useState("");
   if (mobile) {
     // wszystkie zakładki wczytane od razu – przy przesuwaniu palcem sąsiednia lista jest już gotowa
     const queries = { agencies, departments, positions, countries } as Record<Kind, UseQueryResult<Item[]>>;
@@ -292,10 +297,11 @@ export function DictionariesPage() {
     return (
       <Stack>
         <PageHead title="Słowniki" subtitle="Pozycje do wyboru w kartotece" action={{ label: `Dodaj ${CONFIG[tab].noun}`, icon: <IconPlus size={22} />, onClick: () => setAddSignal((n) => n + 1) }} />
+        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" leftSection={<IconSearch size={18} aria-hidden />} size="md" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         <Segments value={tab} onChange={(v) => go(v as Kind)} items={kinds.map((k) => ({ value: k, label: CONFIG[k].title }))} />
         <SwipePager index={kinds.indexOf(tab)} onIndex={(i) => go(kinds[i])}>
           {kinds.map((k) => (
-            <DictionaryTab key={k} kind={k} query={queries[k]} addSignal={k === tab ? addSignal : 0} />
+            <DictionaryTab key={k} kind={k} query={queries[k]} addSignal={k === tab ? addSignal : 0} search={search} />
           ))}
         </SwipePager>
       </Stack>

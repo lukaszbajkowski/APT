@@ -1,6 +1,6 @@
 {
   "name": "Identyfikacja pracowników APT",
-  "short_name": "APT ID",
+  "short_name": "APT iD",
   "description": "Identyfikacja pracowników: karty, dokumenty, podpisy.",
   "lang": "pl",
   "start_url": "/",
@@ -9,8 +9,21 @@
   "background_color": "#F5F4F2",
   "theme_color": "#1E1A17",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

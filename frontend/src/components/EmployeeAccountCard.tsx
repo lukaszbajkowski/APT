@@ -3,7 +3,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconCheck, IconMail, IconUserOff } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconMail, IconUserOff, IconDevices } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
@@ -27,6 +27,8 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
   const confirm = useConfirm();
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [inviteOpen, setInviteOpen] = useState(false);
+  // ten sam panel: zaproszenie (pierwszy klucz) albo „dodaj urządzenie” (kolejny klucz, obecne zostają)
+  const [mode, setMode] = useState<"invite" | "device">("invite");
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
@@ -44,6 +46,22 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
     },
     onError: (e) => setError(errorText(e)),
   });
+  const device = useMutation({
+    mutationFn: () =>
+      api<InviteOut>(`/employees/${employeeId}/account/device-link`, { method: "POST", body: { email: email.trim() || null } }),
+    onSuccess: (r) => {
+      setError(null);
+      setResult(r);
+      qc.setQueryData(key, r.account);
+    },
+    onError: (e) => setError(errorText(e)),
+  });
+  const openSheet = (m: "invite" | "device") => {
+    setMode(m);
+    setResult(null);
+    setError(null);
+    setInviteOpen(true);
+  };
   const reset = useMutation({
     mutationFn: () => api<Account>(`/employees/${employeeId}/account/reset`, { method: "POST", body: { email: email.trim() || null } }),
     onSuccess: (a) => {
@@ -80,7 +98,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
     }).then((ok) => ok && toggle.mutate(false));
   if (mobile) {
     const resultBox = result && (
-      <Alert color="green" variant="light" title={result.sent ? "Zaproszenie wysłane e-mailem" : "Link do zaproszenia"}>
+      <Alert color="green" variant="light" title={result.sent ? (mode === "device" ? "Link wysłany e-mailem" : "Zaproszenie wysłane e-mailem") : mode === "device" ? "Link „dodaj urządzenie”" : "Link do zaproszenia"}>
         {!result.sent && (
           <Stack gap={6}>
             <Text size="sm" style={{ overflowWrap: "anywhere" }}>
@@ -113,9 +131,19 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
           )}
         </Section>
         {(!a?.exists || (a.active && !a.has_passkey)) && (
-          <Button size="md" fullWidth leftSection={<IconMail size={18} />} onClick={() => setInviteOpen(true)}>
+          <Button size="md" fullWidth leftSection={<IconMail size={18} />} onClick={() => openSheet("invite")}>
             {a?.exists ? "Wyślij zaproszenie ponownie" : "Załóż konto – wyślij zaproszenie"}
           </Button>
+        )}
+        {activated && a?.active && (
+          <Section title="Nowe urządzenie">
+            <ListRow
+              leading={<span className="ui-row-icon" aria-hidden><IconDevices size={22} /></span>}
+              title="Wyślij link „dodaj urządzenie”"
+              description="Pracownik doda klucz na komputerze albo nowym telefonie. Obecne klucze zostają."
+              onClick={() => openSheet("device")}
+            />
+          </Section>
         )}
         <Drawer
           opened={inviteOpen}
@@ -129,8 +157,12 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
         >
           <SheetHandle onClose={() => setInviteOpen(false)}>
             <div className="ui-sheet-head">
-              <div className="ui-sheet-title">{a?.exists ? "Wyślij zaproszenie ponownie" : "Załóż konto"}</div>
-              <div className="ui-row-desc">Pracownik dostanie link i sam utworzy klucz logowania na swoim telefonie.</div>
+              <div className="ui-sheet-title">{mode === "device" ? "Dodaj urządzenie" : a?.exists ? "Wyślij zaproszenie ponownie" : "Załóż konto"}</div>
+              <div className="ui-row-desc">
+                {mode === "device"
+                  ? "Pracownik otworzy link na nowym urządzeniu, potwierdzi datę urodzenia i utworzy tam klucz. Link działa 48 godzin, jeden raz."
+                  : "Pracownik dostanie link i sam utworzy klucz logowania na swoim telefonie."}
+              </div>
             </div>
           </SheetHandle>
           <Stack gap="md" px={8} pb="md">
@@ -142,8 +174,9 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
             />
-            <Button size="md" fullWidth leftSection={<IconMail size={18} />} loading={invite.isPending} onClick={() => invite.mutate()}>
-              {email.trim() ? "Wyślij zaproszenie" : "Utwórz link do zaproszenia"}
+            {error && <Alert color="red" icon={<IconAlertCircle size={18} />}>{error}</Alert>}
+            <Button size="md" fullWidth leftSection={<IconMail size={18} />} loading={invite.isPending || device.isPending} onClick={() => (mode === "device" ? device.mutate() : invite.mutate())}>
+              {mode === "device" ? (email.trim() ? "Wyślij link" : "Utwórz link do przekazania") : email.trim() ? "Wyślij zaproszenie" : "Utwórz link do zaproszenia"}
             </Button>
             {resultBox}
           </Stack>
@@ -209,6 +242,20 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
             </Button>
           </>
         )}
+        {activated && a?.active && (
+          <>
+            <TextInput
+              label="E-mail do linku „dodaj urządzenie” (opcjonalnie)"
+              description="Pracownik doda klucz na komputerze albo nowym telefonie. Obecne klucze zostają. Link działa 48 godzin, jeden raz."
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+            />
+            <Button variant="default" leftSection={<IconDevices size={16} />} loading={device.isPending} onClick={() => { setMode("device"); device.mutate(); }} style={{ alignSelf: "flex-start" }}>
+              Wyślij link „dodaj urządzenie”
+            </Button>
+          </>
+        )}
         {a?.exists && !a.active && (
           <Button variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)} style={{ alignSelf: "flex-start" }}>
             Włącz konto
@@ -255,7 +302,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
           </Stack>
         )}
         {result && (
-          <Alert color="green" variant="light" title={result.sent ? "Zaproszenie wysłane e-mailem" : "Link do zaproszenia"}>
+          <Alert color="green" variant="light" title={result.sent ? (mode === "device" ? "Link wysłany e-mailem" : "Zaproszenie wysłane e-mailem") : mode === "device" ? "Link „dodaj urządzenie”" : "Link do zaproszenia"}>
             <Text size="sm" style={{ wordBreak: "break-all" }}>
               {result.link}
             </Text>

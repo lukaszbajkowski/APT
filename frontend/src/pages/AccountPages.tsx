@@ -33,7 +33,7 @@ export function InvitePage() {
   const [busy, setBusy] = useState(false);
   const info = useQuery({
     queryKey: ["invite", token],
-    queryFn: () => api<{ name: string; needs_birth_date: boolean }>(`/auth/invite/${encodeURIComponent(token)}`),
+    queryFn: () => api<{ name: string; needs_birth_date: boolean; add_device?: boolean }>(`/auth/invite/${encodeURIComponent(token)}`),
     enabled: !!token,
     retry: false,
   });
@@ -76,6 +76,8 @@ export function InvitePage() {
       });
     });
   const needsBirth = info.data?.needs_birth_date ?? true;
+  // link „dodaj urządzenie”: konto już działa, to urządzenie dostanie kolejny klucz
+  const addDevice = !!info.data?.add_device;
   const ready = !needsBirth || !!birth;
 
   return (
@@ -83,19 +85,22 @@ export function InvitePage() {
       <Paper withBorder shadow="sm" p="xl" w="100%" maw={440}>
         <Stack>
           <Title order={3} className="brand-title">
-            {t("Załóż swoje konto")}
+            {addDevice ? t("Dodaj to urządzenie") : t("Załóż swoje konto")}
           </Title>
           <LanguagePicker />
           {info.isLoading && <Loading />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
-              {t("Zaproszenie wygasło albo zostało już wykorzystane. Poproś kadry o nowe.")}
+              {t("Link wygasł albo został już wykorzystany. Poproś kadry o nowy.")}
             </Alert>
           )}
           {info.data && (
             <>
               <Text size="sm">
-                {info.data.name}, {t("zalogujesz się na to konto twarzą, odciskiem palca albo PIN-em telefonu – bez hasła.")}
+                {info.data.name},{" "}
+                {addDevice
+                  ? t("utworzysz klucz na tym urządzeniu. Klucze na Twoich pozostałych urządzeniach dalej działają.")
+                  : t("zalogujesz się na to konto twarzą, odciskiem palca albo PIN-em telefonu – bez hasła.")}
               </Text>
               {inAppBrowser() && (
                 <Alert color="yellow" title={t("Otwórz w przeglądarce")} icon={<IconAlertCircle size={18} />}>
@@ -135,7 +140,7 @@ export function InvitePage() {
                 </Button>
               ) : (
                 <Button size="md" leftSection={<IconFingerprint size={20} />} loading={busy} onClick={withPasskey}>
-                  {t("Utwórz klucz dostępu")}
+                  {addDevice ? t("Utwórz klucz na tym urządzeniu") : t("Utwórz klucz dostępu")}
                 </Button>
               )}
             </>

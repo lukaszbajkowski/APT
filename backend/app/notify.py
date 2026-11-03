@@ -38,7 +38,8 @@ def find_token(
     t = db.scalar(select(PasswordToken).where(PasswordToken.token_hash == token_hash(token)))
     if t is None or t.used_at is not None or t.expires_at <= now or not t.user.is_active:
         return None
-    if (t.purpose == "empinvite") != employee_invite:
+    # konta pracowników: zaproszenie (pierwszy klucz) i „dodaj urządzenie” (kolejny klucz)
+    if (t.purpose in ("empinvite", "empdevice")) != employee_invite:
         return None
     return t
 

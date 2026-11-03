@@ -541,6 +541,8 @@ export const ACTION_LABELS: Record<string, string> = {
   passkey_removed: "Usunięcie klucza dostępu",
   passkey_reauth_failed: "Nieudane potwierdzenie przed dodaniem klucza",
   employee_account_invited: "Zaproszenie do konta pracownika",
+  employee_device_link: "Link „dodaj urządzenie” dla pracownika",
+  employee_device_added: "Pracownik dodał klucz na nowym urządzeniu",
   employee_account_activated: "Aktywacja konta pracownika",
   employee_account_disabled: "Wyłączenie konta pracownika",
   employee_account_enabled: "Włączenie konta pracownika",

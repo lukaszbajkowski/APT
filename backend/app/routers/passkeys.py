@@ -52,6 +52,9 @@ router = APIRouter(prefix="/api", tags=["passkeys"])
 CHALLENGE_MINUTES = 5
 INVITE_PURPOSE = "empinvite"
 INVITE_DAYS = 7
+# „dodaj urządzenie”: jednorazowy link do kolejnego klucza dla aktywnego konta (obecne klucze zostają)
+DEVICE_PURPOSE = "empdevice"
+DEVICE_HOURS = 48
 _ERR = "Nie udało się potwierdzić kluczem dostępu. Spróbuj jeszcze raz."
 
 
@@ -600,6 +603,71 @@ def invite_account(
     return InviteOut(link=link, sent=bool(sent), account=_account_out(db, e))
 
 
+def device_email(e: Employee, link: str) -> Email:
+    return Email(
+        subject="Dodaj nowe urządzenie – Identyfikacja pracowników APT",
+        title="Dodaj klucz na nowym urządzeniu",
+        preheader=f"Link jest ważny {DEVICE_HOURS} godzin.",
+        greeting=f"Dzień dobry {e.first_name},",
+        paragraphs=[
+            "kadry wysłały Ci link do dodania klucza logowania na kolejnym urządzeniu (np. komputerze albo nowym telefonie).",
+            "Otwórz link na tym nowym urządzeniu i potwierdź datę urodzenia. Klucze na Twoich obecnych urządzeniach dalej działają.",
+        ],
+        button=("Dodaj urządzenie", link),
+        notice=f"Link jest ważny {DEVICE_HOURS} godzin i działa tylko raz.",
+        footer_note="Jeśli nie prosiłeś o ten link – zignoruj go i daj znać kadrom.",
+    )
+
+
+@router.post("/employees/{employee_id}/account/device-link", response_model=InviteOut)
+def device_link(
+    employee_id: int, body: InviteIn, ctx: StaffAuth, request: Request, db: DbSession
+) -> InviteOut:
+    """Link do dodania klucza na kolejnym urządzeniu – bez kasowania obecnych kluczy."""
+    e = _employee_or_404(db, employee_id)
+    user = db.scalar(select(User).where(User.employee_id == e.id))
+    if user is None or not _has_access(db, user):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Konto nie jest jeszcze aktywne – wyślij zwykłe zaproszenie.",
+        )
+    if not user.is_active:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Konto jest wyłączone. Najpierw je włącz.")
+    now = utcnow()
+    # tylko jeden ważny link „dodaj urządzenie” naraz (zaproszeń i innych tokenów nie ruszamy)
+    db.execute(
+        PasswordToken.__table__.update()
+        .where(
+            PasswordToken.user_id == user.id,
+            PasswordToken.purpose == DEVICE_PURPOSE,
+            PasswordToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+    )
+    token = new_token()
+    db.add(
+        PasswordToken(
+            user_id=user.id,
+            token_hash=token_hash(token),
+            purpose=DEVICE_PURPOSE,
+            expires_at=now + timedelta(hours=DEVICE_HOURS),
+        )
+    )
+    link = mailer.link("/zaproszenie?token=" + token)
+    sent = bool(body.email) and mailer.send(body.email, device_email(e, link))
+    audit(
+        db,
+        request,
+        "employee_device_link",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={"channel": "email" if sent else "link"},
+    )
+    db.commit()
+    return InviteOut(link=link, sent=bool(sent), account=_account_out(db, e))
+
+
 def reset_email(e: Employee) -> Email:
     return Email(
         subject="Zresetowano dostęp do Twojego konta – Identyfikacja pracowników APT",
@@ -690,22 +758,27 @@ def set_account_active(
 
 def _invite(db: Session, token: str) -> tuple[PasswordToken, User, Employee]:
     t = notify.find_token(db, token, utcnow(), employee_invite=True)
-    if t is None or t.purpose != INVITE_PURPOSE or t.user.employee_id is None:
-        raise HTTPException(status.HTTP_410_GONE, detail="Zaproszenie wygasło albo zostało już wykorzystane.")
-    if _has_access(db, t.user):  # konto już aktywowane – stare zaproszenie nie może go przejąć
+    if t is None or t.purpose not in (INVITE_PURPOSE, DEVICE_PURPOSE) or t.user.employee_id is None:
+        raise HTTPException(status.HTTP_410_GONE, detail="Link wygasł albo został już wykorzystany.")
+    active = _has_access(db, t.user)
+    if t.purpose == INVITE_PURPOSE and active:  # konto już aktywowane – stare zaproszenie nie może go przejąć
         raise HTTPException(status.HTTP_410_GONE, detail="To konto jest już aktywne.")
+    if t.purpose == DEVICE_PURPOSE and not active:  # po resecie dostępu link „dodaj urządzenie” nie działa
+        raise HTTPException(status.HTTP_410_GONE, detail="Link wygasł albo został już wykorzystany.")
     return t, t.user, db.get(Employee, t.user.employee_id)
 
 
 class InviteInfo(BaseModel):
     name: str
     needs_birth_date: bool
+    # True: link „dodaj urządzenie” (konto już działa, dodajemy kolejny klucz)
+    add_device: bool = False
 
 
 @router.get("/auth/invite/{token}", response_model=InviteInfo)
 def invite_info(token: str, db: DbSession) -> InviteInfo:
-    _, user, e = _invite(db, token)
-    return InviteInfo(name=user.full_name, needs_birth_date=e.birth_date is not None)
+    t, user, e = _invite(db, token)
+    return InviteInfo(name=user.full_name, needs_birth_date=e.birth_date is not None, add_device=t.purpose == DEVICE_PURPOSE)
 
 
 def _check_birth(db: Session, request: Request, user: User, e: Employee, birth_date) -> None:  # noqa: ANN001
@@ -752,9 +825,13 @@ class InvitePasskeyIn(InviteStartIn):
 def invite_passkey(body: InvitePasskeyIn, request: Request, response: Response, db: DbSession) -> MeOut:
     t, user, e = _invite(db, body.token)
     _check_birth(db, request, user, e, _parse_date(body.birth_date))
-    _register_credential(db, request, user, body.challenge_id, body.credential, "Telefon")
+    device = t.purpose == DEVICE_PURPOSE
+    _register_credential(db, request, user, body.challenge_id, body.credential, "Nowe urządzenie" if device else "Telefon")
     t.used_at = utcnow()
     me = _start_session(db, request, response, user, pending=False)
-    audit(db, request, "employee_account_activated", user=user, details={"method": "passkey"})
+    if device:
+        audit(db, request, "employee_device_added", user=user, details={"method": "passkey"})
+    else:
+        audit(db, request, "employee_account_activated", user=user, details={"method": "passkey"})
     db.commit()
     return me

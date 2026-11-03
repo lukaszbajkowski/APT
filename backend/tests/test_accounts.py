@@ -349,3 +349,98 @@ def test_employee_cannot_login_with_password_or_reset_link(hr, emp, client, make
         db.commit()
     r = c.post("/api/auth/login", json={"username": username, "password": PASSWORD})
     assert r.status_code == 401
+
+
+# --- „dodaj urządzenie”: kolejny klucz dla aktywnego konta --------------------------------
+
+
+def _device_link(hr, emp_id, email=None):
+    r = hr.post(f"/api/employees/{emp_id}/account/device-link", json={"email": email} if email else {})
+    return r
+
+
+def _login_with(auth: FakeAuthenticator):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    c = TestClient(app)
+    o = c.post("/api/auth/passkey/options").json()
+    return c.post("/api/auth/passkey/login", json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])})
+
+
+def test_device_link_adds_second_key_and_keeps_first(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    phone, laptop = FakeAuthenticator(), FakeAuthenticator()
+    assert _activate(TestClient(app), _invite(hr, emp), phone).status_code == 200
+
+    mailer.outbox = []
+    r = _device_link(hr, emp, email="anna@example.com")
+    assert r.status_code == 200, r.text
+    assert r.json()["sent"] is True and mailer.outbox[0][0] == "anna@example.com"
+    token = r.json()["link"].split("token=")[1]
+
+    new_device = TestClient(app)
+    info = new_device.get(f"/api/auth/invite/{token}")
+    assert info.status_code == 200 and info.json()["add_device"] is True
+    assert _activate(new_device, token, laptop).status_code == 200
+    # link jednorazowy
+    assert new_device.get(f"/api/auth/invite/{token}").status_code == 410
+    # oba urządzenia logują się, stary klucz nie zniknął
+    assert _login_with(phone).status_code == 200
+    assert _login_with(laptop).status_code == 200
+    with SessionLocal() as db:
+        from sqlalchemy import func, select
+
+        from app.models import AuditLog, WebauthnCredential
+
+        uid = db.scalar(select(User.id).where(User.employee_id == emp))
+        assert db.scalar(select(func.count()).select_from(WebauthnCredential).where(WebauthnCredential.user_id == uid)) == 2
+        assert db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "employee_device_added")) == 1
+
+
+def test_device_link_needs_active_account_and_staff(hr, emp, client, make_user):
+    # bez aktywnego konta – zwykłe zaproszenie, nie „dodaj urządzenie”
+    assert _device_link(hr, emp).status_code == 409
+    # tylko kadry
+    make_user("kier2", Role.manager)
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    m = TestClient(app)
+    login(m, "kier2")
+    assert m.post(f"/api/employees/{emp}/account/device-link", json={}).status_code == 403
+
+
+def test_device_link_wrong_birth_date_and_reset_invalidates(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    assert _activate(TestClient(app), _invite(hr, emp), FakeAuthenticator()).status_code == 200
+    token = _device_link(hr, emp).json()["link"].split("token=")[1]
+    c = TestClient(app)
+    r = c.post("/api/auth/invite/options", json={"token": token, "birth_date": "1980-01-01"})
+    assert r.status_code == 403
+    # nowy link unieważnia poprzedni
+    token2 = _device_link(hr, emp).json()["link"].split("token=")[1]
+    assert c.get(f"/api/auth/invite/{token}").status_code == 410
+    # reset dostępu kasuje też link „dodaj urządzenie”
+    assert hr.post(f"/api/employees/{emp}/account/reset", json={}).status_code == 200
+    assert c.get(f"/api/auth/invite/{token2}").status_code == 410
+
+
+def test_device_link_is_not_a_password_reset_link(hr, emp):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    assert _activate(TestClient(app), _invite(hr, emp), FakeAuthenticator()).status_code == 200
+    token = _device_link(hr, emp).json()["link"].split("token=")[1]
+    c = TestClient(app)
+    assert c.get("/api/auth/password-reset/check", params={"token": token}).json()["valid"] is False
+    assert c.post("/api/auth/password-reset/confirm", json={"token": token, "new_password": PASSWORD}).status_code == 400

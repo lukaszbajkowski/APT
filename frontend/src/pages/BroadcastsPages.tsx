@@ -111,7 +111,7 @@ function RecipientsPane({ id, mobile }: { id: number; mobile?: boolean }) {
         <Button
           size="lg"
           fullWidth
-          variant="default"
+          variant={unread ? "filled" : "default"}
           loading={remind.isPending}
           disabled={unread === 0}
           onClick={() => remind.mutate()}

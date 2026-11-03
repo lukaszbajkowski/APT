@@ -15,6 +15,17 @@
 		reverse_proxy api:8000
 	}
 
+	# API nie odpowiada (aktualizacja, restart, awaria): zamiast pustego błędu 502 – czytelna odpowiedź,
+	# po której aplikacja pokazuje ekran „Serwis chwilowo niedostępny” i sama sprawdza, kiedy serwer wróci.
+	handle_errors 502 503 504 {
+		@api path /api/*
+		handle @api {
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "no-store"
+			respond `{"detail":"Serwis jest chwilowo niedostępny – trwa przerwa techniczna. Spróbuj za kilka minut.","maintenance":true}` 503
+		}
+	}
+
 	handle {
 		root * /srv
 		# pliki z hashem w nazwie nigdy się nie zmieniają; index.html zawsze sprawdzany na nowo

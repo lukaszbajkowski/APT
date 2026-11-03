@@ -700,6 +700,29 @@ class WorkPermit(Base):
     )
 
 
+class ServiceNotice(Base):
+    """Komunikat techniczny administratora: planowane prace, wdrożenie, prace naprawcze, awaria, informacja.
+    Widoczny dla wszystkich (także na ekranie logowania); „blokujący” w czasie od–do pokazuje przerwę techniczną."""
+
+    __tablename__ = "service_notices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)  # planned|deploy|repair|incident|info
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    blocking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_by_name: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class Broadcast(Base):
     """Komunikat kadr do grupy pracowników (agencja / wydział) z potwierdzeniem przeczytania."""
 

@@ -789,3 +789,62 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* lista kroków (instrukcje w panelach) */
 .ui-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 1.45; }
 .ui-steps li::marker { font-weight: 700; color: var(--mantine-primary-color-text); }
+
+/* ── Komunikaty techniczne: pasek nad treścią i ekran przerwy technicznej ───────────────────────── */
+.ui-svc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.ui-svc, .ui-outage { --svc-bg: var(--mantine-color-gray-light); --svc-fg: var(--mantine-color-gray-light-color); }
+[data-tone="blue"].ui-svc, [data-tone="blue"].ui-outage { --svc-bg: var(--mantine-color-blue-light); --svc-fg: var(--mantine-color-blue-light-color); }
+[data-tone="teal"].ui-svc, [data-tone="teal"].ui-outage { --svc-bg: var(--mantine-color-teal-light); --svc-fg: var(--mantine-color-teal-light-color); }
+[data-tone="orange"].ui-svc, [data-tone="orange"].ui-outage { --svc-bg: var(--mantine-color-orange-light); --svc-fg: var(--mantine-color-orange-light-color); }
+[data-tone="red"].ui-svc, [data-tone="red"].ui-outage { --svc-bg: var(--mantine-color-red-light); --svc-fg: var(--mantine-color-red-light-color); }
+.ui-svc {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 8px 12px 14px;
+  border-radius: 14px; background: var(--apt-surface); border: 1px solid var(--apt-line);
+  box-shadow: inset 4px 0 0 var(--svc-fg);
+}
+.ui-svc-icon {
+  flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--svc-bg); color: var(--svc-fg);
+}
+.ui-svc-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 1px; }
+.ui-svc-meta { font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--svc-fg); }
+.ui-svc-title { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.ui-svc-body { font-size: 14px; color: var(--mantine-color-dimmed); overflow-wrap: anywhere; white-space: pre-line; }
+.ui-svc-admin { margin-top: 4px; font-size: 13px; color: var(--mantine-color-text); }
+.ui-svc-admin a { color: var(--svc-fg); font-weight: 700; }
+.ui-svc-close {
+  flex: none; width: 44px; height: 44px; margin: -8px -2px -8px 0; border: 0; background: none; border-radius: 10px;
+  display: grid; place-items: center; color: var(--mantine-color-dimmed); cursor: pointer;
+}
+.ui-svc-close:hover { background: var(--apt-subtle); }
+.ui-svc-close:focus-visible { outline: 2px solid var(--mantine-primary-color-filled); }
+
+.ui-outage {
+  min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: calc(24px + var(--apt-safe-top, 0px)) 16px calc(24px + var(--apt-safe-bottom, 0px));
+  background: var(--apt-ground);
+}
+.ui-outage-card {
+  width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+  padding: 28px 24px 20px; border-radius: 20px; background: var(--apt-surface); border: 1px solid var(--apt-line);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .08); text-align: center;
+}
+.ui-outage-icon {
+  align-self: center; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center;
+  background: var(--svc-bg); color: var(--svc-fg); margin-bottom: 4px;
+}
+.ui-outage-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
+.ui-outage-lead { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.4; text-wrap: balance; overflow-wrap: anywhere; }
+.ui-outage-body { margin: 0; font-size: 15px; color: var(--mantine-color-dimmed); line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.ui-outage-when {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: 12px; background: var(--svc-bg); font-size: 15px; text-align: left;
+}
+.ui-outage-when strong { color: var(--svc-fg); }
+.ui-outage-safe { margin: 4px 0; font-size: 14px; color: var(--mantine-color-dimmed); line-height: 1.45; }
+.ui-outage-auto { display: flex; align-items: center; justify-content: center; }
+.ui-outage-admin {
+  align-self: center; min-height: 44px; padding: 0 12px; margin-top: 4px; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 14px; color: var(--mantine-color-dimmed); text-decoration: underline; text-underline-offset: 3px;
+}
+.ui-outage-brand { margin: 0; font-size: 13px; color: var(--mantine-color-dimmed); letter-spacing: .04em; }

@@ -1,0 +1,301 @@
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Loader, Text } from "@mantine/core";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  IconAlertTriangle,
+  IconCalendarTime,
+  IconInfoCircle,
+  IconRocket,
+  IconTool,
+  IconX,
+  type Icon,
+} from "@tabler/icons-react";
+
+import { api, probeServer, serverDownStore, setServerDown } from "../api";
+import { useAuth } from "../auth";
+import { useT } from "../lib/i18n";
+
+export type NoticeKind = "planned" | "deploy" | "repair" | "incident" | "info";
+export interface ServiceNotice {
+  id: number;
+  kind: NoticeKind;
+  title: string;
+  body: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  blocking: boolean;
+  published: boolean;
+  ongoing: boolean;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const NOTICE_KINDS: Record<NoticeKind, { label: string; icon: Icon; tone: string }> = {
+  planned: { label: "Planowane prace", icon: IconCalendarTime, tone: "blue" },
+  deploy: { label: "Wdrożenie nowej funkcji", icon: IconRocket, tone: "teal" },
+  repair: { label: "Prace naprawcze", icon: IconTool, tone: "orange" },
+  incident: { label: "Awaria", icon: IconAlertTriangle, tone: "red" },
+  info: { label: "Informacja", icon: IconInfoCircle, tone: "gray" },
+};
+
+const CACHE = "apt-service-notices";
+const DISMISSED = "apt-service-notices-hidden";
+const read = <T,>(k: string, d: T): T => {
+  try {
+    return JSON.parse(localStorage.getItem(k) ?? "null") ?? d;
+  } catch {
+    return d;
+  }
+};
+const write = (k: string, v: unknown) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* tryb prywatny – trudno */
+  }
+};
+
+/** Czy komunikat trwa teraz (liczone w przeglądarce, żeby przerwa włączyła się i skończyła o czasie). */
+export function isOngoing(n: ServiceNotice, now = Date.now()): boolean {
+  return (!n.starts_at || new Date(n.starts_at).getTime() <= now) && (!n.ends_at || new Date(n.ends_at).getTime() > now);
+}
+const isOver = (n: ServiceNotice, now = Date.now()) => !!n.ends_at && new Date(n.ends_at).getTime() <= now;
+
+/** „dziś, 22:00” / „jutro, 6:00” / „sob. 8.11, 22:00” */
+export function dayTime(at: string): string {
+  const d = new Date(at);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(new Date())) / 86_400_000);
+  const time = d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  if (diff === 0) return `dziś, ${time}`;
+  if (diff === 1) return `jutro, ${time}`;
+  if (diff === -1) return `wczoraj, ${time}`;
+  const wd = d.toLocaleDateString("pl-PL", { weekday: "short" });
+  return `${wd} ${d.getDate()}.${String(d.getMonth() + 1).padStart(2, "0")}, ${time}`;
+}
+const sameDay = (a: string, b: string) => new Date(a).toDateString() === new Date(b).toDateString();
+
+/** Opis czasu komunikatu: „Trwa · do dziś, 23:00”, „sob. 8.11, 22:00–23:30”, „Od jutra, 6:00”. */
+export function whenText(n: ServiceNotice, now = Date.now()): string {
+  if (isOver(n, now)) return n.ends_at ? `Zakończone ${dayTime(n.ends_at)}` : "Zakończone";
+  if (isOngoing(n, now)) return n.ends_at ? `Trwa · do ${dayTime(n.ends_at)}` : "Trwa";
+  if (n.starts_at && n.ends_at)
+    return sameDay(n.starts_at, n.ends_at)
+      ? `${dayTime(n.starts_at)}–${new Date(n.ends_at).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}`
+      : `${dayTime(n.starts_at)} – ${dayTime(n.ends_at)}`;
+  return n.starts_at ? `Od ${dayTime(n.starts_at)}` : "";
+}
+
+/** Zegar odświeżający widok co 30 s – przerwa zaczyna się i kończy bez przeładowania strony. */
+function useNow(ms = 30_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), ms);
+    return () => window.clearInterval(id);
+  }, [ms]);
+  return now;
+}
+
+/** Aktywne komunikaty techniczne (publiczne). Ostatnia znana lista zostaje w przeglądarce – na wypadek, gdy serwer nie odpowiada. */
+export function useServiceNotices() {
+  return useQuery({
+    queryKey: ["service-notices-current"],
+    queryFn: async () => {
+      const list = await api<ServiceNotice[]>("/service-notices/current");
+      write(CACHE, list);
+      return list;
+    },
+    placeholderData: () => read<ServiceNotice[]>(CACHE, []),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
+}
+
+function isAdmin(me: ReturnType<typeof useAuth>["me"]) {
+  return !!me && (me.real_role ?? me.user.role) === "admin";
+}
+
+/** Pasek komunikatów technicznych nad treścią aplikacji i na ekranie logowania. */
+export function ServiceNoticeBanner() {
+  const t = useT();
+  const { me } = useAuth();
+  const q = useServiceNotices();
+  const now = useNow();
+  const [hidden, setHidden] = useState<string[]>(() => read<string[]>(DISMISSED, []));
+  const admin = isAdmin(me);
+  const { pathname } = useLocation();
+  // na ekranie zarządzania komunikatami lista jest niżej – pasek by ją dublował
+  if (pathname.startsWith("/komunikaty-techniczne")) return null;
+  const list = (q.data ?? []).filter((n) => !isOver(n, now) && !hidden.includes(`${n.id}:${n.updated_at}`));
+  if (list.length === 0) return null;
+  const hide = (n: ServiceNotice) => {
+    const next = [...hidden, `${n.id}:${n.updated_at}`].slice(-30);
+    setHidden(next);
+    write(DISMISSED, next);
+  };
+  return (
+    <div className="ui-svc-list" role="region" aria-label={t("Komunikaty techniczne")}>
+      {list.map((n) => {
+        const k = NOTICE_KINDS[n.kind];
+        const ongoing = isOngoing(n, now);
+        // trwająca awaria, prace naprawcze i przerwa – bez zamykania, dopóki trwają
+        const sticky = ongoing && (n.blocking || n.kind === "incident" || n.kind === "repair");
+        const Icon = k.icon;
+        return (
+          <div key={n.id} className="ui-svc" data-tone={k.tone} role={ongoing ? "alert" : "status"}>
+            <span className="ui-svc-icon" aria-hidden>
+              <Icon size={20} />
+            </span>
+            <div className="ui-svc-text">
+              <span className="ui-svc-meta">
+                {t(k.label)}
+                {whenText(n, now) ? ` · ${t(whenText(n, now))}` : ""}
+              </span>
+              <span className="ui-svc-title">{t(n.title)}</span>
+              {n.body && <span className="ui-svc-body">{t(n.body)}</span>}
+              {admin && ongoing && n.blocking && (
+                <span className="ui-svc-admin">
+                  Przerwa trwa – pozostali użytkownicy widzą ekran przerwy technicznej. Ty jako administrator masz dostęp.{" "}
+                  <Link to="/komunikaty-techniczne">Zarządzaj</Link>
+                </span>
+              )}
+            </div>
+            {!sticky && (
+              <button type="button" className="ui-svc-close" aria-label={t("Ukryj komunikat")} onClick={() => hide(n)}>
+                <IconX size={18} />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Ekran na całą stronę: przerwa techniczna (zaplanowana) albo serwer chwilowo niedostępny. */
+function OutageScreen({
+  down,
+  notice,
+  onRetry,
+  checking,
+  onAdmin,
+}: {
+  down: boolean;
+  notice: ServiceNotice | null;
+  onRetry: () => void;
+  checking: boolean;
+  onAdmin?: () => void;
+}) {
+  const t = useT();
+  const kind = notice ? NOTICE_KINDS[notice.kind] : NOTICE_KINDS.repair;
+  const Icon = down && !notice ? IconTool : kind.icon;
+  const title = notice ? (notice.kind === "incident" ? "Awaria" : "Przerwa techniczna") : "Serwis chwilowo niedostępny";
+  const lead = notice
+    ? notice.title
+    : "Trwają prace techniczne albo wystąpił problem z serwerem. Pracujemy nad tym – aplikacja wróci automatycznie.";
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `${t(title)} – APT iD`;
+    return () => {
+      document.title = prev;
+    };
+  }, [title, t]);
+  return (
+    <main className="ui-outage" data-tone={notice ? kind.tone : "orange"}>
+      <div className="ui-outage-card">
+        <span className="ui-outage-icon" aria-hidden>
+          <Icon size={34} />
+        </span>
+        <h1 className="ui-outage-title">{t(title)}</h1>
+        <p className="ui-outage-lead">{t(lead)}</p>
+        {notice?.body && <p className="ui-outage-body">{t(notice.body)}</p>}
+        {notice?.ends_at && (
+          <div className="ui-outage-when">
+            <span>{t("Planowany koniec")}</span>
+            <strong>{t(dayTime(notice.ends_at))}</strong>
+          </div>
+        )}
+        <p className="ui-outage-safe">{t("Twoje dane są bezpieczne. Nic nie musisz robić – strona sama sprawdza, czy działa.")}</p>
+        <Button size="md" fullWidth variant="light" onClick={onRetry} loading={checking}>
+          {t("Sprawdź teraz")}
+        </Button>
+        <Text size="xs" c="dimmed" ta="center" mt={4} className="ui-outage-auto">
+          {checking ? <Loader size={10} mr={6} /> : null}
+          {t(down ? "Sprawdzamy co 15 sekund" : "Sprawdzamy co 30 sekund")}
+        </Text>
+        {onAdmin && (
+          <button type="button" className="ui-outage-admin" onClick={onAdmin}>
+            {t("Logowanie administratora")}
+          </button>
+        )}
+      </div>
+      <p className="ui-outage-brand">APT iD · aptid.pl</p>
+    </main>
+  );
+}
+
+/**
+ * Bramka całej aplikacji: gdy serwer nie odpowiada – ekran „Serwis chwilowo niedostępny” (z ostatnim znanym
+ * komunikatem); gdy trwa przerwa blokująca – ekran „Przerwa techniczna” dla wszystkich poza administratorem.
+ */
+export function ServiceGate({ children }: { children: ReactNode }) {
+  const down = useSyncExternalStore(serverDownStore.subscribe, serverDownStore.get);
+  const { me } = useAuth();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const q = useServiceNotices();
+  const now = useNow(down ? 15_000 : 30_000);
+  const [checking, setChecking] = useState(false);
+  const [adminLogin, setAdminLogin] = useState(false);
+  const admin = isAdmin(me);
+
+  const check = async () => {
+    setChecking(true);
+    const ok = await probeServer();
+    setChecking(false);
+    if (ok) {
+      setServerDown(false);
+      // po powrocie serwera odświeżamy wszystko, co nie dało się wczytać
+      await qc.invalidateQueries();
+    } else {
+      q.refetch().catch(() => undefined);
+    }
+  };
+  // automatyczne sprawdzanie, dopóki serwer nie wróci / przerwa trwa
+  useEffect(() => {
+    if (!down) return;
+    const id = window.setInterval(check, 15_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [down]);
+
+  const list = q.data ?? [];
+  const blocking = list.find((n) => n.blocking && isOngoing(n, now)) ?? null;
+  if (down) {
+    // ostatni znany komunikat, który trwa (najpierw przerwa blokująca)
+    const known = blocking ?? list.find((n) => n.kind !== "info" && isOngoing(n, now)) ?? null;
+    return <OutageScreen down notice={known} onRetry={check} checking={checking} />;
+  }
+  if (blocking && !admin && !(adminLogin && !me)) {
+    return (
+      <OutageScreen
+        down={false}
+        notice={blocking}
+        onRetry={() => q.refetch()}
+        checking={q.isFetching}
+        onAdmin={
+          me
+            ? undefined
+            : () => {
+                setAdminLogin(true);
+                navigate("/login");
+              }
+        }
+      />
+    );
+  }
+  return <>{children}</>;
+}

@@ -32,6 +32,7 @@ const HrMessagesPage = lazy(() => import("./pages/HrMessagesPage").then((m) => (
 const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").then((m) => ({ default: m.EmployeeAccountsPage })));
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const PermitsReportPage = lazy(() => import("./pages/PermitsReportPage").then((m) => ({ default: m.PermitsReportPage })));
+const ServiceNoticesPage = lazy(() => import("./pages/ServiceNoticesPage").then((m) => ({ default: m.ServiceNoticesPage })));
 const SystemStatusPage = lazy(() => import("./pages/SystemStatusPage").then((m) => ({ default: m.SystemStatusPage })));
 const PatternsPage = lazy(() => import("./pages/PatternsPage").then((m) => ({ default: m.PatternsPage })));
 const WorkQueuePage = lazy(() => import("./pages/WorkQueuePage").then((m) => ({ default: m.WorkQueuePage })));
@@ -317,6 +318,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <WorkQueuePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="komunikaty-techniczne"
+          element={
+            <RequireAuth roles={["admin"]}>
+              <ServiceNoticesPage />
             </RequireAuth>
           }
         />

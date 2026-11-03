@@ -1,3 +1,4 @@
+import { ServiceNoticeBanner } from "../components/ServiceNotices";
 import { BrandMark } from "../components/AppLayout";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -208,6 +209,9 @@ export function LoginPage() {
   return (
     <Center mih="100vh" p="md" style={{ background: "var(--apt-ground)" }}>
       <Stack align="center" w="100%" maw={400} gap="md">
+      <div style={{ width: "100%" }}>
+        <ServiceNoticeBanner />
+      </div>
       <Paper withBorder shadow="sm" p="xl" w="100%">
         {me?.mfa_pending ? (
           <CodeStep onDone={(result) => navigate(nextPath(result, from), { replace: true })} />

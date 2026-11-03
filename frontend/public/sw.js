@@ -1,8 +1,37 @@
-// Service worker: instalacja aplikacji na telefonie oraz powiadomienia push. Niczego nie zapisuje w pamięci
-// podręcznej – dokumenty i dane osobowe zawsze idą prosto z serwera. Powiadomienia mają ogólną treść.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", () => {});
+// Service worker: instalacja aplikacji na telefonie, powiadomienia push i strona „Przerwa techniczna”.
+// W pamięci podręcznej jest wyłącznie statyczna strona offline.html (bez danych) – dokumenty i dane osobowe
+// zawsze idą prosto z serwera. Powiadomienia mają ogólną treść.
+const OFFLINE_CACHE = "apt-offline-v1";
+const OFFLINE_URL = "/offline.html";
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches
+      .open(OFFLINE_CACHE)
+      .then((c) => c.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting()),
+  );
+});
+self.addEventListener("activate", (e) =>
+  e.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== OFFLINE_CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  ),
+);
+// serwer nie odpowiada przy otwieraniu strony (aktualizacja, restart, awaria, brak internetu) – zamiast błędu
+// przeglądarki pokazujemy wyjaśnienie, która sama sprawdza, czy aplikacja wróciła
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.mode !== "navigate" || req.method !== "GET") return;
+  event.respondWith(
+    fetch(req).then(
+      (res) => (res.status === 502 || res.status === 503 || res.status === 504 ? caches.match(OFFLINE_URL).then((r) => r || res) : res),
+      () => caches.match(OFFLINE_URL).then((r) => r || Response.error()),
+    ),
+  );
+});
 
 self.addEventListener("push", (event) => {
   let data = {};

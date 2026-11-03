@@ -34,6 +34,7 @@ import {
   IconFileText,
   IconFingerprint,
   IconHeartbeat,
+  IconTool,
   IconHome,
   IconKey,
   IconListDetails,
@@ -62,6 +63,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
+import { ServiceNoticeBanner } from "./ServiceNotices";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
 import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
@@ -99,6 +101,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/przeglad-dostepu": "Przegląd dostępu",
   "/retencja": "Retencja danych",
   "/stan-systemu": "Stan systemu",
+  "/komunikaty-techniczne": "Komunikaty techniczne",
   "/dziennik": "Dziennik zdarzeń",
   "/wzornik": "Wzornik",
   "/moje-konto": "Moje konto",
@@ -268,6 +271,7 @@ function AppLayoutInner() {
     { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/komunikaty-techniczne", label: "Komunikaty techniczne", icon: IconTool, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: ADMIN_GROUP },
   ].filter((i) => i.show);
 
@@ -368,6 +372,7 @@ function AppLayoutInner() {
 
       <AppShell.Main>
         <SimulationBanner />
+        <ServiceNoticeBanner />
         <NetworkBanner />
         {lang && lang !== "pl" && hasRole("employee") && !mobile && (
           <Text size="xs" c="dimmed" mb="sm">

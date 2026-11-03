@@ -364,11 +364,44 @@ function trackSlow(): () => void {
   };
 }
 
+// Serwer niedostępny (przerwa techniczna, aktualizacja, awaria): odpowiedź 502/503/504 z serwera WWW albo brak
+// odpowiedzi przy działającym internecie. Aplikacja pokazuje wtedy ekran przerwy i sama sprawdza, kiedy wróci.
+let serverDown = false;
+const downListeners = new Set<() => void>();
+export const serverDownStore = {
+  subscribe(f: () => void) {
+    downListeners.add(f);
+    return () => {
+      downListeners.delete(f);
+    };
+  },
+  get: () => serverDown,
+};
+export function setServerDown(v: boolean): void {
+  if (serverDown === v) return;
+  serverDown = v;
+  downListeners.forEach((f) => f());
+}
+const DOWN_STATUSES = new Set([502, 503, 504]);
+/** Czy serwer odpowiada (bez logowania, bez CSRF). */
+export async function probeServer(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/health", { cache: "no-store", credentials: "same-origin" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function request(input: string, init: RequestInit): Promise<Response> {
   const done = trackSlow();
   try {
-    return await fetch(input, init);
+    const res = await fetch(input, init);
+    setServerDown(DOWN_STATUSES.has(res.status));
+    return res;
   } catch {
+    // przy działającym internecie sprawdzamy, czy to serwer – a nie chwilowa utrata zasięgu
+    if (navigator.onLine && !(await probeServer())) setServerDown(true);
     throw new ApiError(0, "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie – nic nie zostało zmienione.");
   } finally {
     done();

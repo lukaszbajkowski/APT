@@ -135,6 +135,20 @@ co 6 h i informuje o powrocie. E-maile idą bezpośrednio przez SMTP, bez udzia�
 Całkowitej niedostępności serwera (wyłączony VPS) serwer sam nie zgłosi – do tego zewnętrzny monitoring,
 np. darmowy UptimeRobot sprawdzający `https://domena/api/health`.
 
+## Komunikaty techniczne i przerwa techniczna
+
+Administrator: **Administracja → Komunikaty techniczne**. Rodzaje: planowane prace, wdrożenie nowej funkcji,
+prace naprawcze, awaria, informacja. Opublikowany komunikat widzą wszyscy (pasek nad treścią aplikacji i na ekranie
+logowania, w języku pracownika); po godzinie zakończenia znika sam, „Zakończ teraz” chowa go od razu.
+
+- **Przerwa blokująca** (przełącznik „blokuje aplikację”, wymaga godziny końca) – w podanym czasie wszyscy poza
+  administratorem widzą ekran „Przerwa techniczna” z wyjaśnieniem i planowanym końcem. Administrator loguje się
+  przez „Logowanie administratora” na tym ekranie.
+- **Serwer nie odpowiada** (aktualizacja `aptid-aktualizuj`, restart, awaria) – serwer WWW zwraca czytelną odpowiedź 503,
+  a aplikacja pokazuje „Serwis chwilowo niedostępny” (z ostatnim znanym komunikatem) i co 15 s sama sprawdza, czy wrócił.
+  Gdy nie odpowiada nawet serwer WWW, telefon z zainstalowaną aplikacją pokazuje stronę `offline.html`.
+- Dobra praktyka przed aktualizacją: dodaj komunikat „Planowane prace” z godziną dzień wcześniej.
+
 ## Raporty i eksport
 
 - **Pracownicy → „Excel”** – lista z bieżącymi filtrami (.xlsx, nagłówki z filtrem, daty jako daty).

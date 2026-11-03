@@ -157,7 +157,7 @@ html, body { background: var(--apt-ground); }
   input, textarea, select, .mantine-Input-input { font-size: 16px !important; }
 
   /* pasek dolny nad wskaźnikiem iPhone'a, treść nie chowa się pod paskiem */
-  .mantine-AppShell-footer { box-sizing: content-box; padding-bottom: var(--apt-safe-bottom); }
+  /* stopka: Mantine sam dolicza pasek domowy iPhone'a (wysokość + padding-bottom env(safe-area-inset-bottom)) – nie dodawać drugi raz */
   .mantine-AppShell-main { padding-bottom: calc(58px + var(--apt-safe-bottom) + 24px) !important; }
   .mantine-AppShell-header { padding-top: var(--apt-safe-top); box-sizing: content-box; }
   /* pasek górny jest wyższy o obszar pod godziną – treść zaczyna się pod nim (inaczej początek ekranu chowa się pod paskiem) */

@@ -1,7 +1,7 @@
 """Komunikaty techniczne: administrator ogłasza prace serwisowe, wdrożenia, prace naprawcze i awarie.
 
-Aktywne komunikaty są publiczne (widać je także na ekranie logowania i u pracowników).
-Komunikat „blokujący” w trakcie trwania (od–do) pokazuje wszystkim poza administratorem ekran przerwy technicznej.
+Aktywne komunikaty widzą wyłącznie zalogowani (pracownicy i personel) – przed logowaniem nic nie widać.
+Komunikat „blokujący” w trakcie trwania (od–do) pokazuje zalogowanym poza administratorem ekran przerwy technicznej.
 """
 
 from datetime import datetime, timedelta
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import or_, select
 
 from app.audit import audit
-from app.deps import AdminAuth, DbSession, utcnow
+from app.deps import AdminAuth, Auth, DbSession, utcnow
 from app.models import ServiceNotice
 
 router = APIRouter(prefix="/api/service-notices", tags=["service-notices"])
@@ -84,8 +84,8 @@ def active_notices(db, now: datetime) -> list[ServiceNotice]:  # noqa: ANN001
 
 
 @router.get("/current", response_model=list[NoticeOut])
-def current(db: DbSession) -> list[NoticeOut]:
-    """Publiczne: aktywne komunikaty techniczne (bez logowania – ekran logowania też je pokazuje)."""
+def current(ctx: Auth, db: DbSession) -> list[NoticeOut]:
+    """Aktywne komunikaty techniczne dla zalogowanego użytkownika (dowolna rola)."""
     now = utcnow()
     return [_out(n, now) for n in active_notices(db, now)]
 

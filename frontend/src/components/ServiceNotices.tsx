@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Loader, Text } from "@mantine/core";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   IconAlertTriangle,
   IconCalendarTime,
@@ -98,16 +98,31 @@ function useNow(ms = 30_000) {
   return now;
 }
 
-/** Aktywne komunikaty techniczne (publiczne). Ostatnia znana lista zostaje w przeglądarce – na wypadek, gdy serwer nie odpowiada. */
+/**
+ * Aktywne komunikaty techniczne – tylko dla zalogowanych (przed logowaniem nic nie widać). Ostatnia znana lista
+ * zostaje w przeglądarce na wypadek, gdy serwer nie odpowiada; po wylogowaniu jest czyszczona.
+ */
 export function useServiceNotices() {
+  const { me } = useAuth();
+  const signedIn = !!me && !me.mfa_pending;
+  useEffect(() => {
+    if (!signedIn) {
+      try {
+        localStorage.removeItem(CACHE);
+      } catch {
+        /* trudno */
+      }
+    }
+  }, [signedIn]);
   return useQuery({
-    queryKey: ["service-notices-current"],
+    queryKey: ["service-notices-current", me?.user.id ?? null],
+    enabled: signedIn,
     queryFn: async () => {
       const list = await api<ServiceNotice[]>("/service-notices/current");
       write(CACHE, list);
       return list;
     },
-    placeholderData: () => read<ServiceNotice[]>(CACHE, []),
+    placeholderData: () => (signedIn ? read<ServiceNotice[]>(CACHE, []) : []),
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     staleTime: 30_000,
@@ -118,7 +133,7 @@ function isAdmin(me: ReturnType<typeof useAuth>["me"]) {
   return !!me && (me.real_role ?? me.user.role) === "admin";
 }
 
-/** Pasek komunikatów technicznych nad treścią aplikacji i na ekranie logowania. */
+/** Pasek komunikatów technicznych nad treścią aplikacji (po zalogowaniu). */
 export function ServiceNoticeBanner() {
   const t = useT();
   const { me } = useAuth();
@@ -129,7 +144,7 @@ export function ServiceNoticeBanner() {
   const { pathname } = useLocation();
   // na ekranie zarządzania komunikatami lista jest niżej – pasek by ją dublował
   if (pathname.startsWith("/komunikaty-techniczne")) return null;
-  const list = (q.data ?? []).filter((n) => !isOver(n, now) && !hidden.includes(`${n.id}:${n.updated_at}`));
+  const list = (me ? q.data ?? [] : []).filter((n) => !isOver(n, now) && !hidden.includes(`${n.id}:${n.updated_at}`));
   if (list.length === 0) return null;
   const hide = (n: ServiceNotice) => {
     const next = [...hidden, `${n.id}:${n.updated_at}`].slice(-30);
@@ -181,13 +196,11 @@ function OutageScreen({
   notice,
   onRetry,
   checking,
-  onAdmin,
 }: {
   down: boolean;
   notice: ServiceNotice | null;
   onRetry: () => void;
   checking: boolean;
-  onAdmin?: () => void;
 }) {
   const t = useT();
   const kind = notice ? NOTICE_KINDS[notice.kind] : NOTICE_KINDS.repair;
@@ -226,11 +239,6 @@ function OutageScreen({
           {checking ? <Loader size={10} mr={6} /> : null}
           {t(down ? "Sprawdzamy co 15 sekund" : "Sprawdzamy co 30 sekund")}
         </Text>
-        {onAdmin && (
-          <button type="button" className="ui-outage-admin" onClick={onAdmin}>
-            {t("Logowanie administratora")}
-          </button>
-        )}
       </div>
       <p className="ui-outage-brand">APT iD · aptid.pl</p>
     </main>
@@ -239,17 +247,16 @@ function OutageScreen({
 
 /**
  * Bramka całej aplikacji: gdy serwer nie odpowiada – ekran „Serwis chwilowo niedostępny” (z ostatnim znanym
- * komunikatem); gdy trwa przerwa blokująca – ekran „Przerwa techniczna” dla wszystkich poza administratorem.
+ * komunikatem, tylko po zalogowaniu); gdy trwa przerwa blokująca – po zalogowaniu ekran „Przerwa techniczna”
+ * dla wszystkich poza administratorem. Przed zalogowaniem komunikatów nie widać, logowanie działa normalnie.
  */
 export function ServiceGate({ children }: { children: ReactNode }) {
   const down = useSyncExternalStore(serverDownStore.subscribe, serverDownStore.get);
   const { me } = useAuth();
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const q = useServiceNotices();
   const now = useNow(down ? 15_000 : 30_000);
   const [checking, setChecking] = useState(false);
-  const [adminLogin, setAdminLogin] = useState(false);
   const admin = isAdmin(me);
 
   const check = async () => {
@@ -272,30 +279,15 @@ export function ServiceGate({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [down]);
 
-  const list = q.data ?? [];
+  const list = me ? q.data ?? [] : [];
   const blocking = list.find((n) => n.blocking && isOngoing(n, now)) ?? null;
   if (down) {
     // ostatni znany komunikat, który trwa (najpierw przerwa blokująca)
     const known = blocking ?? list.find((n) => n.kind !== "info" && isOngoing(n, now)) ?? null;
     return <OutageScreen down notice={known} onRetry={check} checking={checking} />;
   }
-  if (blocking && !admin && !(adminLogin && !me)) {
-    return (
-      <OutageScreen
-        down={false}
-        notice={blocking}
-        onRetry={() => q.refetch()}
-        checking={q.isFetching}
-        onAdmin={
-          me
-            ? undefined
-            : () => {
-                setAdminLogin(true);
-                navigate("/login");
-              }
-        }
-      />
-    );
+  if (blocking && !admin) {
+    return <OutageScreen down={false} notice={blocking} onRetry={() => q.refetch()} checking={q.isFetching} />;
   }
   return <>{children}</>;
 }

@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from app.deps import utcnow
 from app.models import Role
+from tests.test_accounts import emp, hr  # noqa: F401
+from tests.test_me import me  # noqa: F401
 
 
 def _iso(d):
@@ -36,12 +38,13 @@ def test_service_notices_flow(admin_client):
     assert r.json()["ongoing"] is False
     # szkic (nieopublikowany) nie jest widoczny publicznie
     c.post("/api/service-notices", json={"kind": "info", "title": "Szkic", "published": False})
-    # publiczne – bez logowania
-    c.post("/api/auth/logout")
+    # zalogowany widzi tylko opublikowane
     cur = c.get("/api/service-notices/current")
     assert cur.status_code == 200
     assert [n["title"] for n in cur.json()] == ["Aktualizacja systemu"]
-    # lista administracyjna wymaga roli administratora
+    # przed zalogowaniem nic nie widać
+    c.post("/api/auth/logout")
+    assert c.get("/api/service-notices/current").status_code == 401
     assert c.get("/api/service-notices").status_code in (401, 403)
 
 
@@ -65,3 +68,12 @@ def test_service_notice_end_and_roles(admin_client, make_user):
     make_user("kadry2", Role.hr)
     login(c, "kadry2")
     assert c.post("/api/service-notices", json={"kind": "info", "title": "X"}).status_code == 403
+    # ale komunikaty widzą
+    assert c.get("/api/service-notices/current").status_code == 200
+
+
+def test_employee_current(me):  # noqa: F811
+    # konto pracownika widzi aktywne komunikaty techniczne, ale nie listę administracyjną
+    r = me.get("/api/service-notices/current")
+    assert r.status_code == 200 and r.json() == []
+    assert me.get("/api/service-notices").status_code == 403

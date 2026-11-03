@@ -843,8 +843,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-outage-when strong { color: var(--svc-fg); }
 .ui-outage-safe { margin: 4px 0; font-size: 14px; color: var(--mantine-color-dimmed); line-height: 1.45; }
 .ui-outage-auto { display: flex; align-items: center; justify-content: center; }
-.ui-outage-admin {
-  align-self: center; min-height: 44px; padding: 0 12px; margin-top: 4px; border: 0; background: none; cursor: pointer;
-  font: inherit; font-size: 14px; color: var(--mantine-color-dimmed); text-decoration: underline; text-underline-offset: 3px;
-}
 .ui-outage-brand { margin: 0; font-size: 13px; color: var(--mantine-color-dimmed); letter-spacing: .04em; }

@@ -266,6 +266,11 @@ export function LoginPage() {
                   {T("Zaloguj kluczem dostępu")}
                 </Button>
               )}
+              {passkeysSupported() && (
+                <Text size="sm" c="dimmed" ta="center">
+                  {T("Klucz masz na telefonie, a logujesz się na innym urządzeniu? Wybierz „Użyj telefonu” i zeskanuj kod telefonem.")}
+                </Text>
+              )}
               {config.data?.password_reset ? (
                 <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">
                   {T("Nie pamiętasz hasła?")}

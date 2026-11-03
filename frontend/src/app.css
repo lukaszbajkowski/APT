@@ -782,3 +782,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-scan-live .ui-scan-head { display: none; }
 .ui-scan-live .ui-scan-video { flex: 1 1 auto; min-height: 0; }
 .ui-scan-live .ui-scan-manual { order: 2; flex: none; }
+/* lista kroków (instrukcje w panelach) */
+.ui-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 1.45; }
+.ui-steps li::marker { font-weight: 700; color: var(--mantine-primary-color-text); }

@@ -3,8 +3,8 @@ import { PushCard } from "../components/PushCard";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Center, CopyButton, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconFingerprint, IconTrash } from "@tabler/icons-react";
+import { Alert, Anchor, Button, Card, Center, CopyButton, Drawer, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertCircle, IconDevices, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
@@ -14,7 +14,7 @@ import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Section } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
 
 interface Options {
   challenge_id: string;
@@ -156,6 +156,45 @@ interface Passkey {
   last_used_at: string | null;
 }
 
+/** Panel od dołu: jak dodać klucz logowania na innym urządzeniu (bez klucza na nim). */
+function OtherDeviceSheet({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const t = useT();
+  const steps = [
+    t("Na nowym urządzeniu otwórz aplikację APT i dotknij „Zaloguj kluczem dostępu”."),
+    t("Wybierz „Użyj telefonu” (albo „Inne urządzenie”) – pojawi się kod QR."),
+    t("Zeskanuj kod aparatem telefonu, na którym masz klucz, i potwierdź twarzą lub odciskiem palca. Oba urządzenia muszą mieć włączony Bluetooth i być obok siebie."),
+    t("Po zalogowaniu wejdź w „Logowanie i powiadomienia” i dotknij „Dodaj klucz” – nowe urządzenie dostanie własny klucz."),
+  ];
+  return (
+    <Drawer opened={opened} onClose={onClose} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label={t("Klucz na innym urządzeniu")}>
+      <SheetHandle onClose={onClose}>
+        <div className="ui-sheet-head">
+          <div className="ui-sheet-title">{t("Klucz na innym urządzeniu")}</div>
+        </div>
+      </SheetHandle>
+      <Stack gap={16} px={8} pb="md">
+        <Text size="sm">
+          {t("Ten sam iPhone, iPad i Mac (jedno Apple ID) albo Android z tym samym kontem Google mają klucz od razu – nic nie musisz robić.")}
+        </Text>
+        <div>
+          <Text fw={700} mb={8}>{t("Inne urządzenie (np. komputer)")}</Text>
+          <ol className="ui-steps">
+            {steps.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ol>
+        </div>
+        <Text size="sm" c="dimmed">
+          {t("Zgubiłeś telefon i nie masz klucza na innym urządzeniu? Poproś kadry o reset dostępu – dostaniesz nowe zaproszenie.")}
+        </Text>
+        <Button size="lg" variant="default" fullWidth onClick={onClose}>
+          {t("Rozumiem")}
+        </Button>
+      </Stack>
+    </Drawer>
+  );
+}
+
 export function MyAccountPage() {
   const t = useT();
   const { hasRole } = useAuth();
@@ -171,6 +210,7 @@ export function MyAccountPage() {
   const [prepared, setPrepared] = useState<Options | null>(null);
   // telefon (kadry): hasło do potwierdzenia pojawia się dopiero po „Dodaj klucz”
   const [adding, setAdding] = useState(false);
+  const [otherOpen, setOtherOpen] = useState(false);
   const prepare = useMutation({
     mutationFn: () =>
       api<Options>("/passkeys/options", { method: "POST", body: reauth ? { password: pw, code: code || null } : {} }),
@@ -265,10 +305,16 @@ export function MyAccountPage() {
           >
             {prepared ? t("Utwórz klucz na tym urządzeniu") : adding ? t("Dalej") : t("Dodaj klucz")}
           </Button>
-          <Text size="sm" c="dimmed">
-            {t("Dodaj klucz także na drugim urządzeniu, żeby nie stracić dostępu po zgubieniu telefonu.")}
-          </Text>
         </Stack>
+        <div className="ui-group">
+          <ListRow
+            leading={<span className="ui-row-icon" aria-hidden><IconDevices size={22} /></span>}
+            title={t("Klucz na innym urządzeniu")}
+            description={t("Jak zalogować się na komputerze lub drugim telefonie")}
+            onClick={() => setOtherOpen(true)}
+          />
+        </div>
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
         <PushCard rows />
         <InstallApp rows />
       </Stack>
@@ -297,8 +343,12 @@ export function MyAccountPage() {
           </Button>
         </Group>
         <Text size="sm" c="dimmed" mb="sm">
-          {t("Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go i wyślą nowe zaproszenie.")}
+          {t("Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go i wyślą nowe zaproszenie.")}{" "}
+          <Anchor component="button" type="button" size="sm" onClick={() => setOtherOpen(true)}>
+            {t("Jak dodać klucz na innym urządzeniu")}
+          </Anchor>
         </Text>
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
         {reauth && (
           <Stack gap="xs" mb="sm">
             <Text size="sm">{t("Przed dodaniem klucza potwierdź tożsamość:")}</Text>

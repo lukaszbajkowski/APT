@@ -781,3 +781,36 @@ export function FormDialog({
     </Modal>
   );
 }
+
+/**
+ * Przesunięcie palcem w bok w dowolnym miejscu ekranu (jak przy zakładkach Segments swipe) – np. przełącznik
+ * dwóch opcji w formularzu. Pomija pola tekstowe, panele i elementy przewijane w bok.
+ */
+export function useSwipeAnywhere(enabled: boolean, onLeft: () => void, onRight: () => void) {
+  const cb = useRef({ onLeft, onRight });
+  cb.current = { onLeft, onRight };
+  useEffect(() => {
+    if (!enabled) return;
+    const st = { x: 0, y: 0, skip: false };
+    const start = (e: globalThis.TouchEvent) => {
+      const t = e.target as HTMLElement;
+      st.skip = typeof t?.closest === "function" && !!t.closest("input:not([type=file]), textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .tabbar, nav");
+      st.x = e.touches[0].clientX;
+      st.y = e.touches[0].clientY;
+    };
+    const end = (e: globalThis.TouchEvent) => {
+      if (st.skip) return;
+      const dx = e.changedTouches[0].clientX - st.x;
+      const dy = e.changedTouches[0].clientY - st.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx < 0) cb.current.onLeft();
+      else cb.current.onRight();
+    };
+    window.addEventListener("touchstart", start, { passive: true });
+    window.addEventListener("touchend", end, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", start);
+      window.removeEventListener("touchend", end);
+    };
+  }, [enabled]);
+}

@@ -15,7 +15,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { CompactEmpty, PageHead, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, useMobileHeader, useNavHeightVar, useSwipeAnywhere } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -90,7 +90,7 @@ function FileDocs({ files, staff }: { files: FileRef[]; staff?: boolean }) {
 }
 
 /** Zakładka „Kto przeczytał”: przypomnienie, wyszukiwarka, filtr i lista przewijana osobno (komunikat może iść do setek osób). */
-function RecipientsPane({ id }: { id: number }) {
+function RecipientsPane({ id, mobile }: { id: number; mobile?: boolean }) {
   const [q, setQ] = useState("");
   const [f, setF] = useState("unread");
   const remind = useMutation({
@@ -105,6 +105,50 @@ function RecipientsPane({ id }: { id: number }) {
       (!q.trim() || r.name.toLowerCase().includes(q.trim().toLowerCase())) &&
       (f === "all" || (f === "read") === !!r.read_at),
   );
+  if (mobile)
+    return (
+      <Stack gap={16}>
+        <Button
+          size="lg"
+          fullWidth
+          variant="default"
+          loading={remind.isPending}
+          disabled={unread === 0}
+          onClick={() => remind.mutate()}
+          h="auto"
+          mih={50}
+          styles={{ label: { whiteSpace: "normal", textAlign: "center", lineHeight: 1.3, paddingBlock: 8 } }}
+        >
+          {unread ? `Wyślij przypomnienie · ${unread} os.` : "Wszyscy przeczytali"}
+        </Button>
+        <TextInput size="md" aria-label="Szukaj osoby" placeholder="Szukaj: nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        <Segments
+          value={f}
+          onChange={setF}
+          items={[
+            { value: "all", label: "Wszyscy" },
+            { value: "unread", label: "Nie przeczytali" },
+            { value: "read", label: "Przeczytali" },
+          ]}
+        />
+        {data.isLoading ? (
+          <Loading />
+        ) : rows.length === 0 ? (
+          <CompactEmpty title="Brak osób" text={q.trim() ? "Sprawdź pisownię nazwiska." : "Nikt nie pasuje do tego filtra."} />
+        ) : (
+          <div className="ui-group">
+            {rows.map((r) => (
+              <ListRow
+                key={r.employee_id}
+                title={r.name}
+                description={r.read_at ? `Przeczytał(a) ${formatDateTime(r.read_at)}` : undefined}
+                trailing={r.read_at ? <StatusBadge tone="ok">Przeczytane</StatusBadge> : <StatusBadge tone="wait">Nie przeczytał(a)</StatusBadge>}
+              />
+            ))}
+          </div>
+        )}
+      </Stack>
+    );
   return (
     <>
       <Group p="sm" gap="xs" style={{ borderBottom: "1px solid var(--apt-line)" }}>
@@ -250,8 +294,12 @@ export function BroadcastsPage() {
           subtitle: cStep === 1 ? "Krok 1 z 2 · Do kogo" : `Krok 2 z 2 · Treść · ${audience}${preview.data ? `, ${preview.data.total} os.` : ""}`,
           onBack: () => (cStep === 2 ? setCStep(1) : back()),
         }
-      : null,
+      : mobile && b
+        ? { title: b.subject, subtitle: `${b.kind === "document" ? "Dokument · " : ""}${b.target} · ${formatDateTime(b.created_at)}`, onBack: () => back() }
+        : null,
   );
+  // przesunięcie palcem w bok przełącza „Komunikat” ↔ „Dokument do zapoznania się” (jak zakładki)
+  useSwipeAnywhere(!!mobile && composing && cStep === 2, () => setKind("document"), () => setKind("info"));
   const mobileComposer = (
     <div className="ui-inpage">
       <div className="ui-chat-body ui-form-body">
@@ -602,6 +650,45 @@ export function BroadcastsPage() {
   ) : b === null ? (
     <Stack h="100%" align="center" justify="center">
       <Text c="dimmed">Wybierz komunikat lub dodaj nowy („+”)</Text>
+    </Stack>
+  ) : mobile ? (
+    <Stack gap={16}>
+      <Segments
+        value={tab}
+        onChange={(v) => setTab(v === "read" ? "read" : "content")}
+        items={[
+          { value: "content", label: "Treść" },
+          { value: "read", label: `Kto przeczytał · ${b.read}/${b.total}` },
+        ]}
+      />
+      <SwipePager index={tab === "read" ? 1 : 0} onIndex={(i) => setTab(i === 1 ? "read" : "content")}>
+        {[
+          <Stack key="c" gap={16}>
+            {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
+            <FileDocs files={b.files} staff />
+            <Section title="Szczegóły">
+              <ListRow title="Odbiorcy" description={b.target} />
+              <ListRow title="Wysłał(a)" description={`${b.created_by_name ?? "—"} · ${formatDateTime(b.created_at)}`} />
+            </Section>
+            <Button
+              size="lg"
+              fullWidth
+              variant="default"
+              loading={arch.isPending}
+              disabled={!archive && !b.finished}
+              onClick={() => arch.mutate({ id: b.id, on: !archive })}
+            >
+              {archive ? "Przywróć z archiwum" : "Archiwizuj"}
+            </Button>
+            {!archive && !b.finished && (
+              <Text size="sm" c="dimmed">
+                Archiwizować można zakończony komunikat: przeczytany przez wszystkich albo starszy niż 3 dni. Po 30 dniach bez ruchu trafia do archiwum sam.
+              </Text>
+            )}
+          </Stack>,
+          <RecipientsPane key="r" id={b.id} mobile />,
+        ]}
+      </SwipePager>
     </Stack>
   ) : (
     <>

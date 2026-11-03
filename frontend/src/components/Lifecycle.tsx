@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Timeline, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -783,8 +783,32 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
 export function ChecklistTemplates() {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   if (q.isLoading) return <Loading />;
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
+  if (mobile) {
+    const kinds: Kind[] = ["onboarding", "offboarding"];
+    return (
+      <Stack gap={16}>
+        <Text size="sm" c="dimmed">
+          Każde zadanie może dotyczyć wszystkich albo wybranych APT i wydziałów.
+        </Text>
+        <Segments
+          value={kind}
+          onChange={(v) => setKind(v as Kind)}
+          items={[
+            { value: "onboarding", label: `Wdrożenie · ${q.data.onboarding.length}` },
+            { value: "offboarding", label: `Odejście · ${q.data.offboarding.length}` },
+          ]}
+        />
+        <SwipePager index={kinds.indexOf(kind)} onIndex={(i) => setKind(kinds[i])}>
+          {kinds.map((k) => (
+            <TemplatePanel key={k} kind={k} data={q.data!} />
+          ))}
+        </SwipePager>
+      </Stack>
+    );
+  }
   return (
     <Stack>
       <Text size="sm" c="dimmed">

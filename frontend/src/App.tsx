@@ -1,3 +1,4 @@
+import { TranslationsPage } from "./pages/TranslationsPage";
 import { HelpPage } from "./pages/HelpPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { lazy, Suspense, type ReactNode } from "react";
@@ -323,6 +324,14 @@ export function App() {
           element={
             <RequireAuth roles={["admin", "hr"]}>
               <WorkQueuePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="tlumaczenia"
+          element={
+            <RequireAuth roles={["admin"]}>
+              <TranslationsPage />
             </RequireAuth>
           }
         />

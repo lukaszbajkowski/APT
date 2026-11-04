@@ -319,6 +319,13 @@ cd backend && pytest
 
 Dokumentacja API: http://localhost:8000/api/docs
 
+## Tłumaczenia aplikacji
+
+Kolejność: **poprawka administratora** (ekran „Tłumaczenia”, `/tlumaczenia`) → **słownik sprawdzonych słów**
+(`backend/app/i18n_glossary.py`, ukraiński / rosyjski / angielski) → **Google** (zapamiętane w bazie po pierwszym użyciu).
+Google tłumaczy napisy pojedynczo i bez kontekstu, dlatego krótkie etykiety („Język”, „Kadry”, „Brak”) są w słowniku.
+Język aplikacji ustawia się sam z języka telefonu, dopóki pracownik nie wybierze go w menu konta (także „Polski”).
+
 ## Pomoc i prywatność, wyszukiwarki, podgląd linku
 
 - **Pomoc i prywatność** (`/pomoc`, publiczna): kontakt w sprawie aplikacji i informacja o przetwarzaniu danych (RODO).

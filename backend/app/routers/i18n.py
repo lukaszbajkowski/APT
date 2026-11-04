@@ -1,13 +1,16 @@
 """Język aplikacji pracownika: zapis wyboru na koncie oraz tłumaczenie stałych tekstów ekranów."""
 
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 
-from app import i18n, translate
+from app import i18n, i18n_glossary, translate
 from app.audit import audit
-from app.deps import Auth, DbSession
+from app.deps import AdminAuth, Auth, DbSession, utcnow
 from app.hardening import limiter
-from app.models import Role
+from app.models import Role, UiTranslation
 
 router = APIRouter(prefix="/api/i18n", tags=["i18n"])
 
@@ -104,3 +107,121 @@ def set_language(body: LanguageIn, ctx: Auth, request: Request, db: DbSession) -
     ctx.user.language = lang or None
     audit(db, request, "language_changed", user=ctx.user, details={"language": lang})
     db.commit()
+
+
+# ——— ekran „Tłumaczenia” (administrator): przegląd i ręczne poprawki ———
+
+
+class AdminLang(BaseModel):
+    code: str
+    count: int
+    manual: int
+
+
+class AdminRow(BaseModel):
+    source: str
+    text: str
+    origin: str  # manual | glossary | google
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+
+
+class AdminList(BaseModel):
+    items: list[AdminRow]
+    total: int
+    without_source: int
+
+
+class FixIn(BaseModel):
+    lang: str = Field(min_length=2, max_length=12)
+    source: str = Field(min_length=1, max_length=i18n.MAX_LEN)
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class ResetIn(BaseModel):
+    lang: str = Field(min_length=2, max_length=12)
+    source: str = Field(min_length=1, max_length=i18n.MAX_LEN)
+
+
+def _admin_lang(code: str) -> str:
+    if not i18n.valid_lang(code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy język.")
+    return code
+
+
+@router.get("/admin/languages", response_model=list[AdminLang])
+def admin_languages(ctx: AdminAuth, db: DbSession) -> list[AdminLang]:
+    """Języki, w których są już tłumaczenia (z liczbą wpisów i ręcznych poprawek), plus języki słownika."""
+    rows = db.execute(
+        select(UiTranslation.lang, func.count(), func.count().filter(UiTranslation.manual.is_(True))).group_by(
+            UiTranslation.lang
+        )
+    ).all()
+    out = {r[0]: AdminLang(code=r[0], count=r[1], manual=r[2]) for r in rows}
+    for code in i18n_glossary.LANGS:
+        out.setdefault(code, AdminLang(code=code, count=0, manual=0))
+    return sorted(out.values(), key=lambda x: (-x.count, x.code))
+
+
+@router.get("/admin/translations", response_model=AdminList)
+def admin_translations(
+    ctx: AdminAuth, db: DbSession, lang: str, q: str = "", origin: str = "", offset: int = 0, limit: int = 50
+) -> AdminList:
+    lang = _admin_lang(lang)
+    limit = max(1, min(limit, 200))
+    stored = {r.source: r for r in db.scalars(select(UiTranslation).where(UiTranslation.lang == lang)) if r.source}
+    without = db.scalar(
+        select(func.count()).select_from(UiTranslation).where(UiTranslation.lang == lang, UiTranslation.source.is_(None))
+    )
+    merged: dict[str, AdminRow] = {}
+    for src, text in i18n_glossary.entries(lang).items():
+        merged[src] = AdminRow(source=src, text=text, origin="glossary")
+    for src, r in stored.items():
+        if r.manual:
+            merged[src] = AdminRow(source=src, text=r.text, origin="manual", updated_by_name=r.updated_by_name, updated_at=r.updated_at)
+        elif src not in merged:
+            merged[src] = AdminRow(source=src, text=r.text, origin="google")
+    items = list(merged.values())
+    if origin in ("manual", "glossary", "google"):
+        items = [i for i in items if i.origin == origin]
+    if q.strip():
+        needle = q.strip().lower()
+        items = [i for i in items if needle in i.source.lower() or needle in i.text.lower()]
+    # najpierw krótkie etykiety (tam najczęściej brakuje kontekstu), potem alfabetycznie
+    items.sort(key=lambda i: (len(i.source) > 40, i.source.lower()))
+    return AdminList(items=items[offset : offset + limit], total=len(items), without_source=without or 0)
+
+
+@router.put("/admin/translations", response_model=AdminRow)
+def admin_fix(body: FixIn, ctx: AdminAuth, request: Request, db: DbSession) -> AdminRow:
+    """Ręczna poprawka: zapisuje się na stałe, ma pierwszeństwo przed słownikiem i Google."""
+    lang = _admin_lang(body.lang)
+    text = body.text.strip()
+    if sorted(i18n._VAR.findall(text)) != sorted(i18n._VAR.findall(body.source)):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Tłumaczenie musi zawierać te same pola w nawiasach klamrowych co oryginał, np. {imie}.",
+        )
+    row = db.get(UiTranslation, (lang, i18n.key(body.source)))
+    if row is None:
+        row = UiTranslation(lang=lang, source_hash=i18n.key(body.source))
+        db.add(row)
+    row.source = body.source
+    row.text = text
+    row.manual = True
+    row.updated_by_name = ctx.user.full_name
+    row.updated_at = utcnow()
+    audit(db, request, "ui_translation_fixed", user=ctx.user, details={"lang": lang, "source": body.source[:120]})
+    db.commit()
+    return AdminRow(source=row.source, text=row.text, origin="manual", updated_by_name=row.updated_by_name, updated_at=row.updated_at)
+
+
+@router.post("/admin/translations/reset", status_code=status.HTTP_204_NO_CONTENT)
+def admin_reset(body: ResetIn, ctx: AdminAuth, request: Request, db: DbSession) -> None:
+    """Cofa poprawkę / zapamiętane tłumaczenie: przy kolejnym użyciu decyduje słownik albo Google."""
+    lang = _admin_lang(body.lang)
+    row = db.get(UiTranslation, (lang, i18n.key(body.source)))
+    if row is not None:
+        db.delete(row)
+        audit(db, request, "ui_translation_reset", user=ctx.user, details={"lang": lang, "source": body.source[:120]})
+        db.commit()

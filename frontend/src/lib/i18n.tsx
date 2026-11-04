@@ -246,7 +246,7 @@ export function LanguagePicker({ size = "sm", inMenu }: { size?: "xs" | "sm"; in
       data={data}
       value={current ?? "pl"}
       onChange={(v) => void choose(v)}
-      aria-label={t("Język")}
+      aria-label={t("Język aplikacji")}
       comboboxProps={inMenu ? IN_MENU_COMBOBOX : { withinPortal: true }}
     />
   );

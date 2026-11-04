@@ -955,6 +955,12 @@ class UiTranslation(Base):
     source_hash: Mapped[str] = mapped_column(String(40), primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # polski oryginał (do ekranu „Tłumaczenia”; starsze wpisy uzupełniają się przy kolejnym użyciu)
+    source: Mapped[str | None] = mapped_column(Text)
+    # poprawka administratora – nie nadpisuje jej ani słownik, ani Google
+    manual: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_by_name: Mapped[str | None] = mapped_column(String(200))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SiteInfo(Base):

@@ -35,11 +35,11 @@ def _provider(monkeypatch):
 
 
 def test_strings_are_cached_and_variables_protected(me):  # noqa: F811
-    body = {"lang": "uk", "strings": ["Do podpisu", "Dzień dobry {imie}", "Do podpisu"]}
+    body = {"lang": "uk", "strings": ["Dokumenty czekające", "Dzień dobry {imie}", "Dokumenty czekające"]}
     r = me.post("/api/i18n/strings", json=body)
     assert r.status_code == 200
     tr = r.json()["translations"]
-    assert tr["Do podpisu"] == "[uk] Do podpisu"
+    assert tr["Dokumenty czekające"] == "[uk] Dokumenty czekające"
     assert tr["Dzień dobry {imie}"] == "[uk] Dzień dobry {imie}"
     assert calls[0]["format"] == "html" and len(calls[0]["q"]) == 2
     assert '<span translate="no">{imie}</span>' in calls[0]["q"][1]
@@ -49,8 +49,8 @@ def test_strings_are_cached_and_variables_protected(me):  # noqa: F811
 
 
 def test_public_endpoint_and_validation(client):
-    r = client.post("/api/i18n/public", json={"lang": "uk", "strings": ["Podpisz"]})
-    assert r.status_code == 200 and r.json()["translations"]["Podpisz"] == "[uk] Podpisz"
+    r = client.post("/api/i18n/public", json={"lang": "uk", "strings": ["Podpisz dokument"]})
+    assert r.status_code == 200 and r.json()["translations"]["Podpisz dokument"] == "[uk] Podpisz dokument"
     assert client.post("/api/i18n/public", json={"lang": "x", "strings": ["a"]}).status_code in (400, 422)
     assert client.post("/api/i18n/public", json={"lang": "pl", "strings": ["a"]}).status_code == 400
     long = {"lang": "uk", "strings": ["a" * 700]}
@@ -186,3 +186,31 @@ def test_language_polish_choice_is_remembered(me):  # noqa: F811
     assert me.get("/api/auth/me").json()["user"]["language"] == "pl"
     assert me.put("/api/i18n/language", json={"language": None}).status_code == 204
     assert me.get("/api/auth/me").json()["user"]["language"] is None
+
+
+def test_glossary_beats_google_and_admin_fix_beats_glossary(admin_client):
+    c = admin_client
+    # słowo ze słownika nie idzie do Google
+    r = c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język", "Zupełnie nowy napis"]})
+    tr = r.json()["translations"]
+    assert tr["Język"] == "Language" and tr["Zupełnie nowy napis"] == "[en] Zupełnie nowy napis"
+    assert all("Język" not in q for call in calls for q in call.get("q", []))
+    # ekran „Tłumaczenia”: lista z pochodzeniem wpisu
+    rows = c.get("/api/i18n/admin/translations", params={"lang": "en", "q": "Zupełnie"}).json()
+    assert rows["items"][0]["origin"] == "google" and rows["items"][0]["source"] == "Zupełnie nowy napis"
+    # poprawka administratora wygrywa ze słownikiem
+    assert c.put("/api/i18n/admin/translations", json={"lang": "en", "source": "Język", "text": "App language"}).status_code == 200
+    assert c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"] == "App language"
+    # pola {zmienna} muszą zostać
+    bad = c.put("/api/i18n/admin/translations", json={"lang": "en", "source": "Dzień dobry {imie}", "text": "Hello"})
+    assert bad.status_code == 422
+    # cofnięcie poprawki → znowu słownik
+    assert c.post("/api/i18n/admin/translations/reset", json={"lang": "en", "source": "Język"}).status_code == 204
+    assert c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"] == "Language"
+    langs = {x["code"] for x in c.get("/api/i18n/admin/languages").json()}
+    assert {"uk", "ru", "en"} <= langs
+
+
+def test_admin_translations_forbidden_for_others(me):  # noqa: F811
+    assert me.get("/api/i18n/admin/translations", params={"lang": "uk"}).status_code == 403
+    assert me.put("/api/i18n/admin/translations", json={"lang": "uk", "source": "a", "text": "b"}).status_code == 403

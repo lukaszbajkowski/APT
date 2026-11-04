@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import translate
+from app import i18n_glossary, translate
 from app.audit import audit
 from app.models import UiTranslation
 
@@ -63,20 +63,32 @@ def translate_many(db: Session, texts: Iterable[str], lang: str, request=None, u
     result: dict[str, str] = {}
     if not uniq:
         return result
-    have = {
-        r.source_hash: r.text
+    rows = {
+        r.source_hash: r
         for r in db.scalars(
             select(UiTranslation).where(
                 UiTranslation.lang == lang, UiTranslation.source_hash.in_([key(t) for t in uniq])
             )
         )
     }
+    # kolejność: poprawka administratora → słownik sprawdzonych słów → zapamiętane tłumaczenie → Google
     missing = []
+    backfill = False
     for t in uniq:
-        if key(t) in have:
-            result[t] = have[key(t)]
+        row = rows.get(key(t))
+        if row is not None and row.source is None:
+            row.source = t  # starszy wpis bez oryginału – uzupełniamy przy okazji
+            backfill = True
+        if row is not None and row.manual:
+            result[t] = row.text
+        elif (g := i18n_glossary.lookup(t, lang)) is not None:
+            result[t] = g
+        elif row is not None:
+            result[t] = row.text
         else:
             missing.append(t)
+    if backfill:
+        db.commit()
     if not missing or not translate.enabled():
         return result
     for i in range(0, len(missing), BATCH):
@@ -86,7 +98,7 @@ def translate_many(db: Session, texts: Iterable[str], lang: str, request=None, u
             break
         done = _fetch(chunk, lang)
         for t, o in zip(chunk, done, strict=True):
-            db.merge(UiTranslation(lang=lang, source_hash=key(t), text=o))
+            db.merge(UiTranslation(lang=lang, source_hash=key(t), text=o, source=t))
             result[t] = o
         audit(
             db,

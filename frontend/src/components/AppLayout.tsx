@@ -105,6 +105,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/retencja": "Retencja danych",
   "/stan-systemu": "Stan systemu",
   "/komunikaty-techniczne": "Komunikaty techniczne",
+  "/tlumaczenia": "Tłumaczenia",
   "/dziennik": "Dziennik zdarzeń",
   "/wzornik": "Wzornik",
   "/moje-konto": "Moje konto",
@@ -303,6 +304,7 @@ function AppLayoutInner() {
     { to: "/retencja", label: "Retencja danych", icon: IconClockShield, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/stan-systemu", label: "Stan systemu", icon: IconHeartbeat, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/komunikaty-techniczne", label: "Komunikaty techniczne", icon: IconTool, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/tlumaczenia", label: "Tłumaczenia", icon: IconLanguage, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: ADMIN_GROUP },
   ].filter((i) => i.show);
 
@@ -606,7 +608,7 @@ function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
         <Menu.Divider />
         {hasRole("employee") && (
           <>
-            <Menu.Label>{t("Język")}</Menu.Label>
+            <Menu.Label>{t("Język aplikacji")}</Menu.Label>
             <Box px="xs" pb="xs">
               <LanguagePicker size="xs" inMenu />
             </Box>

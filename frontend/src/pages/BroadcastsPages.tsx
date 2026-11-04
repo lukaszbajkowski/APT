@@ -4,12 +4,12 @@ import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButt
 import { Select } from "../components/AptSelect";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
 import { PageSheet } from "../components/PageSheet";
-import { DocumentViewer } from "../components/DocumentViewer";
+import { breakableName, DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../lib/i18n";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
@@ -48,39 +48,48 @@ interface Recipient {
   read_at: string | null;
 }
 
-/** Dokument pokazany jak w podglądzie: strony jako obrazy ze znakiem wodnym, bez pobierania pliku. */
+/**
+ * Załącznik komunikatu: karta pliku (ikona, pełna nazwa, liczba stron, „Pełny ekran”) i pod nią strony jako obrazy
+ * ze znakiem wodnym, bez pobierania pliku. Dotknięcie nagłówka albo stron otwiera dokument na pełnym ekranie.
+ */
 function InlineDoc({ base }: { base: string }) {
+  const t = useT();
   const info = useQuery({ queryKey: ["bc-doc", base], queryFn: () => api<{ pages: number; title: string }>(base), gcTime: 0 });
   const [full, setFull] = useState(false);
   if (info.isLoading) return <Loading />;
   if (info.error || !info.data) return <Alert color="red">{errorText(info.error)}</Alert>;
+  const { title, pages } = info.data;
+  const ext = /\.([a-z0-9]{2,4})$/i.exec(title)?.[1]?.toUpperCase();
+  const few = pages % 10 >= 2 && pages % 10 <= 4 && (pages % 100 < 12 || pages % 100 > 14);
+  const count = pages === 1 ? t("1 strona") : `${pages} ${few ? t("strony") : t("stron")}`;
+  const open = () => setFull(true);
   return (
-    <Stack gap="xs" mt="xs">
-      <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <Text size="sm" fw={500} style={{ minWidth: 0, overflowWrap: "anywhere" }}>
-          {info.data.title}
-        </Text>
-        <Button size="compact-xs" variant="light" onClick={() => setFull(true)} style={{ flex: "none" }}>
-          Pełny ekran
-        </Button>
-      </Group>
-      <Stack
-        gap="sm"
+    <div className="ui-doc">
+      <UnstyledButton className="ui-doc-head" onClick={open} aria-label={`${t("Otwórz na pełnym ekranie")}: ${title}`}>
+        <span className="ui-row-icon" aria-hidden>
+          <IconFileText size={22} />
+        </span>
+        <span className="ui-doc-text">
+          <span className="ui-doc-name">{breakableName(title)}</span>
+          <span className="ui-doc-meta">{[ext, count].filter(Boolean).join(" · ")}</span>
+        </span>
+        <span className="ui-doc-open" aria-hidden>
+          <IconMaximize size={20} />
+        </span>
+      </UnstyledButton>
+      <div
+        className="ui-doc-pages"
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
-        role="button"
-        tabIndex={0}
-        aria-label={`Otwórz na pełnym ekranie: ${info.data.title}`}
-        onClick={() => setFull(true)}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setFull(true))}
-        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--apt-subtle)", padding: 8, borderRadius: 6, cursor: "zoom-in" }}
+        onClick={open}
+        aria-hidden
       >
-        {Array.from({ length: info.data.pages }, (_, i) => (
+        {Array.from({ length: pages }, (_, i) => (
           <PageSheet key={i} index={i} src={`/api${base}/page/${i}`} />
         ))}
-      </Stack>
+      </div>
       {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} variant="attachment" />}
-    </Stack>
+    </div>
   );
 }
 

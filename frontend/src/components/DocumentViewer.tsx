@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
@@ -9,6 +9,16 @@ import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
 import { ViewScreen } from "./Mobile";
+
+/** Nazwa pliku z miejscami łamania po „_”, „.”, „-” – długa nazwa zawija się w całych członach, a nie w środku słowa. */
+export function breakableName(name: string) {
+  return name.split(/(?<=[_.\-])/).map((part, i) => (
+    <Fragment key={i}>
+      {part}
+      <wbr />
+    </Fragment>
+  ));
+}
 
 /** „1 strona”, „3 strony”, „5 stron” */
 function pagesText(n: number, T: (s: string) => string) {
@@ -161,7 +171,7 @@ export function DocumentViewer({
         }
       >
         <div>
-          <h2 className="ui-view-title">{title}</h2>
+          <h2 className="ui-view-title">{breakableName(title)}</h2>
           {q.data?.signed && (
             <Badge color="teal" variant="light" mt={6}>
               {T("wersja podpisana")}

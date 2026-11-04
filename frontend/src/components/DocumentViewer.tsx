@@ -162,9 +162,6 @@ export function DocumentViewer({
       >
         <div>
           <h2 className="ui-view-title">{title}</h2>
-          <Text size="sm" c="dimmed" mt={4}>
-            {T("Dotknij dokumentu albo ✕, aby zamknąć")}
-          </Text>
           {q.data?.signed && (
             <Badge color="teal" variant="light" mt={6}>
               {T("wersja podpisana")}

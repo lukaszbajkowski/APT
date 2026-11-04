@@ -56,11 +56,11 @@ function InlineDoc({ base }: { base: string }) {
   if (info.error || !info.data) return <Alert color="red">{errorText(info.error)}</Alert>;
   return (
     <Stack gap="xs" mt="xs">
-      <Group justify="space-between">
-        <Text size="sm" fw={500}>
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Text size="sm" fw={500} style={{ minWidth: 0, overflowWrap: "anywhere" }}>
           {info.data.title}
         </Text>
-        <Button size="compact-xs" variant="light" onClick={() => setFull(true)}>
+        <Button size="compact-xs" variant="light" onClick={() => setFull(true)} style={{ flex: "none" }}>
           Pełny ekran
         </Button>
       </Group>
@@ -68,7 +68,12 @@ function InlineDoc({ base }: { base: string }) {
         gap="sm"
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
-        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--apt-subtle)", padding: 8, borderRadius: 6 }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Otwórz na pełnym ekranie: ${info.data.title}`}
+        onClick={() => setFull(true)}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setFull(true))}
+        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", background: "var(--apt-subtle)", padding: 8, borderRadius: 6, cursor: "zoom-in" }}
       >
         {Array.from({ length: info.data.pages }, (_, i) => (
           <PageSheet key={i} index={i} src={`/api${base}/page/${i}`} />

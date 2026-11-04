@@ -22,6 +22,8 @@ export interface MobileHeader {
   /** tytuł po przewinięciu poniżej nagłówka ekranu (np. imię i nazwisko zamiast „Pracownik”) */
   scrolledTitle?: string;
   scrolledSubtitle?: string;
+  /** podgląd na pełnym ekranie: zamiast strzałki i menu konta krzyżyk „Zamknij” po prawej (wywołuje onBack) */
+  close?: boolean;
 }
 const HeaderCtx = createContext<{ header: MobileHeader; set: (h: MobileHeader | null) => void }>({ header: {}, set: () => undefined });
 
@@ -762,7 +764,7 @@ export function ViewScreen({
   cb.current = onClose;
   useNavHeightVar();
   useEffect(() => {
-    set({ title, subtitle, onBack: () => cb.current() });
+    set({ title, subtitle, onBack: () => cb.current(), close: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, subtitle]);
   // eslint-disable-next-line react-hooks/exhaustive-deps

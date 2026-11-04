@@ -99,7 +99,7 @@ export function DocumentViewer({
         className="doc-viewer"
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
-        onClick={() => hidden && setHidden(false)}
+        onClick={() => (hidden ? setHidden(false) : undefined)}
         style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", position: "relative" }}
       >
         {q.isLoading && (
@@ -107,7 +107,14 @@ export function DocumentViewer({
         )}
         {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
         {q.data && (
-          <Stack gap="md" align="center" py="md" style={{ filter: hidden ? "blur(28px)" : undefined, transition: "filter .1s" }}>
+          <Stack
+            gap="md"
+            align="center"
+            py="md"
+            title={T("Kliknij dokument, aby go zamknąć")}
+            onClick={() => !hidden && onClose()}
+            style={{ filter: hidden ? "blur(28px)" : undefined, transition: "filter .1s", cursor: "zoom-out" }}
+          >
             {Array.from({ length: q.data.pages }, (_, i) => (
               <PageSheet key={i} index={i} src={`/api${pageUrl(i)}`} maw={900} />
             ))}
@@ -155,6 +162,9 @@ export function DocumentViewer({
       >
         <div>
           <h2 className="ui-view-title">{title}</h2>
+          <Text size="sm" c="dimmed" mt={4}>
+            {T("Dotknij dokumentu albo ✕, aby zamknąć")}
+          </Text>
           {q.data?.signed && (
             <Badge color="teal" variant="light" mt={6}>
               {T("wersja podpisana")}

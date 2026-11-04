@@ -26,6 +26,7 @@ import {
   IconChecklist,
   IconChevronDown,
   IconChevronLeft,
+  IconX,
   IconChevronRight,
   IconClipboardCheck,
   IconClockShield,
@@ -133,6 +134,7 @@ function MobileTopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const own = useMobileHeaderValue();
+  const t = useT();
   const { hasRole: role } = useAuth();
   const auto = headerFor(location.pathname);
   if (location.pathname === "/moje-konto" && !role("employee")) auto.title = "Logowanie i powiadomienia";
@@ -154,7 +156,9 @@ function MobileTopBar() {
   const showTitle = !!back || !!own.title || scrolled;
   return (
     <div className="topbar">
-      {back ? (
+      {own.close ? (
+        <span className="topbar-btn" aria-hidden />
+      ) : back ? (
         <UnstyledButton
           className="topbar-btn"
           aria-label="Wróć"
@@ -169,7 +173,13 @@ function MobileTopBar() {
         <span className="topbar-title-main">{title}</span>
         {subtitle && <span className="topbar-title-sub">{subtitle}</span>}
       </div>
-      <AccountMenu compact />
+      {own.close ? (
+        <UnstyledButton className="topbar-btn" aria-label={t("Zamknij")} onClick={() => own.onBack?.()}>
+          <IconX size={26} stroke={2.2} />
+        </UnstyledButton>
+      ) : (
+        <AccountMenu compact />
+      )}
     </div>
   );
 }

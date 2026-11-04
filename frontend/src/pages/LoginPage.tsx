@@ -2,7 +2,7 @@ import { BrandMark } from "../components/AppLayout";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Box, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Box, Button, Center, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconQrcode, IconShieldLock } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -186,7 +186,12 @@ export function LoginPage() {
       setMe(result);
       navigate(nextPath(result, from), { replace: true });
     } catch (err) {
-      setError(passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."));
+      // wskazówki do logowania telefonem dopiero wtedy, gdy się nie udało – ekran logowania zostaje prosty
+      setError(
+        phone && err instanceof DOMException && err.name === "NotAllowedError"
+          ? "Logowanie telefonem nie udało się albo zostało anulowane. Włącz Bluetooth na komputerze i telefonie i spróbuj ponownie. Jeśli zamiast kodu QR widzisz okno z wyborem, wybierz w nim „Użyj telefonu lub tabletu” albo „Inne urządzenie”."
+          : passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."),
+      );
     } finally {
       setBusy(false);
       loadChallenge();
@@ -265,30 +270,33 @@ export function LoginPage() {
                 {T("Zaloguj")}
               </Button>
               {passkeysSupported() && (
-                <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={() => passkeyLogin()}>
-                  {T("Zaloguj kluczem dostępu")}
-                </Button>
-              )}
-              {/* na komputerze: klucz jest w telefonie – kod QR do zeskanowania telefonem */}
-              {passkeysSupported() && !touch && (
-                <Stack gap={6}>
-                  <Button type="button" variant="default" fullWidth leftSection={<IconQrcode size={18} />} loading={busy} onClick={() => passkeyLogin(true)}>
-                    {T("Zaloguj telefonem (kod QR)")}
+                <>
+                  <Divider label={T("lub")} labelPosition="center" />
+                  <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={() => passkeyLogin()}>
+                    {T("Zaloguj kluczem dostępu")}
                   </Button>
-                  <Text size="sm" c="dimmed" ta="center">
-                    {T("Klucz masz na telefonie? Zeskanuj kod QR aparatem telefonu. Na komputerze włącz Bluetooth.")}
-                  </Text>
-                  <Text size="xs" c="dimmed" ta="center">
-                    {T("Jeśli zamiast kodu zobaczysz okno z wyborem, wybierz w nim „Użyj telefonu lub tabletu”, „Inne urządzenie” albo „iPhone, iPad lub urządzenie z Androidem”.")}
-                  </Text>
-                </Stack>
+                  {/* na komputerze: klucz jest w telefonie – kod QR do zeskanowania telefonem */}
+                  {!touch && (
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      size="sm"
+                      fullWidth
+                      leftSection={<IconQrcode size={16} />}
+                      disabled={busy}
+                      onClick={() => passkeyLogin(true)}
+                    >
+                      {T("Klucz na telefonie? Zaloguj kodem QR")}
+                    </Button>
+                  )}
+                </>
               )}
               {config.data?.password_reset ? (
                 <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">
                   {T("Nie pamiętasz hasła?")}
                 </Anchor>
               ) : (
-                <Text size="sm" c="dimmed" ta="center">
+                <Text size="xs" c="dimmed" ta="center">
                   {T("Nie pamiętasz hasła? Poproś administratora o reset.")}
                 </Text>
               )}

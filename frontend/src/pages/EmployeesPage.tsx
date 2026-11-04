@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Menu, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Menu, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
@@ -134,6 +135,14 @@ export function EmployeesPage() {
     } finally {
       setSelectingAll(false);
     }
+  }
+
+  const lastPicked = useRef<number | null>(null);
+  /** kliknięcie pola wiersza na komputerze: z Shift zaznacza zakres od ostatnio klikniętego */
+  function pickRow(id: number, shift: boolean) {
+    const ids = list.data?.items.map((e) => e.id) ?? [];
+    setSelected((prev) => rangeToggle(ids, lastPicked.current, id, shift, prev));
+    lastPicked.current = id;
   }
 
   function toggle(id: number) {
@@ -641,13 +650,13 @@ export function EmployeesPage() {
         </Group>
       </Collapse>
 
-      {canPrint && list.data && list.data.total > 0 && selected.size === 0 && (
+      {canPrint && list.data && list.data.total > 0 && (
         <Group justify="space-between" gap="xs">
-          <Text size="xs" c="dimmed" visibleFrom="sm">
-            Zaznacz pola przy nazwiskach, aby drukować karty lub wystawiać dokumenty.
+          <Text size="xs" c="dimmed" visibleFrom="sm" style={{ visibility: selected.size ? "hidden" : undefined }}>
+            Zaznacz pola przy nazwiskach, aby drukować karty lub wystawiać dokumenty. Shift + kliknięcie zaznacza zakres.
           </Text>
           <Group gap="xs">
-            {!mobile && (
+            {!mobile && selected.size === 0 && (
               <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
                 Zaznacz wszystkie ({list.data.total})
               </Button>
@@ -655,65 +664,6 @@ export function EmployeesPage() {
             {exportMenu}
           </Group>
         </Group>
-      )}
-
-      {canPrint && list.data && list.data.total > 0 && selected.size > 0 && (
-        <Paper withBorder px="md" py={8} className={selected.size ? "row-selected" : undefined}>
-          <Group justify="space-between" gap="xs">
-            <Text size="sm">
-              {selected.size ? (
-                <>
-                  Zaznaczono: <b>{selected.size}</b>
-                </>
-              ) : (
-                "Zaznacz osoby, aby wydrukować karty."
-              )}
-            </Text>
-            <Group gap="xs">
-              {selected.size < list.data.total && (
-                <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
-                  Zaznacz wszystkie wyniki ({list.data.total})
-                </Button>
-              )}
-              {selected.size > 0 && (
-                <Button size="xs" variant="subtle" color="gray" onClick={() => setSelected(new Set())}>
-                  Wyczyść
-                </Button>
-              )}
-              <Button
-                size="xs"
-                leftSection={<IconPrinter size={14} />}
-                disabled={selected.size === 0}
-                onClick={() => setPrintOpen(true)}
-              >
-                Drukuj karty{selected.size ? ` (${selected.size})` : ""}
-              </Button>
-              {staff && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconFileText size={14} />}
-                  disabled={selected.size === 0}
-                  onClick={() => setDocsOpen(true)}
-                >
-                  Dokument{selected.size ? ` (${selected.size})` : ""}
-                </Button>
-              )}
-              {staff && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconCertificate size={14} />}
-                  disabled={selected.size === 0 || selected.size > 200}
-                  onClick={() => setTrainingOpen(true)}
-                >
-                  Szkolenie{selected.size ? ` (${selected.size})` : ""}
-                </Button>
-              )}
-              {exportMenu}
-            </Group>
-          </Group>
-        </Paper>
       )}
 
       {list.isLoading && <Loading />}
@@ -820,7 +770,8 @@ export function EmployeesPage() {
                       <Checkbox
                         aria-label={`Zaznacz ${e.last_name} ${e.first_name}`}
                         checked={selected.has(e.id)}
-                        onChange={() => toggle(e.id)}
+                        onChange={() => undefined}
+                        onClick={(ev) => pickRow(e.id, ev.shiftKey)}
                       />
                     </Table.Td>
                   )}
@@ -851,6 +802,35 @@ export function EmployeesPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+      )}
+
+      {canPrint && list.data && !mobile && (
+        <SelectionBar
+          count={selected.size}
+          total={list.data.total}
+          onSelectAll={selectAllResults}
+          selectingAll={selectingAll}
+          onClear={() => {
+            setSelected(new Set());
+            lastPicked.current = null;
+          }}
+        >
+          <Button size="sm" leftSection={<IconPrinter size={16} />} onClick={() => setPrintOpen(true)}>
+            Drukuj karty ({selected.size})
+          </Button>
+          {staff && (
+            <Button size="sm" variant="default" leftSection={<IconFileText size={16} />} onClick={() => setDocsOpen(true)}>
+              Dokument ({selected.size})
+            </Button>
+          )}
+          {staff && (
+            <Tooltip label="Najwyżej 200 osób naraz" disabled={selected.size <= 200} withArrow>
+              <Button size="sm" variant="default" leftSection={<IconCertificate size={16} />} disabled={selected.size > 200} onClick={() => setTrainingOpen(true)}>
+                Szkolenie ({selected.size})
+              </Button>
+            </Tooltip>
+          )}
+        </SelectionBar>
       )}
 
       {list.data && list.data.total > PAGE_SIZE && (

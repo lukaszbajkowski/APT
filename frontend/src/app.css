@@ -57,6 +57,20 @@ html, body { background: var(--apt-ground); }
 .row-selected:hover {
   background: var(--mantine-primary-color-light) !important;
 }
+/* zaznaczony wiersz: pasek w kolorze akcentu po lewej (w tabeli na pierwszej komórce, bo <tr> nie rysuje cienia) */
+.row-selected:not(tr), tr.row-selected > td:first-child { box-shadow: inset 3px 0 0 var(--mantine-primary-color-filled); }
+
+/* pasek zaznaczenia (komputer) – przyklejony do dołu ekranu nad listą */
+.ui-bulkbar { position: sticky; bottom: 16px; z-index: 30; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 8px 10px 8px 8px; border-radius: 14px; background: var(--apt-surface); border: 1px solid var(--apt-line); box-shadow: 0 10px 30px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .08); animation: ui-bulkbar-in .18s ease-out; }
+.ui-bulkbar-count { font-size: 14px; white-space: nowrap; }
+.ui-bulkbar-count b { font-size: 18px; font-weight: 800; color: var(--mantine-primary-color-text); font-variant-numeric: tabular-nums; margin: 0 2px; }
+.ui-bulkbar-of { color: var(--mantine-color-dimmed); }
+.ui-bulkbar-all .mantine-Button-label { text-decoration: underline; text-underline-offset: 3px; }
+.ui-bulkbar-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@keyframes ui-bulkbar-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ui-bulkbar { animation: none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-mantine-color-scheme="light"]) .ui-bulkbar { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
+[data-mantine-color-scheme="dark"] .ui-bulkbar { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
 
 .brand-link {
   color: inherit;

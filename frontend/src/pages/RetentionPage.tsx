@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { rangeToggle } from "../components/SelectionBar";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -132,7 +133,12 @@ export function RetentionPage() {
   if (data.error || !data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const d = data.data;
   const allDue = d.due.map((i) => i.id);
-  const toggle = (id: number) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const lastPicked = useRef<number | null>(null);
+  /** kliknięcie pola na komputerze: z Shift zaznacza zakres od ostatnio klikniętego */
+  const pickRow = (id: number, shift: boolean) => {
+    setSelected((s) => [...rangeToggle(allDue, lastPicked.current, id, shift, new Set(s))]);
+    lastPicked.current = id;
+  };
   const openHold = (i: RetentionItem) => {
     setHoldFor(i);
     setHoldUntil("");
@@ -308,7 +314,7 @@ export function RetentionPage() {
             {d.due.map((i) => (
               <Table.Tr key={i.id} className={selected.includes(i.id) ? "row-selected" : undefined}>
                 <Table.Td>
-                  <Checkbox aria-label={`Zaznacz ${i.name}`} checked={selected.includes(i.id)} onChange={() => toggle(i.id)} />
+                  <Checkbox aria-label={`Zaznacz ${i.name}`} checked={selected.includes(i.id)} onChange={() => undefined} onClick={(ev) => pickRow(i.id, ev.shiftKey)} />
                 </Table.Td>
                 <Table.Td>
                   <PersonCell item={i} />

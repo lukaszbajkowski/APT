@@ -63,6 +63,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../auth";
+import { ScreenErrorBoundary } from "./ErrorBoundary";
 import { SimulationBanner, SimulationMenu } from "./Simulation";
 import { NetworkBanner } from "./States";
 import { ServiceNoticeBanner } from "./ServiceNotices";
@@ -413,7 +414,9 @@ function AppLayoutInner() {
           </Text>
         )}
         <Box maw={1440} mx="auto" className="ui-route" key={location.pathname}>
-          <Outlet />
+          <ScreenErrorBoundary>
+            <Outlet />
+          </ScreenErrorBoundary>
         </Box>
         {/* na telefonie informacja nie spycha tytułu ekranu – stoi pod treścią */}
         {lang && lang !== "pl" && hasRole("employee") && mobile && (

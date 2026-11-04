@@ -90,6 +90,8 @@ export function RetentionPage() {
   const [sheet, setSheet] = useState<null | { kind: "all" | "due" | "held"; item?: RetentionItem }>(null);
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const navigate = useNavigate();
+  // ostatnio kliknięty wiersz (Shift + kliknięcie zaznacza zakres) – hook przed wczesnymi return
+  const lastPicked = useRef<number | null>(null);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["retention"] });
@@ -133,7 +135,6 @@ export function RetentionPage() {
   if (data.error || !data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const d = data.data;
   const allDue = d.due.map((i) => i.id);
-  const lastPicked = useRef<number | null>(null);
   /** kliknięcie pola na komputerze: z Shift zaznacza zakres od ostatnio klikniętego */
   const pickRow = (id: number, shift: boolean) => {
     setSelected((s) => [...rangeToggle(allDue, lastPicked.current, id, shift, new Set(s))]);

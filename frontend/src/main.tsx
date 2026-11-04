@@ -15,6 +15,7 @@ import { App } from "./App";
 import { AuthProvider } from "./auth";
 import { ConfirmProvider } from "./lib/confirm";
 import { I18nProvider } from "./lib/i18n";
+import { ScreenErrorBoundary } from "./components/ErrorBoundary";
 import { ApiError, errorText, serverDownStore } from "./api";
 import { ServiceGate } from "./components/ServiceNotices";
 import { notifications } from "@mantine/notifications";
@@ -78,7 +79,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <I18nProvider>
               <ConfirmProvider>
                 <ServiceGate>
-                  <App />
+                  <ScreenErrorBoundary>
+                    <App />
+                  </ScreenErrorBoundary>
                 </ServiceGate>
               </ConfirmProvider>
             </I18nProvider>

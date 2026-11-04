@@ -16,13 +16,9 @@ MAX_W = 1400
 def page_count(data: bytes, ext: str) -> int:
     if ext != "pdf":
         return 1
-    import pypdfium2 as pdfium
+    from app import pdfium_safe
 
-    doc = pdfium.PdfDocument(data)
-    try:
-        return len(doc)
-    finally:
-        doc.close()
+    return pdfium_safe.page_count(data)
 
 
 def _page_image(data: bytes, ext: str, page: int) -> Image.Image:
@@ -32,16 +28,13 @@ def _page_image(data: bytes, ext: str, page: int) -> Image.Image:
         img = Image.open(io.BytesIO(data))
         img.load()
         return img.convert("RGB")
-    import pypdfium2 as pdfium
+    from app import pdfium_safe
 
-    doc = pdfium.PdfDocument(data)
-    try:
-        doc.init_forms()  # pola formularza, w tym widoczny podpis z gov.pl / podpisu kwalifikowanego
-        if page < 0 or page >= len(doc):
-            raise IndexError(page)
-        return doc[page].render(scale=SCALE).to_pil().convert("RGB")
-    finally:
-        doc.close()
+    # pola formularza, w tym widoczny podpis z gov.pl / podpisu kwalifikowanego
+    img = pdfium_safe.page_image(data, page, SCALE, forms=True)
+    if img is None:
+        raise IndexError(page)
+    return img
 
 
 def watermark(img: Image.Image, viewer: str, when: datetime | None = None) -> Image.Image:

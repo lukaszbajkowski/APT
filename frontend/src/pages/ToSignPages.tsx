@@ -13,7 +13,7 @@ import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
 import { EmptyState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, FormScreen, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -133,6 +133,11 @@ export function ToSignPage() {
   const [error, setError] = useState<string | null>(null);
   const { me, accounts, switchAccount } = useAuth();
   const others = accounts.filter((a) => a.id !== me?.user.id && a.role === "employee");
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // telefon: krok 1 – przeczytaj, krok 2 – podpis; „trusted” = podpis zaufany / kwalifikowany (plik)
+  const [step, setStep] = useState<1 | 2>(1);
+  const [trusted, setTrusted] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const done = () => {
     qc.invalidateQueries({ queryKey: ["my-signatures"] });
     qc.invalidateQueries({ queryKey: ["my-sig-count"] });
@@ -209,6 +214,104 @@ export function ToSignPage() {
         </Button>
       </Stack>
     );
+  if (mobile) {
+    const back = () => navigate("/moje-konto/do-podpisu");
+    const missing = !image ? t("Złóż podpis palcem w polu poniżej.") : !consent ? t("Zaznacz, że zapoznałeś(-aś) się z dokumentem.") : null;
+    const subtitle = step === 1 ? t("Krok 1 z 2 · Przeczytaj") : trusted ? t("Krok 2 z 2 · Plik z podpisem") : t("Krok 2 z 2 · Podpis");
+    return (
+      <FormScreen
+        title={info.data?.document ?? t("Podpis")}
+        subtitle={subtitle}
+        onClose={back}
+        onCancel={step === 2 ? () => (trusted ? setTrusted(false) : setStep(1)) : back}
+        cancel={step === 2 ? t("Wstecz") : false}
+        primary={
+          step === 1
+            ? { label: t("Dalej – podpis"), onClick: () => setStep(2), disabled: !info.data }
+            : trusted
+              ? { label: t("Wgraj plik"), onClick: () => fileRef.current?.click(), loading: upload.isPending }
+              : { label: t("Podpisz"), onClick: () => sign.mutate(), loading: sign.isPending, disabled: !image || !consent || !ready || !passkeysSupported() }
+        }
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          hidden
+          accept="application/pdf,.xml,.xades,text/xml,application/xml"
+          onChange={(e) => {
+            const f = e.currentTarget.files?.[0];
+            if (f) upload.mutate(f);
+            e.currentTarget.value = "";
+          }}
+        />
+        <Stack gap="md">
+          {accounts.length > 1 && (
+            <Alert color="blue" icon={<IconAlertCircle size={18} />}>
+              {t("W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako:")} <b>{me?.user.full_name}</b>.
+            </Alert>
+          )}
+          {error && (
+            <Alert color="red" icon={<IconAlertCircle size={18} />}>
+              {error}
+            </Alert>
+          )}
+          {!info.data && <Loading rows={3} />}
+          {info.data && step === 1 && (
+            <>
+              <Text size="sm" c="dimmed">
+                {t("Przeczytaj dokument do końca. Podpiszesz go w następnym kroku.")}
+              </Text>
+              {Array.from({ length: info.data.pages }, (_, i) => (
+                <Image key={i} src={withAcct(`/api${base}/page/${i}`)} alt={t("Strona {n}", { n: i + 1 })} radius="sm" style={{ border: "1px solid var(--apt-line)", background: "#fff" }} />
+              ))}
+              <Button component="a" variant="default" size="md" href={withAcct(`/api${base}/pdf`)} leftSection={<IconDownload size={18} />}>
+                {t("Pobierz PDF")}
+              </Button>
+            </>
+          )}
+          {info.data && step === 2 && !trusted && (
+            <>
+              {!passkeysSupported() && (
+                <Alert color="orange" icon={<IconAlertCircle size={18} />}>
+                  {t("To urządzenie nie obsługuje kluczy dostępu – otwórz konto w Safari lub Chrome.")}
+                </Alert>
+              )}
+              {missing && <span className="ui-hint-warn">{missing}</span>}
+              <SignaturePad onChange={setImage} />
+              <Checkbox size="md" checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} label={t("Zapoznałem(-am) się z treścią dokumentu i podpisuję go.")} />
+              <Text size="sm" c="dimmed">
+                {t("Po dotknięciu „Podpisz” potwierdzisz podpis twarzą, odciskiem palca lub PIN-em telefonu. Zapiszemy podpis, datę i godzinę oraz adres IP.")}
+              </Text>
+              <Section title={t("Inny sposób")}>
+                <ListRow
+                  leading={<span className="ui-row-icon" aria-hidden><IconFileUpload size={22} /></span>}
+                  title={t("Podpis zaufany lub kwalifikowany")}
+                  description={t("Podpiszesz plik na gov.pl i wgrasz go tutaj")}
+                  onClick={() => setTrusted(true)}
+                />
+              </Section>
+            </>
+          )}
+          {info.data && step === 2 && trusted && (
+            <ol className="ui-steps">
+              <li>
+                <Anchor href={withAcct(`/api${base}/pdf`)}>{t("Pobierz dokument (PDF).")}</Anchor>
+              </li>
+              <li>
+                {t("Otwórz")}{" "}
+                <Anchor href="https://moj.gov.pl/nforms/signer/upload?xFormsAppName=SIGNER" target="_blank" rel="noreferrer">
+                  {t("podpisywanie dokumentu na gov.pl")}
+                </Anchor>
+                {t(", dodaj pobrany plik i podpisz profilem zaufanym (albo e-dowodem). Możesz też podpisać plik własnym certyfikatem kwalifikowanym.")}
+              </li>
+              <li>{t("Pobierz podpisany plik i wgraj go przyciskiem na dole.")}</li>
+            </ol>
+          )}
+        </Stack>
+      </FormScreen>
+    );
+  }
+
   return (
     <Stack maw={640}>
       <Title order={2}>{info.data?.document ?? t("Podpis")}</Title>

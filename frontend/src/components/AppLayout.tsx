@@ -107,7 +107,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/moje-konto": "Moje konto",
   "/moje-konto/do-podpisu": "Do podpisu",
   "/moje-konto/komunikaty": "Komunikaty",
-  "/moje-konto/wiadomosci": "Napisz do kadr",
+  "/moje-konto/wiadomosci": "Wiadomości",
   "/moje-konto/klucze": "Logowanie i powiadomienia",
   "/moje-konto/dane": "Moje dane",
 };

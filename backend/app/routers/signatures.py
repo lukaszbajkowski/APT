@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import device, mailer, notify, qualified, signing, sms, storage, templating, trustlist
+from app import device, mailer, notify, pdfium_safe, qualified, signing, sms, storage, templating, trustlist
 from app import timestamp as tsa
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
@@ -830,9 +830,7 @@ def sign_verify(token: str, body: VerifyIn, db: DbSession) -> VerifyOut:
     sig, doc, e = _by_token(db, token)
     _open(sig)
     _verify_birth(db, sig, e, body.birth_date)
-    import pypdfium2 as pdfium
-
-    pages = len(pdfium.PdfDocument(current_pdf(doc)))
+    pages = pdfium_safe.page_count(current_pdf(doc))
     exp = int(time.time()) + VIEW_SECONDS
     return VerifyOut(view=_view_key(sig, exp), pages=pages)
 
@@ -842,17 +840,10 @@ def sign_page(token: str, n: int, db: DbSession, v: str | None = None) -> Respon
     sig, doc, e = _by_token(db, token)
     _open(sig)
     _check_view(sig, e, v)
-    import io
-
-    import pypdfium2 as pdfium
-
-    pdf = pdfium.PdfDocument(current_pdf(doc))
-    if not 0 <= n < len(pdf):
+    img = pdfium_safe.page_image(current_pdf(doc), n, 1.6)
+    if img is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
-    img = pdf[n].render(scale=1.6).to_pil()
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, "PNG", optimize=True)
-    return Response(buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+    return Response(pdfium_safe.png(img), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/sign/{token}/pdf")

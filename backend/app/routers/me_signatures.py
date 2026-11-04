@@ -4,7 +4,6 @@ Pracownik z kontem podpisuje wyłącznie po zalogowaniu; sam podpis wymaga dodat
 (Face ID / odcisk palca / PIN) – to zastępuje jednorazowe sprawdzenie urządzenia z linku do podpisu.
 """
 
-import io
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -13,7 +12,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app import signing, storage, templating
+from app import pdfium_safe, signing, storage, templating
 from app.audit import audit
 from app.deps import Auth, DbSession, utcnow
 from app.models import DocumentSignature, Employee, GeneratedDocument, Role
@@ -152,26 +151,19 @@ class InfoOut(BaseModel):
 
 @router.get("/{sig_id}", response_model=InfoOut)
 def info(sig_id: int, ctx: Auth, db: DbSession) -> InfoOut:
-    import pypdfium2 as pdfium
-
     sig, doc = _mine(db, _employee(ctx, db), sig_id)
     _open(sig)
-    return InfoOut(id=sig.id, document=doc.template_name, pages=len(pdfium.PdfDocument(current_pdf(doc))))
+    return InfoOut(id=sig.id, document=doc.template_name, pages=pdfium_safe.page_count(current_pdf(doc)))
 
 
 @router.get("/{sig_id}/page/{n}")
 def page(sig_id: int, n: int, ctx: Auth, db: DbSession) -> Response:
-    import pypdfium2 as pdfium
-
     sig, doc = _mine(db, _employee(ctx, db), sig_id)
     _open(sig)
-    pdf = pdfium.PdfDocument(current_pdf(doc))
-    if not 0 <= n < len(pdf):
+    img = pdfium_safe.page_image(current_pdf(doc), n, 1.6)
+    if img is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
-    img = pdf[n].render(scale=1.6).to_pil()
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, "PNG", optimize=True)
-    return Response(buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+    return Response(pdfium_safe.png(img), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.post("/{sig_id}/challenge")
@@ -278,13 +270,11 @@ class SignedInfo(BaseModel):
 
 @router.get("/signed/{sig_id}", response_model=SignedInfo)
 def signed_info(sig_id: int, ctx: Auth, db: DbSession) -> SignedInfo:
-    import pypdfium2 as pdfium
-
     sig, doc = _mine_signed(db, _employee(ctx, db), sig_id)
     return SignedInfo(
         id=sig.id,
         document=doc.template_name,
-        pages=len(pdfium.PdfDocument(current_pdf(doc))),
+        pages=pdfium_safe.page_count(current_pdf(doc)),
         signed_at=sig.signed_at,
         complete=doc.signed_at is not None,
     )
@@ -292,16 +282,11 @@ def signed_info(sig_id: int, ctx: Auth, db: DbSession) -> SignedInfo:
 
 @router.get("/signed/{sig_id}/page/{n}")
 def signed_page(sig_id: int, n: int, ctx: Auth, db: DbSession) -> Response:
-    import pypdfium2 as pdfium
-
     sig, doc = _mine_signed(db, _employee(ctx, db), sig_id)
-    pdf = pdfium.PdfDocument(current_pdf(doc))
-    if not 0 <= n < len(pdf):
+    img = pdfium_safe.page_image(current_pdf(doc), n, 1.6)
+    if img is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
-    img = pdf[n].render(scale=1.6).to_pil()
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, "PNG", optimize=True)
-    return Response(buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+    return Response(pdfium_safe.png(img), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/signed/{sig_id}/pdf")

@@ -767,8 +767,165 @@ interface Mine {
 }
 
 
-/** Komunikaty pracownika w stylu „Napisz do kadr”: lista po lewej, treść po prawej (na telefonie jedno okno naraz). */
+/** Komunikaty pracownika: na telefonie lista jak „Wiadomości” i szczegół z paskiem górnym, na komputerze dwa panele. */
 export function MyBroadcastsPage() {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  return mobile ? <MyBroadcastsMobile /> : <MyBroadcastsDesktop />;
+}
+
+function MyBroadcastsMobile() {
+  const t = useT();
+  const qc = useQueryClient();
+  const { me } = useAuth();
+  const lang = me?.user.language ?? "pl";
+  const [seg, setSeg] = useState<"active" | "archive">("active");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const [noVoice, setNoVoice] = useState(false);
+  // obie zakładki wczytane od razu – przesunięcie palcem pokazuje gotową listę
+  const active = useQuery({ queryKey: ["my-broadcasts", lang, "active"], queryFn: () => api<Mine[]>("/me/broadcasts?archived=false"), refetchOnWindowFocus: true, refetchInterval: 15_000 });
+  const archive = useQuery({ queryKey: ["my-broadcasts", lang, "archive"], queryFn: () => api<Mine[]>("/me/broadcasts?archived=true"), refetchOnWindowFocus: true });
+  const stop = () => {
+    stopSpeaking();
+    setSpeaking(false);
+  };
+  useEffect(() => stop, [lang, openId]);
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["my-broadcasts"], exact: false });
+    qc.invalidateQueries({ queryKey: ["my-bc-count"] });
+  };
+  const read = useMutation({
+    mutationFn: (id: number) => api(`/me/broadcasts/${id}/read`, { method: "POST" }),
+    onSuccess: () => {
+      refresh();
+      notifications.show({ color: "teal", message: t("Potwierdzono") });
+    },
+  });
+  const arch = useMutation({
+    mutationFn: (v: { id: number; on: boolean }) => api(`/me/broadcasts/${v.id}/archive?on=${v.on}`, { method: "POST" }),
+    onSuccess: (_d, v) => {
+      refresh();
+      setOpenId(null);
+      notifications.show({ color: "teal", message: v.on ? t("Przeniesiono do archiwum") : t("Przywrócono z archiwum") });
+    },
+  });
+  const all = [...(active.data ?? []), ...(archive.data ?? [])];
+  const m = all.find((x) => x.id === openId) ?? null;
+  const unreadN = (active.data ?? []).filter((x) => !x.read_at).length;
+  useMobileHeader(m ? { title: t("Komunikat"), subtitle: `${t("Kadry")} · ${formatDateTime(m.sent_at)}`, onBack: () => setOpenId(null) } : null);
+  useNavHeightVar(true);
+
+  if (m) {
+    const kindIcon = m.kind === "document" ? <IconFileText size={22} /> : <IconSpeakerphone size={22} />;
+    return (
+      <div className="ui-inpage">
+        <div className="ui-chat-body ui-form-body">
+          <Group gap="md" wrap="nowrap" align="flex-start">
+            <span className="ui-row-icon" aria-hidden>{kindIcon}</span>
+            <Stack gap={6} style={{ minWidth: 0 }}>
+              <Title order={1} size="h3" lh={1.25} style={{ overflowWrap: "anywhere" }}>
+                {m.subject}
+              </Title>
+              {m.kind === "document" && <Text size="sm" c="dimmed">{t("Dokument do zapoznania się")}</Text>}
+              <Group gap={8}>
+                {m.read_at ? <StatusBadge tone="ok">{t("Potwierdzone")}</StatusBadge> : <StatusBadge tone="wait">{t("Do potwierdzenia")}</StatusBadge>}
+              </Group>
+            </Stack>
+          </Group>
+          {m.body && <Text size="md" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</Text>}
+          <FileDocs files={m.files} />
+          {canSpeak() && (
+            <Button
+              variant="default"
+              size="md"
+              leftSection={speaking ? <IconPlayerStop size={18} /> : <IconVolume size={18} />}
+              onClick={() => {
+                if (speaking) return stop();
+                stopSpeaking();
+                setNoVoice(false);
+                setSpeaking(true);
+                if (speak(`${m.subject}. ${m.body}`, speechLang(lang), () => setSpeaking(false)) === "no-voice") {
+                  setNoVoice(true);
+                  setSpeaking(false);
+                }
+              }}
+            >
+              {speaking ? t("Zatrzymaj") : t("Odsłuchaj")}
+            </Button>
+          )}
+          {noVoice && <Text size="sm" c="dimmed">{t("Brak głosu dla tego języka w tym urządzeniu.")}</Text>}
+          {m.read_at && <Text size="sm" c="dimmed">{t("Potwierdzone {date}", { date: formatDateTime(m.read_at) })}</Text>}
+        </div>
+        <div className="ui-chat-compose">
+          {!m.read_at ? (
+            <Button size="lg" fullWidth radius="md" loading={read.isPending} onClick={() => read.mutate(m.id)}>
+              {m.kind === "document" ? t("Zapoznałem(-am) się") : t("Przeczytałem(-am)")}
+            </Button>
+          ) : !m.archived || m.own_archived ? (
+            <Button size="lg" fullWidth radius="md" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
+              {m.own_archived ? t("Przywróć z archiwum") : t("Przenieś do archiwum")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const segs = ["active", "archive"] as const;
+  return (
+    <Stack gap="md">
+      <PageHead title={t("Komunikaty")} subtitle={unreadN ? `${unreadN} ${t("nieprzeczytane")}` : undefined} />
+      <Segments
+        value={seg}
+        onChange={(v) => setSeg(v as "active" | "archive")}
+        items={[
+          { value: "active", label: t("Aktywne") },
+          { value: "archive", label: t("Archiwum") },
+        ]}
+      />
+      <SwipePager index={segs.indexOf(seg)} onIndex={(i) => setSeg(segs[i])}>
+        {segs.map((sv) => {
+          const src = sv === "active" ? active : archive;
+          const rs = src.data ?? [];
+          return (
+            <div key={sv}>
+              {!src.data ? (
+                <Loading rows={3} />
+              ) : rs.length === 0 ? (
+                <CompactEmpty
+                  title={sv === "archive" ? t("Archiwum jest puste") : t("Brak komunikatów")}
+                  text={sv === "archive" ? t("Zarchiwizowane komunikaty pojawią się tutaj.") : t("Gdy kadry coś wyślą, dostaniesz powiadomienie.")}
+                />
+              ) : (
+                <div className="ui-group">
+                  {rs.map((x) => (
+                    <UnstyledButton key={x.id} className="ui-thread" data-unread={!x.read_at || undefined} onClick={() => setOpenId(x.id)}>
+                      <span className="ui-thread-avatar" aria-hidden>
+                        {x.kind === "document" ? <IconFileText size={20} /> : <IconSpeakerphone size={20} />}
+                      </span>
+                      <span className="ui-row-text">
+                        <span className="ui-thread-line">
+                          <span className="ui-thread-name">{x.subject}</span>
+                          <span className="ui-thread-time">{shortTime(x.sent_at)}</span>
+                        </span>
+                        <span className="ui-thread-line">
+                          <span className="ui-thread-snip">{x.body || (x.files.length ? x.files[0].name : "")}</span>
+                          {!x.read_at ? <span className="ui-thread-dot" role="img" aria-label={t("Nieprzeczytane")} /> : null}
+                        </span>
+                      </span>
+                    </UnstyledButton>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </SwipePager>
+    </Stack>
+  );
+}
+
+function MyBroadcastsDesktop() {
   const t = useT();
   const qc = useQueryClient();
   const { me } = useAuth();

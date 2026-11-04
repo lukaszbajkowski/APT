@@ -15,7 +15,7 @@ import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
 
 interface Options {
   challenge_id: string;
@@ -364,6 +364,7 @@ export function MyAccountPage() {
   const [adding, setAdding] = useState(false);
   const [otherOpen, setOtherOpen] = useState(false);
   const [deviceOpen, setDeviceOpen] = useState(false);
+  const [keySheet, setKeySheet] = useState<Passkey | null>(null);
   const prepare = useMutation({
     mutationFn: () =>
       api<Options>("/passkeys/options", { method: "POST", body: reauth ? { password: pw, code: code || null } : {} }),
@@ -422,16 +423,7 @@ export function MyAccountPage() {
                 leading={<span className="ui-row-icon" aria-hidden><IconFingerprint size={22} /></span>}
                 title={k.name}
                 description={k.last_used_at ? t("ostatnio {date}", { date: formatDateTime(k.last_used_at) }) : t("dodany {date}", { date: formatDateTime(k.created_at) })}
-                trailing={
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    loading={remove.isPending && remove.variables === k.id}
-                    onClick={() => confirm({ title: t("Usunąć klucz?"), message: t("Na tym urządzeniu nie zalogujesz się już tym kluczem."), confirmLabel: t("Usuń"), danger: true }).then((ok) => ok && remove.mutate(k.id))}
-                  >
-                    {t("Usuń")}
-                  </Button>
-                }
+                onClick={() => setKeySheet(k)}
               />
             ))
           ) : (
@@ -473,6 +465,28 @@ export function MyAccountPage() {
             onClick={() => setOtherOpen(true)}
           />
         </div>
+        <ActionSheet
+          opened={!!keySheet}
+          onClose={() => setKeySheet(null)}
+          title={keySheet?.name ?? ""}
+          subtitle={keySheet ? t("dodany {date}", { date: formatDateTime(keySheet.created_at) }) : undefined}
+          actions={
+            keySheet
+              ? [
+                  {
+                    label: t("Usuń klucz"),
+                    description: t("Na tym urządzeniu nie zalogujesz się już tym kluczem."),
+                    icon: <IconTrash size={20} />,
+                    danger: true,
+                    onClick: () =>
+                      confirm({ title: t("Usunąć klucz?"), message: t("Na tym urządzeniu nie zalogujesz się już tym kluczem."), confirmLabel: t("Usuń"), danger: true }).then(
+                        (ok) => ok && remove.mutate(keySheet.id),
+                      ),
+                  },
+                ]
+              : []
+          }
+        />
         <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
         <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
         <PushCard rows />

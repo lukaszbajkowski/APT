@@ -845,7 +845,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     return (
       <Stack gap="md">
         <PageHead
-          title={staff ? T("Wiadomości") : T("Napisz do kadr")}
+          title={T("Wiadomości")}
           subtitle={view === "active" && unreadN ? `${unreadN} ${T("nieprzeczytane")}` : undefined}
           action={{ label: T("Nowa wiadomość"), icon: <IconPencil size={22} />, onClick: compose }}
         />

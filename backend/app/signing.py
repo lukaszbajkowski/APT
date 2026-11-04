@@ -307,15 +307,7 @@ def embedded_pdf(xml: bytes) -> bytes | None:
 
 def render_pages(pdf: bytes, scale: float = 1.6) -> list[bytes]:
     """Strony PDF jako PNG (podgląd na stronie podpisu – telefony słabo wyświetlają PDF)."""
-    import pypdfium2 as pdfium
+    from app import pdfium_safe
 
-    doc = pdfium.PdfDocument(pdf)
-    doc.init_forms()  # rysuj też pola formularza (np. widoczny podpis)
-    out = []
-    for i in range(len(doc)):
-        img = doc[i].render(scale=scale).to_pil()
-        buf = io.BytesIO()
-        img.convert("RGB").save(buf, "PNG", optimize=True)
-        out.append(buf.getvalue())
-    doc.close()
-    return out
+    # rysuj też pola formularza (np. widoczny podpis)
+    return [pdfium_safe.png(img) for img in pdfium_safe.all_page_images(pdf, scale, forms=True)]

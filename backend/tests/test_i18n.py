@@ -178,3 +178,11 @@ def test_language_names_capitalized_and_localized(client):
     calls.clear()
     client.get("/api/i18n/languages?lang=zły kod")
     assert calls[-1]["target"] == "pl"
+
+
+def test_language_polish_choice_is_remembered(me):  # noqa: F811
+    # świadomy wybór polskiego zapisuje się jako „pl” (odróżnia go od „nic nie wybrano”)
+    assert me.put("/api/i18n/language", json={"language": "pl"}).status_code == 204
+    assert me.get("/api/auth/me").json()["user"]["language"] == "pl"
+    assert me.put("/api/i18n/language", json={"language": None}).status_code == 204
+    assert me.get("/api/auth/me").json()["user"]["language"] is None

@@ -84,13 +84,19 @@ class LanguageIn(BaseModel):
 
 @router.put("/language", status_code=status.HTTP_204_NO_CONTENT)
 def set_language(body: LanguageIn, ctx: Auth, request: Request, db: DbSession) -> None:
-    """Pracownik wybiera język aplikacji i powiadomień (puste = polski)."""
+    """Pracownik wybiera język aplikacji i powiadomień.
+
+    „pl” = świadomie wybrany polski (aplikacja nie przełączy się już sama na język telefonu);
+    puste = nic nie wybrano – aplikacja może sama ustawić język systemu.
+    """
     if ctx.user.role != Role.employee:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")
     lang = body.language
-    if lang and not i18n.valid_lang(lang):
+    if lang and lang.lower() in ("pl", "pl-pl"):
+        lang = "pl"
+    elif lang and not i18n.valid_lang(lang):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy język.")
-    if lang and translate.enabled():
+    if lang and lang != "pl" and translate.enabled():
         try:
             i18n.translate_many(db, ["Test"], lang)  # wczesny błąd, gdy język nie jest obsługiwany
         except translate.TranslateError as exc:

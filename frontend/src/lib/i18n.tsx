@@ -4,6 +4,7 @@
 // przyjścia tłumaczenia widać polski tekst.
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Select } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api";
@@ -113,15 +114,68 @@ interface I18nState {
 }
 const Ctx = createContext<I18nState>({ lang: null, setPublicLang: () => undefined });
 
+/** „pl” (świadomy wybór polskiego) i brak języka = bez tłumaczenia. */
+const norm = (l: string | null | undefined) => (!l || l.toLowerCase().startsWith("pl") ? null : l);
+
+/**
+ * Język systemu (telefonu / przeglądarki) spośród obsługiwanych przez tłumacza: pierwszy pasujący
+ * z `navigator.languages` (dokładny kod albo sam język: „uk-UA” → „uk”). Polski wyżej na liście = bez zmiany.
+ */
+export function systemLanguage(supported: string[]): string | null {
+  const have = new Map(supported.map((c) => [c.toLowerCase(), c]));
+  const prefs = typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const raw of prefs) {
+    if (!raw) continue;
+    const full = raw.toLowerCase();
+    const base = full.split("-")[0];
+    if (base === "pl") return null;
+    const hit = have.get(full) ?? have.get(base) ?? (base === "he" ? have.get("iw") : undefined);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Treść komunikatu jako komponent: przetłumaczy się sama, gdy przyjdzie tłumaczenie. */
+function AutoLangNote() {
+  const t = useT();
+  return <>{t("Aplikacja jest w języku Twojego telefonu. Zmienisz go w menu konta → Język.")}</>;
+}
+
+type LangCfg = { enabled: boolean; languages: { code: string; name: string }[] };
+
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const { me, loading } = useAuth();
+  const { me, setMe, loading } = useAuth();
   const [pubLang, setPub] = useState<string | null>(() => read(KEY));
-  const target = me ? (me.user.role === "employee" ? (me.user.language ?? null) : null) : pubLang;
+  const employee = me?.user.role === "employee" ? me : null;
+  // automatyczny język tylko tam, gdzie wolno zmieniać język (pracownik, ekrany przed logowaniem) i nic nie wybrano
+  const wantsAuto = !loading && (employee ? !employee.user.language : !me && !pubLang);
+  const cfg = useQuery({
+    queryKey: ["i18n-languages", "pl"],
+    queryFn: () => api<LangCfg>("/i18n/languages?lang=pl"),
+    staleTime: 3600_000,
+    enabled: wantsAuto,
+  });
+  const auto = wantsAuto && cfg.data?.enabled ? systemLanguage(cfg.data.languages.map((l) => l.code)) : null;
+  const target = me ? (employee ? norm(employee.user.language) ?? auto : null) : norm(pubLang) ?? auto;
   const effective = loading ? null : target;
   configure(effective, !me);
   useEffect(() => {
-    if (me?.user.role === "employee") write(KEY, me.user.language ?? null);
-  }, [me]);
+    if (employee) write(KEY, employee.user.language ?? null);
+  }, [employee]);
+  // pracownik: zapamiętaj język telefonu na koncie (powiadomienia i e-maile też w tym języku) i powiedz o tym raz
+  useEffect(() => {
+    if (!employee || employee.user.language || !auto) return;
+    void api("/i18n/language", { method: "PUT", body: { language: auto } })
+      .then(() => {
+        setMe({ ...employee, user: { ...employee.user, language: auto } });
+        notifications.show({
+          color: "teal",
+          autoClose: 8000,
+          message: <AutoLangNote />,
+        });
+      })
+      .catch(() => undefined);
+  }, [employee, auto, setMe]);
   useEffect(() => {
     document.documentElement.lang = effective ?? "pl";
     document.documentElement.dir = effective && RTL.has(effective.split("-")[0].toLowerCase()) ? "rtl" : "ltr";
@@ -178,7 +232,8 @@ export function LanguagePicker({ size = "sm", inMenu }: { size?: "xs" | "sm"; in
     },
   ].filter((g) => g.items.length > 0);
   async function choose(v: string | null) {
-    const next = !v || v === "pl" ? null : v;
+    // „pl” zapisujemy jawnie: świadomy wybór polskiego wyłącza automatyczny język telefonu
+    const next = v || "pl";
     if (me && me.user.role === "employee") {
       await api("/i18n/language", { method: "PUT", body: { language: next } });
       setMe({ ...me, user: { ...me.user, language: next } });

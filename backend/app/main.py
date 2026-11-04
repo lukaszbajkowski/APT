@@ -40,6 +40,7 @@ from app.routers import (
     users,
     work_queue,
     service_notices,
+    site_info,
 )
 
 _settings = get_settings()
@@ -115,6 +116,7 @@ app.include_router(training_import.router)
 app.include_router(agency_reports.router)
 app.include_router(agency_portal.router)
 app.include_router(service_notices.router)
+app.include_router(site_info.router)
 
 
 @app.get("/api/health", tags=["system"])

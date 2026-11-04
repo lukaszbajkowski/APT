@@ -11,8 +11,8 @@ import { Loading } from "../components/States";
 import { AuthShell } from "../components/AuthShell";
 import { useT } from "../lib/i18n";
 
-function Shell({ children }: { children: ReactNode }) {
-  return <AuthShell maw={420}>{children}</AuthShell>;
+function Shell({ children, title }: { children: ReactNode; title?: string }) {
+  return <AuthShell maw={420} title={title}>{children}</AuthShell>;
 }
 
 export function ForgotPasswordPage() {
@@ -37,7 +37,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <Shell>
+    <Shell title="Nie pamiętasz hasła?">
       {sent ? (
         <Stack>
           <IconMailCheck size={36} color="var(--mantine-color-green-text)" />
@@ -118,7 +118,7 @@ export function SetPasswordPage() {
 
   if (token && check.isLoading) {
     return (
-      <Shell>
+      <Shell title="Ustaw hasło">
         <Center>
           <Loading />
         </Center>
@@ -127,7 +127,7 @@ export function SetPasswordPage() {
   }
   if (!token || !check.data?.valid) {
     return (
-      <Shell>
+      <Shell title="Ustaw hasło">
         <Stack>
           <Title order={4}>{T("Link nie działa")}</Title>
           <Text size="sm">{T("Link wygasł albo został już użyty. Poproś o nowy.")}</Text>
@@ -143,7 +143,7 @@ export function SetPasswordPage() {
   }
 
   return (
-    <Shell>
+    <Shell title="Ustaw hasło">
       <form onSubmit={submit}>
         <Stack>
           <div>

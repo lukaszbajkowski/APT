@@ -212,7 +212,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthShell footer={<InstallApp compact />}>
+    <AuthShell title="Logowanie" footer={<InstallApp compact />}>
         {me?.mfa_pending ? (
           <CodeStep onDone={(result) => navigate(nextPath(result, from), { replace: true })} />
         ) : (

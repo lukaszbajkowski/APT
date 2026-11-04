@@ -82,7 +82,7 @@ export function InvitePage() {
   const ready = !needsBirth || !!birth;
 
   return (
-    <AuthShell maw={440}>
+    <AuthShell maw={440} title="Zaproszenie">
         <Stack>
           <Title order={3} className="brand-title">
             {addDevice ? t("Dodaj to urządzenie") : t("Załóż swoje konto")}

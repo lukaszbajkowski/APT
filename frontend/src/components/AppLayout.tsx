@@ -26,6 +26,7 @@ import {
   IconChecklist,
   IconChevronDown,
   IconChevronLeft,
+  IconHelpCircle,
   IconX,
   IconChevronRight,
   IconClipboardCheck,
@@ -67,6 +68,7 @@ import { NetworkBanner } from "./States";
 import { ServiceNoticeBanner } from "./ServiceNotices";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
+import { useDocTitle } from "../lib/docTitle";
 import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string; /** krótsza etykieta w dolnym menu telefonu */ tab?: string };
@@ -129,6 +131,18 @@ function headerFor(path: string): { title: string; back?: string } {
   return { title, back: top ? undefined : parent };
 }
 
+/** Tytuł karty przeglądarki z nazwy ekranu (albo własnego tytułu ekranu, np. „Komunikat”). */
+function DocTitle() {
+  const location = useLocation();
+  const own = useMobileHeaderValue();
+  const t = useT();
+  const { hasRole } = useAuth();
+  const auto = headerFor(location.pathname);
+  if (location.pathname === "/moje-konto") auto.title = hasRole("employee") ? "Moje konto" : "Logowanie i powiadomienia";
+  useDocTitle(t(own.title ?? auto.title) || null);
+  return null;
+}
+
 /** Pasek górny telefonu: powrót, nazwa ekranu, konto. Na ekranach głównych nazwa pojawia się po przewinięciu (duży tytuł jest w treści). */
 function MobileTopBar() {
   const location = useLocation();
@@ -187,6 +201,7 @@ function MobileTopBar() {
 export function AppLayout() {
   return (
     <MobileHeaderProvider>
+      <DocTitle />
       <AppLayoutInner />
     </MobileHeaderProvider>
   );
@@ -610,6 +625,9 @@ function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
         )}
         <Menu.Item leftSection={<IconFingerprint size={16} />} onClick={() => navigate(hasRole("employee") ? "/moje-konto/klucze" : "/moje-konto")}>
           {t("Logowanie i powiadomienia")}
+        </Menu.Item>
+        <Menu.Item leftSection={<IconHelpCircle size={16} />} onClick={() => navigate("/pomoc")}>
+          {t("Pomoc i prywatność")}
         </Menu.Item>
         <Menu.Item
           color="red"

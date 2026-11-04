@@ -54,6 +54,8 @@ services:
     build:
       context: .
       dockerfile: deploy/web.Dockerfile
+      args:
+        APT_DOMAIN: ${APT_DOMAIN:-}
     restart: unless-stopped
     depends_on: [api]
     environment:

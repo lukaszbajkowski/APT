@@ -1,0 +1,12 @@
+# APT iD to aplikacja wewnętrzna dla zalogowanych – nie indeksujemy jej w wyszukiwarkach.
+# Boty podglądu linków (komunikatory) mogą pobrać stronę startową, żeby pokazać kartę z logo.
+User-agent: facebookexternalhit
+User-agent: WhatsApp
+User-agent: TelegramBot
+User-agent: Slackbot-LinkExpanding
+User-agent: Twitterbot
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: *
+Disallow: /

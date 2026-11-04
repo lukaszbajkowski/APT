@@ -7,6 +7,8 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+		# aplikacja wewnętrzna – poza wyszukiwarkami (robots.txt pozwala tylko botom podglądu linków)
+		X-Robots-Tag "noindex, nofollow"
 		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}

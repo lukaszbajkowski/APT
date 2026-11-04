@@ -1,3 +1,5 @@
+import { HelpPage } from "./pages/HelpPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Center, Loader } from "@mantine/core";
@@ -109,6 +111,7 @@ export function App() {
       <Route path="/podpis/:token" element={<SignPage />} />
       <Route path="/zaproszenie" element={<InvitePage />} />
       <Route path="/aktualizacja" element={<DataLinkPage />} />
+      <Route path="/pomoc" element={<HelpPage />} />
       <Route
         path="/zmiana-hasla"
         element={
@@ -355,8 +358,8 @@ export function App() {
             </RequireAuth>
           }
         />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
   );

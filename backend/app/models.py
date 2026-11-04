@@ -955,3 +955,21 @@ class UiTranslation(Base):
     source_hash: Mapped[str] = mapped_column(String(40), primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SiteInfo(Base):
+    """Pomoc i prywatność (jeden wiersz, id=1): kontakt w sprawie aplikacji i informacja o przetwarzaniu danych.
+    Treść wpisuje administrator; strona jest publiczna (widoczna także przed logowaniem)."""
+
+    __tablename__ = "site_info"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    contact_name: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    contact_email: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    contact_phone: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    contact_hours: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    privacy_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    updated_by_name: Mapped[str | None] = mapped_column(String(200))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

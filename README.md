@@ -319,6 +319,18 @@ cd backend && pytest
 
 Dokumentacja API: http://localhost:8000/api/docs
 
+## Pomoc i prywatność, wyszukiwarki, podgląd linku
+
+- **Pomoc i prywatność** (`/pomoc`, publiczna): kontakt w sprawie aplikacji i informacja o przetwarzaniu danych (RODO).
+  Link jest pod każdym ekranem logowania i w menu konta. Treść wpisuje administrator przyciskiem „Edytuj”
+  (jest gotowy wzór do uzupełnienia – zatwierdź go z prawnikiem / IOD); zmiana trafia do dziennika.
+- **Pliki cookie**: aplikacja używa tylko niezbędnego cookie sesji i zapisuje w przeglądarce ustawienia (np. język),
+  bez analityki i reklam – baner zgody nie jest potrzebny (informacja jest w treści „Pomoc i prywatność”).
+- **Wyszukiwarki**: `noindex` w nagłówku `X-Robots-Tag` i w stronie, `robots.txt` blokuje wszystko poza botami
+  podglądu linków (WhatsApp, Messenger, Telegram, Slack) – linki z zaproszeniem pokazują kartę z logo
+  (`og-image.png`; pełny adres obrazka obraz `web` ustawia z pierwszej domeny `APT_DOMAIN`).
+- Każdy ekran ma własny tytuł karty przeglądarki („Pracownicy – APT iD”), a nieznany adres pokazuje „Nie ma takiej strony”.
+
 ## Klucze dostępu na wielu urządzeniach
 
 - **Logowanie kluczem z innego urządzenia:** na ekranie logowania „Użyj klucza z innego urządzenia” pokazuje kod QR,

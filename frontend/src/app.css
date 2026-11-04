@@ -881,3 +881,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-doc-meta { font-size: 13px; color: var(--mantine-color-dimmed); }
 .ui-doc-open { flex: none; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--mantine-color-dimmed); }
 .ui-doc-pages { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--apt-subtle); border-top: 1px solid var(--apt-line); cursor: zoom-in; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Pomoc i prywatność */
+.ui-help-text { display: flex; flex-direction: column; gap: 10px; }
+.ui-help-h { margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.ui-help-p { margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-line; overflow-wrap: break-word; }
+.ui-help-icon { flex: none; width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mantine-primary-color-light); color: var(--mantine-primary-color-text); margin-top: -6px; }

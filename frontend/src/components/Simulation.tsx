@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Box, Button, Group, Menu, Text } from "@mantine/core";
-import { Select } from "./AptSelect";
+import { Alert, Box, Button, Group, Menu, Select, Text } from "@mantine/core";
+// zwykły Select, nie AptSelect: panel wyboru z AptSelect otwierałby się poza menu konta (pod nim i zamykając menu)
+import { IN_MENU_COMBOBOX } from "../lib/i18n";
 import { notifications } from "@mantine/notifications";
 import { IconUserCog } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -56,7 +57,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
             simulate(v === "admin" ? null : (v as Role));
           }}
           allowDeselect={false}
-          comboboxProps={{ withinPortal: false }}
+          comboboxProps={IN_MENU_COMBOBOX}
           data={(["admin", "hr", "manager", "viewer", "agency"] as Role[]).map((r) => ({
             value: r,
             label: r === "admin" ? "Administrator (bez symulacji)" : ROLE_LABELS[r],
@@ -69,7 +70,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
             aria-label="Agencja do podglądu"
             placeholder="Wybierz APT agencji"
             value={me.sim_role === "agency" && me.sim_agency_id ? String(me.sim_agency_id) : null}
-            comboboxProps={{ withinPortal: false }}
+            comboboxProps={IN_MENU_COMBOBOX}
             onChange={(v) => {
               if (!v) return;
               setPickAgency(false);
@@ -86,7 +87,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
             placeholder="Wydział kierownika: brak"
             value={scope}
             clearable
-            comboboxProps={{ withinPortal: false }}
+            comboboxProps={IN_MENU_COMBOBOX}
             onChange={(v) => simulate("manager", null, v ? Number(v) : null)}
             data={(departments.data ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
           />

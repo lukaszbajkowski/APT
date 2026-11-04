@@ -608,7 +608,7 @@ function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
           <>
             <Menu.Label>{t("Język")}</Menu.Label>
             <Box px="xs" pb="xs">
-              <LanguagePicker size="xs" />
+              <LanguagePicker size="xs" inMenu />
             </Box>
             <Menu.Divider />
           </>

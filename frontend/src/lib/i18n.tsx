@@ -151,7 +151,10 @@ export function useLang() {
 }
 
 /** Wybór języka: konto pracownika zapisuje wybór na serwerze, strony bez logowania – w przeglądarce. */
-export function LanguagePicker({ size = "sm" }: { size?: "xs" | "sm" }) {
+/** Lista w menu konta (na telefonie menu jest panelem od dołu z warstwą 401): rozwija się w samym menu, nad nim. */
+export const IN_MENU_COMBOBOX = { withinPortal: false, strategy: "fixed", zIndex: 450, position: "top" } as const;
+
+export function LanguagePicker({ size = "sm", inMenu }: { size?: "xs" | "sm"; inMenu?: boolean }) {
   const { me, setMe } = useAuth();
   const { lang: current, setPublicLang } = useContext(Ctx);
   const t = useT();
@@ -189,7 +192,7 @@ export function LanguagePicker({ size = "sm" }: { size?: "xs" | "sm" }) {
       value={current ?? "pl"}
       onChange={(v) => void choose(v)}
       aria-label={t("Język")}
-      comboboxProps={{ withinPortal: true }}
+      comboboxProps={inMenu ? IN_MENU_COMBOBOX : { withinPortal: true }}
     />
   );
 }

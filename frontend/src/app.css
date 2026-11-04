@@ -844,3 +844,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-outage-safe { margin: 4px 0; font-size: 14px; color: var(--mantine-color-dimmed); line-height: 1.45; }
 .ui-outage-auto { display: flex; align-items: center; justify-content: center; }
 .ui-outage-brand { margin: 0; font-size: 13px; color: var(--mantine-color-dimmed); letter-spacing: .04em; }
+
+/* kod QR „Dodaj inne urządzenie” – zawsze na białym tle (czytelny w ciemnym motywie) */
+.ui-qr { align-self: center; width: 200px; height: 200px; padding: 10px; background: #fff; border-radius: 16px; border: 1px solid var(--apt-line); }
+.ui-qr svg { width: 100%; height: 100%; display: block; }

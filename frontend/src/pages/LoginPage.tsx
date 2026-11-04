@@ -186,7 +186,7 @@ export function LoginPage() {
       // wskazówki do logowania telefonem dopiero wtedy, gdy się nie udało – ekran logowania zostaje prosty
       setError(
         phone && err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Nie udało się. Kod QR zeskanuj telefonem lub tabletem, na którym masz klucz, i włącz Bluetooth na obu urządzeniach. Klucz jest tylko na komputerze? Zaloguj się hasłem albo poproś kadry o link „Dodaj urządzenie”."
+          ? "Nie udało się. Kod QR zeskanuj telefonem lub tabletem, na którym masz klucz, i włącz Bluetooth na obu urządzeniach. Klucz jest tylko na komputerze? Zaloguj się na nim i w „Logowanie i powiadomienia” wybierz „Dodaj inne urządzenie”."
           : passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."),
       );
     } finally {

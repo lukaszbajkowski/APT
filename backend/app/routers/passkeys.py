@@ -55,6 +55,9 @@ INVITE_DAYS = 7
 # „dodaj urządzenie”: jednorazowy link do kolejnego klucza dla aktywnego konta (obecne klucze zostają)
 DEVICE_PURPOSE = "empdevice"
 DEVICE_HOURS = 48
+# „Dodaj inne urządzenie” – użytkownik sam (każda rola) tworzy jednorazowy link na krótko
+SELF_PURPOSE = "selfdevice"
+SELF_MINUTES = 10
 _ERR = "Nie udało się potwierdzić kluczem dostępu. Spróbuj jeszcze raz."
 
 
@@ -393,6 +396,74 @@ def delete_passkey(passkey_id: int, ctx: Auth, request: Request, db: DbSession) 
     db.delete(cred)
     audit(db, request, "passkey_removed", user=user, details={"name": cred.name})
     db.commit()
+
+
+# --- „Dodaj inne urządzenie”: samodzielny jednorazowy link --------------------------
+
+
+@router.post("/passkeys/device-link/options", response_model=LoginOptionsOut)
+def self_device_options(ctx: Auth, db: DbSession, request: Request) -> LoginOptionsOut:
+    """Wyzwanie do potwierdzenia kluczem dostępu tuż przed utworzeniem linku."""
+    has_key = db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == ctx.user.id))
+    if has_key is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Najpierw dodaj klucz dostępu na tym urządzeniu.")
+    out = reauth_options(db, request, ctx.user)
+    db.commit()
+    return LoginOptionsOut(**out)
+
+
+class SelfDeviceIn(BaseModel):
+    # potwierdzenie kluczem dostępu (każda rola) …
+    challenge_id: str | None = Field(default=None, max_length=64)
+    credential: dict | None = None
+    # … albo hasłem i kodem (personel)
+    password: str | None = Field(default=None, max_length=256)
+    code: str | None = Field(default=None, max_length=20)
+
+
+class SelfDeviceOut(BaseModel):
+    link: str
+    qr_svg: str
+    expires_at: str
+
+
+@router.post("/passkeys/device-link", response_model=SelfDeviceOut)
+def self_device_link(body: SelfDeviceIn, ctx: Auth, request: Request, db: DbSession) -> SelfDeviceOut:
+    """Jednorazowy link (10 min) do zapisania klucza na innym urządzeniu – po świeżym potwierdzeniu tożsamości,
+    żeby nikt nie zrobił tego z cudzej, pozostawionej sesji."""
+    user = ctx.user
+    if body.challenge_id and body.credential:
+        verify_reauth(db, request, user, body.challenge_id, body.credential)
+        method = "passkey"
+    elif user.role != Role.employee and body.password is not None:
+        if not verify_password(user.password_hash, body.password):
+            _register_failure(db, user, request, "device_link_reauth_failed", step="password")
+            db.commit()
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Podaj poprawne obecne hasło.")
+        if user.mfa_enabled:
+            step = _check_totp(user, body.code or "")
+            if step is None:
+                _register_failure(db, user, request, "device_link_reauth_failed", step="code")
+                db.commit()
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieprawidłowy kod z aplikacji.")
+            user.totp_last_step = step
+        method = "password"
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Potwierdź, że to Ty.")
+    now = utcnow()
+    # tylko jeden ważny link naraz
+    db.execute(
+        PasswordToken.__table__.update()
+        .where(PasswordToken.user_id == user.id, PasswordToken.purpose == SELF_PURPOSE, PasswordToken.used_at.is_(None))
+        .values(used_at=now)
+    )
+    token = new_token()
+    expires = now + timedelta(minutes=SELF_MINUTES)
+    db.add(PasswordToken(user_id=user.id, token_hash=token_hash(token), purpose=SELF_PURPOSE, expires_at=expires))
+    audit(db, request, "device_link_created", user=user, details={"method": method})
+    db.commit()
+    link = mailer.link("/zaproszenie?token=" + token)
+    return SelfDeviceOut(link=link, qr_svg=totp.qr_svg(link), expires_at=expires.isoformat())
 
 
 # --- konto pracownika: kadry --------------------------------------------------------
@@ -756,9 +827,13 @@ def set_account_active(
 # --- zaproszenie: strona publiczna ----------------------------------------------------
 
 
-def _invite(db: Session, token: str) -> tuple[PasswordToken, User, Employee]:
+def _invite(db: Session, token: str) -> tuple[PasswordToken, User, Employee | None]:
     t = notify.find_token(db, token, utcnow(), employee_invite=True)
-    if t is None or t.purpose not in (INVITE_PURPOSE, DEVICE_PURPOSE) or t.user.employee_id is None:
+    if t is None or t.purpose not in (INVITE_PURPOSE, DEVICE_PURPOSE, SELF_PURPOSE):
+        raise HTTPException(status.HTTP_410_GONE, detail="Link wygasł albo został już wykorzystany.")
+    if t.purpose == SELF_PURPOSE:  # link utworzony przez samego użytkownika (każda rola) – bez daty urodzenia
+        return t, t.user, None
+    if t.user.employee_id is None:
         raise HTTPException(status.HTTP_410_GONE, detail="Link wygasł albo został już wykorzystany.")
     active = _has_access(db, t.user)
     if t.purpose == INVITE_PURPOSE and active:  # konto już aktywowane – stare zaproszenie nie może go przejąć
@@ -778,11 +853,15 @@ class InviteInfo(BaseModel):
 @router.get("/auth/invite/{token}", response_model=InviteInfo)
 def invite_info(token: str, db: DbSession) -> InviteInfo:
     t, user, e = _invite(db, token)
-    return InviteInfo(name=user.full_name, needs_birth_date=e.birth_date is not None, add_device=t.purpose == DEVICE_PURPOSE)
+    return InviteInfo(
+        name=user.full_name,
+        needs_birth_date=e is not None and e.birth_date is not None,
+        add_device=t.purpose in (DEVICE_PURPOSE, SELF_PURPOSE),
+    )
 
 
-def _check_birth(db: Session, request: Request, user: User, e: Employee, birth_date) -> None:  # noqa: ANN001
-    if e.birth_date is None or birth_date == e.birth_date:
+def _check_birth(db: Session, request: Request, user: User, e: Employee | None, birth_date) -> None:  # noqa: ANN001
+    if e is None or e.birth_date is None or birth_date == e.birth_date:
         return
     locked = _register_failure(db, user, request, "invite_failed", reason="birth_date")
     db.commit()
@@ -825,11 +904,14 @@ class InvitePasskeyIn(InviteStartIn):
 def invite_passkey(body: InvitePasskeyIn, request: Request, response: Response, db: DbSession) -> MeOut:
     t, user, e = _invite(db, body.token)
     _check_birth(db, request, user, e, _parse_date(body.birth_date))
-    device = t.purpose == DEVICE_PURPOSE
+    device = t.purpose in (DEVICE_PURPOSE, SELF_PURPOSE)
     _register_credential(db, request, user, body.challenge_id, body.credential, "Nowe urządzenie" if device else "Telefon")
     t.used_at = utcnow()
     me = _start_session(db, request, response, user, pending=False)
-    if device:
+    if t.purpose == SELF_PURPOSE:
+        audit(db, request, "device_added", user=user, details={"method": "self_link"})
+        notify.security_notice(user, "dodano klucz dostępu na nowym urządzeniu (link „Dodaj inne urządzenie”)")
+    elif device:
         audit(db, request, "employee_device_added", user=user, details={"method": "passkey"})
     else:
         audit(db, request, "employee_account_activated", user=user, details={"method": "passkey"})

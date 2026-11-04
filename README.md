@@ -319,6 +319,16 @@ cd backend && pytest
 
 Dokumentacja API: http://localhost:8000/api/docs
 
+## Klucze dostępu na wielu urządzeniach
+
+- **Logowanie kluczem z innego urządzenia:** na ekranie logowania „Użyj klucza z innego urządzenia” pokazuje kod QR,
+  który skanuje się telefonem lub tabletem z kluczem (Bluetooth włączony na obu urządzeniach).
+- **„Dodaj inne urządzenie”** (Logowanie i powiadomienia, każda rola): po świeżym potwierdzeniu kluczem dostępu
+  (personel – także hasłem i kodem) aplikacja pokazuje kod QR i jednorazowy link ważny 10 minut. Otwarty na nowym
+  urządzeniu zapisuje tam kolejny klucz – także gdy klucz jest tylko na komputerze. Nowy link unieważnia poprzedni,
+  reset dostępu przez kadry unieważnia wszystkie, a właściciel konta dostaje e-mail o dodaniu klucza.
+- Kadry nadal mogą wysłać pracownikowi link „Dodaj urządzenie” (48 godzin) z karty pracownika.
+
 ## Podpisy elektroniczne – zabezpieczenia
 
 - **Ślad integralności:** każdy podpis zapisuje w dzienniku skróty SHA-256 plików; okno „Podpis” ostrzega, gdy plik został

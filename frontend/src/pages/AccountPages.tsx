@@ -1,20 +1,20 @@
 import { InstallApp } from "../components/InstallApp";
 import { PushCard } from "../components/PushCard";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Card, Center, CopyButton, Drawer, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconDevices, IconFingerprint, IconTrash } from "@tabler/icons-react";
+import { IconAlertCircle, IconDeviceMobilePlus, IconDevices, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
-import { createPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
+import { createPasskey, getPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
+import { CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
 
 interface Options {
   challenge_id: string;
@@ -44,7 +44,7 @@ export function InvitePage() {
     try {
       const me = await fn();
       setMe(me);
-      navigate(me.mfa_setup_required ? MFA_PATH : "/moje-konto", { replace: true });
+      navigate(me.mfa_setup_required ? MFA_PATH : me.user.role === "employee" ? "/moje-konto" : "/", { replace: true });
     } catch (err) {
       setError(passkeyErrorText(err) ?? errorText(err));
     } finally {
@@ -91,7 +91,7 @@ export function InvitePage() {
           {info.isLoading && <Loading />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
-              {t("Link wygasł albo został już wykorzystany. Poproś kadry o nowy.")}
+              {t("Link wygasł albo został już wykorzystany. Utwórz nowy w „Dodaj inne urządzenie” albo poproś kadry.")}
             </Alert>
           )}
           {info.data && (
@@ -162,7 +162,7 @@ interface Passkey {
 }
 
 /** Panel od dołu: jak dodać klucz logowania na innym urządzeniu (bez klucza na nim). */
-function OtherDeviceSheet({ opened, onClose, employee }: { opened: boolean; onClose: () => void; employee: boolean }) {
+function OtherDeviceSheet({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const t = useT();
   const steps = [
     t("Na nowym urządzeniu (komputerze, tablecie albo innym telefonie) otwórz aptid.pl i wybierz „Użyj klucza z innego urządzenia” – pojawi się kod QR."),
@@ -190,9 +190,7 @@ function OtherDeviceSheet({ opened, onClose, employee }: { opened: boolean; onCl
           </ol>
         </div>
         <Text size="sm">
-          {employee
-            ? t("Klucz masz tylko na komputerze? Kodu QR nie zeskanujesz komputerem. Poproś kadry o link „Dodaj urządzenie” i otwórz go na nowym urządzeniu.")
-            : t("Klucz masz tylko na komputerze? Kodu QR nie zeskanujesz komputerem. Na nowym urządzeniu zaloguj się hasłem i dodaj tam klucz.")}
+          {t("Klucz masz tylko na komputerze? Zaloguj się na nim i wybierz „Dodaj inne urządzenie” – dostaniesz kod QR i link dla nowego urządzenia.")}
         </Text>
         <Text size="sm" c="dimmed">
           {t("Zgubiłeś telefon i nie masz klucza na innym urządzeniu? Poproś kadry o reset dostępu – dostaniesz nowe zaproszenie.")}
@@ -202,6 +200,152 @@ function OtherDeviceSheet({ opened, onClose, employee }: { opened: boolean; onCl
         </Button>
       </Stack>
     </Drawer>
+  );
+}
+
+
+interface DeviceLink {
+  link: string;
+  qr_svg: string;
+  expires_at: string;
+}
+
+/**
+ * „Dodaj inne urządzenie”: po potwierdzeniu, że to Ty (klucz dostępu albo hasło), aplikacja pokazuje kod QR
+ * i jednorazowy link ważny 10 minut. Otwierasz go na nowym urządzeniu i zapisujesz tam klucz – bez kadr.
+ */
+function AddDeviceDialog({ opened, onClose, hasKey, staff, mfa }: { opened: boolean; onClose: () => void; hasKey: boolean; staff: boolean; mfa: boolean }) {
+  const t = useT();
+  const [pw, setPw] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<DeviceLink | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  // Safari: okno klucza musi otworzyć się od razu po dotknięciu – wyzwanie pobieramy przy otwarciu okna
+  const [challenge, setChallenge] = useState<Options | null>(null);
+  // personel może zamiast klucza potwierdzić hasłem (np. klucza nie ma pod ręką)
+  const [usePassword, setUsePassword] = useState(false);
+  const withKey = hasKey && !usePassword;
+  const loadChallenge = () => {
+    if (!withKey) return;
+    api<Options>("/passkeys/device-link/options", { method: "POST" })
+      .then(setChallenge)
+      .catch((e) => setError(errorText(e)));
+  };
+  useEffect(() => {
+    if (!opened) return;
+    setPw("");
+    setCode("");
+    setError(null);
+    setResult(null);
+    setChallenge(null);
+    setUsePassword(false);
+    loadChallenge();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+  useEffect(() => {
+    if (!result) return;
+    const id = window.setInterval(() => setNow(Date.now()), 5_000);
+    return () => window.clearInterval(id);
+  }, [result]);
+
+  const confirmIdentity = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      let body: Record<string, unknown>;
+      if (withKey) {
+        if (!challenge) throw new Error(t("Chwila – przygotowujemy potwierdzenie. Spróbuj za moment."));
+        const credential = await getPasskey(challenge.options);
+        body = { challenge_id: challenge.challenge_id, credential };
+      } else {
+        body = { password: pw, code: code || null };
+      }
+      setResult(await api<DeviceLink>("/passkeys/device-link", { method: "POST", body }));
+      setNow(Date.now());
+    } catch (e) {
+      setError(passkeyErrorText(e) ?? (e instanceof Error && !(e as { status?: number }).status ? e.message : errorText(e)));
+      setChallenge(null);
+      loadChallenge();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const left = result ? Math.max(0, new Date(result.expires_at).getTime() - now) : 0;
+  const expired = !!result && left === 0;
+  const until = result ? new Date(result.expires_at).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) : "";
+
+  return (
+    <FormDialog
+      opened={opened}
+      onClose={onClose}
+      title={t("Dodaj inne urządzenie")}
+      primary={
+        result
+          ? expired
+            ? { label: t("Utwórz nowy kod"), onClick: () => (setResult(null), loadChallenge()) }
+            : { label: t("Gotowe"), onClick: onClose }
+          : {
+              label: withKey ? t("Potwierdź kluczem") : t("Dalej"),
+              onClick: confirmIdentity,
+              loading: busy,
+              disabled: withKey ? !passkeysSupported() : !pw || (mfa && !code),
+            }
+      }
+      cancel={result && !expired ? false : t("Anuluj")}
+    >
+      <Stack gap="md">
+        {error && (
+          <Alert color="red" icon={<IconAlertCircle size={18} />}>
+            {error}
+          </Alert>
+        )}
+        {!result ? (
+          <>
+            <Text size="sm">
+              {t("Dostaniesz kod QR i link, którym zapiszesz klucz na nowym urządzeniu (komputerze, telefonie, tablecie). Najpierw potwierdź, że to Ty.")}
+            </Text>
+            {withKey && staff && (
+              <Anchor component="button" type="button" size="sm" onClick={() => setUsePassword(true)}>
+                {t("Potwierdź hasłem zamiast klucza")}
+              </Anchor>
+            )}
+            {!withKey && (
+              <>
+                <PasswordInput label={t("Obecne hasło")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+                {mfa && (
+                  <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
+                )}
+              </>
+            )}
+          </>
+        ) : expired ? (
+          <Alert color="orange" icon={<IconAlertCircle size={18} />}>
+            {t("Kod wygasł. Utwórz nowy – to zajmie chwilę.")}
+          </Alert>
+        ) : (
+          <>
+            <div className="ui-qr" aria-label={t("Kod QR do otwarcia na nowym urządzeniu")} dangerouslySetInnerHTML={{ __html: result.qr_svg }} />
+            <ol className="ui-steps">
+              <li>{t("Zeskanuj kod aparatem nowego urządzenia. Bez aparatu? Skopiuj link i otwórz go na nim.")}</li>
+              <li>{t("Na nowym urządzeniu wybierz „Utwórz klucz na tym urządzeniu”.")}</li>
+            </ol>
+            <CopyButton value={result.link}>
+              {({ copied, copy }) => (
+                <Button variant="default" fullWidth onClick={copy}>
+                  {copied ? t("Skopiowano link") : t("Kopiuj link")}
+                </Button>
+              )}
+            </CopyButton>
+            <Text size="sm" c="dimmed" ta="center">
+              {t("Ważny do {time}, działa raz.", { time: until })}
+            </Text>
+          </>
+        )}
+      </Stack>
+    </FormDialog>
   );
 }
 
@@ -221,6 +365,7 @@ export function MyAccountPage() {
   // telefon (kadry): hasło do potwierdzenia pojawia się dopiero po „Dodaj klucz”
   const [adding, setAdding] = useState(false);
   const [otherOpen, setOtherOpen] = useState(false);
+  const [deviceOpen, setDeviceOpen] = useState(false);
   const prepare = useMutation({
     mutationFn: () =>
       api<Options>("/passkeys/options", { method: "POST", body: reauth ? { password: pw, code: code || null } : {} }),
@@ -318,13 +463,20 @@ export function MyAccountPage() {
         </Stack>
         <div className="ui-group">
           <ListRow
+            leading={<span className="ui-row-icon" aria-hidden><IconDeviceMobilePlus size={22} /></span>}
+            title={t("Dodaj inne urządzenie")}
+            description={t("Kod QR lub link dla komputera albo drugiego telefonu")}
+            onClick={() => setDeviceOpen(true)}
+          />
+          <ListRow
             leading={<span className="ui-row-icon" aria-hidden><IconDevices size={22} /></span>}
             title={t("Klucz na innym urządzeniu")}
             description={t("Jak zalogować się na komputerze lub drugim telefonie")}
             onClick={() => setOtherOpen(true)}
           />
         </div>
-        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} employee={hasRole("employee")} />
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
+        <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
         <PushCard rows />
         <InstallApp rows />
       </Stack>
@@ -358,7 +510,11 @@ export function MyAccountPage() {
             {t("Jak dodać klucz na innym urządzeniu")}
           </Anchor>
         </Text>
-        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} employee={hasRole("employee")} />
+        <Button variant="default" leftSection={<IconDeviceMobilePlus size={18} />} mb="sm" onClick={() => setDeviceOpen(true)} style={{ alignSelf: "flex-start" }}>
+          {t("Dodaj inne urządzenie (kod QR)")}
+        </Button>
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
+        <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
         {reauth && (
           <Stack gap="xs" mb="sm">
             <Text size="sm">{t("Przed dodaniem klucza potwierdź tożsamość:")}</Text>

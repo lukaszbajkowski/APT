@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Box, Button, Center, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconFingerprint, IconShieldLock } from "@tabler/icons-react";
+import { IconAlertCircle, IconFingerprint, IconQrcode, IconShieldLock } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
@@ -127,6 +128,8 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
 
 export function LoginPage() {
   const T = useT();
+  // telefon / tablet: klucz jest na tym urządzeniu, logowanie „telefonem” dotyczy tylko komputera
+  const touch = useMediaQuery("(hover: none) and (pointer: coarse)", false, { getInitialValueInEffect: false });
   const { me, login, setMe } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -172,13 +175,13 @@ export function LoginPage() {
 
   if (me && !me.mfa_pending && !adding) return <Navigate to={nextPath(me, from)} replace />;
 
-  async function passkeyLogin() {
+  async function passkeyLogin(phone = false) {
     setError(null);
     setBusy(true);
     try {
       const o = pre.current ?? (await api<PasskeyChallenge>("/auth/passkey/options", { method: "POST" }));
       pre.current = null;
-      const credential = await getPasskey(o.options);
+      const credential = await getPasskey(o.options, { phone });
       const result = await api<Me>("/auth/passkey/login", { method: "POST", body: { challenge_id: o.challenge_id, credential } });
       setMe(result);
       navigate(nextPath(result, from), { replace: true });
@@ -262,14 +265,23 @@ export function LoginPage() {
                 {T("Zaloguj")}
               </Button>
               {passkeysSupported() && (
-                <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={passkeyLogin}>
+                <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={() => passkeyLogin()}>
                   {T("Zaloguj kluczem dostępu")}
                 </Button>
               )}
-              {passkeysSupported() && (
-                <Text size="sm" c="dimmed" ta="center">
-                  {T("Klucz masz na telefonie, a logujesz się na innym urządzeniu? Wybierz „Użyj telefonu” i zeskanuj kod telefonem.")}
-                </Text>
+              {/* na komputerze: klucz jest w telefonie – kod QR do zeskanowania telefonem */}
+              {passkeysSupported() && !touch && (
+                <Stack gap={6}>
+                  <Button type="button" variant="default" fullWidth leftSection={<IconQrcode size={18} />} loading={busy} onClick={() => passkeyLogin(true)}>
+                    {T("Zaloguj telefonem (kod QR)")}
+                  </Button>
+                  <Text size="sm" c="dimmed" ta="center">
+                    {T("Klucz masz na telefonie? Zeskanuj kod QR aparatem telefonu. Na komputerze włącz Bluetooth.")}
+                  </Text>
+                  <Text size="xs" c="dimmed" ta="center">
+                    {T("Jeśli zamiast kodu zobaczysz okno z wyborem, wybierz w nim „Użyj telefonu lub tabletu”, „Inne urządzenie” albo „iPhone, iPad lub urządzenie z Androidem”.")}
+                  </Text>
+                </Stack>
               )}
               {config.data?.password_reset ? (
                 <Anchor component={Link} to="/reset-hasla" size="sm" ta="center">

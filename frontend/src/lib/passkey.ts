@@ -56,11 +56,17 @@ export async function createPasskey(options: Record<string, unknown>): Promise<R
   };
 }
 
-export async function getPasskey(options: Record<string, unknown>): Promise<Record<string, unknown>> {
+/**
+ * Logowanie kluczem. `phone: true` – klucz jest na telefonie, a logujemy się na komputerze: przeglądarka od razu
+ * pokazuje kod QR do zeskanowania telefonem (WebAuthn „hints: hybrid”; przeglądarki bez tej funkcji pokażą zwykłe
+ * okno z wyborem urządzenia).
+ */
+export async function getPasskey(options: Record<string, unknown>, opts: { phone?: boolean } = {}): Promise<Record<string, unknown>> {
   const o = options as unknown as { challenge: string; allowCredentials?: Descriptor[] } & Record<string, unknown>;
   const cred = (await navigator.credentials.get({
     publicKey: {
       ...(o as object),
+      ...(opts.phone ? { hints: ["hybrid"] } : {}),
       challenge: fromB64(o.challenge),
       allowCredentials: (o.allowCredentials ?? []).map((c) => ({ ...c, id: fromB64(c.id) })),
     } as PublicKeyCredentialRequestOptions,

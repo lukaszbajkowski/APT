@@ -165,8 +165,8 @@ interface Passkey {
 function OtherDeviceSheet({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const t = useT();
   const steps = [
-    t("Na nowym urządzeniu otwórz aplikację APT i dotknij „Zaloguj kluczem dostępu”."),
-    t("Wybierz „Użyj telefonu” (albo „Inne urządzenie”) – pojawi się kod QR."),
+    t("Na komputerze otwórz aptid.pl i kliknij „Zaloguj telefonem (kod QR)” – pojawi się kod QR."),
+    t("Jeśli zamiast kodu zobaczysz okno z wyborem, wybierz „Użyj telefonu lub tabletu” (albo „Inne urządzenie”)."),
     t("Zeskanuj kod aparatem telefonu, na którym masz klucz, i potwierdź twarzą lub odciskiem palca. Oba urządzenia muszą mieć włączony Bluetooth i być obok siebie."),
     t("Po zalogowaniu wejdź w „Logowanie i powiadomienia” i dotknij „Dodaj klucz” – nowe urządzenie dostanie własny klucz."),
   ];

@@ -33,6 +33,7 @@ const EmployeeAccountsPage = lazy(() => import("./pages/EmployeeAccountsPage").t
 const UsersPage = lazy(() => import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })));
 const PermitsReportPage = lazy(() => import("./pages/PermitsReportPage").then((m) => ({ default: m.PermitsReportPage })));
 const ServiceNoticesPage = lazy(() => import("./pages/ServiceNoticesPage").then((m) => ({ default: m.ServiceNoticesPage })));
+const MyDataPage = lazy(() => import("./pages/MyDataPage").then((m) => ({ default: m.MyDataPage })));
 const SystemStatusPage = lazy(() => import("./pages/SystemStatusPage").then((m) => ({ default: m.SystemStatusPage })));
 const PatternsPage = lazy(() => import("./pages/PatternsPage").then((m) => ({ default: m.PatternsPage })));
 const WorkQueuePage = lazy(() => import("./pages/WorkQueuePage").then((m) => ({ default: m.WorkQueuePage })));
@@ -139,6 +140,7 @@ export function App() {
           <Route path="moje-konto/do-podpisu/:id" element={<ToSignPage />} />
           <Route path="moje-konto/wiadomosci" element={<EmployeeMessagesPage />} />
           <Route path="moje-konto/komunikaty" element={<MyBroadcastsPage />} />
+          <Route path="moje-konto/dane" element={<MyDataPage />} />
         </Route>
         <Route path="moje-konto/klucze" element={<MyAccountPage />} />
         <Route path="pracownicy" element={<EmployeesPage />} />

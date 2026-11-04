@@ -153,16 +153,13 @@ export function ContactEditor({
 }
 
 export function MyDataCards() {
-  const qc = useQueryClient();
   const t = useT();
-  const [params, setParams] = useSearchParams();
-  const photoOpen = params.get("zdjecie") === "1";
+  const [, setParams] = useSearchParams();
   const setPhotoOpen = (v: boolean) => setParams(v ? { zdjecie: "1" } : {});
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const history = useQuery({ queryKey: ["my-history"], queryFn: () => api<History>("/me/history"), refetchInterval: 60_000, refetchOnWindowFocus: true });
   const d = mine.data;
   if (!d) return null;
-  const asEmployee = { id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee;
   return (
     <>
       <Card withBorder padding="lg">
@@ -255,13 +252,32 @@ export function MyDataCards() {
           )}
         </Card>
       )}
-      <PhotoEditor
-        employee={asEmployee}
-        opened={photoOpen}
-        onClose={() => setPhotoOpen(false)}
-        endpoint="/me/photo"
-        onSaved={() => qc.invalidateQueries({ queryKey: ["my-employee"] })}
-      />
+      <MyPhotoEditor />
     </>
+  );
+}
+
+/** Edytor własnego zdjęcia – otwiera go parametr ?zdjecie=1 (strona główna, „Moje dane”). */
+export function MyPhotoEditor() {
+  const qc = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee") });
+  const d = mine.data;
+  if (!d) return null;
+  const asEmployee = { id: 0, first_name: d.first_name, last_name: d.last_name } as unknown as Employee;
+  return (
+    <PhotoEditor
+      employee={asEmployee}
+      opened={params.get("zdjecie") === "1"}
+      onClose={() =>
+        setParams((p) => {
+          const n = new URLSearchParams(p);
+          n.delete("zdjecie");
+          return n;
+        })
+      }
+      endpoint="/me/photo"
+      onSaved={() => qc.invalidateQueries({ queryKey: ["my-employee"] })}
+    />
   );
 }

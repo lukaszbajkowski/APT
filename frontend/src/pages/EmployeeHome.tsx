@@ -2,10 +2,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconId, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
-import { MyDataCards, type MyEmployee } from "../components/MyDataCards";
+import { MyDataCards, MyPhotoEditor, type MyEmployee } from "../components/MyDataCards";
 import { Messenger } from "../components/HrThreads";
 import { useT } from "../lib/i18n";
 import { ListRow, PageHead, Section, CompactEmpty, StatusBadge } from "../components/Mobile";
@@ -80,7 +80,7 @@ export function EmployeeHome() {
       msg > 0 && <ListRow key="msg" leading={icon(IconMessage)} title={t("Odpowiedź od kadr")} description={t("Nieprzeczytane wiadomości: {n}", { n: msg })} trailing={count(msg)} to="/moje-konto/wiadomosci" />,
       news > 0 && <ListRow key="bc" leading={icon(IconSpeakerphone)} title={t("Nowe komunikaty")} description={t("Nieprzeczytane: {n}", { n: news })} trailing={count(news)} to="/moje-konto/komunikaty" />,
       d && !d.has_photo && <ListRow key="photo" leading={icon(IconCamera, true)} title={t("Dodaj zdjęcie")} description={t("Bez zdjęcia nie dostaniesz karty identyfikacyjnej")} trailing={<StatusBadge tone="warn">{t("Brak")}</StatusBadge>} onClick={() => setParams({ zdjecie: "1" })} />,
-      noContact && <ListRow key="contact" leading={icon(IconPhone, true)} title={t("Potwierdź telefon lub e-mail")} description={t("Dostaniesz kod, który wpiszesz w aplikacji")} trailing={<StatusBadge tone="warn">{t("Uzupełnij")}</StatusBadge>} onClick={() => document.getElementById("kontakt")?.scrollIntoView({ behavior: "smooth" })} />,
+      noContact && <ListRow key="contact" leading={icon(IconPhone, true)} title={t("Potwierdź telefon lub e-mail")} description={t("Dostaniesz kod, który wpiszesz w aplikacji")} trailing={<StatusBadge tone="warn">{t("Uzupełnij")}</StatusBadge>} to="/moje-konto/dane?tab=kontakt" />,
     ].filter(Boolean);
     return (
       <Stack gap={24}>
@@ -95,6 +95,7 @@ export function EmployeeHome() {
           )}
         </Section>
         <Section title={t("Na skróty")}>
+          <ListRow leading={icon(IconId)} title={t("Moje dane")} description={t("Dane osobowe, telefon i e-mail, zatrudnienie")} to="/moje-konto/dane" />
           <ListRow leading={icon(IconMessage)} title={t("Napisz do kadr")} description={t("Zadaj pytanie lub zgłoś sprawę")} to="/moje-konto/wiadomosci" />
           {toSign.data?.last_signed && (
             <ListRow
@@ -107,7 +108,7 @@ export function EmployeeHome() {
           {d?.has_photo && <ListRow leading={icon(IconCamera)} title={t("Zmień zdjęcie")} description={t("Do karty identyfikacyjnej")} onClick={() => setParams({ zdjecie: "1" })} />}
           <ListRow leading={icon(IconFingerprint)} title={t("Logowanie i powiadomienia")} description={t("Klucze dostępu, powiadomienia, aplikacja")} to="/moje-konto/klucze" />
         </Section>
-        <MyDataCards />
+        <MyPhotoEditor />
       </Stack>
     );
   }

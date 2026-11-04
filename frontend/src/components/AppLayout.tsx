@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import {
   AppShell,
   Avatar,
@@ -109,6 +109,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/moje-konto/komunikaty": "Komunikaty",
   "/moje-konto/wiadomosci": "Napisz do kadr",
   "/moje-konto/klucze": "Logowanie i powiadomienia",
+  "/moje-konto/dane": "Moje dane",
 };
 // ekrany „pierwszego poziomu”: bez strzałki powrotu
 const TOP_LEVEL = new Set(["/moje-konto", "/moje-konto/do-podpisu", "/moje-konto/komunikaty", "/moje-konto/wiadomosci", "/moje-konto/klucze"]);
@@ -189,6 +190,11 @@ function AppLayoutInner() {
   useResponsiveTables();
   const { hasRole } = useAuth();
   const location = useLocation();
+  // nowy ekran zaczyna się od góry; „Wstecz” (POP) zostawia pozycję, którą przywraca przeglądarka
+  const navType = useNavigationType();
+  useLayoutEffect(() => {
+    if (navType !== "POP") window.scrollTo(0, 0);
+  }, [location.pathname, navType]);
   const t = useT();
   const lang = useLang();
   const [collapsed, setCollapsed] = useState<string[]>(() => {

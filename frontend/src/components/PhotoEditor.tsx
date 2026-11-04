@@ -5,7 +5,11 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconCamera, IconCheck, IconUpload, IconWand } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useMediaQuery } from "@mantine/hooks";
+import { IconPhoto } from "@tabler/icons-react";
+
 import { useT } from "../lib/i18n";
+import { ActionSheet, FormScreen } from "./Mobile";
 import { api, errorText, type Employee } from "../api";
 
 const OUT_W = 600;
@@ -41,7 +45,7 @@ async function cropToBlob(src: string, area: Area): Promise<Blob> {
   );
 }
 
-function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCancel: () => void }) {
+function Camera({ onShot, onCancel, shootRef }: { onShot: (dataUrl: string) => void; onCancel: () => void; shootRef?: { current: (() => void) | null } }) {
   const T = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +142,8 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
     onShot(c.toDataURL("image/jpeg", 0.95));
   }
 
+  // telefon: przycisk „Zrób zdjęcie” jest w pasku akcji pełnoekranowego formularza
+  if (shootRef) shootRef.current = error ? null : shoot;
   return (
     <Stack>
       {error ? (
@@ -156,14 +162,16 @@ function Camera({ onShot, onCancel }: { onShot: (dataUrl: string) => void; onCan
           </Box>
         </Box>
       )}
-      <Group justify="flex-end">
-        <Button variant="default" onClick={onCancel}>
-          {T("Wróć")}
-        </Button>
-        <Button leftSection={<IconCamera size={16} />} onClick={shoot} disabled={!!error}>
-          {T("Zrób zdjęcie")}
-        </Button>
-      </Group>
+      {!shootRef && (
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onCancel}>
+            {T("Wróć")}
+          </Button>
+          <Button leftSection={<IconCamera size={16} />} onClick={shoot} disabled={!!error}>
+            {T("Zrób zdjęcie")}
+          </Button>
+        </Group>
+      )}
     </Stack>
   );
 }
@@ -206,6 +214,9 @@ export function PhotoEditor({
   }, [opened]);
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => setArea(pixels), []);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const fileRef = useRef<HTMLInputElement>(null);
+  const shootRef = useRef<(() => void) | null>(null);
 
   function loadFile(file: File | null) {
     if (!file) return;
@@ -273,6 +284,117 @@ export function PhotoEditor({
     },
     onError: (err) => setError(errorText(err)),
   });
+
+  // telefon: wybór źródła w panelu od dołu, potem aparat / kadrowanie na pełnym ekranie (pasek akcji nad menu)
+  if (mobile) {
+    if (!opened) return null;
+    const fileInput = (
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        hidden
+        onChange={(e) => {
+          loadFile(e.currentTarget.files?.[0] ?? null);
+          e.currentTarget.value = "";
+        }}
+      />
+    );
+    if (!src && !camera)
+      return (
+        <>
+          {fileInput}
+          <ActionSheet
+            opened
+            onClose={onClose}
+            title={T("Zdjęcie do karty")}
+            subtitle={error ?? T("Zdjęcie zostanie przycięte do proporcji karty (3:4). Najlepiej twarz na jasnym, jednolitym tle.")}
+            actions={[
+              { label: T("Zrób zdjęcie"), icon: <IconCamera size={20} />, keepOpen: true, onClick: () => setCamera(true) },
+              { label: T("Wybierz z galerii"), icon: <IconPhoto size={20} />, keepOpen: true, onClick: () => fileRef.current?.click() },
+            ]}
+          />
+        </>
+      );
+    if (camera && !src)
+      return (
+        <FormScreen
+          title={T("Zdjęcie do karty")}
+          subtitle={T("Twarz w owalu, patrz w obiektyw")}
+          onClose={onClose}
+          onCancel={() => setCamera(false)}
+          cancel={T("Wróć")}
+          primary={{ label: T("Zrób zdjęcie"), onClick: () => shootRef.current?.() }}
+        >
+          <Camera
+            shootRef={shootRef}
+            onCancel={() => setCamera(false)}
+            onShot={(d) => {
+              setCamera(false);
+              setSrc(d);
+            }}
+          />
+        </FormScreen>
+      );
+    if (src && enh)
+      return (
+        <FormScreen
+          title={T("Zdjęcie do karty")}
+          subtitle={T("Poprawa automatyczna")}
+          onClose={onClose}
+          onCancel={() => setEnh(null)}
+          cancel={T("Oryginał")}
+          primary={{ label: T("Użyj poprawionego"), onClick: acceptEnhanced }}
+        >
+          <Stack gap="md">
+            <Group grow align="flex-start" wrap="nowrap">
+              <Stack gap={4} align="center">
+                <Text size="sm" fw={600}>{T("Przed")}</Text>
+                <Image src={src} alt="" radius="sm" mah={260} fit="contain" />
+              </Stack>
+              <Stack gap={4} align="center">
+                <Text size="sm" fw={600}>{T("Po")}</Text>
+                <Image src={enh.image} alt="" radius="sm" mah={260} fit="contain" />
+              </Stack>
+            </Group>
+            {enh.notes.map((n, i) => (
+              <Group key={i} gap={8} wrap="nowrap" align="flex-start">
+                {n.level === "ok" ? <IconCheck size={18} color="var(--mantine-color-green-text)" /> : <IconAlertTriangle size={18} color="var(--mantine-color-orange-text)" />}
+                <Text size="sm">{T(n.text)}</Text>
+              </Group>
+            ))}
+          </Stack>
+        </FormScreen>
+      );
+    return (
+      <FormScreen
+        title={T("Zdjęcie do karty")}
+        subtitle={T("Przesuń i powiększ palcami")}
+        onClose={onClose}
+        onCancel={() => setSrc(null)}
+        cancel={T("Inne")}
+        primary={{ label: T("Zapisz zdjęcie"), onClick: () => upload.mutate(), loading: upload.isPending, disabled: !area }}
+      >
+        <Stack gap="md">
+          {error && <Alert color="red">{error}</Alert>}
+          <Box pos="relative" h={360} bg="dark.7" style={{ borderRadius: 14, overflow: "hidden" }}>
+            <Cropper image={src!} crop={crop} zoom={zoom} aspect={3 / 4} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
+          </Box>
+          {original ? (
+            <Group gap="xs" wrap="nowrap">
+              <IconCheck size={18} color="var(--mantine-color-green-text)" />
+              <Text size="sm" style={{ flex: 1 }}>{T("Użyto zdjęcia poprawionego automatycznie.")}</Text>
+              <Button variant="subtle" onClick={revertOriginal}>{T("Cofnij")}</Button>
+            </Group>
+          ) : (
+            <Button variant="default" size="md" leftSection={<IconWand size={18} />} loading={enhance.isPending} onClick={() => enhance.mutate()}>
+              {T("Popraw automatycznie")}
+            </Button>
+          )}
+        </Stack>
+      </FormScreen>
+    );
+  }
 
   return (
     <Modal opened={opened} onClose={onClose} title={T("Zdjęcie pracownika")} size="lg">

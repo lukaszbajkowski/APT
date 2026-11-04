@@ -7,6 +7,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
+import { useT } from "../lib/i18n";
 import { Button, Drawer, Group, Modal, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
@@ -329,6 +330,8 @@ export interface SheetAction {
   danger?: boolean;
   warn?: boolean;
   disabled?: boolean;
+  /** panel zostaje otwarty (np. wybór pliku – zamyka go dopiero wybrany plik) */
+  keepOpen?: boolean;
 }
 export function ActionSheet({
   opened,
@@ -343,6 +346,7 @@ export function ActionSheet({
   subtitle?: string;
   actions: SheetAction[];
 }) {
+  const t = useT();
   return (
     <Drawer
       opened={opened}
@@ -368,7 +372,7 @@ export function ActionSheet({
           data-warn={a.warn || undefined}
           disabled={a.disabled}
           onClick={() => {
-            onClose();
+            if (!a.keepOpen) onClose();
             a.onClick();
           }}
         >
@@ -380,7 +384,7 @@ export function ActionSheet({
         </UnstyledButton>
       ))}
       <UnstyledButton className="ui-sheet-close" onClick={onClose}>
-        Zamknij
+        {t("Zamknij")}
       </UnstyledButton>
     </Drawer>
   );

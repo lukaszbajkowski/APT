@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
 import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
+import { ViewScreen } from "./Mobile";
+
+/** „1 strona”, „3 strony”, „5 stron” */
+function pagesText(n: number, T: (s: string) => string) {
+  if (n === 1) return T("1 strona");
+  const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14);
+  return `${n} ${few ? T("strony") : T("stron")}`;
+}
 
 interface Preview {
   pages: number;
@@ -50,6 +59,7 @@ export function DocumentViewer({
     staleTime: 0,
   });
   const [hidden, setHidden] = useState(false);
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
 
   const protect = variant !== "attachment";
   useEffect(() => {
@@ -83,30 +93,8 @@ export function DocumentViewer({
     };
   }, [opened, protect]);
 
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      fullScreen
-      zIndex={500}
-      classNames={{ title: "doc-viewer-title", content: "doc-viewer-content" }}
-      title={
-        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-          <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
-          {downloadUrl && (
-            <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
-              {T("Pobierz PDF")}
-            </Button>
-          )}
-          {q.data?.signed && (
-            <Badge color="teal" variant="light">
-              {T("wersja podpisana")}
-            </Badge>
-          )}
-        </Group>
-      }
-      styles={{ body: { background: "var(--apt-subtle)", minHeight: "calc(100vh - 60px)" } }}
-    >
+  const title = q.data?.title ?? T("Podgląd dokumentu");
+  const content = (
       <Box
         className="doc-viewer"
         onContextMenu={(e) => e.preventDefault()}
@@ -147,6 +135,62 @@ export function DocumentViewer({
           </Group>
         )}
       </Box>
+  );
+
+  if (mobile) {
+    if (!opened) return null;
+    return (
+      <ViewScreen
+        title={T("Podgląd dokumentu")}
+        subtitle={q.data ? pagesText(q.data.pages, T) : undefined}
+        label={title}
+        onClose={onClose}
+        bar={
+          downloadUrl ? (
+            <Button component="a" size="lg" radius="md" fullWidth href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={20} />}>
+              {T("Pobierz PDF")}
+            </Button>
+          ) : undefined
+        }
+      >
+        <div>
+          <h2 className="ui-view-title">{title}</h2>
+          {q.data?.signed && (
+            <Badge color="teal" variant="light" mt={6}>
+              {T("wersja podpisana")}
+            </Badge>
+          )}
+        </div>
+        {content}
+      </ViewScreen>
+    );
+  }
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      fullScreen
+      zIndex={500}
+      classNames={{ title: "doc-viewer-title", content: "doc-viewer-content" }}
+      title={
+        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
+          {downloadUrl && (
+            <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
+              {T("Pobierz PDF")}
+            </Button>
+          )}
+          {q.data?.signed && (
+            <Badge color="teal" variant="light">
+              {T("wersja podpisana")}
+            </Badge>
+          )}
+        </Group>
+      }
+      styles={{ body: { background: "var(--apt-subtle)", minHeight: "calc(100vh - 60px)" } }}
+    >
+      {content}
     </Modal>
   );
 }

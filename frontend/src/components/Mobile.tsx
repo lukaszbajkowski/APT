@@ -738,6 +738,45 @@ export function FormScreen({
 }
 
 /**
+ * Ekran podglądu na telefonie (dokument, załącznik): tytuł i strzałka „Wróć” w górnym pasku aplikacji
+ * (pod paskiem stanu iPhone'a), treść przewijana, opcjonalny pasek akcji nad dolnym menu.
+ */
+export function ViewScreen({
+  title,
+  subtitle,
+  onClose,
+  children,
+  bar,
+  label,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+  bar?: ReactNode;
+  label?: string;
+}) {
+  const { header, set } = useContext(HeaderCtx);
+  const prev = useRef(header);
+  const cb = useRef(onClose);
+  cb.current = onClose;
+  useNavHeightVar();
+  useEffect(() => {
+    set({ title, subtitle, onBack: () => cb.current() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, subtitle]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => set(prev.current), []);
+  return createPortal(
+    <div className="ui-inpage ui-view" role="dialog" aria-label={label ?? title}>
+      <div className="ui-chat-body">{children}</div>
+      {bar && <div className="ui-chat-compose">{bar}</div>}
+    </div>,
+    document.body,
+  );
+}
+
+/**
  * Formularz w oknie: na komputerze okno na środku z przyciskami Anuluj / główny, na telefonie formularz na pełnym
  * ekranie (FormScreen) – tytuł w górnym pasku, pasek akcji nad dolnym menu. Treść (pola) jest ta sama.
  */

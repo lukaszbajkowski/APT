@@ -853,3 +853,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-chat-compose .mantine-Button-root { height: auto; min-height: 50px; }
 .ui-chat-compose .mantine-Button-inner { height: auto; min-height: 50px; }
 .ui-chat-compose .mantine-Button-label { white-space: normal; overflow: visible; text-align: center; line-height: 1.25; padding: 6px 0; }
+/* podgląd dokumentu na telefonie: nad innymi ekranami w aplikacji, tło „pod kartką” */
+.ui-inpage.ui-view { z-index: 130; background: var(--apt-subtle); }
+.ui-view .ui-chat-body { padding: 12px; gap: 12px; }
+.ui-view-title { font-size: 18px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; margin: 0; }

@@ -43,6 +43,8 @@ class UserOut(BaseModel):
     mfa_enabled: bool
     mfa_required: bool
     language: str | None = None
+    timezone: str | None = None
+    timezone_manual: bool = False
 
 
 class MeOut(BaseModel):

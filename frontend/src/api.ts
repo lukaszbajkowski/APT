@@ -1,3 +1,4 @@
+import { dateTimeText, shortTimeText } from "./lib/time";
 // Cienka warstwa nad fetch: ciasteczko sesji idzie automatycznie,
 // token CSRF dodajemy do każdego żądania zmieniającego dane.
 
@@ -24,6 +25,8 @@ export interface User {
   mfa_enabled: boolean;
   mfa_required: boolean;
   language?: string | null;
+  timezone?: string | null;
+  timezone_manual?: boolean;
 }
 
 export interface Me {
@@ -630,21 +633,15 @@ export function formatDate(value: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
-/** Godzina dla dzisiejszej daty, w innym dniu dzień i miesiąc (listy wiadomości). */
+/** Godzina dla dzisiejszej daty, w innym dniu dzień i miesiąc (listy wiadomości) – w strefie użytkownika. */
 export function shortTime(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  return d.toDateString() === today.toDateString()
-    ? d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
+  return shortTimeText(iso);
 }
 
+/** Data i godzina w strefie użytkownika (poza strefą polską z miastem strefy). */
 export function formatDateTime(value: string | null): string {
   if (!value) return "—";
-  return new Date(value).toLocaleString("pl-PL", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return dateTimeText(value);
 }
 
 export interface ReportRow {

@@ -319,6 +319,14 @@ cd backend && pytest
 
 Dokumentacja API: http://localhost:8000/api/docs
 
+## Strefy czasowe
+
+Firma działa w czasie polskim (Europe/Warsaw): w nim są dziennik zdarzeń, znak wodny i podpisy dokumentów.
+Strefę użytkownika aplikacja wykrywa z urządzenia i zapisuje na koncie (można ją ustawić ręcznie w
+„Logowanie i powiadomienia” → „Strefa czasowa”). Godziny w aplikacji są w strefie użytkownika (poza Polską
+z miastem strefy), terminy firmy – np. przerwa techniczna – także w czasie polskim, a e-maile podają godzinę
+u odbiorcy i czas polski. Godziny komunikatu technicznego administrator wpisuje w wybranej strefie (domyślnie polskiej).
+
 ## Tłumaczenia aplikacji
 
 Kolejność: **poprawka administratora** (ekran „Tłumaczenia”, `/tlumaczenia`) → **słownik sprawdzonych słów**

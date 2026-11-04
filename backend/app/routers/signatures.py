@@ -25,7 +25,7 @@ from app import timestamp as tsa
 from app.audit import audit, client_ip, user_agent
 from app.config import get_settings
 from app.deps import AuthContext, DbSession, require_roles
-from app.models import AuditLog, DocumentSignature, DocumentTemplate, Employee, GeneratedDocument, Role
+from app.models import AuditLog, DocumentSignature, DocumentTemplate, Employee, GeneratedDocument, Role, User
 from app.routers.employees import format_number
 from app.routers.passkeys import employee_account
 from app.security import new_token, token_hash
@@ -346,7 +346,11 @@ def request_signature(
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, detail="Wysyłka e-maili nie jest skonfigurowana."
             )
-        sent = mailer.send(to, notify.sign_request_email(person, doc.template_name, url, expires))
+        # pracownik z kontem w aplikacji dostaje termin w swojej strefie (i w czasie polskim)
+        acct_tz = None
+        if body.role == "pracownika":
+            acct_tz = db.scalar(select(User.timezone).where(User.employee_id == e.id))
+        sent = mailer.send(to, notify.sign_request_email(person, doc.template_name, url, expires, acct_tz))
     elif body.channel == "sms":
         when = expires.astimezone(signing.TZ).strftime("%d.%m %H:%M")
         try:

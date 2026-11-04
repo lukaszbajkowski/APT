@@ -214,3 +214,27 @@ def test_glossary_beats_google_and_admin_fix_beats_glossary(admin_client):
 def test_admin_translations_forbidden_for_others(me):  # noqa: F811
     assert me.get("/api/i18n/admin/translations", params={"lang": "uk"}).status_code == 403
     assert me.put("/api/i18n/admin/translations", json={"lang": "uk", "source": "a", "text": "b"}).status_code == 403
+
+
+def test_timezone_detected_and_manual(me):  # noqa: F811
+    from datetime import UTC, datetime
+
+    from app import tz
+
+    assert me.put("/api/i18n/timezone", json={"timezone": "Mars/Base"}).status_code == 400
+    assert me.put("/api/i18n/timezone", json={"timezone": "Europe/Kyiv"}).status_code == 204
+    u = me.get("/api/auth/me").json()["user"]
+    assert u["timezone"] == "Europe/Kyiv" and u["timezone_manual"] is False
+    # ręczny wybór wygrywa z kolejnym wykryciem
+    assert me.put("/api/i18n/timezone", json={"timezone": "Europe/London", "manual": True}).status_code == 204
+    me.put("/api/i18n/timezone", json={"timezone": "Europe/Kyiv"})
+    assert me.get("/api/auth/me").json()["user"]["timezone"] == "Europe/London"
+    # „Automatycznie” – wykrycie znów działa
+    me.put("/api/i18n/timezone", json={"timezone": None, "manual": True})
+    me.put("/api/i18n/timezone", json={"timezone": "Europe/Kyiv"})
+    assert me.get("/api/auth/me").json()["user"]["timezone"] == "Europe/Kyiv"
+    # tekst godziny dla odbiorcy
+    dt = datetime(2026, 11, 4, 21, 0, tzinfo=UTC)  # 22:00 w Polsce, 23:00 w Kijowie
+    assert tz.when(dt) == "04.11.2026, 22:00"
+    assert tz.when(dt, "Europe/Kyiv") == "04.11.2026, 23:00 (Kyiv; 22:00 czasu polskiego)"
+    assert tz.when(dt, "Europe/Berlin") == "04.11.2026, 22:00"  # ta sama godzina – bez dopisku

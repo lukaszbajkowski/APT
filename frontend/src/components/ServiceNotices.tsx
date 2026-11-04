@@ -15,6 +15,7 @@ import {
 
 import { api, probeServer, serverDownStore, setServerDown } from "../api";
 import { useAuth } from "../auth";
+import { currentTz, differsFromHome, HOME_TZ, timeIn } from "../lib/time";
 import { useT } from "../lib/i18n";
 
 export type NoticeKind = "planned" | "deploy" | "repair" | "incident" | "info";
@@ -64,29 +65,46 @@ export function isOngoing(n: ServiceNotice, now = Date.now()): boolean {
 }
 const isOver = (n: ServiceNotice, now = Date.now()) => !!n.ends_at && new Date(n.ends_at).getTime() <= now;
 
-/** „dziś, 22:00” / „jutro, 6:00” / „sob. 8.11, 22:00” */
+/** Dzień w strefie użytkownika jako liczba (do porównań „dziś / jutro”). */
+const dayNum = (x: Date) => {
+  const [y, m, d] = x.toLocaleDateString("en-CA", { timeZone: currentTz() }).split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 86_400_000;
+};
+
+/** „dziś, 22:00” / „jutro, 6:00” / „sob. 8.11, 22:00” – w strefie użytkownika */
 export function dayTime(at: string): string {
   const d = new Date(at);
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = Math.round((day(d) - day(new Date())) / 86_400_000);
-  const time = d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  const diff = dayNum(d) - dayNum(new Date());
+  const time = timeIn(d);
   if (diff === 0) return `dziś, ${time}`;
   if (diff === 1) return `jutro, ${time}`;
   if (diff === -1) return `wczoraj, ${time}`;
-  const wd = d.toLocaleDateString("pl-PL", { weekday: "short" });
-  return `${wd} ${d.getDate()}.${String(d.getMonth() + 1).padStart(2, "0")}, ${time}`;
+  const tz = currentTz();
+  const wd = d.toLocaleDateString("pl-PL", { weekday: "short", timeZone: tz });
+  const dm = d.toLocaleDateString("pl-PL", { day: "numeric", month: "2-digit", timeZone: tz });
+  return `${wd} ${dm}, ${time}`;
 }
-const sameDay = (a: string, b: string) => new Date(a).toDateString() === new Date(b).toDateString();
+const sameDay = (a: string, b: string) => dayNum(new Date(a)) === dayNum(new Date(b));
+
+/** Poza strefą polską: godziny przerwy także w czasie polskim („22:00–23:30 czasu polskiego”). */
+function homeHint(n: ServiceNotice): string {
+  const at = n.starts_at ?? n.ends_at;
+  if (!at || !differsFromHome(new Date(at))) return "";
+  const parts = [n.starts_at, n.ends_at].filter(Boolean).map((x) => timeIn(new Date(x as string), HOME_TZ));
+  return ` (${parts.join("–")} czasu polskiego)`;
+}
 
 /** Opis czasu komunikatu: „Trwa · do dziś, 23:00”, „sob. 8.11, 22:00–23:30”, „Od jutra, 6:00”. */
 export function whenText(n: ServiceNotice, now = Date.now()): string {
   if (isOver(n, now)) return n.ends_at ? `Zakończone ${dayTime(n.ends_at)}` : "Zakończone";
-  if (isOngoing(n, now)) return n.ends_at ? `Trwa · do ${dayTime(n.ends_at)}` : "Trwa";
+  if (isOngoing(n, now)) return n.ends_at ? `Trwa · do ${dayTime(n.ends_at)}${homeHint({ ...n, starts_at: null })}` : "Trwa";
   if (n.starts_at && n.ends_at)
-    return sameDay(n.starts_at, n.ends_at)
-      ? `${dayTime(n.starts_at)}–${new Date(n.ends_at).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}`
-      : `${dayTime(n.starts_at)} – ${dayTime(n.ends_at)}`;
-  return n.starts_at ? `Od ${dayTime(n.starts_at)}` : "";
+    return (
+      (sameDay(n.starts_at, n.ends_at)
+        ? `${dayTime(n.starts_at)}–${timeIn(new Date(n.ends_at))}`
+        : `${dayTime(n.starts_at)} – ${dayTime(n.ends_at)}`) + homeHint(n)
+    );
+  return n.starts_at ? `Od ${dayTime(n.starts_at)}${homeHint(n)}` : "";
 }
 
 /** Zegar odświeżający widok co 30 s – przerwa zaczyna się i kończy bez przeładowania strony. */

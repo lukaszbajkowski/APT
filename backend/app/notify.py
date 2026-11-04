@@ -1,12 +1,11 @@
 """Treści e-maili i jednorazowe linki do ustawienia hasła."""
 
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app import mailer
+from app import mailer, tz
 from app.emails import Email
 from app.models import ROLE_LABELS, PasswordToken, Role, User
 from app.security import new_token, token_hash
@@ -85,7 +84,7 @@ def security_email(user: User, what: str) -> Email:
         paragraphs=[f"na Twoim koncie „{user.username}”: {what}."],
         details=[
             ("Konto", user.username),
-            ("Kiedy", datetime.now(ZoneInfo("Europe/Warsaw")).strftime("%d.%m.%Y, %H:%M")),
+            ("Kiedy", tz.when(datetime.now(UTC), user.timezone)),
         ],
         notice="Jeśli to nie Ty – natychmiast skontaktuj się z administratorem aplikacji.",
         tone="warning",
@@ -183,8 +182,8 @@ def permits_email(user: User, items: list[str], expired: int, expiring: int) -> 
     )
 
 
-def sign_request_email(person: str, document: str, url: str, expires: datetime) -> Email:
-    when = expires.astimezone(ZoneInfo("Europe/Warsaw")).strftime("%d.%m.%Y, %H:%M")
+def sign_request_email(person: str, document: str, url: str, expires: datetime, tz_name: str | None = None) -> Email:
+    when = tz.when(expires, tz_name)
     return Email(
         subject=f"Prośba o podpis: {document}",
         title="Dokument do podpisu",

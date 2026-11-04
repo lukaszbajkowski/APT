@@ -108,6 +108,10 @@ class User(TimestampMixin, Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # język aplikacji i powiadomień (konto pracownika); puste = polski
     language: Mapped[str | None] = mapped_column(String(12))
+    # strefa czasowa (IANA, np. Europe/Kyiv) – wykryta z urządzenia albo ustawiona ręcznie; puste = czas polski
+    timezone: Mapped[str | None] = mapped_column(String(64))
+    # ustawiona ręcznie: aplikacja nie nadpisuje jej wykrytą strefą urządzenia
+    timezone_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     # Logowanie dwuetapowe (TOTP). Sekret zaszyfrowany kluczem APT_DATA_KEY.
     # Gdy totp_enabled_at jest puste, a sekret jest ustawiony – konfiguracja w toku.

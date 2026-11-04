@@ -8,6 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { deviceTz, setUserTz } from "./time";
 import { useAuth } from "../auth";
 
 const MAX_LEN = 600;
@@ -159,6 +160,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const target = me ? (employee ? norm(employee.user.language) ?? auto : null) : norm(pubLang) ?? auto;
   const effective = loading ? null : target;
   configure(effective, !me);
+  // strefa czasowa: ręczny wybór z konta albo strefa urządzenia; wykrytą zapisujemy na koncie (e-maile, powiadomienia)
+  const signedIn = !!me && !me.mfa_pending;
+  setUserTz(me?.user.timezone_manual ? me.user.timezone : deviceTz());
+  useEffect(() => {
+    if (!signedIn || !me || me.user.timezone_manual) return;
+    const tz = deviceTz();
+    if (me.user.timezone === tz) return;
+    void api("/i18n/timezone", { method: "PUT", body: { timezone: tz } })
+      .then(() => setMe({ ...me, user: { ...me.user, timezone: tz } }))
+      .catch(() => undefined);
+  }, [signedIn, me, setMe]);
   useEffect(() => {
     if (employee) write(KEY, employee.user.language ?? null);
   }, [employee]);

@@ -9,6 +9,7 @@ import { api, errorText } from "../api";
 import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, StatusBadge, type SheetAction } from "../components/Mobile";
 import { isOngoing, NOTICE_KINDS, whenText, type NoticeKind, type ServiceNotice } from "../components/ServiceNotices";
 import { Loading } from "../components/States";
+import { allTimezones, HOME_TZ, isoToZonedInput, tzCity, tzLabel, zonedInputToIso } from "../lib/time";
 import { useConfirm } from "../lib/confirm";
 
 const KIND_OPTIONS = (Object.keys(NOTICE_KINDS) as NoticeKind[]).map((k) => ({ value: k, label: NOTICE_KINDS[k].label }));
@@ -20,14 +21,9 @@ const TITLE_HINT: Record<NoticeKind, string> = {
   info: "np. Zmiana adresu pomocy technicznej",
 };
 
-/** ISO → wartość pola datetime-local (czas lokalny) i z powrotem. */
-const toLocal = (iso: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-const fromLocal = (v: string) => (v ? new Date(v).toISOString() : null);
+/** ISO ↔ wartość pola datetime-local w wybranej strefie (domyślnie czas polski – w nim działa firma). */
+const toLocal = (iso: string | null, tz: string) => isoToZonedInput(iso, tz);
+const fromLocal = (v: string, tz: string) => zonedInputToIso(v, tz);
 
 interface Draft {
   kind: NoticeKind;
@@ -37,8 +33,10 @@ interface Draft {
   ends: string;
   blocking: boolean;
   published: boolean;
+  /** strefa, w której wpisano godziny */
+  tz: string;
 }
-const EMPTY: Draft = { kind: "planned", title: "", body: "", starts: "", ends: "", blocking: false, published: true };
+const EMPTY: Draft = { kind: "planned", title: "", body: "", starts: "", ends: "", blocking: false, published: true, tz: HOME_TZ };
 
 type Stage = "now" | "planned" | "draft" | "over";
 function stageOf(n: ServiceNotice, now: number): Stage {
@@ -73,8 +71,8 @@ export function ServiceNoticesPage() {
         kind: draft.kind,
         title: draft.title.trim(),
         body: draft.body.trim(),
-        starts_at: fromLocal(draft.starts),
-        ends_at: fromLocal(draft.ends),
+        starts_at: fromLocal(draft.starts, draft.tz),
+        ends_at: fromLocal(draft.ends, draft.tz),
         blocking: draft.blocking,
         published: draft.published,
       };
@@ -113,10 +111,11 @@ export function ServiceNoticesPage() {
             kind: n.kind,
             title: n.title,
             body: n.body,
-            starts: toLocal(n.starts_at),
-            ends: toLocal(n.ends_at),
+            starts: toLocal(n.starts_at, HOME_TZ),
+            ends: toLocal(n.ends_at, HOME_TZ),
             blocking: n.blocking,
             published: n.published,
+            tz: HOME_TZ,
           },
     );
     setEditing(n);
@@ -200,7 +199,7 @@ export function ServiceNoticesPage() {
     <Stack gap={24} maw={760}>
       <PageHead
         title="Komunikaty techniczne"
-        subtitle="Prace serwisowe, wdrożenia i awarie. Widzą je wszyscy – także na ekranie logowania."
+        subtitle="Prace serwisowe, wdrożenia i awarie. Widzą je zalogowani użytkownicy – pasek na górze aplikacji."
         action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => open("new") }}
       />
       {all.length === 0 && (
@@ -247,10 +246,31 @@ export function ServiceNoticesPage() {
             autosize
             minRows={3}
           />
-          <TextInput type="datetime-local" label="Początek" description="Puste – od razu" value={draft.starts} onChange={(e) => set("starts", e.currentTarget.value)} />
+          <Select
+            label="Strefa czasowa godzin"
+            description={draft.tz === HOME_TZ ? "Godziny wpisujesz w czasie polskim – tak zobaczą je wszyscy, z przeliczeniem na strefę odbiorcy." : `Godziny wpisujesz w strefie ${tzCity(draft.tz)}. Pracownicy zobaczą je w swojej strefie.`}
+            data={allTimezones().map((z) => ({ value: z, label: tzLabel(z) }))}
+            value={draft.tz}
+            onChange={(v) => {
+              if (!v) return;
+              // ta sama chwila w nowej strefie (zmiana strefy nie przesuwa przerwy)
+              setDraft((d) => ({
+                ...d,
+                tz: v,
+                starts: d.starts ? toLocal(fromLocal(d.starts, d.tz), v) : "",
+                ends: d.ends ? toLocal(fromLocal(d.ends, d.tz), v) : "",
+              }));
+            }}
+            searchable
+            // długa lista: na telefonie też z wpisywaniem (wyszukiwanie strefy)
+            data-allow-typing
+            allowDeselect={false}
+            comboboxProps={{ withinPortal: true }}
+          />
+          <TextInput type="datetime-local" label={`Początek · ${tzLabel(draft.tz)}`} description="Puste – od razu" value={draft.starts} onChange={(e) => set("starts", e.currentTarget.value)} />
           <TextInput
             type="datetime-local"
-            label="Koniec"
+            label={`Koniec · ${tzLabel(draft.tz)}`}
             description="Po tej godzinie komunikat sam zniknie"
             value={draft.ends}
             onChange={(e) => set("ends", e.currentTarget.value)}

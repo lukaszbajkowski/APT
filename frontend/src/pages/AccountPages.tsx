@@ -1,5 +1,6 @@
 import { InstallApp } from "../components/InstallApp";
 import { PushCard } from "../components/PushCard";
+import { TimezoneSetting } from "../components/TimezoneSetting";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -490,6 +491,7 @@ export function MyAccountPage() {
         <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
         <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
         <PushCard rows />
+        <TimezoneSetting rows />
         <InstallApp rows />
       </Stack>
     );
@@ -499,6 +501,7 @@ export function MyAccountPage() {
       <Title order={2}>{t("Logowanie i powiadomienia")}</Title>
       <InstallApp />
       <PushCard />
+      <TimezoneSetting />
       {error && (
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {error}

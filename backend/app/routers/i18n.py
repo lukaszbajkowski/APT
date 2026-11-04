@@ -225,3 +225,33 @@ def admin_reset(body: ResetIn, ctx: AdminAuth, request: Request, db: DbSession) 
         db.delete(row)
         audit(db, request, "ui_translation_reset", user=ctx.user, details={"lang": lang, "source": body.source[:120]})
         db.commit()
+
+
+# ——— strefa czasowa konta (każda rola) ———
+
+
+class TimezoneIn(BaseModel):
+    timezone: str | None = Field(default=None, max_length=64)
+    # True = wybór ręczny (nie nadpisywać wykrytą strefą); False = wykryta z urządzenia
+    manual: bool = False
+
+
+@router.put("/timezone", status_code=status.HTTP_204_NO_CONTENT)
+def set_timezone(body: TimezoneIn, ctx: Auth, request: Request, db: DbSession) -> None:
+    """Zapis strefy czasowej. Wykryta automatycznie nie zastępuje strefy wybranej ręcznie."""
+    from app import tz
+
+    if body.timezone is not None and not tz.valid(body.timezone):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Nieznana strefa czasowa.")
+    user = ctx.user
+    if not body.manual and user.timezone_manual:
+        return  # ręczny wybór ma pierwszeństwo przed wykryciem
+    if body.manual and body.timezone is None:
+        # „Automatycznie” – wraca wykrywanie z urządzenia
+        user.timezone_manual = False
+    else:
+        user.timezone = body.timezone
+        user.timezone_manual = body.manual
+    if body.manual:
+        audit(db, request, "timezone_changed", user=user, details={"timezone": body.timezone})
+    db.commit()

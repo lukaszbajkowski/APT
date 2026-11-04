@@ -162,12 +162,12 @@ interface Passkey {
 }
 
 /** Panel od dołu: jak dodać klucz logowania na innym urządzeniu (bez klucza na nim). */
-function OtherDeviceSheet({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+function OtherDeviceSheet({ opened, onClose, employee }: { opened: boolean; onClose: () => void; employee: boolean }) {
   const t = useT();
   const steps = [
-    t("Na komputerze otwórz aptid.pl i kliknij „Klucz na telefonie? Zaloguj kodem QR” – pojawi się kod QR."),
+    t("Na nowym urządzeniu (komputerze, tablecie albo innym telefonie) otwórz aptid.pl i wybierz „Użyj klucza z innego urządzenia” – pojawi się kod QR."),
     t("Jeśli zamiast kodu zobaczysz okno z wyborem, wybierz „Użyj telefonu lub tabletu” (albo „Inne urządzenie”)."),
-    t("Zeskanuj kod aparatem telefonu, na którym masz klucz, i potwierdź twarzą lub odciskiem palca. Oba urządzenia muszą mieć włączony Bluetooth i być obok siebie."),
+    t("Zeskanuj kod aparatem telefonu lub tabletu, na którym masz klucz, i potwierdź twarzą lub odciskiem palca. Oba urządzenia muszą mieć włączony Bluetooth i być obok siebie."),
     t("Po zalogowaniu wejdź w „Logowanie i powiadomienia” i dotknij „Dodaj klucz” – nowe urządzenie dostanie własny klucz."),
   ];
   return (
@@ -182,13 +182,18 @@ function OtherDeviceSheet({ opened, onClose }: { opened: boolean; onClose: () =>
           {t("Ten sam iPhone, iPad i Mac (jedno Apple ID) albo Android z tym samym kontem Google mają klucz od razu – nic nie musisz robić.")}
         </Text>
         <div>
-          <Text fw={700} mb={8}>{t("Inne urządzenie (np. komputer)")}</Text>
+          <Text fw={700} mb={8}>{t("Klucz na telefonie lub tablecie – logowanie na innym urządzeniu")}</Text>
           <ol className="ui-steps">
             {steps.map((x, i) => (
               <li key={i}>{x}</li>
             ))}
           </ol>
         </div>
+        <Text size="sm">
+          {employee
+            ? t("Klucz masz tylko na komputerze? Kodu QR nie zeskanujesz komputerem. Poproś kadry o link „Dodaj urządzenie” i otwórz go na nowym urządzeniu.")
+            : t("Klucz masz tylko na komputerze? Kodu QR nie zeskanujesz komputerem. Na nowym urządzeniu zaloguj się hasłem i dodaj tam klucz.")}
+        </Text>
         <Text size="sm" c="dimmed">
           {t("Zgubiłeś telefon i nie masz klucza na innym urządzeniu? Poproś kadry o reset dostępu – dostaniesz nowe zaproszenie.")}
         </Text>
@@ -319,7 +324,7 @@ export function MyAccountPage() {
             onClick={() => setOtherOpen(true)}
           />
         </div>
-        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} employee={hasRole("employee")} />
         <PushCard rows />
         <InstallApp rows />
       </Stack>
@@ -353,7 +358,7 @@ export function MyAccountPage() {
             {t("Jak dodać klucz na innym urządzeniu")}
           </Anchor>
         </Text>
-        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} employee={hasRole("employee")} />
         {reauth && (
           <Stack gap="xs" mb="sm">
             <Text size="sm">{t("Przed dodaniem klucza potwierdź tożsamość:")}</Text>

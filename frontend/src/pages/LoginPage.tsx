@@ -4,7 +4,6 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Box, Button, Center, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconQrcode, IconShieldLock } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 
 import { useAuth } from "../auth";
 import { LanguagePicker, useT } from "../lib/i18n";
@@ -128,8 +127,6 @@ function CodeStep({ onDone }: { onDone: (me: Me) => void }) {
 
 export function LoginPage() {
   const T = useT();
-  // telefon / tablet: klucz jest na tym urządzeniu, logowanie „telefonem” dotyczy tylko komputera
-  const touch = useMediaQuery("(hover: none) and (pointer: coarse)", false, { getInitialValueInEffect: false });
   const { me, login, setMe } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -189,7 +186,7 @@ export function LoginPage() {
       // wskazówki do logowania telefonem dopiero wtedy, gdy się nie udało – ekran logowania zostaje prosty
       setError(
         phone && err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Logowanie telefonem nie udało się albo zostało anulowane. Włącz Bluetooth na komputerze i telefonie i spróbuj ponownie. Jeśli zamiast kodu QR widzisz okno z wyborem, wybierz w nim „Użyj telefonu lub tabletu” albo „Inne urządzenie”."
+          ? "Nie udało się. Kod QR zeskanuj telefonem lub tabletem, na którym masz klucz, i włącz Bluetooth na obu urządzeniach. Klucz jest tylko na komputerze? Zaloguj się hasłem albo poproś kadry o link „Dodaj urządzenie”."
           : passkeyErrorText(err) ?? (err instanceof ApiError ? err.message : "Nie udało się zalogować kluczem dostępu."),
       );
     } finally {
@@ -275,20 +272,19 @@ export function LoginPage() {
                   <Button type="button" variant="light" fullWidth leftSection={<IconFingerprint size={18} />} loading={busy} onClick={() => passkeyLogin()}>
                     {T("Zaloguj kluczem dostępu")}
                   </Button>
-                  {/* na komputerze: klucz jest w telefonie – kod QR do zeskanowania telefonem */}
-                  {!touch && (
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      size="sm"
-                      fullWidth
-                      leftSection={<IconQrcode size={16} />}
-                      disabled={busy}
-                      onClick={() => passkeyLogin(true)}
-                    >
-                      {T("Klucz na telefonie? Zaloguj kodem QR")}
-                    </Button>
-                  )}
+                  {/* klucz jest na innym telefonie lub tablecie: kod QR na tym ekranie skanuje się tamtym urządzeniem */}
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    size="sm"
+                    fullWidth
+                    leftSection={<IconQrcode size={16} />}
+                    disabled={busy}
+                    styles={{ root: { height: "auto", minHeight: 44 }, label: { whiteSpace: "normal", textAlign: "center" } }}
+                    onClick={() => passkeyLogin(true)}
+                  >
+                    {T("Użyj klucza z innego urządzenia")}
+                  </Button>
                 </>
               )}
               {config.data?.password_reset ? (

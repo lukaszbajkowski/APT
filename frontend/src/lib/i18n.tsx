@@ -177,6 +177,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       .catch(() => undefined);
   }, [employee, auto, setMe]);
   useEffect(() => {
+    // Tłumacz przeglądarki (Chrome „Przetłumacz stronę”) podmienia tekst w drzewie strony – w aplikacji React
+    // kończy się to awarią przy kolejnym kliknięciu i tłumaczeniem już przetłumaczonego. Gdy język ustawia
+    // sama aplikacja, blokujemy tłumacza przeglądarki.
+    const root = document.documentElement;
+    if (effective) {
+      root.setAttribute("translate", "no");
+      root.classList.add("notranslate");
+    } else {
+      root.removeAttribute("translate");
+      root.classList.remove("notranslate");
+    }
     document.documentElement.lang = effective ?? "pl";
     document.documentElement.dir = effective && RTL.has(effective.split("-")[0].toLowerCase()) ? "rtl" : "ltr";
   }, [effective]);

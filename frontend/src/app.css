@@ -39,6 +39,10 @@ html, body { background: var(--apt-ground); }
 .mantine-Table-thead { color: var(--mantine-color-dimmed); }
 .mantine-Divider-root { --divider-color: var(--apt-line); }
 
+/* iOS: bez szarego błysku przy dotknięciu – wiersze i przyciski mają własny stan :active */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"], [role="tab"], input, label, select, textarea { touch-action: manipulation; }
+
 /* wyraźna ramka fokusu przy obsłudze klawiaturą (WCAG 2.4.7) */
 :focus-visible {
   outline: 2px solid var(--mantine-primary-color-filled) !important;
@@ -469,7 +473,7 @@ html, body { background: var(--apt-ground); }
 .profile-tabs .mantine-Tabs-tab[data-active] { color: var(--mantine-color-text); font-weight: 700; border-color: var(--mantine-primary-color-filled); }
 .profile-tabs .mantine-Tabs-tab:hover { background: transparent; }
 .profile-tabs .mantine-Tabs-tabSection { margin-left: 6px; }
-.tab-count { font-size: 12px; color: var(--mantine-color-dimmed); }
+.tab-count { font-size: 12px; color: var(--mantine-color-dimmed); font-variant-numeric: tabular-nums; }
 .tab-count[data-warn] { font-weight: 800; color: #1E1A17; background: var(--mantine-color-orange-4); border-radius: 9px; padding: 1px 6px; }
 :root[data-mantine-color-scheme="light"] .tab-count[data-warn] { color: #FCFBFA; background: var(--mantine-color-orange-7); }
 .attention {
@@ -556,7 +560,7 @@ html, body { background: var(--apt-ground); }
 .ui-chip[data-warn]:not([data-active]) { background: var(--mantine-color-orange-light); color: var(--mantine-color-orange-text); border-color: transparent; }
 .ui-chip-count { font-weight: 800; }
 .ui-seg { display: grid; gap: 4px; padding: 4px; border-radius: 12px; background: var(--apt-surface); border: 1px solid var(--apt-line); }
-.ui-seg-item { height: 36px; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--mantine-color-dimmed); text-align: center; }
+.ui-seg-item { min-height: 44px; padding: 6px 8px; box-sizing: border-box; border-radius: 9px; font-size: 14px; font-weight: 600; line-height: 1.2; color: var(--mantine-color-dimmed); text-align: center; overflow-wrap: anywhere; hyphens: auto; font-variant-numeric: tabular-nums; }
 .ui-seg-item[data-active] { background: var(--apt-subtle); color: var(--mantine-color-text); font-weight: 700; }
 .ui-section-title[data-warn] { color: var(--mantine-color-orange-text); }
 .ui-list-gap { display: flex; flex-direction: column; gap: 12px; }
@@ -886,3 +890,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-help-h { margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; }
 .ui-help-p { margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-line; overflow-wrap: break-word; }
 .ui-help-icon { flex: none; width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mantine-primary-color-light); color: var(--mantine-primary-color-text); margin-top: -6px; }
+
+/* liczniki i znaczki z liczbą: cyfry równej szerokości (nie skaczą przy zmianie) */
+.mantine-Badge-label, .mantine-Indicator-indicator, .ui-status { font-variant-numeric: tabular-nums; }
+/* link pod kartą logowania: pole dotyku 44 px */
+.ui-auth-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }

@@ -311,10 +311,11 @@ export function EmployeesPage() {
                   key={e.id}
                   to={selMode ? undefined : `/pracownicy/${e.id}`}
                   onClick={selMode ? () => toggle(e.id) : undefined}
+                  pressed={selMode ? on : undefined}
                   leading={
                     <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       {selMode && (
-                        <span className="ui-check" data-on={on || undefined} role="checkbox" aria-checked={on} aria-label={`Zaznacz: ${e.last_name} ${e.first_name}`}>
+                        <span className="ui-check" data-on={on || undefined} aria-hidden>
                           {on && <IconCheck size={16} stroke={3} aria-hidden />}
                         </span>
                       )}

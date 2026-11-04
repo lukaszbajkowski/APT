@@ -10,6 +10,8 @@ import { EmptyState } from "./States";
 import { api, errorText, formatDateTime, shortTime } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
+import { useUrlOpen, useUrlTab } from "../lib/urlState";
+import { useDraft } from "../lib/draft";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
@@ -105,7 +107,8 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
 function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
   const T = useT();
   const qc = useQueryClient();
-  const [body, setBody] = useState("");
+  // szkic odpowiedzi zostaje po wyjściu z rozmowy (np. przypadkowe „Wstecz”) aż do wysłania
+  const [body, setBody] = useDraft(`apt-draft-${base}-${id}`);
   const [error, setError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const q = useQuery({ queryKey: ["thread", base, id], queryFn: () => api<Thread>(`${base}/${id}`), refetchInterval: 3000, ...LIVE });
@@ -608,7 +611,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const [search, setSearch] = useState("");
   const [pickedName, setPickedName] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useDraft(`apt-draft-${staff ? "hr" : "me"}-new${preset ? `-${preset.id}` : ""}`);
   const [step, setStep] = useState<1 | 2>(preset ? 2 : 1);
   const [error, setError] = useState<string | null>(null);
   const subjects = useQuery({ queryKey: ["thread-subjects"], queryFn: () => api<string[]>("/me/messages/subjects"), enabled: !staff });
@@ -624,6 +627,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         : api<{ id: number }>("/me/messages", { method: "POST", body: { subject, body } }),
     onSuccess: (t) => {
       qc.invalidateQueries({ queryKey: ["threads", staff ? "/hr-messages" : "/me/messages"] });
+      setBody("");
       onCreated(t.id);
     },
     onError: (e) => setError(errorText(e)),
@@ -793,11 +797,11 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   const T = useT();
   const base = staff ? "/hr-messages" : "/me/messages";
   const mobile = useMediaQuery("(max-width: 48em)");
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useUrlOpen();
   const [composing, setComposing] = useState(!!preset);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  const [view, setView] = useState<"active" | "archive">("active");
+  const [view, setView] = useUrlTab("widok", ["active", "archive"] as const, "active");
   const list = useQuery({
     queryKey: ["threads", base, q, status, view],
     queryFn: () => {

@@ -5,6 +5,7 @@ interface Options {
   message: string;
   title?: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   danger?: boolean;
 }
 type Confirm = (opts: string | Options) => Promise<boolean>;
@@ -35,7 +36,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         </Text>
         <Group justify="flex-end" mt="lg">
           <Button variant="default" onClick={() => close(false)}>
-            Anuluj
+            {opts?.cancelLabel ?? "Anuluj"}
           </Button>
           <Button color={opts?.danger ? "red" : undefined} onClick={() => close(true)} data-autofocus>
             {opts?.confirmLabel ?? "Potwierdź"}

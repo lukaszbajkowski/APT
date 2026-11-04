@@ -196,6 +196,7 @@ function EditDialog({ info, onClose }: { info: SiteInfo; onClose: () => void }) 
       onClose={onClose}
       title="Pomoc i prywatność"
       size="xl"
+      dirty={JSON.stringify(v) !== JSON.stringify(info)}
       primary={{ label: "Zapisz", onClick: () => save.mutate(), loading: save.isPending, disabled: emailBad || phoneBad }}
     >
       <Stack gap="md">

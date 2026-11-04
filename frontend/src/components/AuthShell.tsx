@@ -21,7 +21,7 @@ export function AuthShell({ children, maw = 400, footer, title }: { children: Re
         </Paper>
         <LanguagePicker />
         {pathname !== "/pomoc" && (
-          <Anchor component={Link} to="/pomoc" size="sm" c="dimmed" ta="center">
+          <Anchor component={Link} to="/pomoc" size="sm" c="dimmed" ta="center" className="ui-auth-link">
             {t("Pomoc i prywatność")}
           </Anchor>
         )}

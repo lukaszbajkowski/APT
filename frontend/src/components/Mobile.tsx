@@ -4,10 +4,11 @@
  * linia opisu + strzałka, akcje wiersza w arkuszu od dołu z podpisami, pusta sekcja = jeden wiersz,
  * akcje nieodwracalne osobno w ramce z opisem skutku, stan zawsze z ikoną i słowem.
  */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , useLayoutEffect} from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , type KeyboardEvent, useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
+import { useConfirm } from "../lib/confirm";
 import { Button, Drawer, Group, Modal, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
@@ -102,6 +103,7 @@ export function ListRow({
   to,
   onClick,
   muted,
+  pressed,
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -110,6 +112,8 @@ export function ListRow({
   to?: string;
   onClick?: () => void;
   muted?: boolean;
+  /** wiersz jako przełącznik (tryb zaznaczania): czytnik ekranu ogłasza „zaznaczony” / „niezaznaczony” */
+  pressed?: boolean;
 }) {
   const body = (
     <>
@@ -131,7 +135,7 @@ export function ListRow({
     );
   if (onClick)
     return (
-      <UnstyledButton className="ui-row" data-interactive onClick={onClick}>
+      <UnstyledButton className="ui-row" data-interactive onClick={onClick} aria-pressed={pressed}>
         {body}
       </UnstyledButton>
     );
@@ -524,10 +528,28 @@ export function Segments({ value, onChange, items, swipe }: { value: string; onC
       window.removeEventListener("touchend", end);
     };
   }, [swipe]);
+  // klawiatura: strzałki przełączają zakładki, Tab wchodzi tylko na wybraną (wzorzec ARIA „tabs”)
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = items.findIndex((x) => x.value === value);
+    const next = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    const n = (next + items.length) % items.length;
+    onChange(items[n].value);
+    (e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[n])?.focus();
+  };
   return (
-    <div className="ui-seg" role="tablist" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+    <div className="ui-seg" role="tablist" onKeyDown={onKey} style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
       {items.map((i) => (
-        <UnstyledButton key={i.value} role="tab" aria-selected={i.value === value} className="ui-seg-item" data-active={i.value === value || undefined} onClick={() => onChange(i.value)}>
+        <UnstyledButton
+          key={i.value}
+          role="tab"
+          aria-selected={i.value === value}
+          tabIndex={i.value === value ? 0 : -1}
+          className="ui-seg-item"
+          data-active={i.value === value || undefined}
+          onClick={() => onChange(i.value)}
+        >
           {i.label}
         </UnstyledButton>
       ))}
@@ -691,6 +713,28 @@ export function Pager({ page, pages, onPage }: { page: number; pages: number; on
  * pasek akcji tuż nad dolnym menu – Anuluj po lewej, główny przycisk po prawej. Po zamknięciu pasek górny wraca
  * do stanu sprzed otwarcia formularza.
  */
+/**
+ * Wyjście z formularza z wpisanymi danymi pyta „Odrzucić zmiany?” (strzałka, „Anuluj”, zamknięcie okna);
+ * zamknięcie karty lub odświeżenie strony – ostrzeżenie przeglądarki.
+ */
+export function useLeaveGuard(dirty: boolean | undefined) {
+  const confirm = useConfirm();
+  const t = useT();
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  return (fn: () => void) => () => {
+    if (!dirty) return fn();
+    void confirm({ title: t("Odrzucić zmiany?"), message: t("Wpisane dane nie zostaną zapisane."), confirmLabel: t("Odrzuć"), cancelLabel: t("Wróć do edycji"), danger: true }).then((ok) => ok && fn());
+  };
+}
+
 export function FormScreen({
   title,
   subtitle,
@@ -699,6 +743,7 @@ export function FormScreen({
   primary,
   cancel = "Anuluj",
   onCancel,
+  dirty,
 }: {
   title: string;
   subtitle?: string;
@@ -709,11 +754,15 @@ export function FormScreen({
   primary: { label: string; onClick?: () => void; disabled?: boolean; loading?: boolean; color?: string; formId?: string };
   /** etykieta przycisku po lewej; false = bez niego (np. ekran „Gotowe”) */
   cancel?: string | false;
+  /** są wpisane, niezapisane dane – wyjście pyta o potwierdzenie */
+  dirty?: boolean;
 }) {
   const { header, set } = useContext(HeaderCtx);
   const prev = useRef(header);
-  const cb = useRef(onClose);
-  cb.current = onCancel ?? onClose;
+  const guard = useLeaveGuard(dirty);
+  const leave = guard(onCancel ?? onClose);
+  const cb = useRef(leave);
+  cb.current = leave;
   useNavHeightVar();
   useEffect(() => {
     set({ title, subtitle, onBack: () => cb.current() });
@@ -726,7 +775,7 @@ export function FormScreen({
       <div className="ui-chat-body ui-form-body">{children}</div>
       <div className="ui-chat-compose">
         {cancel !== false && (
-          <Button size="lg" radius="md" variant="default" onClick={onCancel ?? onClose} style={{ flex: "none", minWidth: 110 }}>
+          <Button size="lg" radius="md" variant="default" onClick={leave} style={{ flex: "none", minWidth: 110 }}>
             {cancel}
           </Button>
         )}
@@ -792,6 +841,7 @@ export function FormDialog({
   children,
   cancel = "Anuluj",
   onCancel,
+  dirty,
 }: {
   opened: boolean;
   onClose: () => void;
@@ -802,20 +852,23 @@ export function FormDialog({
   children: ReactNode;
   cancel?: string | false;
   onCancel?: () => void;
+  /** są wpisane, niezapisane dane – zamknięcie pyta o potwierdzenie */
+  dirty?: boolean;
 }) {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const guard = useLeaveGuard(!mobile && opened && dirty);
   if (mobile)
     return opened ? (
-      <FormScreen title={title} subtitle={subtitle} onClose={onClose} primary={primary} cancel={cancel} onCancel={onCancel}>
+      <FormScreen title={title} subtitle={subtitle} onClose={onClose} primary={primary} cancel={cancel} onCancel={onCancel} dirty={dirty}>
         {children}
       </FormScreen>
     ) : null;
   return (
-    <Modal opened={opened} onClose={onClose} title={title} size={size}>
+    <Modal opened={opened} onClose={guard(onClose)} title={title} size={size}>
       {children}
       <Group justify="flex-end" mt="md">
         {cancel !== false && (
-          <Button variant="default" onClick={onCancel ?? onClose}>
+          <Button variant="default" onClick={guard(onCancel ?? onClose)}>
             {cancel}
           </Button>
         )}

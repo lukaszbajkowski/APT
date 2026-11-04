@@ -12,6 +12,8 @@ import { InstallApp } from "../components/InstallApp";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 
+const TOUCH = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+
 interface PasskeyChallenge {
   challenge_id: string;
   options: Record<string, unknown>;
@@ -249,8 +251,12 @@ export function LoginPage() {
               )}
               <TextInput
                 label={T("Login")}
+                name="username"
                 autoComplete="username"
-                autoFocus
+                autoCapitalize="none"
+                spellCheck={false}
+                // na telefonie bez autofokusu: klawiatura zasłaniałaby „Zaloguj kluczem dostępu”
+                autoFocus={!TOUCH}
                 required
                 value={username}
                 onChange={(e) => setUsername(e.currentTarget.value)}

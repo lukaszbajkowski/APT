@@ -11,6 +11,7 @@ import { useAuth } from "../auth";
 import { PageSheet } from "../components/PageSheet";
 import { breakableName, DocumentViewer } from "../components/DocumentViewer";
 import { useT } from "../lib/i18n";
+import { useUrlOpen, useUrlTab } from "../lib/urlState";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
@@ -792,8 +793,8 @@ function MyBroadcastsMobile() {
   const qc = useQueryClient();
   const { me } = useAuth();
   const lang = me?.user.language ?? "pl";
-  const [seg, setSeg] = useState<"active" | "archive">("active");
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [seg, setSeg] = useUrlTab("widok", ["active", "archive"] as const, "active");
+  const [openId, setOpenId] = useUrlOpen();
   const [speaking, setSpeaking] = useState(false);
   const [noVoice, setNoVoice] = useState(false);
   // obie zakładki wczytane od razu – przesunięcie palcem pokazuje gotową listę

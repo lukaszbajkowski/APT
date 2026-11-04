@@ -65,6 +65,7 @@ function ContactScreen({ kind, d, onClose }: { kind: "phone" | "email"; d: MyEmp
       onClose={onClose}
       onCancel={sentTo ? () => (setSentTo(null), setCode(""), setError(null)) : undefined}
       cancel={sentTo ? t("Wstecz") : t("Anuluj")}
+      dirty={!sentTo && value.trim().length > 0}
       primary={
         sentTo
           ? { label: t("Potwierdź"), onClick: () => confirm.mutate(), loading: confirm.isPending, disabled: code.trim().length < 4 }

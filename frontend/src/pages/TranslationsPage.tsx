@@ -184,6 +184,7 @@ function EditDialog({ lang, langName, row, onClose }: { lang: string; langName: 
       opened
       onClose={onClose}
       title={`Tłumaczenie · ${langName}`}
+      dirty={text.trim() !== row.text}
       primary={{ label: "Zapisz poprawkę", onClick: () => save.mutate(), loading: save.isPending, disabled: !text.trim() || text.trim() === row.text }}
     >
       <Stack gap="md">

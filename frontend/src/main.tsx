@@ -6,7 +6,7 @@ import "./app.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, useComputedColorScheme } from "@mantine/core";
 import { theme } from "./theme";
 import { Notifications } from "@mantine/notifications";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -54,9 +54,23 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Kolor paska przeglądarki (Safari, Chrome na Androidzie) = tło strony, także po ręcznej zmianie motywu. */
+function ThemeColor() {
+  const scheme = useComputedColorScheme("light", { getInitialValueInEffect: false });
+  React.useEffect(() => {
+    const color = scheme === "dark" ? "#1E1A17" : "#F5F4F2";
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute("content", color);
+      m.removeAttribute("media");
+    });
+  }, [scheme]);
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
+      <ThemeColor />
       <Notifications position="bottom-center" autoClose={3000} />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

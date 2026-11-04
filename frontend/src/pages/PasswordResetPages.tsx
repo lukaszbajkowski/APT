@@ -1,25 +1,22 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Center, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Center, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconMailCheck } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 import { NewPasswordFields, passwordOk } from "../components/PasswordFields";
 import { Loading } from "../components/States";
+import { AuthShell } from "../components/AuthShell";
+import { useT } from "../lib/i18n";
 
 function Shell({ children }: { children: ReactNode }) {
-  return (
-    <Center mih="100vh" className="surface-subtle" p="md">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={420}>
-        {children}
-      </Paper>
-    </Center>
-  );
+  return <AuthShell maw={420}>{children}</AuthShell>;
 }
 
 export function ForgotPasswordPage() {
+  const T = useT();
   const [login, setLogin] = useState("");
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,22 +41,22 @@ export function ForgotPasswordPage() {
       {sent ? (
         <Stack>
           <IconMailCheck size={36} color="var(--mantine-color-green-text)" />
-          <Title order={4}>Sprawdź skrzynkę</Title>
-          <Text size="sm">{sent}</Text>
+          <Title order={4}>{T("Sprawdź skrzynkę")}</Title>
+          <Text size="sm">{T(sent)}</Text>
           <Text size="sm" c="dimmed">
-            Link jest ważny godzinę. Nie ma wiadomości? Sprawdź folder spam albo poproś administratora o reset hasła.
+            {T("Link jest ważny godzinę. Nie ma wiadomości? Sprawdź folder spam albo poproś administratora o reset hasła.")}
           </Text>
           <Anchor component={Link} to="/login" size="sm">
-            Wróć do logowania
+            {T("Wróć do logowania")}
           </Anchor>
         </Stack>
       ) : (
         <form onSubmit={submit}>
           <Stack>
             <div>
-              <Title order={4}>Nie pamiętasz hasła?</Title>
+              <Title order={4}>{T("Nie pamiętasz hasła?")}</Title>
               <Text size="sm" c="dimmed">
-                Podaj login albo adres e-mail konta. Wyślemy link do ustawienia nowego hasła.
+                {T("Podaj login albo adres e-mail konta. Wyślemy link do ustawienia nowego hasła.")}
               </Text>
             </div>
             {error && (
@@ -67,12 +64,12 @@ export function ForgotPasswordPage() {
                 {error}
               </Alert>
             )}
-            <TextInput label="Login lub e-mail" required autoFocus value={login} onChange={(e) => setLogin(e.currentTarget.value)} />
+            <TextInput label={T("Login lub e-mail")} required autoFocus value={login} onChange={(e) => setLogin(e.currentTarget.value)} />
             <Button type="submit" loading={busy} fullWidth>
-              Wyślij link
+              {T("Wyślij link")}
             </Button>
             <Anchor component={Link} to="/login" size="sm" ta="center">
-              Wróć do logowania
+              {T("Wróć do logowania")}
             </Anchor>
           </Stack>
         </form>
@@ -82,6 +79,7 @@ export function ForgotPasswordPage() {
 }
 
 export function SetPasswordPage() {
+  const T = useT();
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const navigate = useNavigate();
@@ -103,13 +101,13 @@ export function SetPasswordPage() {
     e.preventDefault();
     setError(null);
     if (!passwordOk(pw, repeat, check.data?.username)) {
-      setError("Hasło nie spełnia wszystkich wymagań albo hasła nie są takie same – sprawdź listę pod polem.");
+      setError(T("Hasło nie spełnia wszystkich wymagań albo hasła nie są takie same – sprawdź listę pod polem."));
       return;
     }
     setBusy(true);
     try {
       await api("/auth/password-reset/confirm", { method: "POST", body: { token, new_password: pw } });
-      notifications.show({ color: "green", message: "Hasło ustawione. Zaloguj się nowym hasłem." });
+      notifications.show({ color: "green", message: T("Hasło ustawione. Zaloguj się nowym hasłem.") });
       navigate("/login", { replace: true });
     } catch (err) {
       setError(errorText(err));
@@ -131,13 +129,13 @@ export function SetPasswordPage() {
     return (
       <Shell>
         <Stack>
-          <Title order={4}>Link nie działa</Title>
-          <Text size="sm">Link wygasł albo został już użyty. Poproś o nowy.</Text>
+          <Title order={4}>{T("Link nie działa")}</Title>
+          <Text size="sm">{T("Link wygasł albo został już użyty. Poproś o nowy.")}</Text>
           <Button component={Link} to="/reset-hasla">
-            Wyślij nowy link
+            {T("Wyślij nowy link")}
           </Button>
           <Anchor component={Link} to="/login" size="sm" ta="center">
-            Wróć do logowania
+            {T("Wróć do logowania")}
           </Anchor>
         </Stack>
       </Shell>
@@ -149,9 +147,9 @@ export function SetPasswordPage() {
       <form onSubmit={submit}>
         <Stack>
           <div>
-            <Title order={4}>{check.data.purpose === "invite" ? "Ustaw hasło do konta" : "Ustaw nowe hasło"}</Title>
+            <Title order={4}>{T(check.data.purpose === "invite" ? "Ustaw hasło do konta" : "Ustaw nowe hasło")}</Title>
             <Text size="sm" c="dimmed">
-              Konto: <b>{check.data.username}</b>
+              {T("Konto:")} <b>{check.data.username}</b>
             </Text>
           </div>
           {error && (
@@ -161,7 +159,7 @@ export function SetPasswordPage() {
           )}
           <NewPasswordFields pw={pw} repeat={repeat} onPw={setPw} onRepeat={setRepeat} username={check.data.username} />
           <Button type="submit" loading={busy} fullWidth>
-            Ustaw hasło
+            {T("Ustaw hasło")}
           </Button>
         </Stack>
       </form>

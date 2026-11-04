@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Box, Group, PasswordInput, Progress, Stack, Text } from "@mantine/core";
 import { IconCheck, IconCircle } from "@tabler/icons-react";
 
+import { useT } from "../lib/i18n";
+
 /** Reguły takie same jak na serwerze (app/security.py: password_problems). */
 export function passwordRules(pw: string, username?: string | null) {
   const classes = [/[a-ząćęłńóśźż]/.test(pw), /[A-ZĄĆĘŁŃÓŚŹŻ]/.test(pw), /\d/.test(pw), /[^\p{L}\p{N}]/u.test(pw)].filter(Boolean).length;
@@ -34,6 +36,7 @@ export function NewPasswordFields({
   label?: string;
   serverError?: string | null;
 }) {
+  const t = useT();
   const [touched, setTouched] = useState(false);
   const rules = passwordRules(pw, username);
   const done = rules.filter((r) => r.ok).length;
@@ -42,7 +45,7 @@ export function NewPasswordFields({
   return (
     <Stack gap="xs">
       <PasswordInput
-        label={label}
+        label={t(label)}
         required
         autoComplete="new-password"
         value={pw}
@@ -58,22 +61,22 @@ export function NewPasswordFields({
           <Group key={r.label} gap={6} wrap="nowrap" align="flex-start">
             {r.ok ? <IconCheck size={14} color="var(--mantine-color-teal-text)" /> : <IconCircle size={14} color="var(--mantine-color-dimmed)" />}
             <Text size="xs" c={r.ok ? "teal" : touched && pw.length > 0 ? "red" : "dimmed"}>
-              {r.label}
+              {t(r.label)}
             </Text>
           </Group>
         ))}
       </Box>
       <PasswordInput
-        label={`Powtórz ${label.toLowerCase().replace(/^nowe /, "")}`}
+        label={t(`Powtórz ${label.toLowerCase().replace(/^nowe /, "")}`)}
         required
         autoComplete="new-password"
         value={repeat}
-        error={mismatch ? "Hasła nie są takie same – popraw to pole." : undefined}
+        error={mismatch ? t("Hasła nie są takie same – popraw to pole.") : undefined}
         onChange={(e) => onRepeat(e.currentTarget.value)}
       />
       {repeat.length > 0 && !mismatch && pw.length > 0 && (
         <Text size="xs" c="teal" role="status">
-          Hasła są takie same.
+          {t("Hasła są takie same.")}
         </Text>
       )}
     </Stack>

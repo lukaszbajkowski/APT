@@ -3,12 +3,13 @@ import { PushCard } from "../components/PushCard";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Center, CopyButton, Drawer, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, CopyButton, Drawer, Group, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconDeviceMobilePlus, IconDevices, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
 import { useAuth } from "../auth";
-import { LanguagePicker, useT } from "../lib/i18n";
+import { useT } from "../lib/i18n";
+import { AuthShell } from "../components/AuthShell";
 import { createPasskey, getPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -81,13 +82,11 @@ export function InvitePage() {
   const ready = !needsBirth || !!birth;
 
   return (
-    <Center mih="100vh" className="surface-subtle" p="md">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={440}>
+    <AuthShell maw={440}>
         <Stack>
           <Title order={3} className="brand-title">
             {addDevice ? t("Dodaj to urządzenie") : t("Załóż swoje konto")}
           </Title>
-          <LanguagePicker />
           {info.isLoading && <Loading />}
           {(info.isError || !token) && (
             <Alert color="red" icon={<IconAlertCircle size={18} />}>
@@ -149,8 +148,7 @@ export function InvitePage() {
             {t("Mam już konto – zaloguj")}
           </Anchor>
         </Stack>
-      </Paper>
-    </Center>
+    </AuthShell>
   );
 }
 

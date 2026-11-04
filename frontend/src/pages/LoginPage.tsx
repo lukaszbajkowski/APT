@@ -2,11 +2,12 @@ import { BrandMark } from "../components/AppLayout";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Box, Button, Center, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Box, Button, Divider, Group, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconFingerprint, IconQrcode, IconShieldLock } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
-import { LanguagePicker, useT } from "../lib/i18n";
+import { useT } from "../lib/i18n";
+import { AuthShell } from "../components/AuthShell";
 import { InstallApp } from "../components/InstallApp";
 import { api, ApiError, MFA_PATH, type Me } from "../api";
 import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey";
@@ -211,9 +212,7 @@ export function LoginPage() {
   }
 
   return (
-    <Center mih="100vh" p="md" style={{ background: "var(--apt-ground)" }}>
-      <Stack align="center" w="100%" maw={400} gap="md">
-      <Paper withBorder shadow="sm" p="xl" w="100%">
+    <AuthShell footer={<InstallApp compact />}>
         {me?.mfa_pending ? (
           <CodeStep onDone={(result) => navigate(nextPath(result, from), { replace: true })} />
         ) : (
@@ -299,10 +298,6 @@ export function LoginPage() {
             </Stack>
           </form>
         )}
-      </Paper>
-      <LanguagePicker />
-      <InstallApp compact />
-      </Stack>
-    </Center>
+    </AuthShell>
   );
 }

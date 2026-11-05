@@ -25,6 +25,7 @@ type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
 export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const [text, setText] = useState(toDisplay(value));
   const picker = useRef<HTMLInputElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const openPicker = () => {
     try {
@@ -54,6 +55,7 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
     <div style={{ position: "relative" }}>
       <TextInput
         {...rest}
+        ref={field}
         inputMode="numeric"
         placeholder="dd.mm.rrrr"
         maxLength={10}
@@ -89,6 +91,15 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         onChange={(e) => {
           setText(toDisplay(e.target.value));
           onChange({ currentTarget: { value: e.target.value } });
+          // Safari na macOS zostawia kalendarz otwarty po wyborze dnia – zamyka go dopiero utrata fokusu.
+          // Po wyborze zabieramy fokus z ukrytego pola i oddajemy go widocznemu polu daty.
+          if (!touch && e.target.value) {
+            const el = e.currentTarget;
+            window.setTimeout(() => {
+              el.blur();
+              field.current?.focus({ preventScroll: true });
+            }, 0);
+          }
         }}
         // telefon: przezroczyste natywne pole nad całym polem – stuknięcie otwiera systemowy kalendarz (niezawodne w Safari)
         style={

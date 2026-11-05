@@ -1,5 +1,5 @@
 /* Szkolenia na telefonie: matryca, raport i wymagania stanowisk (makiety „Szkolenia na telefonie”). */
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Drawer, Stack, Switch, Text, UnstyledButton } from "@mantine/core";
@@ -24,6 +24,14 @@ import { REQ_STATE, reqValue, type Matrix, type MatrixCell, type MatrixRow, type
 import { EMPTY, STATUS_ORDER, rowDates, toQuery, type Filters, type Report } from "./TrainingsReport";
 import { ActionSheet, Chips, CompactEmpty, FormScreen, ListRow, PickSheet, Segments, SheetHandle, StatusBadge } from "./Mobile";
 import { ErrorState, Loading } from "./States";
+import { useNativeValue } from "../lib/nativeInput";
+
+/** Systemowy kalendarz w wierszu filtra; „Wyzeruj” w Safari na iOS też czyści datę. */
+function NativeDate({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useNativeValue(ref, value, onChange);
+  return <input ref={ref} type="date" className="ui-date" defaultValue={value} aria-label={label} />;
+}
 
 type Tone = "ok" | "warn" | "error" | "neutral" | "wait";
 const REQ_TONE: Record<ReqState, Tone> = { ok: "ok", expiring: "warn", in_progress: "wait", expired: "warn", missing: "warn" };
@@ -389,11 +397,11 @@ export function ReportMobile({ menu, onMenuClose }: { menu: boolean; onMenuClose
         <FilterRow label="Opiekun" value={optLabel(mentors, f.mentor_id, "Wszyscy")} on={!!f.mentor_id} onClick={() => setSheet("mentor")} />
         <div className="ui-filter-row">
           <span className="ui-filter-label">Od</span>
-          <input type="date" className="ui-date" value={f.date_from} onChange={(e) => set("date_from", e.currentTarget.value)} aria-label="Data od" />
+          <NativeDate value={f.date_from} onChange={(v) => set("date_from", v)} label="Data od" />
         </div>
         <div className="ui-filter-row">
           <span className="ui-filter-label">Do</span>
-          <input type="date" className="ui-date" value={f.date_to} onChange={(e) => set("date_to", e.currentTarget.value)} aria-label="Data do" />
+          <NativeDate value={f.date_to} onChange={(v) => set("date_to", v)} label="Data do" />
         </div>
         <div className="ui-filter-foot">
           <Button size="lg" variant="default" radius="md" style={{ flex: 1 }} onClick={() => setF(EMPTY)}>

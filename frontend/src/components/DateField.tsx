@@ -52,7 +52,10 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
     setText(out);
     if (out === "") onChange({ currentTarget: { value: "" } });
     const iso = toIso(out);
-    if (iso) onChange({ currentTarget: { value: iso } });
+    if (iso) {
+      onChange({ currentTarget: { value: iso } });
+      setCalOpen(false); // pełna data wpisana – kalendarz niepotrzebny
+    }
   }
   const invalid = text.length === 10 && toIso(text) === null;
   const outOfRange = value && ((min && value < min) || (max && value > max));

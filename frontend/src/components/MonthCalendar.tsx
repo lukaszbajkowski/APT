@@ -45,7 +45,11 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
     setView({ y: d.getFullYear(), m: d.getMonth() });
   };
 
+  // fokus na dzień tylko przy poruszaniu się klawiaturą po kalendarzu – samo otwarcie nie może zabrać fokusu
+  // z pola daty (inaczej nie da się wpisać daty ręcznie)
+  const navigating = useRef(false);
   useEffect(() => {
+    if (!navigating.current) return;
     grid.current?.querySelector<HTMLElement>(`[data-v="${focus}"]`)?.focus();
   }, [focus, view]);
 
@@ -61,6 +65,7 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
     else if (e.key === "End") next = iso(view.y, view.m + 1, 0);
     if (!next) return;
     e.preventDefault();
+    navigating.current = true;
     const p = parse(next)!;
     if (p.y !== view.y || p.m !== view.m) setView({ y: p.y, m: p.m });
     setFocus(next);

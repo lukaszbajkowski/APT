@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ActionIcon, TextInput, type TextInputProps } from "@mantine/core";
+import { ActionIcon, Popover, TextInput, type TextInputProps } from "@mantine/core";
+
+import { MonthCalendar } from "./MonthCalendar";
 import { IconCalendar } from "@tabler/icons-react";
 
 const toDisplay = (iso: string) => {
@@ -26,8 +28,11 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const [text, setText] = useState(toDisplay(value));
   const picker = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLInputElement>(null);
+  // komputer: własny kalendarz w okienku (natywnego Safari na macOS nie da się zamknąć po wyborze dnia)
+  const [calOpen, setCalOpen] = useState(false);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const openPicker = () => {
+    if (!touch) return setCalOpen((o) => !o);
     try {
       picker.current?.showPicker?.();
     } catch {
@@ -53,6 +58,8 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const outOfRange = value && ((min && value < min) || (max && value > max));
   return (
     <div style={{ position: "relative" }}>
+      <Popover opened={calOpen && !touch} onChange={setCalOpen} position="bottom-start" shadow="md" withinPortal>
+        <Popover.Target>
       <TextInput
         {...rest}
         ref={field}
@@ -62,11 +69,22 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         value={text}
         error={rest.error ?? (invalid ? "Nieprawidłowa data – wpisz dd.mm.rrrr." : outOfRange ? "Data poza dozwolonym zakresem." : undefined)}
         onChange={(e) => typed(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          rest.onKeyDown?.(e);
+          // strzałka w dół – przejście do kalendarza; Esc – zamknięcie
+          if (!touch && e.key === "ArrowDown") {
+            e.preventDefault();
+            setCalOpen(true);
+            window.setTimeout(() => document.querySelector<HTMLElement>(".ui-cal-day[tabindex='0']")?.focus(), 0);
+          }
+          if (e.key === "Escape" && calOpen) setCalOpen(false);
+        }}
         // kliknięcie w pole od razu otwiera kalendarz; na telefonie bez klawiatury (tylko kalendarz)
         readOnly={touch || rest.readOnly}
         onClick={(e) => {
           rest.onClick?.(e);
-          if (!rest.disabled && !rest.readOnly) openPicker();
+          // kliknięcie w pole otwiera kalendarz (nie zamyka – można też pisać datę z klawiatury)
+          if (!rest.disabled && !rest.readOnly) (touch ? openPicker() : setCalOpen(true));
         }}
         rightSection={
           <ActionIcon
@@ -80,6 +98,20 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
           </ActionIcon>
         }
       />
+        </Popover.Target>
+        <Popover.Dropdown p="xs">
+          <MonthCalendar
+            value={value}
+            min={min}
+            max={max}
+            onPick={(v) => {
+              setText(toDisplay(v));
+              onChange({ currentTarget: { value: v } });
+              setCalOpen(false);
+            }}
+          />
+        </Popover.Dropdown>
+      </Popover>
       <input
         ref={picker}
         type="date"
@@ -91,15 +123,6 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         onChange={(e) => {
           setText(toDisplay(e.target.value));
           onChange({ currentTarget: { value: e.target.value } });
-          // Safari na macOS zostawia kalendarz otwarty po wyborze dnia – zamyka go dopiero utrata fokusu.
-          // Po wyborze zabieramy fokus z ukrytego pola i oddajemy go widocznemu polu daty.
-          if (!touch && e.target.value) {
-            const el = e.currentTarget;
-            window.setTimeout(() => {
-              el.blur();
-              field.current?.focus({ preventScroll: true });
-            }, 0);
-          }
         }}
         // telefon: przezroczyste natywne pole nad całym polem – stuknięcie otwiera systemowy kalendarz (niezawodne w Safari)
         style={

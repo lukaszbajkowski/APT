@@ -895,3 +895,18 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .mantine-Badge-label, .mantine-Indicator-indicator, .ui-status { font-variant-numeric: tabular-nums; }
 /* link pod kartą logowania: pole dotyku 44 px */
 .ui-auth-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
+/* kalendarz miesiąca (pola dat na komputerze) */
+.ui-cal { width: 266px; user-select: none; }
+.ui-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.ui-cal-title { font-weight: 700; font-size: 14px; text-transform: capitalize; }
+.ui-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ui-cal-dow { font-size: 11px; font-weight: 700; text-align: center; color: var(--mantine-color-dimmed); padding: 2px 0 4px; text-transform: uppercase; }
+.ui-cal-day { height: 34px; border-radius: 8px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ui-cal-day:hover:not(:disabled) { background: var(--apt-subtle); }
+.ui-cal-day[data-other] { color: var(--mantine-color-dimmed); opacity: .6; }
+.ui-cal-day[data-today] { box-shadow: inset 0 0 0 1.5px var(--mantine-primary-color-filled); font-weight: 700; }
+.ui-cal-day[data-selected] { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-weight: 700; }
+.ui-cal-day:disabled { opacity: .3; cursor: not-allowed; }
+.ui-cal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
+.ui-cal-link { font-size: 13px; font-weight: 600; color: var(--mantine-primary-color-text); padding: 4px 8px; border-radius: 6px; }
+.ui-cal-link:hover { background: var(--apt-subtle); }

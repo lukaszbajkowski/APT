@@ -70,7 +70,7 @@ function DayTimeFields({
           label="Godzina"
           value={time}
           onChange={(v) => onChange(join(day, v))}
-          style={{ flex: "0 0 112px" }}
+          style={{ flex: "0 0 116px", minWidth: 0 }}
           error={!!time && !day ? "Podaj też dzień" : undefined}
         />
       </Group>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Popover, TextInput, type TextInputProps } from "@mantine/core";
 
 import { MonthCalendar } from "./MonthCalendar";
+import { useNativeValue } from "../lib/nativeInput";
 import { IconCalendar } from "@tabler/icons-react";
 
 const toDisplay = (iso: string) => {
@@ -28,6 +29,11 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const [text, setText] = useState(toDisplay(value));
   const picker = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLInputElement>(null);
+  // natywne pole (systemowy kalendarz na telefonie) – także „Wyzeruj” w Safari czyści datę
+  useNativeValue(picker, value, (v) => {
+    setText(toDisplay(v));
+    onChange({ currentTarget: { value: v } });
+  });
   // komputer: własny kalendarz w okienku (natywnego Safari na macOS nie da się zamknąć po wyborze dnia)
   const [calOpen, setCalOpen] = useState(false);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
@@ -122,11 +128,7 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         aria-hidden
         min={min}
         max={max}
-        value={value}
-        onChange={(e) => {
-          setText(toDisplay(e.target.value));
-          onChange({ currentTarget: { value: e.target.value } });
-        }}
+        defaultValue={value}
         // telefon: przezroczyste natywne pole nad całym polem – stuknięcie otwiera systemowy kalendarz (niezawodne w Safari)
         style={
           touch && !rest.disabled && !rest.readOnly

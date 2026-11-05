@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ActionIcon, Button, Popover, TextInput, type TextInputProps } from "@mantine/core";
+
+import { useNativeValue } from "../lib/nativeInput";
 import { IconClock } from "@tabler/icons-react";
 
 type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
@@ -111,9 +113,10 @@ function TimeWheels({ value, step, onDone }: { value: string; step: number; onDo
  * Komputer: wpisuje się same cyfry (dwukropek dopisuje się sam) albo wybiera na kółkach w okienku pod polem.
  * Telefon: stuknięcie otwiera systemowy wybór godziny (natywne pole). Wartość: „GG:MM” albo "".
  */
-export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
+export function TimeField({ value, onChange, minuteStep = 1, style, className, ...rest }: Props) {
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
+  const native = useRef<HTMLInputElement>(null);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   useEffect(() => {
     if (value !== (valid(text) ? text : "")) setText(value);
@@ -133,24 +136,25 @@ export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
     onChange(v);
     setOpen(false);
   };
+  // natywne pole (systemowy wybór na telefonie) – także „Wyzeruj” w Safari czyści godzinę
+  useNativeValue(native, valid(text) ? text : "", (v) => {
+    setText(v);
+    onChange(valid(v) ? v : "");
+  });
   const bad = text.length === 5 && !valid(text);
   // kółka montują się od nowa przy każdym otwarciu – startują od aktualnej wartości pola
   const picker = open ? <TimeWheels value={valid(text) ? text : ""} step={minuteStep} onDone={pick} /> : null;
   return (
     <>
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", ...(style as object) }} className={className}>
     {touch && !rest.disabled && !rest.readOnly && (
       // telefon: przezroczyste natywne pole nad polem – stuknięcie otwiera systemowy wybór godziny
       // (iOS: kółka, Android: zegar); wyświetlamy zawsze 24 h w polu pod spodem
       <input
         type="time"
         aria-label={typeof rest.label === "string" ? rest.label : "Godzina"}
-        value={valid(text) ? text : ""}
-        onChange={(e) => {
-          const v = e.currentTarget.value;
-          setText(v);
-          onChange(valid(v) ? v : "");
-        }}
+        ref={native}
+        defaultValue={valid(text) ? text : ""}
         style={{ position: "absolute", inset: 0, opacity: 0, zIndex: 2, width: "100%", height: "100%", fontSize: 16 }}
       />
     )}

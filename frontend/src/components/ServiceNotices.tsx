@@ -16,6 +16,7 @@ import {
 import { api, probeServer, serverDownStore, setServerDown } from "../api";
 import { useAuth } from "../auth";
 import { deviceTz, differsFromHome, HOME_TZ, timeIn } from "../lib/time";
+import { currentLang } from "../lib/i18n";
 
 // Godziny przerwy zawsze w strefie urządzenia, na którym ktoś patrzy (odczyt przy każdym wyświetleniu –
 // po zmianie strefy w telefonie, np. w podróży, pasek od razu pokazuje właściwą godzinę).
@@ -74,40 +75,55 @@ const dayNum = (x: Date) => {
   return Date.UTC(y, m - 1, d) / 86_400_000;
 };
 
-/** „dziś, 22:00” / „jutro, 6:00” / „sob. 8.11, 22:00” – w strefie użytkownika */
-export function dayTime(at: string): string {
+type Tr = (text: string, vars?: Record<string, string>) => string;
+// bez tłumacza: polskie szablony z podstawionymi wartościami (panel administratora)
+const plain: Tr = (text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? "") : text);
+
+/**
+ * „dziś, 22:00” / „jutro, 6:00” / „sob. 8.11, 22:00” – w strefie urządzenia. Teksty jako szablony z polami
+ * ({time}, {day}), więc tłumaczy się kilka stałych zdań, a nie każda godzina osobno; dzień tygodnia z Intl
+ * w języku aplikacji.
+ */
+export function dayTime(at: string, tr: Tr = plain): string {
   const d = new Date(at);
-  const diff = dayNum(d) - dayNum(new Date());
-  const time = timeIn(d, deviceTz());
-  if (diff === 0) return `dziś, ${time}`;
-  if (diff === 1) return `jutro, ${time}`;
-  if (diff === -1) return `wczoraj, ${time}`;
   const tz = deviceTz();
-  const wd = d.toLocaleDateString("pl-PL", { weekday: "short", timeZone: tz });
+  const diff = dayNum(d) - dayNum(new Date());
+  const time = timeIn(d, tz);
+  if (diff === 0) return tr("dziś, {time}", { time });
+  if (diff === 1) return tr("jutro, {time}", { time });
+  if (diff === -1) return tr("wczoraj, {time}", { time });
+  const loc = currentLang() ?? "pl-PL";
+  let wd: string;
+  try {
+    wd = d.toLocaleDateString(loc, { weekday: "short", timeZone: tz });
+  } catch {
+    wd = d.toLocaleDateString("pl-PL", { weekday: "short", timeZone: tz });
+  }
   const dm = d.toLocaleDateString("pl-PL", { day: "numeric", month: "2-digit", timeZone: tz });
   return `${wd} ${dm}, ${time}`;
 }
 const sameDay = (a: string, b: string) => dayNum(new Date(a)) === dayNum(new Date(b));
 
 /** Poza strefą polską: godziny przerwy także w czasie polskim („22:00–23:30 czasu polskiego”). */
-function homeHint(n: ServiceNotice): string {
+function homeHint(n: ServiceNotice, tr: Tr): string {
   const at = n.starts_at ?? n.ends_at;
   if (!at || !differsFromHome(new Date(at), deviceTz())) return "";
   const parts = [n.starts_at, n.ends_at].filter(Boolean).map((x) => timeIn(new Date(x as string), HOME_TZ));
-  return ` (${parts.join("–")} czasu polskiego)`;
+  return ` (${tr("{time} czasu polskiego", { time: parts.join("–") })})`;
 }
 
 /** Opis czasu komunikatu: „Trwa · do dziś, 23:00”, „sob. 8.11, 22:00–23:30”, „Od jutra, 6:00”. */
-export function whenText(n: ServiceNotice, now = Date.now()): string {
-  if (isOver(n, now)) return n.ends_at ? `Zakończone ${dayTime(n.ends_at)}` : "Zakończone";
-  if (isOngoing(n, now)) return n.ends_at ? `Trwa · do ${dayTime(n.ends_at)}${homeHint({ ...n, starts_at: null })}` : "Trwa";
+export function whenText(n: ServiceNotice, now = Date.now(), tr: Tr = plain): string {
+  const dt = (x: string) => dayTime(x, tr);
+  if (isOver(n, now)) return n.ends_at ? tr("Zakończone {when}", { when: dt(n.ends_at) }) : tr("Zakończone");
+  if (isOngoing(n, now)) return n.ends_at ? tr("Trwa · do {when}", { when: dt(n.ends_at) }) + homeHint({ ...n, starts_at: null }, tr) : tr("Trwa");
   if (n.starts_at && n.ends_at)
     return (
       (sameDay(n.starts_at, n.ends_at)
-        ? `${dayTime(n.starts_at)}–${timeIn(new Date(n.ends_at), deviceTz())}`
-        : `${dayTime(n.starts_at)} – ${dayTime(n.ends_at)}`) + homeHint(n)
+        ? `${dt(n.starts_at)}–${timeIn(new Date(n.ends_at), deviceTz())}`
+        : `${dt(n.starts_at)} – ${dt(n.ends_at)}`) + homeHint(n, tr)
     );
-  return n.starts_at ? `Od ${dayTime(n.starts_at)}${homeHint(n)}` : "";
+  return n.starts_at ? tr("Od {when}", { when: dt(n.starts_at) }) + homeHint(n, tr) : "";
 }
 
 /** Zegar odświeżający widok co 30 s – przerwa zaczyna się i kończy bez przeładowania strony. */
@@ -191,7 +207,7 @@ export function ServiceNoticeBanner() {
             <div className="ui-svc-text">
               <span className="ui-svc-meta">
                 {t(k.label)}
-                {whenText(n, now) ? ` · ${t(whenText(n, now))}` : ""}
+                {whenText(n, now, t) ? ` · ${whenText(n, now, t)}` : ""}
               </span>
               <span className="ui-svc-title">{t(n.title)}</span>
               {n.body && <span className="ui-svc-body">{t(n.body)}</span>}
@@ -252,7 +268,7 @@ function OutageScreen({
         {notice?.ends_at && (
           <div className="ui-outage-when">
             <span>{t("Planowany koniec")}</span>
-            <strong>{t(dayTime(notice.ends_at))}</strong>
+            <strong>{dayTime(notice.ends_at, t)}</strong>
           </div>
         )}
         <p className="ui-outage-safe">{t("Twoje dane są bezpieczne. Nic nie musisz robić – strona sama sprawdza, czy działa.")}</p>

@@ -12,6 +12,7 @@ import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { useUrlOpen, useUrlTab } from "../lib/urlState";
 import { useDraft } from "../lib/draft";
+import { currentTz, timeIn } from "../lib/time";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
 import { useNavigate } from "react-router-dom";
@@ -391,15 +392,16 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
   );
 }
 
-const hm = (iso: string) => new Date(iso).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+// godziny i dni rozmowy w strefie użytkownika (konto albo urządzenie) – jak w reszcie aplikacji
+const hm = (iso: string) => timeIn(new Date(iso));
 function dayLabel(iso: string, T: (s: string) => string): string {
+  const day = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: currentTz() });
   const d = new Date(iso);
   const today = new Date();
-  const y = new Date();
-  y.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return T("Dziś");
-  if (d.toDateString() === y.toDateString()) return T("Wczoraj");
-  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const y = new Date(today.getTime() - 86_400_000);
+  if (day(d) === day(today)) return T("Dziś");
+  if (day(d) === day(y)) return T("Wczoraj");
+  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: currentTz() });
 }
 
 type TrState = Record<number, { text: string; source: string | null; target: string } | "loading">;

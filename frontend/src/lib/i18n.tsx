@@ -223,6 +223,9 @@ export function useT() {
   return translateText;
 }
 
+/** Bieżący język aplikacji (null = polski) – dla funkcji poza komponentami. */
+export const currentLang = () => lang;
+
 export function useLang() {
   return useContext(Ctx).lang;
 }

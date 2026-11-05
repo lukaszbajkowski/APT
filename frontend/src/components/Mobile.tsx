@@ -754,12 +754,15 @@ export function FormScreen({
   primary: { label: string; onClick?: () => void; disabled?: boolean; loading?: boolean; color?: string; formId?: string };
   /** etykieta przycisku po lewej; false = bez niego (np. ekran „Gotowe”) */
   cancel?: string | false;
-  /** są wpisane, niezapisane dane – wyjście pyta o potwierdzenie */
+  /** są wpisane, niezapisane dane – wyjście pyta o potwierdzenie; bez podania: od pierwszego wpisania czegokolwiek */
   dirty?: boolean;
 }) {
   const { header, set } = useContext(HeaderCtx);
   const prev = useRef(header);
-  const guard = useLeaveGuard(dirty);
+  // bez jawnego `dirty`: formularz jest „brudny” od pierwszego wpisania czegokolwiek (zdarzenie input)
+  const [typed, setTyped] = useState(false);
+  // ekran „Gotowe” (bez przycisku Anuluj) niczego już nie traci
+  const guard = useLeaveGuard(dirty ?? (cancel !== false && typed));
   const leave = guard(onCancel ?? onClose);
   const cb = useRef(leave);
   cb.current = leave;
@@ -771,7 +774,7 @@ export function FormScreen({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => () => set(prev.current), []);
   return createPortal(
-    <div className="ui-inpage" role="dialog" aria-label={title}>
+    <div className="ui-inpage" role="dialog" aria-label={title} onInput={() => setTyped(true)}>
       <div className="ui-chat-body ui-form-body">{children}</div>
       <div className="ui-chat-compose">
         {cancel !== false && (
@@ -852,11 +855,15 @@ export function FormDialog({
   children: ReactNode;
   cancel?: string | false;
   onCancel?: () => void;
-  /** są wpisane, niezapisane dane – zamknięcie pyta o potwierdzenie */
+  /** są wpisane, niezapisane dane – zamknięcie pyta o potwierdzenie; bez podania: od pierwszego wpisania czegokolwiek */
   dirty?: boolean;
 }) {
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
-  const guard = useLeaveGuard(!mobile && opened && dirty);
+  const [typed, setTyped] = useState(false);
+  useEffect(() => {
+    if (!opened) setTyped(false);
+  }, [opened]);
+  const guard = useLeaveGuard(!mobile && opened && (dirty ?? (cancel !== false && typed)));
   if (mobile)
     return opened ? (
       <FormScreen title={title} subtitle={subtitle} onClose={onClose} primary={primary} cancel={cancel} onCancel={onCancel} dirty={dirty}>
@@ -865,7 +872,7 @@ export function FormDialog({
     ) : null;
   return (
     <Modal opened={opened} onClose={guard(onClose)} title={title} size={size}>
-      {children}
+      <div onInput={() => setTyped(true)}>{children}</div>
       <Group justify="flex-end" mt="md">
         {cancel !== false && (
           <Button variant="default" onClick={guard(onCancel ?? onClose)}>

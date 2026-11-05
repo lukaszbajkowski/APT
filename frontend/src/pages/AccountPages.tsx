@@ -281,6 +281,8 @@ function AddDeviceDialog({ opened, onClose, hasKey, staff, mfa }: { opened: bool
       opened={opened}
       onClose={onClose}
       title={t("Dodaj inne urządzenie")}
+      // tylko potwierdzenie tożsamości (hasło / klucz) – nie ma czego „odrzucać”
+      dirty={false}
       primary={
         result
           ? expired

@@ -910,16 +910,16 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-cal-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
 .ui-cal-link { font-size: 13px; font-weight: 600; color: var(--mantine-primary-color-text); padding: 4px 8px; border-radius: 6px; }
 .ui-cal-link:hover { background: var(--apt-subtle); }
-/* wybór godziny (pole GG:MM): siatka godzin i minut */
-.ui-time { width: 276px; user-select: none; }
-.ui-time-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--mantine-color-dimmed); margin: 4px 2px 4px; }
-.ui-time-label + .ui-time-grid { margin-bottom: 8px; }
-.ui-time-grid { display: grid; gap: 3px; }
-.ui-time-grid[data-cols="6"] { grid-template-columns: repeat(6, 1fr); }
-.ui-time-grid[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
-.ui-time-cell { height: 36px; border-radius: 8px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
-.ui-time-cell:hover { background: var(--apt-subtle); }
-.ui-time-cell[data-selected] { background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); font-weight: 700; }
+/* wybór godziny: dwa kółka jak w budziku iPhone'a (pozycja 40 px, widać 5 pozycji, wybór w pasie na środku) */
+.ui-wheels { width: 240px; }
+.ui-time-sheet .ui-wheels { width: auto; }
+.ui-wheels-row { position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; height: 200px; }
+.ui-wheel { position: relative; z-index: 1; width: 84px; height: 200px; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; padding: 80px 0; box-sizing: border-box; border-radius: 10px; outline-offset: -2px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent); }
+.ui-wheel::-webkit-scrollbar { display: none; }
+.ui-wheel-item { height: 40px; line-height: 40px; text-align: center; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--mantine-color-dimmed); scroll-snap-align: center; cursor: pointer; transition: color .12s, transform .12s; }
+.ui-wheel-item[data-on] { color: var(--mantine-color-text); font-weight: 700; transform: scale(1.08); }
+.ui-wheels-colon { position: relative; z-index: 1; font-size: 22px; font-weight: 700; }
+.ui-wheels-band { position: absolute; left: 0; right: 0; top: 80px; height: 40px; border-radius: 10px; background: var(--apt-subtle); pointer-events: none; }
 .ui-time-sheet { padding: 0 16px calc(12px + var(--apt-safe-bottom)); }
-.ui-time-sheet .ui-time { width: auto; }
-@media (pointer: coarse) { .ui-time-cell { height: 44px; font-size: 17px; } }
+@media (pointer: coarse) { .ui-wheel { width: 110px; } .ui-wheel-item { font-size: 24px; } }

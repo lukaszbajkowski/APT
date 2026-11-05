@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ActionIcon, Drawer, Popover, TextInput, UnstyledButton, type TextInputProps } from "@mantine/core";
+import { ActionIcon, Button, Drawer, Popover, TextInput, type TextInputProps } from "@mantine/core";
 
 import { SheetHandle } from "./Mobile";
 import { IconClock } from "@tabler/icons-react";
@@ -7,70 +7,113 @@ import { IconClock } from "@tabler/icons-react";
 type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
   value: string;
   onChange: (value: string) => void;
-  /** krok minut w okienku wyboru (wpisać ręcznie można każdą minutę) */
+  /** krok minut na kółku (domyślnie co minutę, jak w budziku) */
   minuteStep?: number;
 };
 
 const valid = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 const pad = (n: number) => String(n).padStart(2, "0");
-const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
+const ITEM = 40; // wysokość pozycji kółka (px)
 
 /**
- * Okienko wyboru godziny: najpierw godzina (siatka 00–23), potem minuty – wybór minut zamyka okienko.
- * Strzałki poruszają się po siatce, Enter wybiera.
+ * Kółko jak w budziku iPhone'a: kolumna przewijana palcem, kółkiem myszy albo strzałkami; wybór = pozycja na
+ * środku (zaznaczony pas). Kliknięcie pozycji przewija ją na środek.
  */
-function TimePicker({ value, step, onPick }: { value: string; step: number; onPick: (v: string, done: boolean) => void }) {
-  const [h, m] = valid(value) ? value.split(":") : ["", ""];
-  const minutes = Array.from({ length: Math.ceil(60 / step) }, (_, i) => pad(i * step));
-  const box = useRef<HTMLDivElement>(null);
-  const move = (e: KeyboardEvent<HTMLDivElement>, cols: number) => {
-    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key];
-    if (step === undefined) return;
+function Wheel({ items, index, onIndex, label }: { items: string[]; index: number; onIndex: (i: number) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const timer = useRef<number>();
+  const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const scrollTo = (i: number, smooth = true) => ref.current?.scrollTo({ top: i * ITEM, behavior: smooth && !reduce ? "smooth" : "auto" });
+  useEffect(() => {
+    scrollTo(index, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onScroll = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      const i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / ITEM)));
+      if (i !== index) onIndex(i);
+    }, 90);
+  };
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const d = { ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 }[e.key];
+    if (d === undefined) return;
     e.preventDefault();
-    const items = [...e.currentTarget.querySelectorAll<HTMLElement>("button")];
-    const i = items.indexOf(document.activeElement as HTMLElement);
-    items[Math.min(items.length - 1, Math.max(0, (i < 0 ? 0 : i) + step))]?.focus();
+    const i = Math.max(0, Math.min(items.length - 1, index + d));
+    onIndex(i);
+    scrollTo(i);
   };
   return (
-    <div className="ui-time" ref={box}>
-      <div className="ui-time-label">Godzina</div>
-      <div className="ui-time-grid" data-cols="6" role="group" aria-label="Godzina" onKeyDown={(e) => move(e, 6)}>
-        {HOURS.map((x) => (
-          <UnstyledButton
-            key={x}
-            className="ui-time-cell"
-            data-selected={x === h || undefined}
-            aria-pressed={x === h}
-            onClick={() => onPick(`${x}:${m || "00"}`, false)}
-          >
-            {x}
-          </UnstyledButton>
-        ))}
+    <div
+      ref={ref}
+      className="ui-wheel"
+      role="spinbutton"
+      aria-label={label}
+      aria-valuetext={items[index]}
+      aria-valuenow={index}
+      aria-valuemin={0}
+      aria-valuemax={items.length - 1}
+      tabIndex={0}
+      onScroll={onScroll}
+      onKeyDown={onKey}
+    >
+      {items.map((x, i) => (
+        <div
+          key={x}
+          className="ui-wheel-item"
+          data-on={i === index || undefined}
+          onClick={() => {
+            onIndex(i);
+            scrollTo(i);
+          }}
+        >
+          {x}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Dwa kółka (godziny i minuty) i „Gotowe”. Zmiana zapisuje się dopiero po „Gotowe”. */
+function TimeWheels({ value, step, onDone }: { value: string; step: number; onDone: (v: string) => void }) {
+  const hours = Array.from({ length: 24 }, (_, i) => pad(i));
+  const minutes = Array.from({ length: Math.ceil(60 / step) }, (_, i) => pad(i * step));
+  // start: wpisana godzina albo najbliższa pełna „teraz” zaokrąglona w górę do kroku minut
+  const init = () => {
+    if (valid(value)) {
+      const [h, m] = value.split(":").map(Number);
+      return { h, m: Math.min(minutes.length - 1, Math.round(m / step)) };
+    }
+    const now = new Date();
+    const mi = Math.ceil(now.getMinutes() / step);
+    return mi >= minutes.length ? { h: (now.getHours() + 1) % 24, m: 0 } : { h: now.getHours(), m: mi };
+  };
+  const [sel, setSel] = useState(init);
+  return (
+    <div className="ui-wheels">
+      <div className="ui-wheels-row">
+        <Wheel items={hours} index={sel.h} onIndex={(h) => setSel((x) => ({ ...x, h }))} label="Godzina" />
+        <span className="ui-wheels-colon" aria-hidden>
+          :
+        </span>
+        <Wheel items={minutes} index={sel.m} onIndex={(m) => setSel((x) => ({ ...x, m }))} label="Minuty" />
+        <div className="ui-wheels-band" aria-hidden />
       </div>
-      <div className="ui-time-label">Minuty</div>
-      <div className="ui-time-grid" data-cols="4" role="group" aria-label="Minuty" onKeyDown={(e) => move(e, 4)}>
-        {minutes.map((x) => (
-          <UnstyledButton
-            key={x}
-            className="ui-time-cell"
-            data-selected={(!!h && x === m) || undefined}
-            aria-pressed={!!h && x === m}
-            onClick={() => onPick(`${h || "00"}:${x}`, true)}
-          >
-            :{x}
-          </UnstyledButton>
-        ))}
-      </div>
+      <Button fullWidth size="md" radius="md" mt="sm" onClick={() => onDone(`${hours[sel.h]}:${minutes[sel.m]}`)}>
+        Gotowe · {hours[sel.h]}:{minutes[sel.m]}
+      </Button>
     </div>
   );
 }
 
 /**
  * Godzina w formacie 24-godzinnym GG:MM niezależnie od języka telefonu (natywne pole pokazałoby „10:00 PM”).
- * Komputer: wpisuje się same cyfry (dwukropek dopisuje się sam) albo wybiera w okienku pod polem.
- * Telefon: stuknięcie otwiera okienko wyboru z dużymi polami (bez klawiatury). Wartość: „GG:MM” albo "".
+ * Komputer: wpisuje się same cyfry (dwukropek dopisuje się sam) albo wybiera na kółkach w okienku pod polem.
+ * Telefon: stuknięcie otwiera panel od dołu z kółkami jak w budziku (bez klawiatury). Wartość: „GG:MM” albo "".
  */
-export function TimeField({ value, onChange, minuteStep = 5, ...rest }: Props) {
+export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
@@ -87,13 +130,14 @@ export function TimeField({ value, onChange, minuteStep = 5, ...rest }: Props) {
     onChange(valid(out) ? out : "");
     if (valid(out)) setOpen(false);
   }
-  const pick = (v: string, done: boolean) => {
+  const pick = (v: string) => {
     setText(v);
     onChange(v);
-    if (done) setOpen(false);
+    setOpen(false);
   };
   const bad = text.length === 5 && !valid(text);
-  const picker = <TimePicker value={valid(text) ? text : ""} step={minuteStep} onPick={pick} />;
+  // kółka montują się od nowa przy każdym otwarciu – startują od aktualnej wartości pola
+  const picker = open ? <TimeWheels value={valid(text) ? text : ""} step={minuteStep} onDone={pick} /> : null;
   const label = typeof rest.label === "string" ? rest.label : "Godzina";
   return (
     <>
@@ -102,7 +146,7 @@ export function TimeField({ value, onChange, minuteStep = 5, ...rest }: Props) {
       <Drawer opened={open} onClose={() => setOpen(false)} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label={label}>
         <SheetHandle onClose={() => setOpen(false)}>
           <div className="ui-sheet-head">
-            <div className="ui-sheet-title">{text && valid(text) ? `${label} · ${text}` : label}</div>
+            <div className="ui-sheet-title">{label}</div>
           </div>
         </SheetHandle>
         <div className="ui-time-sheet">{picker}</div>
@@ -128,7 +172,7 @@ export function TimeField({ value, onChange, minuteStep = 5, ...rest }: Props) {
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setOpen(true);
-              window.setTimeout(() => document.querySelector<HTMLElement>(".ui-time-cell")?.focus(), 0);
+              window.setTimeout(() => document.querySelector<HTMLElement>(".ui-wheel")?.focus(), 0);
             }
             if (e.key === "Escape") setOpen(false);
           }}

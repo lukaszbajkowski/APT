@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ActionIcon, Button, Drawer, Popover, TextInput, type TextInputProps } from "@mantine/core";
-
-import { SheetHandle } from "./Mobile";
+import { ActionIcon, Button, Popover, TextInput, type TextInputProps } from "@mantine/core";
 import { IconClock } from "@tabler/icons-react";
 
 type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
@@ -111,7 +109,7 @@ function TimeWheels({ value, step, onDone }: { value: string; step: number; onDo
 /**
  * Godzina w formacie 24-godzinnym GG:MM niezależnie od języka telefonu (natywne pole pokazałoby „10:00 PM”).
  * Komputer: wpisuje się same cyfry (dwukropek dopisuje się sam) albo wybiera na kółkach w okienku pod polem.
- * Telefon: stuknięcie otwiera panel od dołu z kółkami jak w budziku (bez klawiatury). Wartość: „GG:MM” albo "".
+ * Telefon: stuknięcie otwiera systemowy wybór godziny (natywne pole). Wartość: „GG:MM” albo "".
  */
 export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
   const [text, setText] = useState(value);
@@ -138,19 +136,23 @@ export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
   const bad = text.length === 5 && !valid(text);
   // kółka montują się od nowa przy każdym otwarciu – startują od aktualnej wartości pola
   const picker = open ? <TimeWheels value={valid(text) ? text : ""} step={minuteStep} onDone={pick} /> : null;
-  const label = typeof rest.label === "string" ? rest.label : "Godzina";
   return (
     <>
-    {touch && (
-      // telefon: panel od dołu z dużymi polami, jak inne wybory w aplikacji
-      <Drawer opened={open} onClose={() => setOpen(false)} position="bottom" size="auto" radius="lg" withCloseButton={false} classNames={{ content: "ui-sheet" }} aria-label={label}>
-        <SheetHandle onClose={() => setOpen(false)}>
-          <div className="ui-sheet-head">
-            <div className="ui-sheet-title">{label}</div>
-          </div>
-        </SheetHandle>
-        <div className="ui-time-sheet">{picker}</div>
-      </Drawer>
+    <div style={{ position: "relative" }}>
+    {touch && !rest.disabled && !rest.readOnly && (
+      // telefon: przezroczyste natywne pole nad polem – stuknięcie otwiera systemowy wybór godziny
+      // (iOS: kółka, Android: zegar); wyświetlamy zawsze 24 h w polu pod spodem
+      <input
+        type="time"
+        aria-label={typeof rest.label === "string" ? rest.label : "Godzina"}
+        value={valid(text) ? text : ""}
+        onChange={(e) => {
+          const v = e.currentTarget.value;
+          setText(v);
+          onChange(valid(v) ? v : "");
+        }}
+        style={{ position: "absolute", inset: 0, opacity: 0, zIndex: 2, width: "100%", height: "100%", fontSize: 16 }}
+      />
     )}
     <Popover opened={open && !touch} onChange={setOpen} position="bottom-start" shadow="md" withinPortal>
       <Popover.Target>
@@ -191,6 +193,7 @@ export function TimeField({ value, onChange, minuteStep = 1, ...rest }: Props) {
       </Popover.Target>
       <Popover.Dropdown p="xs">{picker}</Popover.Dropdown>
     </Popover>
+    </div>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Menu, Select, Stack, Switch, TextInput, Textarea } from "@mantine/core";
+import { ActionIcon, Alert, Group, Menu, Select, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconEdit, IconPlayerStop, IconPlus, IconTrash } from "@tabler/icons-react";
@@ -9,6 +9,8 @@ import { api, errorText } from "../api";
 import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, StatusBadge, type SheetAction } from "../components/Mobile";
 import { isOngoing, NOTICE_KINDS, whenText, type NoticeKind, type ServiceNotice } from "../components/ServiceNotices";
 import { Loading } from "../components/States";
+import { DateField } from "../components/DateField";
+import { TimeField } from "../components/TimeField";
 import { allTimezones, HOME_TZ, isoToZonedInput, tzCity, tzLabel, zonedInputToIso } from "../lib/time";
 import { useConfirm } from "../lib/confirm";
 
@@ -23,7 +25,69 @@ const TITLE_HINT: Record<NoticeKind, string> = {
 
 /** ISO ↔ wartość pola datetime-local w wybranej strefie (domyślnie czas polski – w nim działa firma). */
 const toLocal = (iso: string | null, tz: string) => isoToZonedInput(iso, tz);
-const fromLocal = (v: string, tz: string) => zonedInputToIso(v, tz);
+const fromLocal = (v: string, tz: string) => (complete(v) ? zonedInputToIso(v, tz) : null);
+
+// Dzień i godzina w osobnych polach: w szkicu „RRRR-MM-DDTGG:MM”, a w trakcie wpisywania także niepełne
+// („2026-11-05T”, „T22:00”). Do zapisu idzie tylko pełna wartość.
+const complete = (v: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v);
+const isEmpty = (v: string) => !v || v === "T";
+const partial = (v: string) => !isEmpty(v) && !complete(v);
+const dayOf = (v: string) => v.split("T")[0] ?? "";
+const timeOf = (v: string) => v.split("T")[1] ?? "";
+
+/** Dzień (kalendarz, DD.MM.RRRR) i godzina obok siebie; na wąskim ekranie jedno pod drugim. */
+function DayTimeFields({
+  label,
+  description,
+  value,
+  onChange,
+  error,
+}: {
+  label: string;
+  description?: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+}) {
+  const day = dayOf(value);
+  const time = timeOf(value);
+  const join = (d: string, t: string) => (d || t ? `${d}T${t}` : "");
+  return (
+    <Stack gap={6} role="group" aria-label={label}>
+      <Text size="sm" fw={500}>
+        {label}
+      </Text>
+      <Group gap="sm" align="flex-start" wrap="nowrap">
+        <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+          <DateField
+            label="Dzień"
+            value={day}
+            onChange={(e) => onChange(join(e.currentTarget.value, time))}
+            error={!!day && !time ? "Podaj też godzinę" : undefined}
+          />
+        </div>
+        <TimeField
+          label="Godzina"
+          value={time}
+          onChange={(v) => onChange(join(day, v))}
+          style={{ flex: "0 0 112px" }}
+          error={!!time && !day ? "Podaj też dzień" : undefined}
+        />
+      </Group>
+      {error ? (
+        <Text size="xs" c="red" role="alert">
+          {error}
+        </Text>
+      ) : (
+        description && (
+          <Text size="xs" c="dimmed">
+            {description}
+          </Text>
+        )
+      )}
+    </Stack>
+  );
+}
 
 interface Draft {
   kind: NoticeKind;
@@ -193,7 +257,13 @@ export function ServiceNoticesPage() {
   };
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const invalid = !draft.title.trim() || (draft.blocking && !draft.ends) || (!!draft.starts && !!draft.ends && draft.ends <= draft.starts);
+  const bothSet = complete(draft.starts) && complete(draft.ends);
+  const invalid =
+    !draft.title.trim() ||
+    partial(draft.starts) ||
+    partial(draft.ends) ||
+    (draft.blocking && !complete(draft.ends)) ||
+    (bothSet && draft.ends <= draft.starts);
 
   return (
     <Stack gap={24} maw={760}>
@@ -257,8 +327,8 @@ export function ServiceNoticesPage() {
               setDraft((d) => ({
                 ...d,
                 tz: v,
-                starts: d.starts ? toLocal(fromLocal(d.starts, d.tz), v) : "",
-                ends: d.ends ? toLocal(fromLocal(d.ends, d.tz), v) : "",
+                starts: complete(d.starts) ? toLocal(fromLocal(d.starts, d.tz), v) : d.starts,
+                ends: complete(d.ends) ? toLocal(fromLocal(d.ends, d.tz), v) : d.ends,
               }));
             }}
             searchable
@@ -267,14 +337,27 @@ export function ServiceNoticesPage() {
             allowDeselect={false}
             comboboxProps={{ withinPortal: true }}
           />
-          <TextInput type="datetime-local" label={`Początek · ${tzLabel(draft.tz)}`} description="Puste – od razu" value={draft.starts} onChange={(e) => set("starts", e.currentTarget.value)} />
-          <TextInput
-            type="datetime-local"
+          <DayTimeFields
+            label={`Początek · ${tzLabel(draft.tz)}`}
+            description="Puste – od razu"
+            value={draft.starts}
+            onChange={(v) =>
+              // wygoda: koniec domyślnie tego samego dnia
+              setDraft((d) => ({ ...d, starts: v, ends: isEmpty(d.ends) && dayOf(v) ? `${dayOf(v)}T` : d.ends }))
+            }
+          />
+          <DayTimeFields
             label={`Koniec · ${tzLabel(draft.tz)}`}
             description="Po tej godzinie komunikat sam zniknie"
             value={draft.ends}
-            onChange={(e) => set("ends", e.currentTarget.value)}
-            error={draft.starts && draft.ends && draft.ends <= draft.starts ? "Koniec musi być po początku" : draft.blocking && !draft.ends ? "Przerwa blokująca wymaga godziny zakończenia" : undefined}
+            onChange={(v) => set("ends", v)}
+            error={
+              bothSet && draft.ends <= draft.starts
+                ? "Koniec musi być po początku"
+                : draft.blocking && !complete(draft.ends)
+                  ? "Przerwa blokująca wymaga dnia i godziny zakończenia"
+                  : undefined
+            }
           />
           <Switch
             label="Przerwa techniczna – blokuje aplikację"

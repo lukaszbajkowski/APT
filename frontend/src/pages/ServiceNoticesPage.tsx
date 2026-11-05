@@ -338,7 +338,7 @@ export function ServiceNoticesPage() {
             comboboxProps={{ withinPortal: true }}
           />
           <DayTimeFields
-            label={`Początek · ${tzLabel(draft.tz)}`}
+            label="Początek"
             description="Puste – od razu"
             value={draft.starts}
             onChange={(v) =>
@@ -347,7 +347,7 @@ export function ServiceNoticesPage() {
             }
           />
           <DayTimeFields
-            label={`Koniec · ${tzLabel(draft.tz)}`}
+            label="Koniec"
             description="Po tej godzinie komunikat sam zniknie"
             value={draft.ends}
             onChange={(v) => set("ends", v)}

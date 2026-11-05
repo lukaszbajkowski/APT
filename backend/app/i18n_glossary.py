@@ -89,6 +89,21 @@ _ROWS: dict[str, tuple[str, str, str]] = {
     "Wyślij": ("Надіслати", "Отправить", "Send"),
     "Wyślij kod": ("Надіслати код", "Отправить код", "Send code"),
     "Wybierz": ("Вибрати", "Выбрать", "Choose"),
+    # kalendarz i zegar (pola daty i godziny)
+    "Dziś": ("Сьогодні", "Сегодня", "Today"),
+    "Godzina": ("Година", "Час", "Hour"),
+    "Minuty": ("Хвилини", "Минуты", "Minutes"),
+    "Poprzedni miesiąc": ("Попередній місяць", "Предыдущий месяц", "Previous month"),
+    "Następny miesiąc": ("Наступний місяць", "Следующий месяц", "Next month"),
+    "Wybierz godzinę": ("Вибрати час", "Выбрать время", "Choose time"),
+    "Wybierz z kalendarza": ("Вибрати в календарі", "Выбрать в календаре", "Choose from calendar"),
+    "Godzina 00:00–23:59": ("Час 00:00–23:59", "Время 00:00–23:59", "Time 00:00–23:59"),
+    "Data poza dozwolonym zakresem.": ("Дата поза дозволеним діапазоном.", "Дата вне допустимого диапазона.", "Date outside the allowed range."),
+    "Nieprawidłowa data – wpisz dzień, miesiąc i rok (np. 05.11.2026).": (
+        "Неправильна дата – введіть день, місяць і рік (напр. 05.11.2026).",
+        "Неверная дата – введите день, месяц и год (напр. 05.11.2026).",
+        "Invalid date – enter day, month and year (e.g. 05.11.2026).",
+    ),
     # zaznaczanie („Zaznaczono 4 z 16”)
     "Zaznaczono": ("Вибрано", "Выбрано", "Selected"),
     "z": ("з", "из", "of"),

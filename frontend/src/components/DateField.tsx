@@ -3,6 +3,7 @@ import { ActionIcon, Popover, TextInput, type TextInputProps } from "@mantine/co
 
 import { MonthCalendar } from "./MonthCalendar";
 import { useNativeValue } from "../lib/nativeInput";
+import { useLang, useT } from "../lib/i18n";
 import { IconCalendar } from "@tabler/icons-react";
 
 const toDisplay = (iso: string) => {
@@ -27,6 +28,8 @@ type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
 /** Data w polskim formacie DD.MM.RRRR (niezależnym od języka przeglądarki) + wybór z kalendarza. Wartość: RRRR-MM-DD. */
 export function DateField({ value, onChange, min, max, ...rest }: Props) {
   const [text, setText] = useState(toDisplay(value));
+  const t = useT();
+  const lang = useLang();
   const picker = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLInputElement>(null);
   // natywne pole (systemowy kalendarz na telefonie) – także „Wyzeruj” w Safari czyści datę
@@ -73,10 +76,10 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
         {...rest}
         ref={field}
         inputMode="numeric"
-        placeholder="dd.mm.rrrr"
+        placeholder={lang ? "dd.mm.yyyy" : "dd.mm.rrrr"}
         maxLength={10}
         value={text}
-        error={rest.error ?? (invalid ? "Nieprawidłowa data – wpisz dd.mm.rrrr." : outOfRange ? "Data poza dozwolonym zakresem." : undefined)}
+        error={rest.error ?? (invalid ? t("Nieprawidłowa data – wpisz dzień, miesiąc i rok (np. 05.11.2026).") : outOfRange ? t("Data poza dozwolonym zakresem.") : undefined)}
         onChange={(e) => typed(e.currentTarget.value)}
         onKeyDown={(e) => {
           rest.onKeyDown?.(e);
@@ -99,7 +102,7 @@ export function DateField({ value, onChange, min, max, ...rest }: Props) {
           <ActionIcon
             variant="subtle"
             color="gray"
-            aria-label="Wybierz z kalendarza"
+            aria-label={t("Wybierz z kalendarza")}
             disabled={rest.disabled}
             onClick={openPicker}
           >

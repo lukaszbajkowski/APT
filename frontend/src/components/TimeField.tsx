@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ActionIcon, Button, Popover, TextInput, type TextInputProps } from "@mantine/core";
 
 import { useNativeValue } from "../lib/nativeInput";
+import { useLang, useT } from "../lib/i18n";
 import { IconClock } from "@tabler/icons-react";
 
 type Props = Omit<TextInputProps, "value" | "onChange" | "type"> & {
@@ -91,18 +92,19 @@ function TimeWheels({ value, step, onDone }: { value: string; step: number; onDo
     return mi >= minutes.length ? { h: (now.getHours() + 1) % 24, m: 0 } : { h: now.getHours(), m: mi };
   };
   const [sel, setSel] = useState(init);
+  const t = useT();
   return (
     <div className="ui-wheels">
       <div className="ui-wheels-row">
-        <Wheel items={hours} index={sel.h} onIndex={(h) => setSel((x) => ({ ...x, h }))} label="Godzina" />
+        <Wheel items={hours} index={sel.h} onIndex={(h) => setSel((x) => ({ ...x, h }))} label={t("Godzina")} />
         <span className="ui-wheels-colon" aria-hidden>
           :
         </span>
-        <Wheel items={minutes} index={sel.m} onIndex={(m) => setSel((x) => ({ ...x, m }))} label="Minuty" />
+        <Wheel items={minutes} index={sel.m} onIndex={(m) => setSel((x) => ({ ...x, m }))} label={t("Minuty")} />
         <div className="ui-wheels-band" aria-hidden />
       </div>
       <Button fullWidth size="md" radius="md" mt="sm" onClick={() => onDone(`${hours[sel.h]}:${minutes[sel.m]}`)}>
-        Gotowe · {hours[sel.h]}:{minutes[sel.m]}
+        {t("Gotowe")} · {hours[sel.h]}:{minutes[sel.m]}
       </Button>
     </div>
   );
@@ -116,6 +118,8 @@ function TimeWheels({ value, step, onDone }: { value: string; step: number; onDo
 export function TimeField({ value, onChange, minuteStep = 1, style, className, ...rest }: Props) {
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
+  const t = useT();
+  const lang = useLang();
   const native = useRef<HTMLInputElement>(null);
   const touch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   useEffect(() => {
@@ -152,7 +156,7 @@ export function TimeField({ value, onChange, minuteStep = 1, style, className, .
       // (iOS: kółka, Android: zegar); wyświetlamy zawsze 24 h w polu pod spodem
       <input
         type="time"
-        aria-label={typeof rest.label === "string" ? rest.label : "Godzina"}
+        aria-label={typeof rest.label === "string" ? rest.label : t("Godzina")}
         ref={native}
         defaultValue={valid(text) ? text : ""}
         style={{ position: "absolute", inset: 0, opacity: 0, zIndex: 2, width: "100%", height: "100%", fontSize: 16 }}
@@ -165,7 +169,7 @@ export function TimeField({ value, onChange, minuteStep = 1, style, className, .
           inputMode={touch ? "none" : "numeric"}
           readOnly={touch || rest.readOnly}
           autoComplete="off"
-          placeholder="gg:mm"
+          placeholder={lang ? "--:--" : "gg:mm"}
           maxLength={5}
           value={text}
           onChange={(e) => typed(e.currentTarget.value)}
@@ -187,9 +191,9 @@ export function TimeField({ value, onChange, minuteStep = 1, style, className, .
             if (/^\d{2}$/.test(text) && Number(text) < 24) typed(`${text}00`);
             rest.onBlur?.(e);
           }}
-          error={rest.error ?? (bad ? "Godzina 00:00–23:59" : undefined)}
+          error={rest.error ?? (bad ? t("Godzina 00:00–23:59") : undefined)}
           rightSection={
-            <ActionIcon variant="subtle" color="gray" aria-label="Wybierz godzinę" disabled={rest.disabled} onClick={() => setOpen((o) => !o)}>
+            <ActionIcon variant="subtle" color="gray" aria-label={t("Wybierz godzinę")} disabled={rest.disabled} onClick={() => setOpen((o) => !o)}>
               <IconClock size={16} />
             </ActionIcon>
           }

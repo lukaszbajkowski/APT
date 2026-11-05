@@ -2,8 +2,24 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ActionIcon, UnstyledButton } from "@mantine/core";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
-const MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"];
-const DAYS = ["pn", "wt", "śr", "cz", "pt", "so", "nd"];
+import { useLang, useT } from "../lib/i18n";
+
+// po polsku własne skróty (Intl daje „pon.”); w innym języku aplikacji nazwy z przeglądarki (Intl) – dokładne i bez tłumacza
+const MONTHS_PL = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"];
+const DAYS_PL = ["pn", "wt", "śr", "cz", "pt", "so", "nd"];
+function names(lang: string | null) {
+  if (!lang) return { months: MONTHS_PL, days: DAYS_PL };
+  try {
+    const mf = new Intl.DateTimeFormat(lang, { month: "long" });
+    const df = new Intl.DateTimeFormat(lang, { weekday: "short" });
+    return {
+      months: Array.from({ length: 12 }, (_, i) => mf.format(new Date(2024, i, 1))),
+      days: Array.from({ length: 7 }, (_, i) => df.format(new Date(2024, 0, 1 + i))), // 1.01.2024 = poniedziałek
+    };
+  } catch {
+    return { months: MONTHS_PL, days: DAYS_PL };
+  }
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -27,6 +43,9 @@ const addDays = (v: string, n: number) => {
  * Wartości: RRRR-MM-DD.
  */
 export function MonthCalendar({ value, onPick, min, max }: { value: string; onPick: (v: string) => void; min?: string; max?: string }) {
+  const t = useT();
+  const lang = useLang();
+  const { months: MONTHS, days: DAYS } = names(lang);
   const start = parse(value) ?? parse(todayIso())!;
   const [view, setView] = useState({ y: start.y, m: start.m });
   const [focus, setFocus] = useState(value || todayIso());
@@ -75,13 +94,13 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
   return (
     <div className="ui-cal">
       <div className="ui-cal-head">
-        <ActionIcon variant="subtle" color="gray" onClick={() => shift(-1)} aria-label="Poprzedni miesiąc">
+        <ActionIcon variant="subtle" color="gray" onClick={() => shift(-1)} aria-label={t("Poprzedni miesiąc")}>
           <IconChevronLeft size={18} />
         </ActionIcon>
         <span className="ui-cal-title" aria-live="polite">
           {MONTHS[view.m]} {view.y}
         </span>
-        <ActionIcon variant="subtle" color="gray" onClick={() => shift(1)} aria-label="Następny miesiąc">
+        <ActionIcon variant="subtle" color="gray" onClick={() => shift(1)} aria-label={t("Następny miesiąc")}>
           <IconChevronRight size={18} />
         </ActionIcon>
       </div>
@@ -111,7 +130,7 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
       </div>
       <div className="ui-cal-foot">
         <UnstyledButton className="ui-cal-link" disabled={off(today)} onClick={() => onPick(today)}>
-          Dziś
+          {t("Dziś")}
         </UnstyledButton>
       </div>
     </div>

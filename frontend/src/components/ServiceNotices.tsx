@@ -15,7 +15,10 @@ import {
 
 import { api, probeServer, serverDownStore, setServerDown } from "../api";
 import { useAuth } from "../auth";
-import { currentTz, differsFromHome, HOME_TZ, timeIn } from "../lib/time";
+import { deviceTz, differsFromHome, HOME_TZ, timeIn } from "../lib/time";
+
+// Godziny przerwy zawsze w strefie urządzenia, na którym ktoś patrzy (odczyt przy każdym wyświetleniu –
+// po zmianie strefy w telefonie, np. w podróży, pasek od razu pokazuje właściwą godzinę).
 import { useT } from "../lib/i18n";
 
 export type NoticeKind = "planned" | "deploy" | "repair" | "incident" | "info";
@@ -67,7 +70,7 @@ const isOver = (n: ServiceNotice, now = Date.now()) => !!n.ends_at && new Date(n
 
 /** Dzień w strefie użytkownika jako liczba (do porównań „dziś / jutro”). */
 const dayNum = (x: Date) => {
-  const [y, m, d] = x.toLocaleDateString("en-CA", { timeZone: currentTz() }).split("-").map(Number);
+  const [y, m, d] = x.toLocaleDateString("en-CA", { timeZone: deviceTz() }).split("-").map(Number);
   return Date.UTC(y, m - 1, d) / 86_400_000;
 };
 
@@ -75,11 +78,11 @@ const dayNum = (x: Date) => {
 export function dayTime(at: string): string {
   const d = new Date(at);
   const diff = dayNum(d) - dayNum(new Date());
-  const time = timeIn(d);
+  const time = timeIn(d, deviceTz());
   if (diff === 0) return `dziś, ${time}`;
   if (diff === 1) return `jutro, ${time}`;
   if (diff === -1) return `wczoraj, ${time}`;
-  const tz = currentTz();
+  const tz = deviceTz();
   const wd = d.toLocaleDateString("pl-PL", { weekday: "short", timeZone: tz });
   const dm = d.toLocaleDateString("pl-PL", { day: "numeric", month: "2-digit", timeZone: tz });
   return `${wd} ${dm}, ${time}`;
@@ -89,7 +92,7 @@ const sameDay = (a: string, b: string) => dayNum(new Date(a)) === dayNum(new Dat
 /** Poza strefą polską: godziny przerwy także w czasie polskim („22:00–23:30 czasu polskiego”). */
 function homeHint(n: ServiceNotice): string {
   const at = n.starts_at ?? n.ends_at;
-  if (!at || !differsFromHome(new Date(at))) return "";
+  if (!at || !differsFromHome(new Date(at), deviceTz())) return "";
   const parts = [n.starts_at, n.ends_at].filter(Boolean).map((x) => timeIn(new Date(x as string), HOME_TZ));
   return ` (${parts.join("–")} czasu polskiego)`;
 }
@@ -101,7 +104,7 @@ export function whenText(n: ServiceNotice, now = Date.now()): string {
   if (n.starts_at && n.ends_at)
     return (
       (sameDay(n.starts_at, n.ends_at)
-        ? `${dayTime(n.starts_at)}–${timeIn(new Date(n.ends_at))}`
+        ? `${dayTime(n.starts_at)}–${timeIn(new Date(n.ends_at), deviceTz())}`
         : `${dayTime(n.starts_at)} – ${dayTime(n.ends_at)}`) + homeHint(n)
     );
   return n.starts_at ? `Od ${dayTime(n.starts_at)}${homeHint(n)}` : "";

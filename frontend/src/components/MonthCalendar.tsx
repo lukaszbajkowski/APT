@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ActionIcon, UnstyledButton } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 import { useLang, useT } from "../lib/i18n";
 
@@ -48,7 +48,11 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
   const { months: MONTHS, days: DAYS } = names(lang);
   const start = parse(value) ?? parse(todayIso())!;
   const [view, setView] = useState({ y: start.y, m: start.m });
-  const [focus, setFocus] = useState(value || todayIso());
+  const today = todayIso();
+  const [focus, setFocus] = useState(value || today);
+  // dni → (klik w nagłówek) lata → miesiące → dni: szybki skok np. do roku urodzenia
+  const [mode, setMode] = useState<"days" | "months" | "years">("days");
+  const [decade, setDecade] = useState(Math.floor(start.y / 12) * 12);
   const grid = useRef<HTMLDivElement>(null);
 
   // pierwszy dzień tygodnia: poniedziałek
@@ -90,20 +94,77 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
     setFocus(next);
   };
 
-  const today = todayIso();
   return (
     <div className="ui-cal">
       <div className="ui-cal-head">
-        <ActionIcon variant="subtle" color="gray" onClick={() => shift(-1)} aria-label={t("Poprzedni miesiąc")}>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          onClick={() => (mode === "years" ? setDecade((d) => d - 12) : mode === "months" ? setView((v) => ({ ...v, y: v.y - 1 })) : shift(-1))}
+          aria-label={mode === "years" ? t("Wcześniejsze lata") : mode === "months" ? t("Poprzedni rok") : t("Poprzedni miesiąc")}
+        >
           <IconChevronLeft size={18} />
         </ActionIcon>
-        <span className="ui-cal-title" aria-live="polite">
-          {MONTHS[view.m]} {view.y}
-        </span>
-        <ActionIcon variant="subtle" color="gray" onClick={() => shift(1)} aria-label={t("Następny miesiąc")}>
+        <UnstyledButton
+          className="ui-cal-title"
+          aria-live="polite"
+          aria-label={t("Wybierz miesiąc i rok")}
+          onClick={() => {
+            if (mode === "days") {
+              setDecade(Math.floor(view.y / 12) * 12);
+              setMode("years");
+            } else setMode("days");
+          }}
+        >
+          {mode === "years" ? `${decade}–${decade + 11}` : mode === "months" ? view.y : `${MONTHS[view.m]} ${view.y}`}
+          <IconChevronDown size={14} style={{ marginLeft: 4, verticalAlign: "-2px", transform: mode === "days" ? undefined : "rotate(180deg)" }} aria-hidden />
+        </UnstyledButton>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          onClick={() => (mode === "years" ? setDecade((d) => d + 12) : mode === "months" ? setView((v) => ({ ...v, y: v.y + 1 })) : shift(1))}
+          aria-label={mode === "years" ? t("Późniejsze lata") : mode === "months" ? t("Następny rok") : t("Następny miesiąc")}
+        >
           <IconChevronRight size={18} />
         </ActionIcon>
       </div>
+      {mode === "years" && (
+        <div className="ui-cal-pick">
+          {Array.from({ length: 12 }, (_, i) => decade + i).map((y) => (
+            <UnstyledButton
+              key={y}
+              className="ui-cal-day"
+              data-selected={y === view.y || undefined}
+              data-today={y === +today.slice(0, 4) || undefined}
+              disabled={(!!min && y < +min.slice(0, 4)) || (!!max && y > +max.slice(0, 4))}
+              onClick={() => {
+                setView((v) => ({ ...v, y }));
+                setMode("months");
+              }}
+            >
+              {y}
+            </UnstyledButton>
+          ))}
+        </div>
+      )}
+      {mode === "months" && (
+        <div className="ui-cal-pick">
+          {MONTHS.map((name, m) => (
+            <UnstyledButton
+              key={m}
+              className="ui-cal-day"
+              data-selected={m === view.m || undefined}
+              onClick={() => {
+                setView((v) => ({ ...v, m }));
+                setMode("days");
+              }}
+            >
+              {name.slice(0, 3)}
+            </UnstyledButton>
+          ))}
+        </div>
+      )}
+      {mode === "days" && (
       <div className="ui-cal-grid" role="grid" ref={grid} onKeyDown={onKey}>
         {DAYS.map((d) => (
           <span key={d} className="ui-cal-dow" aria-hidden>
@@ -128,6 +189,7 @@ export function MonthCalendar({ value, onPick, min, max }: { value: string; onPi
           </UnstyledButton>
         ))}
       </div>
+      )}
       <div className="ui-cal-foot">
         <UnstyledButton className="ui-cal-link" disabled={off(today)} onClick={() => onPick(today)}>
           {t("Dziś")}

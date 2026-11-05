@@ -921,3 +921,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-wheels-colon { position: relative; z-index: 1; font-size: 22px; font-weight: 700; }
 .ui-wheels-band { position: absolute; left: 0; right: 0; top: 80px; height: 40px; border-radius: 10px; background: var(--apt-subtle); pointer-events: none; }
 @media (pointer: coarse) { .ui-wheel { width: 110px; } .ui-wheel-item { font-size: 24px; } }
+.ui-cal-title { border-radius: 8px; padding: 4px 8px; }
+.ui-cal-title:hover { background: var(--apt-subtle); }
+.ui-cal-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px 0; }
+.ui-cal-pick .ui-cal-day { height: 44px; text-transform: capitalize; }

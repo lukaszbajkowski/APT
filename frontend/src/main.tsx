@@ -1,4 +1,9 @@
 import "./lib/install";
+// krój Golos Text z naszego serwera (polskie znaki i cyrylica), bez zależności od Google
+import "@fontsource/golos-text/400.css";
+import "@fontsource/golos-text/500.css";
+import "@fontsource/golos-text/600.css";
+import "@fontsource/golos-text/700.css";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./app.css";

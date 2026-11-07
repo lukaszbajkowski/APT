@@ -931,3 +931,26 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .summary-link { color: var(--mantine-color-text); text-decoration: none; font-variant-numeric: tabular-nums; }
 .summary-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .summary-link[data-warn] { color: var(--mantine-color-orange-text); font-weight: 600; }
+
+/* ——— Fundamenty (etap 1) – wspólne tokeny ———
+ * typografia: --t-title 26/32 · --t-section 18/24 · --t-body 15/22 · --t-table 14/20 · --t-meta 13/18
+ * odstępy: 4 · 8 · 12 · 16 · 24 · 32 · 48
+ * role kolorów: akcent (orzech) = główna akcja i wybór; bursztyn = wymaga działania; czerwień = błąd / usuwanie;
+ * szałwia = potwierdzenie po akcji; reszta szarym albo zwykłym tekstem */
+:root {
+  --t-title: 1.625rem; --t-title-lh: 2rem;
+  --t-section: 1.125rem; --t-section-lh: 1.5rem;
+  --t-body: 0.9375rem; --t-body-lh: 1.375rem;
+  --t-table: 0.875rem; --t-table-lh: 1.25rem;
+  --t-meta: 0.8125rem; --t-meta-lh: 1.125rem;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --page-wide: 1760px; --page-reading: 72ch;
+}
+/* komputer: margines strony 32 px, na dużym monitorze 48 px */
+@media (min-width: 48em) { .mantine-AppShell-root { --app-shell-padding: var(--s-6) !important; } }
+@media (min-width: 100em) { .mantine-AppShell-root { --app-shell-padding: var(--s-7) !important; } }
+/* tabele: tekst 14/20, wiersz zwarty, nagłówek kolumny 13 półgruby szary */
+@media (min-width: 48em) {
+  .mantine-Table-table { font-size: var(--t-table); line-height: var(--t-table-lh); }
+  .mantine-Table-th { font-size: var(--t-meta); font-weight: 600; color: var(--mantine-color-dimmed); }
+}

@@ -48,8 +48,25 @@ export const theme = createTheme({
   defaultRadius: "md",
   focusRing: "auto",
   cursorType: "pointer",
-  fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  headings: { fontWeight: "750" },
+  // Fundamenty (etap 1): krój Golos Text, 6 stopni tekstu, odstępy co 4 px. Numery kart i PESEL zostają
+  // w kroju o stałej szerokości (fontFamilyMonospace).
+  fontFamily: "'Golos Text', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
+  fontFamilyMonospace: "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
+  // xs opis/etykieta 13 · sm tabela 14 · md treść 15 · lg sekcja 18 · xl tytuł 26
+  fontSizes: { xs: "0.8125rem", sm: "0.875rem", md: "0.9375rem", lg: "1.125rem", xl: "1.625rem" },
+  lineHeights: { xs: "1.385", sm: "1.43", md: "1.467", lg: "1.333", xl: "1.23" },
+  spacing: { xs: "0.5rem", sm: "0.75rem", md: "1rem", lg: "1.5rem", xl: "2rem" },
+  headings: {
+    fontWeight: "700",
+    sizes: {
+      h1: { fontSize: "1.625rem", lineHeight: "2rem" }, // tytuł strony
+      h2: { fontSize: "1.625rem", lineHeight: "2rem" }, // tytuł strony (starsze ekrany używają h2)
+      h3: { fontSize: "1.125rem", lineHeight: "1.5rem", fontWeight: "650" }, // sekcja
+      h4: { fontSize: "1.125rem", lineHeight: "1.5rem", fontWeight: "650" }, // sekcja / tytuł listy
+      h5: { fontSize: "0.9375rem", lineHeight: "1.375rem", fontWeight: "600" }, // wyróżnienie
+      h6: { fontSize: "0.8125rem", lineHeight: "1.125rem", fontWeight: "600" },
+    },
+  },
   components: {
     // okna dialogowe na środku ekranu – w zasięgu kciuka na telefonie
     Modal: Modal.extend({ defaultProps: { centered: true } }),

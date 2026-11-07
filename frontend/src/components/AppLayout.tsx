@@ -490,7 +490,7 @@ function NavList({
                 className="nav-group"
                 mt={idx === 0 ? 0 : "md"}
               >
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: ".06em" }}>
+                <Text size="xs" fw={700} c="dimmed">
                   {t(i.group)}
                 </Text>
                 <Group gap={4} wrap="nowrap">

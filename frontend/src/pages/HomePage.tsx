@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
   IconChevronRight,
@@ -368,32 +368,28 @@ function BackupCard({ status }: { status: BackupStatus | null }) {
   );
 }
 
+/**
+ * Stan kartoteki jednym zdaniem zamiast rzędu kafelków z dużymi liczbami: każda liczba to link do listy,
+ * a kolor dostaje tylko to, co wymaga działania (osoby bez zdjęcia).
+ */
 function Summary({ d, manager }: { d: Dashboard; manager: boolean }) {
-  const tiles: { label: string; value: number; note: string; to: string; warn?: boolean }[] = [
-    { label: manager ? "Aktywni w Twoich wydziałach" : "Aktywni pracownicy", value: d.active, note: "w kartotece", to: "/pracownicy" },
-    { label: "Przyjęci w 30 dni", value: d.added_30_days, note: "nowe osoby", to: "/pracownicy?sort=-hire_date" },
-    { label: "Bez zdjęcia", value: d.without_photo, note: d.without_photo ? "karta się nie wydrukuje" : "wszyscy mają zdjęcie", to: "/pracownicy?missing=photo", warn: d.without_photo > 0 },
-    { label: "W archiwum", value: d.terminated, note: "byli pracownicy", to: "/pracownicy?status=terminated" },
+  const parts: { text: string; to: string; warn?: boolean }[] = [
+    { text: `${d.active} ${manager ? "aktywnych w Twoich wydziałach" : "aktywnych pracowników"}`, to: "/pracownicy" },
+    { text: `${d.added_30_days} przyjętych w ostatnich 30 dniach`, to: "/pracownicy?sort=-hire_date" },
+    ...(d.without_photo ? [{ text: `${d.without_photo} bez zdjęcia – ich karty się nie wydrukują`, to: "/pracownicy?missing=photo", warn: true }] : []),
+    { text: `${d.terminated} w archiwum`, to: "/pracownicy?status=terminated" },
   ];
   return (
-    <SimpleGrid cols={{ base: 2, md: 4 }} spacing={0} className="summary-strip">
-      {tiles.map((t) => (
-        <UnstyledButton key={t.label} component={Link} to={t.to} className="summary-tile">
-          <Text size="sm" fw={600} c="dimmed">
-            {t.label}
-          </Text>
-          <Group gap={8} align="center" wrap="nowrap">
-            <Text fz={30} fw={800} lh={1.15} c={t.warn ? "orange" : undefined}>
-              {t.value}
-            </Text>
-            {t.warn && <IconAlertTriangle size={18} color="var(--mantine-color-orange-text)" aria-label="Wymaga uwagi" />}
-          </Group>
-          <Text size="xs" c="dimmed">
-            {t.note}
-          </Text>
-        </UnstyledButton>
+    <Text className="summary-line">
+      {parts.map((p, i) => (
+        <span key={p.to}>
+          {i > 0 && <span aria-hidden> · </span>}
+          <Link to={p.to} className="summary-link" data-warn={p.warn || undefined}>
+            {p.text}
+          </Link>
+        </span>
       ))}
-    </SimpleGrid>
+    </Text>
   );
 }
 
@@ -462,24 +458,18 @@ function todayLabel() {
 }
 
 export function HomePage() {
-  const { me, hasRole } = useAuth();
+  const { hasRole } = useAuth();
   const navigate = useNavigate();
   const staff = hasRole("admin", "hr");
   const data = useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard") });
-  const firstName = me?.user.full_name.split(" ")[0];
   const [q, setQ] = useState("");
 
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="flex-end" gap="md">
-        <div>
-          <Text size="sm" c="dimmed" fw={500}>
-            {todayLabel()}
-          </Text>
-          <Title order={1} size="h2">
-            Dzień dobry{firstName ? `, ${firstName}` : ""}
-          </Title>
-        </div>
+        <Title order={1} size="h2">
+          {todayLabel()}
+        </Title>
         <Group gap="sm" wrap="wrap" style={{ flex: "1 1 320px", justifyContent: "flex-end" }}>
           <form
             role="search"
@@ -509,6 +499,9 @@ export function HomePage() {
       {data.isLoading && <Loading />}
       {data.error && <ErrorState error={data.error} onRetry={() => data.refetch()} />}
 
+      {data.data && !(staff && data.data.active === 0 && data.data.recent.length === 0) && (
+        <Summary d={data.data} manager={hasRole("manager")} />
+      )}
       {data.data && (
         <>
           {!!data.data.retention_due && (
@@ -528,7 +521,6 @@ export function HomePage() {
             <GettingStarted employees={data.data.active} />
           ) : (
             <>
-              <Summary d={data.data} manager={hasRole("manager")} />
               <Grid gutter="lg" align="flex-start">
                 <Grid.Col span={{ base: 12, lg: 7 }}>
                   <Stack gap="lg">

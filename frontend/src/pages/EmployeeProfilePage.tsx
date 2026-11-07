@@ -103,7 +103,7 @@ function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "p
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: "0.04em" }}>
+      <Text size="xs" c="dimmed" fw={600} style={{ letterSpacing: "0.04em" }}>
         {label}
       </Text>
       <Text component="div">{children}</Text>

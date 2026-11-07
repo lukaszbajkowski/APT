@@ -390,7 +390,7 @@ export function MfaPage() {
         <Stack>
           <div>
             {forced && (
-              <Text size="xs" fw={600} c="var(--mantine-primary-color-text)" tt="uppercase" mb={4}>
+              <Text size="xs" fw={600} c="var(--mantine-primary-color-text)" mb={4}>
                 Ostatni krok przed wejściem do aplikacji
               </Text>
             )}

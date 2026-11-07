@@ -189,7 +189,7 @@ export function ReportsPage() {
           ...(s.missing_pesel === null ? [] : [{ label: "Bez PESEL", value: s.missing_pesel, to: "/pracownicy?missing=pesel" }]),
         ].map((x) => (
           <Card key={x.label} withBorder padding="md" component={Link} to={x.to}>
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+            <Text size="xs" c="dimmed" fw={600}>
               {x.label}
             </Text>
             <Text fz={28} fw={700}>

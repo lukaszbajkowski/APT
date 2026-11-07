@@ -383,7 +383,7 @@ export function ImportPage() {
             <Stack mt="md">
               <SimpleGrid cols={{ base: 1, xs: 3 }}>
                 <Card withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                  <Text size="xs" c="dimmed" fw={600}>
                     Do importu
                   </Text>
                   <Text fz={32} fw={700} c="green">
@@ -391,7 +391,7 @@ export function ImportPage() {
                   </Text>
                 </Card>
                 <Card withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                  <Text size="xs" c="dimmed" fw={600}>
                     Pominięte (już są w kartotece)
                   </Text>
                   <Text fz={32} fw={700} c="yellow">
@@ -399,7 +399,7 @@ export function ImportPage() {
                   </Text>
                 </Card>
                 <Card withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                  <Text size="xs" c="dimmed" fw={600}>
                     Z błędami
                   </Text>
                   <Text fz={32} fw={700} c={preview.summary.errors ? "red.8" : "dimmed"}>

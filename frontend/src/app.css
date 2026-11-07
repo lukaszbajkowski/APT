@@ -334,7 +334,7 @@ button, a, [role="button"], [role="tab"], input, label, select, textarea { touch
 .ui-section { display: flex; flex-direction: column; gap: 8px; }
 .ui-section + .ui-section { margin-top: 12px; }
 .ui-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
-.ui-section-title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mantine-color-dimmed); }
+.ui-section-title { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--mantine-color-text); }
 .ui-text-action {
   display: inline-flex;
   align-items: center;
@@ -444,20 +444,21 @@ button, a, [role="button"], [role="tab"], input, label, select, textarea { touch
   text-align: left;
 }
 .ui-danger-action .ui-row-title { color: var(--mantine-color-red-text); font-weight: 700; }
+/* status: zwykły tekst; kolor i ikona tylko tam, gdzie trzeba zareagować (ostrzeżenie, błąd) */
 .ui-status {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
 }
-.ui-status[data-tone="ok"] { color: var(--mantine-color-green-light-color); background: var(--mantine-color-green-light); }
-.ui-status[data-tone="warn"] { color: var(--mantine-color-orange-light-color); background: var(--mantine-color-orange-light); }
-.ui-status[data-tone="error"] { color: var(--mantine-color-red-light-color); background: var(--mantine-color-red-light); }
-.ui-status[data-tone="neutral"], .ui-status[data-tone="wait"] { color: var(--mantine-color-dimmed); background: var(--apt-subtle); }
+.ui-status > svg { display: none; }
+.ui-status[data-tone="warn"] > svg, .ui-status[data-tone="error"] > svg { display: inline; }
+.ui-status[data-tone="ok"] { color: var(--mantine-color-text); }
+.ui-status[data-tone="warn"] { color: var(--mantine-color-orange-text); font-weight: 650; }
+.ui-status[data-tone="error"] { color: var(--mantine-color-red-text); font-weight: 650; }
+.ui-status[data-tone="neutral"], .ui-status[data-tone="wait"] { color: var(--mantine-color-dimmed); }
 .danger-zone {
   border: 1px solid var(--mantine-color-red-light-hover);
   border-radius: var(--mantine-radius-md);
@@ -925,3 +926,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-cal-title:hover { background: var(--apt-subtle); }
 .ui-cal-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px 0; }
 .ui-cal-pick .ui-cal-day { height: 44px; text-transform: capitalize; }
+/* pulpit: stan kartoteki jednym zdaniem (zamiast kafelków z liczbami) */
+.summary-line { font-size: 15px; line-height: 1.6; color: var(--mantine-color-dimmed); margin-top: -8px; }
+.summary-link { color: var(--mantine-color-text); text-decoration: none; font-variant-numeric: tabular-nums; }
+.summary-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.summary-link[data-warn] { color: var(--mantine-color-orange-text); font-weight: 600; }

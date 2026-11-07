@@ -84,7 +84,7 @@ export function EmployeeHome() {
     ].filter(Boolean);
     return (
       <Stack gap={24}>
-        <PageHead title={d ? t("Dzień dobry, {name}", { name: d.first_name }) : t("Moje konto")} />
+        <PageHead title={t("Moje konto")} />
         <Section title={t("Do załatwienia")}>
           {mine.isLoading ? (
             <CompactEmpty title="…" />
@@ -115,7 +115,7 @@ export function EmployeeHome() {
 
   return (
     <Stack maw={760}>
-      <Title order={2}>{d ? t("Dzień dobry, {name}", { name: d.first_name }) : t("Moje konto")}</Title>
+      <Title order={2}>{t("Moje konto")}</Title>
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
         <Tile icon={IconSignature} title={t("Do podpisu")} hint={t("Dokumenty czekające na Twój podpis")} to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
         {toSign.data?.last_signed && (

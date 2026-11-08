@@ -1017,3 +1017,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-hist-text{font-size:14px;line-height:20px;overflow-wrap:anywhere}
 .ui-dlist-warn{border-left:3px solid var(--mantine-color-yellow-6)}
 .ui-drow-gap{box-shadow:inset 3px 0 0 var(--mantine-color-yellow-6)}
+/* płynne przejście szkielet → treść: gotowa treść wchodzi lekkim rozjaśnieniem (bez przesuwania układu) */
+@keyframes ui-fade-in{from{opacity:0}to{opacity:1}}
+.ui-detail:not([aria-busy]),.ui-dlist:not([aria-busy]),.ui-hist,.ui-dl{animation:ui-fade-in .18s ease-out}
+@media (prefers-reduced-motion:reduce){.ui-detail:not([aria-busy]),.ui-dlist:not([aria-busy]),.ui-hist,.ui-dl{animation:none}}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -408,6 +408,7 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
+  const [openDone, setOpenDone] = useState<Record<string, boolean>>({});
   const q = useQuery({
     queryKey: ["employee-checklists", employee.id],
     queryFn: () => api<{ onboarding: ChecklistItem[]; offboarding: ChecklistItem[] }>(`/employees/${employee.id}/checklists`),
@@ -485,21 +486,31 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
         const overdue = items.filter((i) => i.state === "overdue").length;
         return (
           <Stack key={k} gap={8}>
-            <Text size="sm">
-              <Text span fw={600}>
-                {KIND_LABEL[k]}
+            <Group gap={8} wrap="wrap">
+              <Text size="sm">
+                <Text span fw={600}>
+                  {KIND_LABEL[k]}
+                </Text>
+                <Text span c="dimmed">
+                  {" "}
+                  · {doneN === items.length ? "wszystko zrobione" : `${doneN} z ${items.length} zrobione`}
+                </Text>
+                {overdue > 0 && <span className="ui-warn"> · po terminie: {overdue}</span>}
               </Text>
-              <Text span c="dimmed">
-                {" "}
-                · {doneN === items.length ? "wszystko zrobione" : `${doneN} z ${items.length} zrobione`}
-              </Text>
-              {overdue > 0 && <span className="ui-warn"> · po terminie: {overdue}</span>}
-            </Text>
-            <div className="ui-dlist">
-              {items.map((it) => (
-                <ItemRow key={it.id} it={it} onChange={refresh} />
-              ))}
-            </div>
+              {/* zakończona checklista zostaje jako ślad (kto i kiedy), ale zwinięta do jednej linii */}
+              {doneN === items.length && (
+                <Anchor component="button" type="button" size="sm" fw={600} aria-expanded={!!openDone[k]} onClick={() => setOpenDone((o) => ({ ...o, [k]: !o[k] }))}>
+                  {openDone[k] ? "Zwiń" : "Pokaż"}
+                </Anchor>
+              )}
+            </Group>
+            {(doneN < items.length || openDone[k]) && (
+              <div className="ui-dlist">
+                {items.map((it) => (
+                  <ItemRow key={it.id} it={it} onChange={refresh} />
+                ))}
+              </div>
+            )}
           </Stack>
         );
       })}

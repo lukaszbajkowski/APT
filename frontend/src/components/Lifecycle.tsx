@@ -20,7 +20,7 @@ import {
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
 import { useAuth } from "../auth";
-import { EmptyState, Loading } from "./States";
+import { EmptyState, Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -112,7 +112,7 @@ export function TimelineCard({ employee }: { employee: Employee }) {
     queryKey: ["employee-timeline", employee.id],
     queryFn: () => api<{ periods: Period[]; assignments: AssignmentRow[] }>(`/employees/${employee.id}/timeline`),
   });
-  if (!q.data) return null;
+  if (!q.data) return q.isLoading && !mobile ? <section className="ui-dsec"><SectionHead title="Przebieg zatrudnienia" /><RowsSkeleton rows={2} /></section> : null;
   const { periods, assignments } = q.data;
   if (mobile)
     return (
@@ -420,7 +420,7 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
-  if (!q.data) return null;
+  if (!q.data) return q.isLoading && !mobile ? <section className="ui-dsec"><SectionHead title="Checklisty" /><RowsSkeleton rows={2} /></section> : null;
   const kinds = (["offboarding", "onboarding"] as const).filter((k) => q.data[k].length > 0);
   const missing = employee.status === "terminated" ? "offboarding" : "onboarding";
   if (kinds.length === 0 && !staff) return null;

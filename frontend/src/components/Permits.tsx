@@ -8,7 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
-import { Loading } from "./States";
+import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -127,7 +127,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
   return (
     <section className="ui-dsec">
       <SectionHead title="Dokumenty pobytowe i zezwolenia" action={polish && !q.data?.length ? undefined : { label: "Dodaj dokument", onClick: () => setOpen(true) }} />
-      {q.isLoading && <Loading />}
+      {q.isLoading && <RowsSkeleton rows={1} />}
       {q.data && q.data.length === 0 && (
         <Text size="sm" c="dimmed">
           {polish ? "Nie dotyczy – obywatelstwo polskie." : "Brak dokumentów. Dodaj kartę pobytu, wizę lub zezwolenie, aby śledzić ich ważność."}

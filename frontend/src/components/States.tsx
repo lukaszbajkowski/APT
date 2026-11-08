@@ -144,3 +144,63 @@ export function NetworkBanner() {
   }
   return null;
 }
+
+/** Szkielet listy w ramce (wzorzec karty): wiersze z tytułem i opisem, po prawej miejsce na stan/przyciski. */
+export function RowsSkeleton({ rows = 2 }: { rows?: number }) {
+  return (
+    <div className="ui-dlist" aria-busy="true" aria-label="Ładowanie">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="ui-drow">
+          <Box style={{ flex: 1 }}>
+            <Skeleton height={12} width={`${55 - (i % 2) * 15}%`} mb={8} />
+            <Skeleton height={9} width="35%" />
+          </Box>
+          <Skeleton height={28} width={90} radius="sm" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Szkielet całej karty pracownika na komputerze – ten sam układ co gotowa strona, bez skoku po wczytaniu. */
+export function DetailSkeleton() {
+  const section = (rows: number, key: string) => (
+    <section className="ui-dsec" key={key}>
+      <Skeleton height={16} width={160} />
+      <RowsSkeleton rows={rows} />
+    </section>
+  );
+  const side = (rows: number, key: string) => (
+    <section className="ui-dsec" key={key}>
+      <Skeleton height={16} width={140} />
+      {Array.from({ length: rows }, (_, i) => (
+        <Group key={i} gap="md" wrap="nowrap">
+          <Skeleton height={10} width={90} />
+          <Skeleton height={10} width={`${50 - (i % 2) * 15}%`} />
+        </Group>
+      ))}
+    </section>
+  );
+  return (
+    <div className="ui-detail" aria-busy="true" aria-label="Ładowanie karty pracownika">
+      <Skeleton height={10} width={180} />
+      <header className="ui-detail-head">
+        <Skeleton height={72} width={72} radius="md" />
+        <Box className="ui-detail-headtext">
+          <Skeleton height={24} width="40%" mb={10} />
+          <Skeleton height={10} width="60%" mb={8} />
+          <Skeleton height={10} width="30%" />
+        </Box>
+        <Group gap={8}>
+          <Skeleton height={36} width={140} radius="sm" />
+          <Skeleton height={36} width={80} radius="sm" />
+          <Skeleton height={36} width={110} radius="sm" />
+        </Group>
+      </header>
+      <div className="ui-detail-cols">
+        <div className="ui-detail-main">{[section(2, "a"), section(2, "b"), section(1, "c"), section(1, "d")]}</div>
+        <aside className="ui-detail-side">{[side(4, "e"), side(4, "f"), side(2, "g")]}</aside>
+      </div>
+    </div>
+  );
+}

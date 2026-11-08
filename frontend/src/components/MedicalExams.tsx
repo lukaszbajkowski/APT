@@ -9,7 +9,7 @@ import { IconFileText, IconPencil, IconPlus, IconTrash } from "@tabler/icons-rea
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
-import { Loading } from "./States";
+import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -169,7 +169,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
   return (
     <section className="ui-dsec">
       <SectionHead title="Badania lekarskie" action={canAdd ? { label: "Dodaj badanie", onClick: () => setOpen(true) } : undefined} />
-      {q.isLoading && <Loading />}
+      {q.isLoading && <RowsSkeleton rows={1} />}
       {q.data && q.data.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak badań. Dodaj badanie, aby śledzić termin ważności.

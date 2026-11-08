@@ -15,6 +15,7 @@ import {
   Stack,
   Text,
   Title,
+  Skeleton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -58,7 +59,7 @@ import { ChecklistsCard, RehireModal, TimelineCard, type ChecklistItem } from ".
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
-import { Loading } from "../components/States";
+import { DetailSkeleton, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { ActionSheet, CompactEmpty, InfoRow, ListRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
@@ -265,7 +266,7 @@ export function EmployeeProfilePage() {
       : null,
   );
 
-  if (employee.isLoading) return <Loading />;
+  if (employee.isLoading) return mobile ? <Loading /> : <DetailSkeleton />;
   if (employee.error || !employee.data)
     return <Alert color="red">{employee.error ? errorText(employee.error) : "Brak danych."}</Alert>;
   const e = employee.data;
@@ -322,7 +323,16 @@ export function EmployeeProfilePage() {
             title="Historia zmian"
             action={history.data && history.data.length > HISTORY_SHORT ? { label: historyAll ? "Zwiń" : `Wszystkie (${history.data.length})`, onClick: () => setHistoryAll((v) => !v) } : undefined}
           />
-          {history.isLoading && <Loading />}
+          {history.isLoading && (
+            <Stack gap="sm" aria-busy="true" aria-label="Ładowanie">
+              {[0, 1, 2].map((i) => (
+                <div key={i}>
+                  <Skeleton height={10} width={`${60 - i * 10}%`} mb={6} />
+                  <Skeleton height={8} width="40%" />
+                </div>
+              ))}
+            </Stack>
+          )}
           {history.data && history.data.length === 0 && (
             <Text size="sm" c="dimmed">
               Brak wpisów. Zmiany pojawią się tu po pierwszej edycji.

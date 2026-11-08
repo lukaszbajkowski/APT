@@ -13,7 +13,7 @@ import { SignaturesModal, useRemindSignature } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
-import { Loading } from "./States";
+import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 
 export type Values = Record<string, string | boolean | number | null>;
@@ -592,7 +592,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
           Brak dostępnych szablonów. Administrator dodaje je w „Szablonach”.
         </Text>
       )}
-      {docs.isLoading && <Loading />}
+      {docs.isLoading && <RowsSkeleton />}
       {docs.data && docs.data.length === 0 && templates.data?.length !== 0 && (
         <Text size="sm" c="dimmed">
           Nie ma jeszcze dokumentów – „Nowy dokument” wygeneruje go z szablonu.

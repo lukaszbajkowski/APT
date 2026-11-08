@@ -28,7 +28,7 @@ import {
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
-import { Loading } from "./States";
+import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -525,7 +525,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
   return (
     <section className="ui-dsec" id="szkolenia">
       <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
-      {list.isLoading && <Loading />}
+      {list.isLoading && <RowsSkeleton />}
       {list.data && list.data.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak szkoleń.{staff ? " „Dodaj szkolenie” zapisze odbyte albo zaplanowane." : ""}

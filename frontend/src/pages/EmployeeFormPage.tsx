@@ -272,7 +272,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
   );
 
   return (
-    <form onSubmit={submit} className={mobile ? "ui-inpage" : undefined}>
+    <form onSubmit={submit} className={mobile ? "ui-inpage" : embed ? "ui-embed-form" : undefined}>
       <Stack maw={embed ? undefined : 900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
         {!embed && (
         <Group justify="space-between" visibleFrom="sm">
@@ -406,14 +406,9 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
               />
             )}
             <div>
-              <Text size="sm" fw={500} mb={fromPesel ? 0 : 4}>
+              <Text size="sm" fw={500} mb={4}>
                 Płeć
               </Text>
-              {fromPesel && (
-                <Text size="xs" c="dimmed" mb={4}>
-                  Wynika z numeru PESEL
-                </Text>
-              )}
               {mobile ? (
                 <div className="ui-seg2" role="radiogroup" aria-label="Płeć" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
                   {([["K", "Kobieta"], ["M", "Mężczyzna"], ["none", "Nie podano"]] as const).map(([v, l]) => {
@@ -436,6 +431,11 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
                     { value: "none", label: "Nie podano" },
                   ]}
                 />
+              )}
+              {fromPesel && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Wynika z numeru PESEL
+                </Text>
               )}
             </div>
             {staff && (
@@ -524,7 +524,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
             </Paper>
           )}
           <Textarea
-            mt="md"
+            mt={embed ? undefined : "md"}
             label="Uwagi"
             autosize
             minRows={2}

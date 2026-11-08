@@ -1021,3 +1021,11 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 @keyframes ui-fade-in{from{opacity:0}to{opacity:1}}
 .ui-detail:not([aria-busy]),.ui-dlist:not([aria-busy]),.ui-hist,.ui-dl{animation:ui-fade-in .18s ease-out}
 @media (prefers-reduced-motion:reduce){.ui-detail:not([aria-busy]),.ui-dlist:not([aria-busy]),.ui-hist,.ui-dl{animation:none}}
+/* formularz w okienku: opis pod polem (etykieta → pole → opis → błąd), żeby pola w kolumnach trzymały jedną linię */
+.ui-embed-form .mantine-InputWrapper-root{display:flex;flex-direction:column}
+.ui-embed-form .mantine-InputWrapper-label{order:0}
+.ui-embed-form .mantine-InputWrapper-root > :not(.mantine-InputWrapper-label):not(.mantine-InputWrapper-description):not(.mantine-InputWrapper-error){order:1}
+.ui-embed-form .mantine-InputWrapper-description{order:2;margin-top:4px;margin-bottom:0}
+.ui-embed-form .mantine-InputWrapper-error{order:3}
+.ui-embed-form .mantine-SimpleGrid-root{row-gap:20px!important;align-items:start}
+.ui-embed-form .mantine-Textarea-root{margin-top:20px}

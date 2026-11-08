@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Group, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Group, Input, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconAlertCircle, IconArrowLeft } from "@tabler/icons-react";
@@ -405,10 +405,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
                 onChange={(e) => set("birth_date", e.currentTarget.value)}
               />
             )}
-            <div>
-              <Text size="sm" fw={500} mb={4}>
-                Płeć
-              </Text>
+            <Input.Wrapper label="Płeć" description={fromPesel ? "Wynika z numeru PESEL" : undefined}>
               {mobile ? (
                 <div className="ui-seg2" role="radiogroup" aria-label="Płeć" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
                   {([["K", "Kobieta"], ["M", "Mężczyzna"], ["none", "Nie podano"]] as const).map(([v, l]) => {
@@ -422,6 +419,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
                 </div>
               ) : (
                 <SegmentedControl
+                  fullWidth
                   disabled={personalLocked || fromPesel}
                   value={form.sex || "none"}
                   onChange={(v) => set("sex", v === "none" ? "" : (v as "K" | "M"))}
@@ -432,12 +430,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
                   ]}
                 />
               )}
-              {fromPesel && (
-                <Text size="xs" c="dimmed" mt={4}>
-                  Wynika z numeru PESEL
-                </Text>
-              )}
-            </div>
+            </Input.Wrapper>
             {staff && (
               <Select
                 label="Obywatelstwo"

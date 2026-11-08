@@ -1029,3 +1029,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-embed-form .mantine-InputWrapper-error{order:3}
 .ui-embed-form .mantine-SimpleGrid-root{row-gap:20px!important;align-items:start}
 .ui-embed-form .mantine-Textarea-root{margin-top:20px}
+.ui-embed-form .mantine-SegmentedControl-root{min-height:36px;align-items:stretch}

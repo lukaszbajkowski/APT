@@ -1003,3 +1003,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-8)}
 [data-mantine-color-scheme="dark"] .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-5)}
 .ui-acct-state[data-tone="off"],.ui-acct-state[data-tone="none"]{color:var(--mantine-color-dimmed)}
+.ui-trow{justify-content:flex-start;gap:var(--s-5)}
+.ui-trow-date{flex:none;width:88px;font-size:14px;line-height:22px;font-variant-numeric:tabular-nums;color:var(--mantine-color-dimmed)}
+.ui-drow > .mantine-Button-root,.ui-drow > .mantine-ActionIcon-root,.ui-drow > .mantine-Group-root:last-child{flex:none}

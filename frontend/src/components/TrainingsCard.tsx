@@ -2,12 +2,11 @@ import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog, SectionHead } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Card, FileButton, Group, Menu,  NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { ActionIcon, Alert, Button, FileButton, Group, Menu,  NumberInput, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCertificate,
   IconDots,
   IconFileText,
   IconPaperclip,
@@ -30,7 +29,7 @@ import {
 import { useAuth } from "../auth";
 import { FieldInput, type Values } from "./DocumentsCard";
 import { EmployeeRequirements } from "./Competence";
-import { EmptyState, Loading } from "./States";
+import { Loading } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -452,7 +451,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
 
                     <Menu position="bottom-end" withinPortal>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray" aria-label="Akcje szkolenia">
+                        <ActionIcon variant={mobile ? "subtle" : "default"} color={mobile ? "gray" : undefined} size={mobile ? undefined : 30} aria-label={`Więcej: ${t.name ?? t.type_name}`}>
                           <IconDots size={16} />
                         </ActionIcon>
                       </Menu.Target>
@@ -523,77 +522,60 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
   }
 
   return (
-    <Card withBorder padding="lg">
+    <section className="ui-dsec">
       <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
-      <EmployeeRequirements employeeId={employee.id} />
+      <EmployeeRequirements employeeId={employee.id} plain />
       {list.isLoading && <Loading />}
-      {list.data && list.data.length === 0 && <EmptyState compact title="Brak wpisów szkoleń"
-          text="Pracownik nie ma jeszcze żadnego szkolenia. Dodaj pierwsze przyciskiem powyżej." />}
-      <Stack gap="xs">
-        {list.data?.map((t) => {
-          const st = TRAINING_STATUS[t.status];
-          return (
-            <Paper key={t.id} withBorder p="sm" radius="md">
-              <Group justify="space-between" wrap="nowrap" align="flex-start">
-                <Group gap="sm" wrap="nowrap" align="flex-start" style={{ minWidth: 0 }}>
-                  <IconCertificate size={20} style={{ flexShrink: 0, marginTop: 2 }} color="var(--mantine-color-dimmed)" />
-                  <div style={{ minWidth: 0 }}>
-                    <Group gap={6}>
-                      <Text fw={600}>{t.name ?? t.type_name}</Text>
-                      {t.name && (
-                        <Text size="sm" c="dimmed">
-                          {t.type_name}
-                        </Text>
-                      )}
-                    </Group>
-                    {summary(t) && <Text size="sm">{summary(t)}</Text>}
-                    {Object.keys(t.values).length > 0 && (
-                      <Text size="sm" c="dimmed">
-                        {Object.entries(t.values)
-                          .map(([k, v]) => `${fieldLabel(t.type_id, k)}: ${v === true ? "tak" : v}`)
-                          .join(" · ")}
-                      </Text>
-                    )}
-                    {t.notes && (
-                      <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-wrap" }}>
-                        {t.notes}
-                      </Text>
-                    )}
-                    {t.has_scan && (
-                      <Anchor href={withAcct(`/api/trainings/${t.id}/scan`)} target="_blank" size="sm">
-                        <Group gap={4} wrap="nowrap">
-                          <IconPaperclip size={14} /> {t.scan_name ?? "Skan zaświadczenia"}
-                        </Group>
-                      </Anchor>
-                    )}
-                  </div>
-                </Group>
-                <Group gap="xs" wrap="nowrap">
-                  <Stack gap={0} align="flex-end">
-                    <Badge color={st.color} variant="light">
-                      {st.label}
-                    </Badge>
-                    {["planned", "in_progress", "overdue"].includes(t.status) ? (
-                      <Text size="xs" c={t.status === "overdue" ? "red" : "dimmed"}>
-                        {t.status === "planned"
-                          ? `od ${formatDate(t.start_date)}`
-                          : `dzień ${t.days}${t.standard_days !== null ? ` z ${t.standard_days}` : ""}`}
-                      </Text>
-                    ) : (
-                      t.valid_until && (
-                        <Text size="xs" c="dimmed">
-                          do {formatDate(t.valid_until)}
-                        </Text>
-                      )
-                    )}
-                  </Stack>
+      {list.data && list.data.length === 0 && (
+        <Text size="sm" c="dimmed">
+          Brak szkoleń.{staff ? " „Dodaj szkolenie” zapisze odbyte albo zaplanowane." : ""}
+        </Text>
+      )}
+      {list.data && list.data.length > 0 && (
+        <div className="ui-dlist">
+          {list.data.map((t) => {
+            const st = TRAINING_STATUS[t.status];
+            const warn = ["expiring", "expired", "overdue"].includes(t.status);
+            const state =
+              t.status === "planned"
+                ? `${st.label} od ${formatDate(t.start_date)}`
+                : t.status === "in_progress" || t.status === "overdue"
+                  ? `${st.label} · dzień ${t.days}${t.standard_days !== null ? ` z ${t.standard_days}` : ""}`
+                  : t.valid_until
+                    ? `${st.label} do ${formatDate(t.valid_until)}`
+                    : st.label;
+            const meta = [
+              t.name ? t.type_name : null,
+              summary(t),
+              Object.keys(t.values).length > 0
+                ? Object.entries(t.values)
+                    .map(([k, v]) => `${fieldLabel(t.type_id, k)}: ${v === true ? "tak" : v}`)
+                    .join(" · ")
+                : null,
+              t.notes,
+            ].filter(Boolean);
+            return (
+              <div key={t.id} className="ui-drow">
+                <div style={{ minWidth: 0 }}>
+                  <div className="ui-drow-title">{t.name ?? t.type_name}</div>
+                  {meta.length > 0 && <div className="ui-drow-meta" style={{ whiteSpace: "pre-wrap" }}>{meta.join(" · ")}</div>}
+                </div>
+                <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
+                  <Text size="sm" className={warn ? "ui-warn" : undefined}>
+                    {state}
+                  </Text>
+                  {t.has_scan && (
+                    <Button size="xs" variant="default" component="a" href={withAcct(`/api/trainings/${t.id}/scan`)} target="_blank" title={t.scan_name ?? undefined}>
+                      Zaświadczenie
+                    </Button>
+                  )}
                   {menuFor(t)}
                 </Group>
-              </Group>
-            </Paper>
-          );
-        })}
-      </Stack>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {(generate.isPending || upload.isPending) && (
         <Text size="xs" c="dimmed" mt="xs">
           {generate.isPending ? "Generowanie dokumentu…" : "Wysyłanie pliku…"}
@@ -605,6 +587,6 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
         opened={modal.open}
         onClose={() => setModal({ open: false, editing: null })}
       />
-    </Card>
+    </section>
   );
 }

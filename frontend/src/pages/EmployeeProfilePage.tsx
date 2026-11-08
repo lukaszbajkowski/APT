@@ -645,7 +645,7 @@ export function EmployeeProfilePage() {
       <div className="ui-detail-cols">
         <div className="ui-detail-main">
           {canEdit && (overdueItems.length > 0 || pendingDocs.length > 0) && (
-            <AttentionSection items={overdueItems} docs={pendingDocs} onChange={() => qc.invalidateQueries({ queryKey: ["employee-checklists", Number(id)] })} />
+            <AttentionSection items={overdueItems} docs={pendingDocs} />
           )}
           {canEdit && <DocumentsCard employee={e} />}
           {canEdit && <ChecklistsCard employee={e} />}
@@ -740,38 +740,43 @@ export function EmployeeProfilePage() {
 }
 
 /** „Wymaga uwagi”: zadania po terminie (do odhaczenia od razu) i dokumenty czekające na podpis. */
-function AttentionSection({ items, docs, onChange }: { items: ChecklistItem[]; docs: GeneratedDoc[]; onChange: () => void }) {
-  const qc = useQueryClient();
-  const done = useMutation({
-    mutationFn: (it: ChecklistItem) => api(`/checklist-items/${it.id}`, { method: "PATCH", body: { done: true } }),
-    onSuccess: () => {
-      onChange();
-      qc.invalidateQueries({ queryKey: ["tasks"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
-      notifications.show({ color: "green", message: "Oznaczono jako zrobione." });
-    },
-    onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
-  });
+function AttentionSection({ items, docs }: { items: ChecklistItem[]; docs: GeneratedDoc[] }) {
   const remind = useRemindSignature();
   return (
     <section className="ui-dsec">
       <Title order={2} className="ui-dsec-title">Wymaga uwagi</Title>
       <div className="ui-dlist">
-        {items.map((it) => (
-          <div key={it.id} className="ui-drow">
-            <div style={{ minWidth: 0 }}>
-              <div className="ui-drow-title">{it.label}</div>
-              <div className="ui-drow-meta">
-                <span className="ui-warn">po terminie od {formatDate(it.due_date)}</span> · {it.kind === "onboarding" ? "wdrożenie" : "odejście"} · {it.responsible === "manager" ? "kierownik" : "HR"}
+        {/* zadania z checklist: jeden wiersz na checklistę (pełna lista jest niżej w „Checklistach”) */}
+        {(["onboarding", "offboarding"] as const).map((kind) => {
+          const late = items.filter((it) => it.kind === kind);
+          if (!late.length) return null;
+          return (
+            <div key={kind} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">
+                  {kind === "onboarding" ? "Wdrożenie" : "Odejście"}: {late.length === 1 ? "1 zadanie" : `${late.length} zadania`} po terminie
+                </div>
+                <div className="ui-drow-meta">
+                  {late
+                    .map((it) => `${it.label} (od ${formatDate(it.due_date)})`)
+                    .join(" · ")}
+                </div>
               </div>
-            </div>
-            {it.can_edit && (
-              <Button size="xs" variant="default" loading={done.isPending && done.variables?.id === it.id} onClick={() => done.mutate(it)}>
-                Oznacz jako zrobione
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() => {
+                  const el = document.getElementById("checklisty");
+                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  el?.classList.add("ui-flash");
+                  window.setTimeout(() => el?.classList.remove("ui-flash"), 1600);
+                }}
+              >
+                Pokaż checklistę
               </Button>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
         {docs.map((d) => (
           <div key={d.id} className="ui-drow">
             <div style={{ minWidth: 0 }}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Timeline, Title } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -10,6 +10,7 @@ import {
   IconArrowUp,
   IconAlertTriangle,
   IconBolt,
+  IconDots,
   IconDotsVertical,
   IconCalendarEvent,
   
@@ -144,67 +145,37 @@ export function TimelineCard({ employee }: { employee: Employee }) {
       </Stack>
     );
   return (
-    <Card withBorder padding="lg">
-      <Title order={5} mb="md">
-        Przebieg zatrudnienia
-      </Title>
+    <section className="ui-dsec">
+      <SectionHead title="Przebieg zatrudnienia" />
       <PlannedList employee={employee} />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
-        <div>
-          <Text size="sm" fw={600} mb="xs">
-            Okresy zatrudnienia
-          </Text>
-          <Stack gap={6}>
-            {periods.map((p, i) => (
-              <Paper key={i} withBorder p="xs" radius="md">
-                <Group justify="space-between" wrap="nowrap">
-                  <Text size="sm" fw={500}>
-                    {formatDate(p.hire_date)} – {p.termination_date ? formatDate(p.termination_date) : "obecnie"}
-                  </Text>
-                  {p.current && !p.termination_date && (
-                    <Badge size="sm" variant="light" color="teal">
-                      aktualny
-                    </Badge>
-                  )}
-                </Group>
-                <Text size="xs" c="dimmed">
-                  {place(p)}
-                </Text>
-              </Paper>
-            ))}
-          </Stack>
-        </div>
-        <div>
-          <Text size="sm" fw={600} mb="xs">
-            Wydział, stanowisko, APT – zmiany
-          </Text>
-          {assignments.length === 0 ? (
-            <EmptyState compact title="Brak wpisów"
-          text="Wpisy pojawią się, gdy ktoś wykona akcję." />
-          ) : (
-            <Timeline bulletSize={14} lineWidth={2} active={0}>
-              {assignments.map((a, i) => (
-                <Timeline.Item
-                  key={i}
-                  title={
-                    <Text size="sm" fw={500}>
-                      od {formatDate(a.valid_from)}
-                      {i > 0 ? ` do ${dayBefore(assignments[i - 1].valid_from)}` : ""}
-                    </Text>
-                  }
-                >
-                  <Text size="sm">{place(a)}</Text>
-                  <Text size="xs" c="dimmed">
-                    {[a.reason, a.changed_by].filter(Boolean).join(" · ")}
-                  </Text>
-                </Timeline.Item>
-              ))}
-            </Timeline>
-          )}
-        </div>
-      </SimpleGrid>
-    </Card>
+      <div className="ui-dlist">
+        {timelineEvents(periods, assignments).map((ev, i) => (
+          <div key={i} className="ui-drow ui-trow">
+            <span className="ui-trow-date">{ev.date ? formatDate(ev.date) : "—"}</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="ui-drow-title">{ev.title}</div>
+              {ev.meta && <div className="ui-drow-meta">{ev.meta}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
+}
+
+/** Jedna lista zdarzeń (najnowsze na górze): zatrudnienia, zmiany przydziału, zwolnienia. */
+function timelineEvents(periods: Period[], assignments: AssignmentRow[]) {
+  const ev: { date: string; order: number; title: string; meta: string }[] = [];
+  for (const p of periods) {
+    ev.push({ date: p.hire_date ?? "", order: 0, title: "Zatrudnienie", meta: place(p) });
+    if (p.termination_date) ev.push({ date: p.termination_date, order: 2, title: "Zwolnienie", meta: "" });
+  }
+  for (const a of assignments) {
+    // przydział z dnia zatrudnienia jest już w wierszu „Zatrudnienie”
+    if (periods.some((p) => p.hire_date === a.valid_from)) continue;
+    ev.push({ date: a.valid_from, order: 1, title: "Zmiana przydziału", meta: [place(a), a.reason !== "zmiana" ? a.reason : null, a.changed_by].filter(Boolean).join(" · ") });
+  }
+  return ev.sort((x, y) => (x.date === y.date ? y.order - x.order : x.date < y.date ? 1 : -1));
 }
 
 // ---------- ponowne zatrudnienie ----------
@@ -338,7 +309,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [due, setDue] = useState(it.due_date ?? "");
   return (
-    <Group justify="space-between" wrap="nowrap" gap="sm" py={6} px={mobile ? 12 : 0} mih={mobile ? 60 : undefined}>
+    <Group justify="space-between" wrap="nowrap" gap="sm" py={mobile ? 6 : undefined} px={mobile ? 12 : undefined} mih={mobile ? 60 : undefined} className={mobile ? undefined : "ui-drow"}>
       <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
         <Checkbox
           checked={done}
@@ -350,7 +321,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
           <Text size="sm" td={it.state === "skipped" ? "line-through" : undefined} c={done || it.state === "skipped" ? "dimmed" : undefined}>
             {it.label}
           </Text>
-          <Text size="xs" c={it.state === "overdue" ? "orange" : "dimmed"} fw={it.state === "overdue" ? 600 : undefined}>
+          <Text size="xs" c={it.state === "overdue" ? undefined : "dimmed"} className={it.state === "overdue" ? "ui-warn" : undefined}>
             {[
               RESPONSIBLE[it.responsible],
               it.state === "done" && it.done_by_name ? `${it.done_by_name}, ${formatDateTime(it.done_at)}` : null,
@@ -385,8 +356,8 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
       ) : !mobile && ((staff && !done && it.state !== "skipped") || it.auto || (it.can_edit && !done)) ? (
         <Menu position="bottom-end" width={260} withinPortal>
           <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" size={40} aria-label={`Akcje: ${it.label}`} style={{ flexShrink: 0 }}>
-              <IconDotsVertical size={18} />
+            <ActionIcon variant="default" size={30} aria-label={`Więcej: ${it.label}`} style={{ flexShrink: 0 }}>
+              <IconDots size={16} />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
@@ -486,40 +457,41 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
   }
 
   return (
-    <Card withBorder padding="lg">
+    <section className="ui-dsec" id="checklisty">
       <SectionHead
         title="Checklisty"
         action={staff && !kinds.includes(missing) ? { label: `Utwórz checklistę: ${KIND_LABEL[missing].toLowerCase()}`, onClick: () => create.mutate(missing), loading: create.isPending } : undefined}
       />
       {kinds.length === 0 && (
-        <EmptyState compact title="Brak checklist"
-          text="Wdrożenie tworzy się samo przy dodaniu nowej osoby, a odejście – przy zwolnieniu." />
+        <Text size="sm" c="dimmed">
+          Brak checklist. Wdrożenie tworzy się samo przy dodaniu nowej osoby, a odejście – przy zwolnieniu.
+        </Text>
       )}
-      <SimpleGrid cols={{ base: 1, md: kinds.length > 1 ? 2 : 1 }} spacing="lg">
-        {kinds.map((k) => {
-          const items = q.data[k];
-          const doneN = items.filter((i) => ["done", "auto", "skipped"].includes(i.state)).length;
-          const overdue = items.filter((i) => i.state === "overdue").length;
-          return (
-            <div key={k}>
-              <Group justify="space-between" mb={4}>
-                <Text size="sm" fw={600}>
-                  {KIND_LABEL[k]}
-                </Text>
-                <Text size="xs" c={overdue ? "orange" : "dimmed"} fw={overdue ? 600 : undefined}>
-                  {doneN} z {items.length}
-                  {overdue ? ` · po terminie: ${overdue}` : ""}
-                </Text>
-              </Group>
-              <Progress value={(doneN / items.length) * 100} color={doneN === items.length ? "teal" : undefined} size="sm" mb="xs" />
+      {kinds.map((k) => {
+        const items = q.data[k];
+        const doneN = items.filter((i) => ["done", "auto", "skipped"].includes(i.state)).length;
+        const overdue = items.filter((i) => i.state === "overdue").length;
+        return (
+          <Stack key={k} gap={8}>
+            <Text size="sm">
+              <Text span fw={600}>
+                {KIND_LABEL[k]}
+              </Text>
+              <Text span c="dimmed">
+                {" "}
+                · {doneN === items.length ? "wszystko zrobione" : `${doneN} z ${items.length} zrobione`}
+              </Text>
+              {overdue > 0 && <span className="ui-warn"> · po terminie: {overdue}</span>}
+            </Text>
+            <div className="ui-dlist">
               {items.map((it) => (
                 <ItemRow key={it.id} it={it} onChange={refresh} />
               ))}
             </div>
-          );
-        })}
-      </SimpleGrid>
-    </Card>
+          </Stack>
+        );
+      })}
+    </section>
   );
 }
 

@@ -176,13 +176,35 @@ interface EmployeeReq {
   valid_until: string | null;
 }
 
-export function EmployeeRequirements({ employeeId }: { employeeId: number }) {
+export function EmployeeRequirements({ employeeId, plain }: { employeeId: number; plain?: boolean }) {
   const q = useQuery({
     queryKey: ["employee-requirements", employeeId],
     queryFn: () => api<EmployeeReq[]>(`/employees/${employeeId}/requirements`),
   });
   if (!q.data || q.data.length === 0) return null;
   const problems = q.data.filter((r) => r.state === "missing" || r.state === "expired").length;
+  if (plain)
+    // komputer: jedno zdanie zamiast ramki ze znaczkami; braki bursztynem
+    return (
+      <Text size="sm">
+        <Text span c="dimmed">
+          Wymagane na stanowisku:{" "}
+        </Text>
+        {q.data.map((r, i) => {
+          const bad = r.state === "missing" || r.state === "expired";
+          return (
+            <span key={r.label}>
+              {i > 0 && " · "}
+              {r.label}{" "}
+              <span className={bad ? "ui-warn" : undefined} style={bad ? undefined : { color: "var(--mantine-color-dimmed)" }}>
+                {REQ_STATE[r.state].label.toLowerCase()}
+                {r.valid_until && r.state !== "missing" ? ` do ${formatDate(r.valid_until)}` : ""}
+              </span>
+            </span>
+          );
+        })}
+      </Text>
+    );
   return (
     <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-orange-light)" : undefined}>
       <Group gap={6} mb={6}>

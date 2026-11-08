@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog, SectionHead } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Button, FileInput, Group, Menu, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Button, FileInput, Group, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconFileText, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconFileText, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
@@ -202,22 +202,11 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
                   </Button>
                 )}
                 {x.can_delete && (
-                  <Menu position="bottom-end" withinPortal>
-                    <Menu.Target>
-                      <ActionIcon variant="default" size={30} aria-label={`Więcej: badanie z ${formatDate(x.exam_date)}`}>
-                        <IconDots size={16} />
-                      </ActionIcon>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setEditing(x)}>
-                        Popraw dane
-                      </Menu.Item>
-                      <Menu.Divider />
-                      <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => askDel(x)}>
-                        Usuń badanie
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
+                  <RowMenu
+                    label={`badanie z ${formatDate(x.exam_date)}`}
+                    items={[{ label: "Popraw dane", icon: <IconPencil size={16} />, onClick: () => setEditing(x) }]}
+                    danger={{ label: "Usuń badanie", icon: <IconTrash size={16} />, onClick: () => askDel(x) }}
+                  />
                 )}
               </Group>
             </div>

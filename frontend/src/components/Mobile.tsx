@@ -9,9 +9,9 @@ import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
 import { useConfirm } from "../lib/confirm";
-import { Anchor, Button, Drawer, Group, Modal, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconDots, IconX } from "@tabler/icons-react";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
 export interface MobileHeader {
@@ -959,5 +959,46 @@ export function SectionHead({
         </Anchor>
       )}
     </div>
+  );
+}
+
+/**
+ * Menu „⋯” wiersza listy na komputerze (wzorzec karty): zwykłe akcje, kreska, na końcu czerwone „Usuń …”
+ * (zawsze z potwierdzeniem po stronie wywołującego). Ten sam klocek dla dokumentów, badań, szkoleń…
+ */
+export function RowMenu({
+  label,
+  items,
+  danger,
+}: {
+  label: string;
+  items: { label: string; icon?: ReactNode; onClick: () => void; hidden?: boolean }[];
+  danger?: { label: string; icon?: ReactNode; onClick: () => void };
+}) {
+  const shown = items.filter((i) => !i.hidden);
+  if (!shown.length && !danger) return null;
+  return (
+    <Menu position="bottom-end" withinPortal>
+      <Menu.Target>
+        <ActionIcon variant="default" size={30} aria-label={`Więcej: ${label}`} style={{ flex: "none" }}>
+          <IconDots size={16} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {shown.map((i) => (
+          <Menu.Item key={i.label} leftSection={i.icon} onClick={i.onClick}>
+            {i.label}
+          </Menu.Item>
+        ))}
+        {danger && (
+          <>
+            {shown.length > 0 && <Menu.Divider />}
+            <Menu.Item color="red" leftSection={danger.icon} onClick={danger.onClick}>
+              {danger.label}
+            </Menu.Item>
+          </>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
 }

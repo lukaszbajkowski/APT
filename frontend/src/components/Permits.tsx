@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog, SectionHead } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Group, Menu, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Alert, Group, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
 import { Loading } from "./States";
@@ -147,22 +147,11 @@ export function PermitsCard({ employee }: { employee: Employee }) {
                 <Text size="sm" className={x.state === "valid" ? undefined : "ui-warn"}>
                   {PERMIT_STATE[x.state].label} do {formatDate(x.valid_until)}
                 </Text>
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <ActionIcon variant="default" size={30} aria-label={`Więcej: ${x.kind_label}`}>
-                      <IconDots size={16} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setEditing(x)}>
-                      Popraw dane
-                    </Menu.Item>
-                    <Menu.Divider />
-                    <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => askDel(x)}>
-                      Usuń dokument
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
+                <RowMenu
+                  label={x.kind_label}
+                  items={[{ label: "Popraw dane", icon: <IconPencil size={16} />, onClick: () => setEditing(x) }]}
+                  danger={{ label: "Usuń dokument", icon: <IconTrash size={16} />, onClick: () => askDel(x) }}
+                />
               </Group>
             </div>
           ))}

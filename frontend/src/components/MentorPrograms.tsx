@@ -1,5 +1,6 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog, SectionHead } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog, SectionHead, RowMenu } from "./Mobile";
+import { useConfirm } from "../lib/confirm";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Button, Group,  MultiSelect, Popover, Stack, Text } from "@mantine/core";
@@ -109,11 +110,10 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
     queryFn: () => api<MentorProgram[]>(`/employees/${employee.id}/mentor-programs`),
   });
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types") });
-  const [editing, setEditing] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addId, setAddId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<MentorProgram | null>(null);
+  const confirm = useConfirm();
 
   const allPrograms = (types.data ?? []).flatMap((t) => t.programs.map((p) => ({ ...p, type_name: t.name })));
   const groups = (types.data ?? [])
@@ -121,7 +121,7 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
     .map((t) => ({
       group: t.name,
       items: t.programs
-        .filter((p) => p.is_active || selected.includes(String(p.id)))
+        .filter((p) => p.is_active)
         .map((p) => ({ value: String(p.id), label: programLabel(p) })),
     }));
 
@@ -133,7 +133,6 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
       qc.invalidateQueries({ queryKey: ["training-types"] });
       qc.invalidateQueries({ queryKey: ["employee-history", String(employee.id)] });
       notifications.show({ color: "green", message: "Zapisano szkolenia, które pracownik może prowadzić." });
-      setEditing(false);
       setAddOpen(false);
       setAddId(null);
     },
@@ -193,49 +192,57 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
     );
   }
 
+  // komputer: lista w ramce z „⋯” (usuń z listy), dodawanie w okienku – jak przy badaniach
+  const ids = list.map((p) => p.id);
+  const addable = groups
+    .map((g) => ({ group: g.group, items: g.items.filter((i) => !ids.includes(Number(i.value))) }))
+    .filter((g) => g.items.length);
   return (
     <section className="ui-dsec">
       <SectionHead
         title="Może prowadzić szkolenia"
-        action={
-          staff && !editing
-            ? {
-                label: "Zmień",
-                onClick: () => {
-                  setSelected(list.map((p) => String(p.id)));
-                  setEditing(true);
-                },
-              }
-            : undefined
-        }
+        action={staff && addable.length ? { label: "Dodaj szkolenie", onClick: () => setAddOpen(true) } : undefined}
       />
-      {editing ? (
-        <Stack gap="xs">
-          <MultiSelect
-            aria-label="Szkolenia, które może prowadzić"
-            placeholder="Wybierz szkolenia z katalogu"
-            searchable
-            clearable
-            data={groups}
-            value={selected}
-            onChange={setSelected}
-          />
-          <Group justify="flex-end" gap="xs">
-            <Button size="xs" variant="default" onClick={() => setEditing(false)}>
-              Anuluj
-            </Button>
-            <Button size="xs" onClick={() => save.mutate(selected.map(Number))} loading={save.isPending}>
-              Zapisz
-            </Button>
-          </Group>
-        </Stack>
-      ) : list.length === 0 ? (
+      {list.length === 0 ? (
         <Text c="dimmed" size="sm">
           Brak – pracownik nie jest opiekunem żadnego szkolenia stanowiskowego.
         </Text>
       ) : (
-        <Text size="sm">{list.map((p) => programLabel(p)).join(" · ")}</Text>
+        <div className="ui-dlist">
+          {list.map((p) => (
+            <div key={p.id} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">{p.name}</div>
+                {p.department && <div className="ui-drow-meta">{p.department}</div>}
+              </div>
+              {staff && (
+                <RowMenu
+                  label={p.name}
+                  items={[]}
+                  danger={{
+                    label: "Usuń z listy",
+                    icon: <IconTrash size={16} />,
+                    onClick: () =>
+                      confirm({ title: "Usunąć z listy?", message: `Pracownik przestanie być opiekunem szkolenia „${p.name}”.`, confirmLabel: "Usuń", danger: true }).then(
+                        (ok) => ok && save.mutate(ids.filter((x) => x !== p.id)),
+                      ),
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
       )}
+      <FormDialog
+        opened={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Może prowadzić szkolenie"
+        primary={{ label: "Dodaj", onClick: () => addId && save.mutate([...ids, Number(addId)]), loading: save.isPending, disabled: !addId }}
+      >
+        <Stack>
+          <Select label="Szkolenie stanowiskowe" placeholder="Wybierz z katalogu" searchable data={addable} value={addId} onChange={setAddId} />
+        </Stack>
+      </FormDialog>
     </section>
   );
 }

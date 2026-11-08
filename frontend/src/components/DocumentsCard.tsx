@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog, RowMenu } from "./Mobile";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Menu, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
+import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconChevronUp, IconBell, IconCircleCheck, IconDots, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconBell, IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
@@ -628,48 +628,17 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                     </Button>
                   )
                 )}
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <ActionIcon variant="default" size={30} aria-label={`Więcej: ${d.template_name}`}>
-                      <IconDots size={16} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    {d.accessible && (
-                      <Menu.Item leftSection={<IconSignature size={16} />} onClick={() => setSignDoc(d)}>
-                        {d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis"}
-                      </Menu.Item>
-                    )}
-                    {d.signature_pending && (
-                      <Menu.Item leftSection={<IconBell size={16} />} onClick={() => remind.mutate(d)}>
-                        Przypomnij o podpisie
-                      </Menu.Item>
-                    )}
-                    {d.accessible && d.download.includes("pdf") && (
-                      <Menu.Item leftSection={<IconFileTypePdf size={16} />} onClick={() => download(d, "pdf")}>
-                        Pobierz PDF
-                      </Menu.Item>
-                    )}
-                    {d.accessible && d.download.includes("docx") && (
-                      <Menu.Item leftSection={<IconFileTypeDocx size={16} />} onClick={() => download(d, "docx")}>
-                        Pobierz Word
-                      </Menu.Item>
-                    )}
-                    {d.accessible && d.download.length > 0 && (
-                      <Menu.Item leftSection={<IconMail size={16} />} onClick={() => setMailDoc(d)}>
-                        Wyślij e-mailem
-                      </Menu.Item>
-                    )}
-                    {d.can_delete && (
-                      <>
-                        <Menu.Divider />
-                        <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => setDelDoc(d)}>
-                          Usuń dokument
-                        </Menu.Item>
-                      </>
-                    )}
-                  </Menu.Dropdown>
-                </Menu>
+                <RowMenu
+                  label={d.template_name}
+                  items={[
+                    { label: "Przypomnij o podpisie", icon: <IconBell size={16} />, onClick: () => remind.mutate(d), hidden: !d.signature_pending },
+                    { label: d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis", icon: <IconSignature size={16} />, onClick: () => setSignDoc(d), hidden: !d.accessible },
+                    { label: "Pobierz PDF", icon: <IconFileTypePdf size={16} />, onClick: () => download(d, "pdf"), hidden: !(d.accessible && d.download.includes("pdf")) },
+                    { label: "Pobierz Word", icon: <IconFileTypeDocx size={16} />, onClick: () => download(d, "docx"), hidden: !(d.accessible && d.download.includes("docx")) },
+                    { label: "Wyślij e-mailem", icon: <IconMail size={16} />, onClick: () => setMailDoc(d), hidden: !(d.accessible && d.download.length > 0) },
+                  ]}
+                  danger={d.can_delete ? { label: "Usuń dokument", icon: <IconTrash size={16} />, onClick: () => setDelDoc(d) } : undefined}
+                />
               </Group>
             </div>
           ))}

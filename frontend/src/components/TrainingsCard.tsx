@@ -1,13 +1,12 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog, SectionHead } from "./Mobile";
-import { useEffect, useMemo, useState } from "react";
+import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog, SectionHead, RowMenu } from "./Mobile";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Button, FileButton, Group, Menu,  NumberInput, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Button, Group,  NumberInput, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
-  IconDots,
   IconFileText,
   IconPaperclip,
   IconPencil,
@@ -446,60 +445,51 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     onError,
   });
 
-  // braki szkoleń wymaganych na stanowisku – jako wiersze tej samej listy (bez osobnych przycisków)
-  const reqs = useQuery({
-    queryKey: ["employee-requirements", employee.id],
-    queryFn: () => api<{ label: string; state: string; valid_until: string | null }[]>(`/employees/${employee.id}/requirements`),
-    enabled: !mobile,
-  });
-  const gaps = (reqs.data ?? []).filter((r) => r.state === "missing" || r.state === "expired");
-
+  // jeden ukryty wybór pliku na całą sekcję – „Dodaj/Zmień skan” w menu „⋯” wskazuje, którego szkolenia dotyczy
+  const scanFor = useRef<number | null>(null);
+  const scanInput = useRef<HTMLInputElement>(null);
   const menuFor = (t: Training) =>
     staff ? (
-
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon variant={mobile ? "subtle" : "default"} color={mobile ? "gray" : undefined} size={mobile ? undefined : 30} aria-label={`Więcej: ${t.name ?? t.type_name}`}>
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        {mobile && (
-                          <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => setModal({ open: true, editing: t })}>
-                            Edytuj
-                          </Menu.Item>
-                        )}
-                        {t.can_generate && (
-                          <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => generate.mutate(t.id)}>
-                            Generuj dokument
-                          </Menu.Item>
-                        )}
-                        <FileButton accept="application/pdf,image/jpeg,image/png" onChange={(f) => f && upload.mutate({ id: t.id, file: f })}>
-                          {(props) => (
-                            <Menu.Item {...props} closeMenuOnClick={false} leftSection={<IconUpload size={14} />}>
-                              {t.has_scan ? "Zmień skan zaświadczenia" : "Dodaj skan zaświadczenia"}
-                            </Menu.Item>
-                          )}
-                        </FileButton>
-                        {t.has_scan && (
-                          <Menu.Item leftSection={<IconPaperclip size={14} />} onClick={() => confirm({ title: "Usunąć skan?", message: "Skan zostanie odłączony od szkolenia.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && removeScan.mutate(t.id))}>
-                            Usuń skan
-                          </Menu.Item>
-                        )}
-                        <Menu.Divider />
-                        <Menu.Item
-                          color="red"
-                          leftSection={<IconTrash size={14} />}
-                          onClick={() => {
-                            confirm({ title: "Usunąć szkolenie?", message: `Usunąć szkolenie „${t.name ?? t.type_name}”?`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate(t.id));
-                          }}
-                        >
-                          Usuń
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  
+      <RowMenu
+        label={t.name ?? t.type_name}
+        items={[
+          { label: "Popraw dane", icon: <IconPencil size={16} />, onClick: () => setModal({ open: true, editing: t }) },
+          { label: "Generuj dokument", icon: <IconFileText size={16} />, onClick: () => generate.mutate(t.id), hidden: !t.can_generate },
+          {
+            label: t.has_scan ? "Zmień skan zaświadczenia" : "Dodaj skan zaświadczenia",
+            icon: <IconUpload size={16} />,
+            onClick: () => {
+              scanFor.current = t.id;
+              scanInput.current?.click();
+            },
+          },
+          {
+            label: "Usuń skan",
+            icon: <IconPaperclip size={16} />,
+            hidden: !t.has_scan,
+            onClick: () => confirm({ title: "Usunąć skan?", message: "Skan zostanie odłączony od szkolenia.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && removeScan.mutate(t.id)),
+          },
+        ]}
+        danger={{
+          label: "Usuń szkolenie",
+          icon: <IconTrash size={16} />,
+          onClick: () => confirm({ title: "Usunąć szkolenie?", message: `Usunąć szkolenie „${t.name ?? t.type_name}”?`, confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate(t.id)),
+        }}
+      />
     ) : null;
+  const scanPicker = (
+    <input
+      ref={scanInput}
+      type="file"
+      hidden
+      accept="application/pdf,image/jpeg,image/png"
+      onChange={(e) => {
+        const f = e.currentTarget.files?.[0];
+        if (f && scanFor.current !== null) upload.mutate({ id: scanFor.current, file: f });
+        e.currentTarget.value = "";
+      }}
+    />
+  );
 
   if (mobile) {
     return (
@@ -527,6 +517,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
           })}
         </Section>
         <TrainingModal employee={employee} editing={modal.editing} opened={modal.open} onClose={() => setModal({ open: false, editing: null })} />
+        {scanPicker}
       </Stack>
     );
   }
@@ -535,24 +526,14 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     <section className="ui-dsec" id="szkolenia">
       <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
       {list.isLoading && <Loading />}
-      {list.data && list.data.length === 0 && gaps.length === 0 && (
+      {list.data && list.data.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak szkoleń.{staff ? " „Dodaj szkolenie” zapisze odbyte albo zaplanowane." : ""}
         </Text>
       )}
-      {list.data && (list.data.length > 0 || gaps.length > 0) && (
+      {list.data && list.data.length > 0 && (
         <div className="ui-dlist">
-          {gaps.map((r) => (
-            <div key={`req-${r.label}`} className="ui-drow ui-drow-gap">
-              <div style={{ minWidth: 0 }}>
-                <div className="ui-drow-title">{r.label}</div>
-                <div className="ui-drow-meta">wymagane na stanowisku</div>
-              </div>
-              <Text size="sm" className="ui-warn">
-                {r.state === "missing" ? "Brak" : `Wygasło ${formatDate(r.valid_until)}`}
-              </Text>
-            </div>
-          ))}
+
           {list.data.map((t) => {
             const st = TRAINING_STATUS[t.status];
             const warn = ["expiring", "expired", "overdue"].includes(t.status);
@@ -589,11 +570,6 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                       Zaświadczenie
                     </Button>
                   )}
-                  {staff && (
-                    <Button size="xs" variant="default" onClick={() => setModal({ open: true, editing: t })}>
-                      Edytuj
-                    </Button>
-                  )}
                   {menuFor(t)}
                 </Group>
               </div>
@@ -612,6 +588,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
         opened={modal.open}
         onClose={() => setModal({ open: false, editing: null })}
       />
+      {scanPicker}
     </section>
   );
 }

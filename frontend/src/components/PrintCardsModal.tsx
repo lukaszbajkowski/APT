@@ -95,7 +95,7 @@ export function PrintCardsModal({ ids, opened, onClose }: { ids: number[]; opene
   const sheets = Math.ceil(ids.length / 10);
 
   return (
-    <FormDialog opened={opened} onClose={onClose} title={ids.length === 1 ? "Druk karty" : `Druk kart (${ids.length})`} primary={{ label: "Pobierz PDF", onClick: print, loading: busy, disabled: !check.data || (withExpiry && !validUntil) }}>
+    <FormDialog opened={opened} onClose={onClose} dirty={false} title={ids.length === 1 ? "Druk karty" : `Druk kart (${ids.length})`} primary={{ label: "Pobierz PDF", onClick: print, loading: busy, disabled: !check.data || (withExpiry && !validUntil) }}>
       <Stack>
         {error && <Alert color="red">{error}</Alert>}
         {check.isLoading && <Loading />}

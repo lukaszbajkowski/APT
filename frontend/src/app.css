@@ -1016,3 +1016,4 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-hist-title{font-size:14px;line-height:20px;font-weight:600}
 .ui-hist-text{font-size:14px;line-height:20px;overflow-wrap:anywhere}
 .ui-dlist-warn{border-left:3px solid var(--mantine-color-yellow-6)}
+.ui-drow-gap{box-shadow:inset 3px 0 0 var(--mantine-color-yellow-6)}

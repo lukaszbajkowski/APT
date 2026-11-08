@@ -446,6 +446,14 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
     onError,
   });
 
+  // braki szkoleń wymaganych na stanowisku – jako wiersze tej samej listy (bez osobnych przycisków)
+  const reqs = useQuery({
+    queryKey: ["employee-requirements", employee.id],
+    queryFn: () => api<{ label: string; state: string; valid_until: string | null }[]>(`/employees/${employee.id}/requirements`),
+    enabled: !mobile,
+  });
+  const gaps = (reqs.data ?? []).filter((r) => r.state === "missing" || r.state === "expired");
+
   const menuFor = (t: Training) =>
     staff ? (
 
@@ -456,9 +464,11 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => setModal({ open: true, editing: t })}>
-                          Edytuj
-                        </Menu.Item>
+                        {mobile && (
+                          <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => setModal({ open: true, editing: t })}>
+                            Edytuj
+                          </Menu.Item>
+                        )}
                         {t.can_generate && (
                           <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => generate.mutate(t.id)}>
                             Generuj dokument
@@ -524,15 +534,25 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
   return (
     <section className="ui-dsec" id="szkolenia">
       <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
-      <EmployeeRequirements employeeId={employee.id} plain onAdd={staff ? () => setModal({ open: true, editing: null }) : undefined} />
       {list.isLoading && <Loading />}
-      {list.data && list.data.length === 0 && (
+      {list.data && list.data.length === 0 && gaps.length === 0 && (
         <Text size="sm" c="dimmed">
           Brak szkoleń.{staff ? " „Dodaj szkolenie” zapisze odbyte albo zaplanowane." : ""}
         </Text>
       )}
-      {list.data && list.data.length > 0 && (
+      {list.data && (list.data.length > 0 || gaps.length > 0) && (
         <div className="ui-dlist">
+          {gaps.map((r) => (
+            <div key={`req-${r.label}`} className="ui-drow ui-drow-gap">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">{r.label}</div>
+                <div className="ui-drow-meta">wymagane na stanowisku</div>
+              </div>
+              <Text size="sm" className="ui-warn">
+                {r.state === "missing" ? "Brak" : `Wygasło ${formatDate(r.valid_until)}`}
+              </Text>
+            </div>
+          ))}
           {list.data.map((t) => {
             const st = TRAINING_STATUS[t.status];
             const warn = ["expiring", "expired", "overdue"].includes(t.status);
@@ -567,6 +587,11 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
                   {t.has_scan && (
                     <Button size="xs" variant="default" component="a" href={withAcct(`/api/trainings/${t.id}/scan`)} target="_blank" title={t.scan_name ?? undefined}>
                       Zaświadczenie
+                    </Button>
+                  )}
+                  {staff && (
+                    <Button size="xs" variant="default" onClick={() => setModal({ open: true, editing: t })}>
+                      Edytuj
                     </Button>
                   )}
                   {menuFor(t)}

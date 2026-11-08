@@ -263,28 +263,33 @@ function TrashList({ employee }: { employee: Employee }) {
   });
   if (!trash.data?.length) return null;
   return (
-    <Stack gap={4} mt="md">
-      <Button variant="subtle" color="gray" size="compact-sm" w="fit-content" leftSection={<IconTrash size={14} />} onClick={() => setShow(!show)}>
-        Kosz ({trash.data.length})
-      </Button>
-      {show &&
-        trash.data.map((t) => (
-          <Group key={t.id} justify="space-between" wrap="nowrap" align="flex-start">
-            <div>
-              <Text size="sm">{t.template_name}</Text>
-              <Text size="xs" c="dimmed">
-                Usunięto {formatDateTime(t.deleted_at)}
-                {t.deleted_by_name ? ` · ${t.deleted_by_name}` : ""}
-                {t.delete_reason ? ` · ${t.delete_reason}` : ""} · zniknie na stałe {formatDateTime(t.purge_at)}
-              </Text>
+    <Stack gap={8}>
+      <Anchor component="button" type="button" size="sm" c="dimmed" w="fit-content" onClick={() => setShow(!show)} aria-expanded={show}>
+        {show ? "Ukryj usunięte" : `Usunięte dokumenty (${trash.data.length})`}
+      </Anchor>
+      {show && (
+        <div className="ui-dlist">
+          {trash.data.map((t) => (
+            <div key={t.id} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title" style={{ color: "var(--mantine-color-dimmed)" }}>
+                  {t.template_name}
+                </div>
+                <div className="ui-drow-meta">
+                  Usunięto {formatDateTime(t.deleted_at)}
+                  {t.deleted_by_name ? ` · ${t.deleted_by_name}` : ""}
+                  {t.delete_reason ? ` · ${t.delete_reason}` : ""} · zniknie na stałe {formatDateTime(t.purge_at)}
+                </div>
+              </div>
+              {t.can_restore && (
+                <Button size="xs" variant="default" loading={restore.isPending && restore.variables === t.id} onClick={() => restore.mutate(t.id)}>
+                  Przywróć
+                </Button>
+              )}
             </div>
-            {t.can_restore && (
-              <Button size="compact-xs" variant="light" loading={restore.isPending} onClick={() => restore.mutate(t.id)}>
-                Przywróć
-              </Button>
-            )}
-          </Group>
-        ))}
+          ))}
+        </div>
+      )}
     </Stack>
   );
 }

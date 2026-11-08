@@ -8,14 +8,12 @@ import {
   UnstyledButton,
   Anchor,
   Button,
-  Card,
   Code,
   Group,
   Menu,
   Modal,
   Stack,
   Text,
-  Timeline,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -53,12 +51,13 @@ import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
 import { useRemindSignature } from "../components/Signatures";
+import { SectionHead } from "../components/Mobile";
 import { TrainingsCard } from "../components/TrainingsCard";
 import { ChecklistsCard, RehireModal, TimelineCard, type ChecklistItem } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
-import { EmptyState, Loading } from "../components/States";
+import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { ActionSheet, CompactEmpty, InfoRow, ListRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
@@ -310,31 +309,31 @@ export function EmployeeProfilePage() {
   ) : (
     <>
       {staff && (
-        <Card withBorder padding="lg">
-          <Title order={5} mb="md">
-            Historia zmian
-          </Title>
+        <section className="ui-dsec">
+          <SectionHead
+            title="Historia zmian"
+            action={history.data && history.data.length > HISTORY_SHORT ? { label: historyAll ? "Zwiń" : `Wszystkie (${history.data.length})`, onClick: () => setHistoryAll((v) => !v) } : undefined}
+          />
           {history.isLoading && <Loading />}
-          {history.data && history.data.length === 0 && <EmptyState compact title="Brak wpisów w historii"
-          text="Zmiany danych pracownika pojawią się tutaj po pierwszej edycji." />}
+          {history.data && history.data.length === 0 && (
+            <Text size="sm" c="dimmed">
+              Brak wpisów. Zmiany pojawią się tu po pierwszej edycji.
+            </Text>
+          )}
           {history.data && history.data.length > 0 && (
-            <Timeline bulletSize={12} lineWidth={2}>
+            <ul className="ui-hist">
               {(historyAll ? history.data : history.data.slice(0, HISTORY_SHORT)).map((h) => (
-                <Timeline.Item key={h.id} title={ACTION_LABELS[h.action] ?? h.action}>
-                  <Text size="xs" c="dimmed">
+                <li key={h.id}>
+                  <div className="ui-hist-title">{ACTION_LABELS[h.action] ?? h.action}</div>
+                  {historyText(h) && <div className="ui-hist-text">{historyText(h)}</div>}
+                  <div className="ui-drow-meta">
                     {formatDateTime(h.ts)} · {h.username ?? "—"}
-                  </Text>
-                  {historyText(h) && <Text size="sm">{historyText(h)}</Text>}
-                </Timeline.Item>
+                  </div>
+                </li>
               ))}
-            </Timeline>
+            </ul>
           )}
-          {history.data && history.data.length > HISTORY_SHORT && (
-            <Button variant="subtle" size="xs" mt="sm" onClick={() => setHistoryAll((v) => !v)}>
-              {historyAll ? "Zwiń" : `Pokaż wszystkie (${history.data.length})`}
-            </Button>
-          )}
-        </Card>
+        </section>
       )}
 
     </>
@@ -572,7 +571,7 @@ export function EmployeeProfilePage() {
         <button type="button" className="ui-detail-photo" onClick={canPhoto ? () => setPhotoOpen(true) : undefined} aria-label={canPhoto ? (e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie") : undefined} disabled={!canPhoto}>
           <EmployeePhoto employee={e} width={72} />
         </button>
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="ui-detail-headtext">
           <Title order={1}>
             {e.last_name} {e.first_name}
           </Title>
@@ -718,6 +717,8 @@ export function EmployeeProfilePage() {
               <dt>E-mail</dt>
               <dd>{e.contact_email ? <ContactLine employeeId={e.id} kind="email" value={e.contact_email} /> : <Text span c="dimmed">nie podano</Text>}</dd>
             </dl>
+            {/* kontakt podaje sam pracownik (konto albo link z potwierdzeniem daty urodzenia) – kadry mogą go tylko usunąć */}
+            {staff && <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />}
           </section>
           {e.notes && (
             <section className="ui-dsec">
@@ -728,7 +729,6 @@ export function EmployeeProfilePage() {
             </section>
           )}
           {staff && <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />}
-          {staff && <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />}
           {historyCard}
         </aside>
       </div>

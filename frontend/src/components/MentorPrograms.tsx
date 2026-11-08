@@ -2,7 +2,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog, SectionHead } from "./Mobile";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Badge, Button, Card, Group,  MultiSelect, Popover, Stack, Text } from "@mantine/core";
+import { ActionIcon, Button, Group,  MultiSelect, Popover, Stack, Text } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -203,7 +203,7 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
     );
 
   return (
-    <Card withBorder padding="lg">
+    <section className="ui-dsec">
       <SectionHead
         title="Może prowadzić szkolenia"
         action={
@@ -243,14 +243,8 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
           Brak – pracownik nie jest opiekunem żadnego szkolenia stanowiskowego.
         </Text>
       ) : (
-        <Group gap={6}>
-          {list.map((p) => (
-            <Badge key={p.id} variant="light" size="lg" radius="sm" style={{ textTransform: "none", fontWeight: 500 }}>
-              {programLabel(p)}
-            </Badge>
-          ))}
-        </Group>
+        <Text size="sm">{list.map((p) => programLabel(p)).join(" · ")}</Text>
       )}
-    </Card>
+    </section>
   );
 }

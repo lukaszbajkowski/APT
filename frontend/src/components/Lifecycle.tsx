@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Timeline, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -12,7 +12,7 @@ import {
   IconBolt,
   IconDotsVertical,
   IconCalendarEvent,
-  IconChecklist,
+  
   IconPlayerSkipForward,
   IconPlus,
   IconTrash,
@@ -487,17 +487,10 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
 
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Group gap="xs">
-          <IconChecklist size={18} />
-          <Title order={5}>Checklisty</Title>
-        </Group>
-        {staff && !kinds.includes(missing) && (
-          <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => create.mutate(missing)} loading={create.isPending}>
-            Utwórz checklistę: {KIND_LABEL[missing].toLowerCase()}
-          </Button>
-        )}
-      </Group>
+      <SectionHead
+        title="Checklisty"
+        action={staff && !kinds.includes(missing) ? { label: `Utwórz checklistę: ${KIND_LABEL[missing].toLowerCase()}`, onClick: () => create.mutate(missing), loading: create.isPending } : undefined}
+      />
       {kinds.length === 0 && (
         <EmptyState compact title="Brak checklist"
           text="Wdrożenie tworzy się samo przy dodaniu nowej osoby, a odejście – przy zwolnieniu." />

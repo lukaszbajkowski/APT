@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
 import { useConfirm } from "../lib/confirm";
-import { Button, Drawer, Group, Modal, UnstyledButton } from "@mantine/core";
+import { Anchor, Button, Drawer, Group, Modal, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconX } from "@tabler/icons-react";
 
@@ -918,4 +918,34 @@ export function useSwipeAnywhere(enabled: boolean, onLeft: () => void, onRight: 
       window.removeEventListener("touchend", end);
     };
   }, [enabled]);
+}
+
+/**
+ * Nagłówek sekcji na komputerze (wzorzec „szczegóły”): tytuł 18/24 bez ikony, opcjonalny stan obok,
+ * akcja jako tekstowy link po prawej.
+ */
+export function SectionHead({
+  title,
+  extra,
+  action,
+}: {
+  title: ReactNode;
+  extra?: ReactNode;
+  action?: { label: string; onClick: () => void; loading?: boolean; id?: string; disabled?: boolean };
+}) {
+  return (
+    <div className="ui-dsec-head">
+      <Group gap="sm" align="baseline" wrap="wrap" style={{ minWidth: 0 }}>
+        <Title order={2} className="ui-dsec-title">
+          {title}
+        </Title>
+        {extra}
+      </Group>
+      {action && (
+        <Anchor component="button" type="button" id={action.id} fw={600} size="sm" onClick={action.onClick} disabled={action.disabled || action.loading} style={{ flex: "none" }}>
+          {action.label}
+        </Anchor>
+      )}
+    </div>
+  );
 }

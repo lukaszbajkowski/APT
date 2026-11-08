@@ -591,6 +591,7 @@ export const ACTION_LABELS: Record<string, string> = {
   training_created: "Dodanie szkolenia",
   employee_rehired: "Ponowne zatrudnienie",
   signature_requested: "Wysłanie dokumentu do podpisu",
+  signature_reminded: "Przypomnienie o podpisie",
   signature_cancelled: "Anulowanie prośby o podpis",
   signature_scan_uploaded: "Dołączenie skanu podpisanego dokumentu",
   document_signed: "Podpisanie dokumentu",

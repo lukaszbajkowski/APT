@@ -16,7 +16,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -451,7 +451,8 @@ def list_documents(employee_id: int, ctx: DocAuth, db: DbSession) -> list[Docume
             select(DocumentSignature.document_id).where(
                 DocumentSignature.document_id.in_([d.id for d in docs]),
                 DocumentSignature.status == "pending",
-                DocumentSignature.expires_at > func.now(),
+                # prośba w koncie pracownika nie wygasa (expires_at puste) – też czeka na podpis
+                or_(DocumentSignature.expires_at.is_(None), DocumentSignature.expires_at > func.now()),
             )
         )
     )

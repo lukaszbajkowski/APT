@@ -35,7 +35,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-import { api, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
+import { api, errorText, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
 import { Loading } from "./States";
 import { useConfirm } from "../lib/confirm";
 
@@ -89,6 +89,20 @@ const METHOD: Record<string, string> = {
 function methodLabel(r: RoleState): string {
   if (r.method === "zaufany" && r.check?.level === "qualified") return "podpis kwalifikowany";
   return METHOD[r.method ?? ""] ?? r.method ?? "";
+}
+
+/** „Przypomnij o podpisie” – ponowne powiadomienie pracownika z kontem (serwer: najwyżej raz na 12 godzin). */
+export function useRemindSignature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (doc: GeneratedDoc) =>
+      api<{ notified: string | null; next_at: string }>(`/documents/${doc.id}/signatures/remind`, { method: "POST" }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["audit"] });
+      notifications.show({ color: "green", message: `Przypomnienie wysłane (${r.notified}). Kolejne można wysłać po ${formatDateTime(r.next_at)}.` });
+    },
+    onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
+  });
 }
 
 export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {

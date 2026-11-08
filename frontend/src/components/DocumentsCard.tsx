@@ -5,11 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Menu, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconChevronUp, IconCircleCheck, IconDots, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconBell, IconCircleCheck, IconDots, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
-import { SignaturesModal } from "./Signatures";
+import { SignaturesModal, useRemindSignature } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
 import { api, errorText, formatDate, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
@@ -313,6 +313,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [viewDoc, setViewDoc] = useState<GeneratedDoc | null>(null);
   const [mailDoc, setMailDoc] = useState<GeneratedDoc | null>(null);
   const [delDoc, setDelDoc] = useState<GeneratedDoc | null>(null);
+  const remind = useRemindSignature();
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [error, setError] = useState<string | null>(null);
 
@@ -499,6 +500,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
     const actions: SheetAction[] = [];
     if (d && d.accessible) {
       actions.push({ label: d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis", icon: <IconSignature size={20} />, onClick: () => setSignDoc(d) });
+      if (d.signature_pending) actions.push({ label: "Przypomnij o podpisie", icon: <IconBell size={20} />, onClick: () => remind.mutate(d) });
       if (d.can_view) actions.push({ label: "Podgląd dokumentu", icon: <IconEye size={20} />, onClick: () => setViewDoc(d) });
       if (d.download.includes("pdf")) actions.push({ label: "Pobierz PDF", icon: <IconFileTypePdf size={20} />, onClick: () => download(d, "pdf") });
       if (d.download.includes("docx")) actions.push({ label: "Pobierz Word", icon: <IconFileTypeDocx size={20} />, onClick: () => download(d, "docx") });
@@ -613,6 +615,11 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                     {d.accessible && (
                       <Menu.Item leftSection={<IconSignature size={16} />} onClick={() => setSignDoc(d)}>
                         {d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis"}
+                      </Menu.Item>
+                    )}
+                    {d.signature_pending && (
+                      <Menu.Item leftSection={<IconBell size={16} />} onClick={() => remind.mutate(d)}>
+                        Przypomnij o podpisie
                       </Menu.Item>
                     )}
                     {d.accessible && d.download.includes("pdf") && (

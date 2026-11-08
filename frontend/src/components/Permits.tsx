@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog, SectionHead } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Card, Group,  SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Card,  SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconId, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
 import { EmptyState, Loading } from "./States";
@@ -124,20 +124,17 @@ export function PermitsCard({ employee }: { employee: Employee }) {
   }
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Group gap="xs">
-          <IconId size={18} color="var(--mantine-color-dimmed)" />
-          <Title order={5}>Dokumenty pobytowe i zezwolenia</Title>
-          {latest && (
-            <Badge variant="light" color={PERMIT_STATE[latest.state].color}>
+      <SectionHead
+        title="Dokumenty pobytowe i zezwolenia"
+        extra={
+          latest && (
+            <Text size="sm" c="dimmed" className={["green","teal"].includes(PERMIT_STATE[latest.state].color) ? undefined : "ui-warn"}>
               {PERMIT_STATE[latest.state].label} do {formatDate(latest.valid_until)}
-            </Badge>
-          )}
-        </Group>
-        <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setOpen(true)}>
-          Dodaj dokument
-        </Button>
-      </Group>
+            </Text>
+          )
+        }
+        action={{ label: "Dodaj dokument", onClick: () => setOpen(true) }}
+      />
       {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
         <EmptyState compact title="Brak dokumentów pobytowych"

@@ -989,3 +989,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* moduły w kolumnie: bez kart w kartach – sekcja na tle */
 .ui-detail-main > .mantine-Card-root,.ui-detail-side > .mantine-Card-root{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
 .ui-detail .mantine-Card-root h5{font-size:18px;line-height:24px;font-weight:600}
+.ui-linklike{all:unset;cursor:pointer;display:block;overflow-wrap:anywhere}
+.ui-linklike:hover{text-decoration:underline}
+.ui-linklike:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:2px}
+.mantine-Card-root > .ui-dsec-head{margin-bottom:var(--s-3)}
+.ui-drow-title.ui-linklike{font-size:15px;line-height:22px;font-weight:600}

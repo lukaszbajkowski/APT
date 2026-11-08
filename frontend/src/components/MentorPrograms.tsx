@@ -1,12 +1,12 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog, SectionHead } from "./Mobile";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Badge, Button, Card, Group,  MultiSelect, Popover, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Badge, Button, Card, Group,  MultiSelect, Popover, Stack, Text } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconDotsVertical, IconPencil, IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconDotsVertical, IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
 
 import { api, type Employee, type MentorProgram, type Page, type TrainingProgram, type TrainingType } from "../api";
 import { useAuth } from "../auth";
@@ -204,22 +204,20 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
 
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Title order={5}>Może prowadzić szkolenia</Title>
-        {staff && !editing && (
-          <Button
-            size="xs"
-            variant="default"
-            leftSection={<IconPencil size={14} />}
-            onClick={() => {
-              setSelected(list.map((p) => String(p.id)));
-              setEditing(true);
-            }}
-          >
-            Zmień
-          </Button>
-        )}
-      </Group>
+      <SectionHead
+        title="Może prowadzić szkolenia"
+        action={
+          staff && !editing
+            ? {
+                label: "Zmień",
+                onClick: () => {
+                  setSelected(list.map((p) => String(p.id)));
+                  setEditing(true);
+                },
+              }
+            : undefined
+        }
+      />
       {editing ? (
         <Stack gap="xs">
           <MultiSelect

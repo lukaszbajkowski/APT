@@ -1,8 +1,8 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog } from "./Mobile";
+import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog, SectionHead } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileButton, Group, Menu,  NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Card, FileButton, Group, Menu,  NumberInput, Paper, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -524,14 +524,7 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
 
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="md">
-        <Title order={5}>Szkolenia i uprawnienia</Title>
-        {staff && (
-          <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, editing: null })}>
-            Dodaj szkolenie
-          </Button>
-        )}
-      </Group>
+      <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
       <EmployeeRequirements employeeId={employee.id} />
       {list.isLoading && <Loading />}
       {list.data && list.data.length === 0 && <EmptyState compact title="Brak wpisów szkoleń"

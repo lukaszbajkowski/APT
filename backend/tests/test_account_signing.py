@@ -199,3 +199,34 @@ def test_push_on_new_document_to_sign(admin_client):
         assert doc["template_name"] not in push.outbox[0][2]  # w powiadomieniu nie ma tytułu dokumentu
     finally:
         push.outbox = None
+
+
+def test_pending_in_account_shows_and_reminder_is_limited(admin_client):
+    mailer.outbox, sms.outbox = [], []
+    e, doc, auth, c = _account(admin_client)
+    _confirm_email(c)
+    # bez prośby nie ma czego przypominać
+    r = admin_client.post(f"/api/documents/{doc['id']}/signatures/remind")
+    assert r.status_code == 400
+    admin_client.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika", "channel": "link"})
+    # prośba w koncie (bez terminu) liczy się jako „czeka na podpis” na liście dokumentów
+    docs = admin_client.get(f"/api/employees/{e['id']}/documents").json()
+    assert next(d for d in docs if d["id"] == doc["id"])["signature_pending"] is True
+    # tuż po prośbie – za wcześnie
+    r = admin_client.post(f"/api/documents/{doc['id']}/signatures/remind")
+    assert r.status_code == 429
+    # po upływie odstępu przypomnienie wychodzi, a kolejne znów jest zablokowane
+    from datetime import timedelta
+
+    from app.routers import signatures
+
+    signatures.REMIND_EVERY, keep = timedelta(0), signatures.REMIND_EVERY
+    try:
+        mailer.outbox = []
+        r = admin_client.post(f"/api/documents/{doc['id']}/signatures/remind")
+    finally:
+        signatures.REMIND_EVERY = keep
+    assert r.status_code == 200, r.text
+    assert r.json()["notified"] == "e-mail"
+    assert "Przypomnienie" in mailer.outbox[-1][1]
+    assert admin_client.post(f"/api/documents/{doc['id']}/signatures/remind").status_code == 429

@@ -1,11 +1,11 @@
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog, SectionHead } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, FileInput, Group,  SimpleGrid, Stack, Table, Text, TextInput, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Card, FileInput, Group,  SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconFileText, IconPlus, IconStethoscope, IconTrash } from "@tabler/icons-react";
+import { IconFileText, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
@@ -160,22 +160,17 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
   }
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Group gap="xs">
-          <IconStethoscope size={18} color="var(--mantine-color-dimmed)" />
-          <Title order={5}>Badania lekarskie</Title>
-          {latest && (
-            <Badge variant="light" color={STATE[latest.state].color}>
+      <SectionHead
+        title="Badania lekarskie"
+        extra={
+          latest && (
+            <Text size="sm" c="dimmed" className={["green","teal"].includes(STATE[latest.state].color) ? undefined : "ui-warn"}>
               {latest.valid_until ? `${STATE[latest.state].label} do ${formatDate(latest.valid_until)}` : STATE[latest.state].label}
-            </Badge>
-          )}
-        </Group>
-        {canAdd && (
-          <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setOpen(true)}>
-            Dodaj badanie
-          </Button>
-        )}
-      </Group>
+            </Text>
+          )
+        }
+        action={canAdd ? { label: "Dodaj badanie", onClick: () => setOpen(true) } : undefined}
+      />
       {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
         <EmptyState compact title="Brak badań lekarskich"

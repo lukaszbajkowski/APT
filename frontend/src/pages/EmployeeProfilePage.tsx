@@ -52,6 +52,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
+import { useRemindSignature } from "../components/Signatures";
 import { TrainingsCard } from "../components/TrainingsCard";
 import { ChecklistsCard, RehireModal, TimelineCard, type ChecklistItem } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
@@ -744,6 +745,7 @@ function AttentionSection({ items, docs, onChange }: { items: ChecklistItem[]; d
     },
     onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
   });
+  const remind = useRemindSignature();
   return (
     <section className="ui-dsec">
       <Title order={2} className="ui-dsec-title">Wymaga uwagi</Title>
@@ -766,20 +768,24 @@ function AttentionSection({ items, docs, onChange }: { items: ChecklistItem[]; d
         {docs.map((d) => (
           <div key={d.id} className="ui-drow">
             <div style={{ minWidth: 0 }}>
-              <div className="ui-drow-title">{d.template_name} – czeka na podpis</div>
-              <div className="ui-drow-meta">wygenerowany {formatDateTime(d.created_at)}</div>
+              <button
+                type="button"
+                className="ui-drow-title ui-linklike"
+                onClick={() => {
+                  const row = document.getElementById(`dok-${d.id}`);
+                  row?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  row?.classList.add("ui-flash");
+                  window.setTimeout(() => row?.classList.remove("ui-flash"), 1600);
+                }}
+              >
+                {d.template_name}
+              </button>
+              <div className="ui-drow-meta">
+                <span className="ui-warn">czeka na podpis</span> · wygenerowany {formatDateTime(d.created_at)}
+              </div>
             </div>
-            <Button
-              size="xs"
-              variant="default"
-              onClick={() => {
-                const row = document.getElementById(`dok-${d.id}`);
-                row?.scrollIntoView({ behavior: "smooth", block: "center" });
-                row?.classList.add("ui-flash");
-                window.setTimeout(() => row?.classList.remove("ui-flash"), 1600);
-              }}
-            >
-              Pokaż dokument
+            <Button size="xs" variant="default" loading={remind.isPending && remind.variables?.id === d.id} onClick={() => remind.mutate(d)}>
+              Przypomnij o podpisie
             </Button>
           </div>
         ))}

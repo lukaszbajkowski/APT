@@ -199,11 +199,13 @@ def sign_request_email(person: str, document: str, url: str, expires: datetime, 
     )
 
 
-def account_sign_email(first_name: str, document: str, url: str, db=None, lang: str | None = None) -> Email:  # noqa: ANN001
+def account_sign_email(  # noqa: ANN001
+    first_name: str, document: str, url: str, db=None, lang: str | None = None, reminder: bool = False
+) -> Email:
     from app import i18n
 
     raw = Email(
-        subject="Nowy dokument do podpisu: {document}",
+        subject="Przypomnienie: dokument do podpisu: {document}" if reminder else "Nowy dokument do podpisu: {document}",
         title="Dokument czeka na Twój podpis",
         preheader="Zaloguj się do konta, aby podpisać „{document}”.",
         greeting="Dzień dobry {first_name},",

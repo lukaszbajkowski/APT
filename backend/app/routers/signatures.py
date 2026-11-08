@@ -404,24 +404,16 @@ def _contact_of(e: Employee) -> dict[str, str]:
     return out
 
 
-def _request_in_account(
-    db: Session, request: Request, ctx: AuthContext, doc: GeneratedDocument, e: Employee, body: RequestIn
-) -> RequestOut:
-    """Pracownik z kontem podpisuje wyłącznie po zalogowaniu: dokument trafia na jego listę „Do podpisu”."""
-    sig = DocumentSignature(
-        document_id=doc.id,
-        role="pracownika",
-        token_hash=None,
-        expires_at=None,
-        channel="konto",
-        requested_by_name=ctx.user.full_name,
-        device_check=True,
-    )
-    db.add(sig)
-    db.flush()
+def _account_url(db: Session, e: Employee) -> str:
     acct = employee_account(db, e.id)
     # ?u=: konto z dokumentem – aplikacja przełączy się na nie, jeśli jest zalogowane w tej przeglądarce
-    url = mailer.link("/moje-konto/do-podpisu" + (f"?u={acct.id}" if acct else ""))
+    return mailer.link("/moje-konto/do-podpisu" + (f"?u={acct.id}" if acct else ""))
+
+
+def _notify_account(db: Session, e: Employee, doc: GeneratedDocument, reminder: bool = False) -> str | None:
+    """Powiadamia pracownika z kontem o dokumencie do podpisu: e-mail, a bez niego SMS; do tego push."""
+    acct = employee_account(db, e.id)
+    url = _account_url(db, e)
     notified: str | None = None
     contact = _contact_of(e)
     try:
@@ -429,13 +421,17 @@ def _request_in_account(
             if mailer.send(
                 contact["email"],
                 notify.account_sign_email(
-                    e.first_name, doc.template_name, url, db, acct.language if acct else None
+                    e.first_name, doc.template_name, url, db, acct.language if acct else None, reminder
                 ),
             ):
                 notified = "e-mail"
         elif "sms" in contact and sms.enabled():
             sms.send(
-                contact["sms"], f"APT: nowy dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
+                contact["sms"], (
+                    f"APT: przypomnienie - dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
+                    if reminder
+                    else f"APT: nowy dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
+                )
             )
             notified = "SMS"
     except Exception:  # noqa: BLE001 – brak powiadomienia nie blokuje prośby; dokument i tak jest w koncie
@@ -451,6 +447,88 @@ def _request_in_account(
     )
     if pushed and notified is None:
         notified = "powiadomienie na telefonie"
+    return notified
+
+
+REMIND_EVERY = timedelta(hours=12)
+
+
+class RemindOut(BaseModel):
+    notified: str | None
+    next_at: datetime
+
+
+@router.post("/documents/{document_id}/signatures/remind", response_model=RemindOut)
+def remind_signature(document_id: uuid.UUID, ctx: DocAuth, request: Request, db: DbSession) -> RemindOut:
+    """Przypomnienie o podpisie dla pracownika z kontem – najwyżej raz na 12 godzin na dokument."""
+    doc, e = _get(db, ctx, document_id)
+    sig = next(
+        (s for s in _sigs(db, doc) if s.role == "pracownika" and s.status == "pending" and s.channel == "konto"),
+        None,
+    )
+    if sig is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Ten dokument nie czeka na podpis w koncie pracownika. Link do podpisu wyślesz ponownie w „Podpisach”.",
+        )
+    last = db.scalar(
+        select(AuditLog.ts)
+        .where(
+            AuditLog.action.in_(("signature_requested", "signature_reminded")),
+            AuditLog.entity_type == "employee",
+            AuditLog.entity_id == str(e.id),
+            AuditLog.details["document_id"].astext == str(doc.id),
+        )
+        .order_by(AuditLog.ts.desc())
+        .limit(1)
+    )
+    since = sig.created_at if last is None else max(last, sig.created_at)
+    now = datetime.now(UTC)
+    if since and now - since < REMIND_EVERY:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Pracownik dostał powiadomienie niedawno. Przypomnieć można raz na 12 godzin.",
+        )
+    notified = _notify_account(db, e, doc, reminder=True)
+    if notified is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Nie udało się wysłać przypomnienia: pracownik nie ma e-maila, telefonu ani powiadomień w aplikacji.",
+        )
+    audit(
+        db,
+        request,
+        "signature_reminded",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "document": doc.template_name,
+            "document_id": str(doc.id),
+            "notified": notified,
+        },
+    )
+    db.commit()
+    return RemindOut(notified=notified, next_at=now + REMIND_EVERY)
+
+
+def _request_in_account(
+    db: Session, request: Request, ctx: AuthContext, doc: GeneratedDocument, e: Employee, body: RequestIn
+) -> RequestOut:
+    """Pracownik z kontem podpisuje wyłącznie po zalogowaniu: dokument trafia na jego listę „Do podpisu”."""
+    sig = DocumentSignature(
+        document_id=doc.id,
+        role="pracownika",
+        token_hash=None,
+        expires_at=None,
+        channel="konto",
+        requested_by_name=ctx.user.full_name,
+        device_check=True,
+    )
+    db.add(sig)
+    db.flush()
+    notified = _notify_account(db, e, doc)
     sig.sent_to = notified
     audit(
         db,
@@ -464,13 +542,14 @@ def _request_in_account(
             "document": doc.template_name,
             "role": "pracownika",
             "channel": "konto",
+            "document_id": str(doc.id),
             "notified": notified,
         },
     )
     db.commit()
     return RequestOut(
         id=sig.id,
-        link=url,
+        link=_account_url(db, e),
         expires_at=None,
         sent=notified is not None,
         qr_svg="",

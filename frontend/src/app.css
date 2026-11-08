@@ -1006,3 +1006,9 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-trow{justify-content:flex-start;gap:var(--s-5)}
 .ui-trow-date{flex:none;width:88px;font-size:14px;line-height:22px;font-variant-numeric:tabular-nums;color:var(--mantine-color-dimmed)}
 .ui-drow > .mantine-Button-root,.ui-drow > .mantine-ActionIcon-root,.ui-drow > .mantine-Group-root:last-child{flex:none}
+/* okienka z formularzem (komputer) */
+.ui-modal-title{font-size:18px;line-height:24px;font-weight:600}
+.ui-modal-sub{display:block;font-size:13px;line-height:18px;font-weight:400;color:var(--mantine-color-dimmed);margin-top:2px}
+.ui-modal-foot{position:sticky;bottom:calc(-1 * var(--mb-padding, var(--mantine-spacing-md)));margin:var(--s-4) calc(-1 * var(--mb-padding, var(--mantine-spacing-md))) calc(-1 * var(--mb-padding, var(--mantine-spacing-md)));padding:var(--s-3) var(--mb-padding, var(--mantine-spacing-md));background:var(--mantine-color-body);border-top:1px solid var(--mantine-color-default-border);z-index:2}
+.ui-field-group{grid-column:1/-1;font-size:15px;line-height:22px;font-weight:600;margin-top:var(--s-2)}
+.mantine-Modal-title{font-size:18px;line-height:24px;font-weight:600}

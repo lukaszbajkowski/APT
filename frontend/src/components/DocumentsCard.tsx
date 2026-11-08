@@ -1,6 +1,6 @@
 import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog } from "./Mobile";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Menu, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -289,6 +289,22 @@ function TrashList({ employee }: { employee: Employee }) {
   );
 }
 
+/**
+ * Pola „Adres zamieszkania – miasto”, „Adres zamieszkania – ulica”… pod wspólnym nagłówkiem „Adres zamieszkania”,
+ * a w polu sama końcówka („Miasto”). Grupa liczy się od 2 kolejnych pól z tym samym początkiem.
+ */
+function grouped(fields: TemplateField[]): { f: TemplateField; head?: string }[] {
+  const pre = (f: TemplateField) => (f.label.includes(" – ") ? f.label.split(" – ")[0] : null);
+  return fields.map((f, i) => {
+    const p = pre(f);
+    const inGroup = p !== null && ((i > 0 && pre(fields[i - 1]) === p) || (i + 1 < fields.length && pre(fields[i + 1]) === p));
+    if (!inGroup) return { f };
+    const rest = f.label.slice(p!.length + 3);
+    const first = i === 0 || pre(fields[i - 1]) !== p;
+    return { f: { ...f, label: rest.charAt(0).toUpperCase() + rest.slice(1) }, head: first ? p! : undefined };
+  });
+}
+
 export function DocumentsCard({ employee }: { employee: Employee }) {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
@@ -359,7 +375,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
 
   const generateModal = (
     <>
-      <FormDialog opened={open} onClose={() => setOpen(false)} title={done ? "Dokument gotowy" : "Nowy dokument"} size="lg" cancel={done ? false : "Anuluj"} primary={done ? { label: "Gotowe", onClick: () => setOpen(false) } : { label: "Generuj", formId: "fd-newdoc", loading: generate.isPending, disabled: !template || missing.length > 0 || !!peselError || formatErrors.length > 0 }}>
+      <FormDialog opened={open} onClose={() => setOpen(false)} title={done ? "Dokument gotowy" : "Nowy dokument"} size="lg" cancel={done ? false : "Anuluj"} primary={done ? { label: "Gotowe", onClick: () => setOpen(false) } : { label: "Generuj dokument", formId: "fd-newdoc", loading: generate.isPending, disabled: !template || missing.length > 0 || !!peselError || formatErrors.length > 0 }}>
         {done ? (
           <Stack>
             <Group gap="sm" wrap="nowrap">
@@ -446,11 +462,12 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
             )}
             {template && template.fields.some((f) => !f.collapsed || f.required) && (
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                {template.fields
-                  .filter((f) => !f.collapsed || f.required)
-                  .map((f) => (
-                    <FieldInput key={f.key} field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-                  ))}
+                {grouped(template.fields.filter((f) => !f.collapsed || f.required)).map(({ f, head }) => (
+                  <Fragment key={f.key}>
+                    {head && <Text className="ui-field-group">{head}</Text>}
+                    <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                  </Fragment>
+                ))}
               </SimpleGrid>
             )}
             {template && template.fields.some((f) => f.collapsed && !f.required) && (
@@ -468,11 +485,12 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                 </Button>
                 <Collapse in={moreFields}>
                   <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                    {template.fields
-                      .filter((f) => f.collapsed && !f.required)
-                      .map((f) => (
-                        <FieldInput key={f.key} field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-                      ))}
+                    {grouped(template.fields.filter((f) => f.collapsed && !f.required)).map(({ f, head }) => (
+                      <Fragment key={f.key}>
+                        {head && <Text className="ui-field-group">{head}</Text>}
+                        <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                      </Fragment>
+                    ))}
                   </SimpleGrid>
                 </Collapse>
               </>

@@ -871,9 +871,21 @@ export function FormDialog({
       </FormScreen>
     ) : null;
   return (
-    <Modal opened={opened} onClose={guard(onClose)} title={title} size={size}>
+    <Modal
+      opened={opened}
+      onClose={guard(onClose)}
+      size={size}
+      classNames={{ title: "ui-modal-title" }}
+      title={
+        <>
+          {title}
+          {subtitle && <span className="ui-modal-sub">{subtitle}</span>}
+        </>
+      }
+    >
       <div onInput={() => setTyped(true)}>{children}</div>
-      <Group justify="flex-end" mt="md">
+      {/* przyciski zawsze widoczne – także przy długim formularzu */}
+      <Group justify="flex-end" className="ui-modal-foot">
         {cancel !== false && (
           <Button variant="default" onClick={guard(onCancel ?? onClose)}>
             {cancel}

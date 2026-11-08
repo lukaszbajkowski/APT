@@ -234,7 +234,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
               />
             </Stack>
           )}
-          <Group gap={8} mt="sm" wrap="nowrap">
+          <Group gap={8} mt="sm" wrap="nowrap" justify="flex-end">
             {(!a?.exists || (a.active && !a.has_passkey)) && (
               <Button size="xs" variant="default" leftSection={<IconMail size={14} />} loading={invite.isPending} onClick={() => invite.mutate()}>
                 {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}

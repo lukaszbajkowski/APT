@@ -2,17 +2,17 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog } from "./Mobile";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Collapse, Badge, Button, Card, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
+import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Menu, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconChevronUp, IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconCircleCheck, IconDots, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
-import { SignButton, SignatureBadge, SignaturesModal } from "./Signatures";
+import { SignaturesModal } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
-import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
+import { api, errorText, formatDate, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
 import { Loading } from "./States";
 import { DateField } from "./DateField";
 
@@ -551,76 +551,106 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
     );
   }
 
+  // komputer: sekcja na tle, ramka tylko wokół listy; w wierszu status, „Podgląd” i „⋯” (reszta akcji w menu)
   return (
-    <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Title order={5}>Dokumenty</Title>
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<IconPlus size={14} />}
-          onClick={() => {
-            setTemplateId(templates.data?.length === 1 ? String(templates.data[0].id) : null);
-            setValues({});
-            setDone(null);
-            setOpen(true);
-          }}
-          disabled={!templates.data?.length}
-        >
-          Generuj dokument
-        </Button>
-      </Group>
+    <section className="ui-dsec">
+      <div className="ui-dsec-head">
+        <Title order={2} className="ui-dsec-title">
+          Dokumenty
+        </Title>
+        <Anchor component="button" id="nowy-dokument" fw={600} size="sm" onClick={openGenerate} disabled={!templates.data?.length}>
+          Nowy dokument
+        </Anchor>
+      </div>
       {templates.data && templates.data.length === 0 && (
         <Text size="sm" c="dimmed">
-          Brak dostępnych szablonów. Administrator dodaje je w zakładce „Szablony”.
+          Brak dostępnych szablonów. Administrator dodaje je w „Szablonach”.
         </Text>
       )}
       {docs.isLoading && <Loading />}
       {docs.data && docs.data.length === 0 && templates.data?.length !== 0 && (
         <Text size="sm" c="dimmed">
-          Nie wygenerowano jeszcze żadnego dokumentu.
+          Nie ma jeszcze dokumentów – „Nowy dokument” wygeneruje go z szablonu.
         </Text>
       )}
       {docs.data && docs.data.length > 0 && (
-        <Stack gap={0}>
-          {docs.data.map((d, i) => (
-            <Group
-              key={d.id}
-              justify="space-between"
-              align="center"
-              gap="sm"
-              py="sm"
-              wrap="wrap"
-              style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
-            >
-              <Group gap="sm" wrap="nowrap" align="flex-start" style={{ flex: "1 1 220px", minWidth: 0 }}>
-                <IconFileText size={20} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
-                <div style={{ minWidth: 0 }}>
-                  <Text size="sm" fw={600}>
-                    {d.template_name}
-                  </Text>
-                  <Group gap={6} mt={2} wrap="wrap">
-                    <SignatureBadge doc={d} />
-                    <Text size="xs" c="dimmed">
-                      {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
-                      {d.masked && " · bez PESEL i daty urodzenia"}
-                    </Text>
-                  </Group>
+        <div className="ui-dlist">
+          {docs.data.map((d) => (
+            <div key={d.id} id={`dok-${d.id}`} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">{d.template_name}</div>
+                <div className="ui-drow-meta">
+                  {formatDateTime(d.created_at)} · {d.created_by_name ?? "—"}
+                  {d.masked && " · bez PESEL i daty urodzenia"}
                 </div>
+              </div>
+              <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
+                {d.signed_at ? (
+                  <Text size="sm">Podpisany {formatDate(d.signed_at)}</Text>
+                ) : d.signature_pending ? (
+                  <Text size="sm" className="ui-warn">
+                    Czeka na podpis
+                  </Text>
+                ) : null}
+                {!d.accessible ? (
+                  <Text size="sm" c="dimmed">
+                    zawiera dane wrażliwe
+                  </Text>
+                ) : (
+                  d.can_view && (
+                    <Button size="xs" variant="default" onClick={() => setViewDoc(d)}>
+                      Podgląd
+                    </Button>
+                  )
+                )}
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon variant="default" size={30} aria-label={`Więcej: ${d.template_name}`}>
+                      <IconDots size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {d.accessible && (
+                      <Menu.Item leftSection={<IconSignature size={16} />} onClick={() => setSignDoc(d)}>
+                        {d.signed_at ? "Podpisy" : "Podpisz lub poproś o podpis"}
+                      </Menu.Item>
+                    )}
+                    {d.accessible && d.download.includes("pdf") && (
+                      <Menu.Item leftSection={<IconFileTypePdf size={16} />} onClick={() => download(d, "pdf")}>
+                        Pobierz PDF
+                      </Menu.Item>
+                    )}
+                    {d.accessible && d.download.includes("docx") && (
+                      <Menu.Item leftSection={<IconFileTypeDocx size={16} />} onClick={() => download(d, "docx")}>
+                        Pobierz Word
+                      </Menu.Item>
+                    )}
+                    {d.accessible && d.download.length > 0 && (
+                      <Menu.Item leftSection={<IconMail size={16} />} onClick={() => setMailDoc(d)}>
+                        Wyślij e-mailem
+                      </Menu.Item>
+                    )}
+                    {d.can_delete && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => setDelDoc(d)}>
+                          Usuń dokument
+                        </Menu.Item>
+                      </>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
               </Group>
-              <Group gap={6} wrap="wrap" style={{ flex: "0 1 auto" }}>
-                <SignButton doc={d} employee={employee} />
-                <DocActions doc={d} />
-                <DeleteDocument doc={d} employee={employee} />
-              </Group>
-            </Group>
+            </div>
           ))}
-        </Stack>
+        </div>
       )}
       <TrashList employee={employee} />
-
+      {viewDoc && <DocumentViewer docId={viewDoc.id} opened onClose={() => setViewDoc(null)} />}
+      {mailDoc && <EmailDocument doc={mailDoc} size="sm" opened onClose={() => setMailDoc(null)} />}
+      {delDoc && <DeleteDocument doc={delDoc} employee={employee} opened onClose={() => setDelDoc(null)} />}
       {generateModal}
       {signDoc && <SignaturesModal doc={signDoc} employee={employee} opened onClose={() => setSignDoc(null)} />}
-    </Card>
+    </section>
   );
 }

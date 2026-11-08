@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,36 +7,28 @@ import {
   Tabs,
   UnstyledButton,
   Anchor,
-  Badge,
   Button,
   Card,
   Code,
   Group,
   Menu,
   Modal,
-  SimpleGrid,
-  Flex,
   Stack,
   Text,
   Timeline,
   Title,
-  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconArchive,
-  IconArrowLeft,
   IconCamera,
   IconDots,
   IconEye,
   IconEyeOff,
-  IconPencil,
-  IconPrinter,
   IconRestore,
   IconUserCheck,
   IconTrash,
   IconMessage,
-  IconCheck,
   IconAlertTriangle,
   IconChevronRight,
 } from "@tabler/icons-react";
@@ -51,6 +43,7 @@ import {
   formatDateTime,
   type AuditEntry,
   type Employee,
+  type GeneratedDoc,
 } from "../api";
 import { useAuth } from "../auth";
 import { MedicalExamsCard } from "../components/MedicalExams";
@@ -60,7 +53,7 @@ import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
 import { TrainingsCard } from "../components/TrainingsCard";
-import { ChecklistsCard, RehireModal, TimelineCard } from "../components/Lifecycle";
+import { ChecklistsCard, RehireModal, TimelineCard, type ChecklistItem } from "../components/Lifecycle";
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
@@ -100,16 +93,6 @@ function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "p
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <Text size="xs" c="dimmed" fw={600} style={{ letterSpacing: "0.04em" }}>
-        {label}
-      </Text>
-      <Text component="div">{children}</Text>
-    </div>
-  );
-}
 
 function historyText(entry: AuditEntry): string {
   const d = entry.details ?? {};
@@ -252,10 +235,10 @@ export function EmployeeProfilePage() {
   const emp = employee.data;
   const checklists = useQuery({
     queryKey: ["employee-checklists", Number(id)],
-    queryFn: () => api<{ onboarding: { state: string }[]; offboarding: { state: string }[] }>(`/employees/${id}/checklists`),
-    enabled: mobile && canEdit,
+    queryFn: () => api<{ onboarding: ChecklistItem[]; offboarding: ChecklistItem[] }>(`/employees/${id}/checklists`),
+    enabled: canEdit,
   });
-  const docsQ = useQuery({ queryKey: ["documents", Number(id)], queryFn: () => api<unknown[]>(`/employees/${id}/documents`), enabled: mobile && canEdit });
+  const docsQ = useQuery({ queryKey: ["documents", Number(id)], queryFn: () => api<GeneratedDoc[]>(`/employees/${id}/documents`), enabled: canEdit });
   const reqs = useQuery({
     queryKey: ["employee-requirements", Number(id)],
     queryFn: () => api<{ state: string }[]>(`/employees/${id}/requirements`),
@@ -574,186 +557,233 @@ export function EmployeeProfilePage() {
     );
   }
 
+  // ——— komputer: wzorzec „karta szczegółów” – nagłówek, po lewej praca, po prawej dane do wglądu ———
+  const pendingDocs = (docsQ.data ?? []).filter((d) => d.signature_pending && !d.signed_at);
+  const overdueItems = [...(checklists.data?.onboarding ?? []), ...(checklists.data?.offboarding ?? [])].filter((x) => x.state === "overdue");
+  const meta = [e.position?.name && e.department?.name ? `${e.position.name}, ${e.department.name}` : e.position?.name ?? e.department?.name, e.agency?.name, e.hire_date ? `zatrudniony od ${formatDate(e.hire_date)}` : null].filter(Boolean).join(" · ");
+  const writeTo = `/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${e.last_name} ${e.first_name} (${e.number})`)}`;
   return (
-    <Stack maw={1000}>
-      {staff && e.status === "terminated" && (
-        <RehireModal employee={e} opened={rehireOpen} onClose={() => setRehireOpen(false)} />
-      )}
-      <Anchor component={Link} to="/pracownicy" size="sm">
-        <Group gap={4}>
-          <IconArrowLeft size={14} /> Lista pracowników
-        </Group>
-      </Anchor>
-
-      <Card withBorder padding="lg">
-        <Group align="flex-start" gap={mobile ? "md" : "xl"} wrap="wrap">
-          <Flex gap="xs" align="center" direction={mobile ? "row" : "column"}>
-            <EmployeePhoto employee={e} width={mobile ? 72 : 150} />
-            {canPhoto && (
-              <Group gap={4}>
-                <Button size="compact-sm" variant="light" leftSection={<IconCamera size={14} />} onClick={() => setPhotoOpen(true)}>
-                  {e.has_photo ? "Zmień" : "Dodaj zdjęcie"}
+    <div className="ui-detail">
+      <div className="ui-crumb">
+        <Anchor component={Link} to="/pracownicy">Pracownicy</Anchor> / {e.last_name} {e.first_name}
+      </div>
+      <header className="ui-detail-head">
+        <button type="button" className="ui-detail-photo" onClick={canPhoto ? () => setPhotoOpen(true) : undefined} aria-label={canPhoto ? (e.has_photo ? "Zmień zdjęcie" : "Dodaj zdjęcie") : undefined} disabled={!canPhoto}>
+          <EmployeePhoto employee={e} width={72} />
+        </button>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Title order={1}>
+            {e.last_name} {e.first_name}
+          </Title>
+          <Text c="dimmed" size="sm" mt={4}>
+            <span className="ui-mono">{e.number_display}</span>
+            {meta ? ` · ${meta}` : ""}
+            {e.status !== "active" && ` · w archiwum od ${formatDate(e.termination_date)}`}
+            {e.retention_until && ` · dane przechowywane do ${formatDate(e.retention_until)}`}
+          </Text>
+          {canPhoto && !e.has_photo && (
+            <Text size="sm" mt={6}>
+              <Anchor component="button" fw={600} onClick={() => setPhotoOpen(true)}>
+                Dodaj zdjęcie
+              </Anchor>{" "}
+              <Text span c="dimmed">· bez zdjęcia karta się nie wydrukuje</Text>
+            </Text>
+          )}
+          {canPhoto && e.has_photo && staff && (
+            <Text size="sm" mt={6}>
+              <Anchor component="button" onClick={() => setPhotoOpen(true)}>Zmień zdjęcie</Anchor>
+              <Text span c="dimmed"> · </Text>
+              <Anchor component="button" c="red" onClick={() => askDelete({ title: "Usunąć zdjęcie?", message: "Bez zdjęcia nie wydrukujesz karty.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && deletePhoto.mutate())}>
+                Usuń
+              </Anchor>
+            </Text>
+          )}
+        </div>
+        <Group gap="xs" wrap="nowrap" style={{ flex: "none" }}>
+          {canEdit && e.status === "active" && (
+            <Button onClick={() => document.getElementById("nowy-dokument")?.click()}>Nowy dokument</Button>
+          )}
+          {staff && e.status === "active" && (
+            <Button variant="default" component={Link} to={writeTo}>
+              Napisz
+            </Button>
+          )}
+          {canEdit && (
+            <Button variant="default" onClick={() => setPrintOpen(true)}>
+              Drukuj kartę
+            </Button>
+          )}
+          {staff && (
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <Button variant="default" px="xs" aria-label="Więcej akcji">
+                  <IconDots size={16} />
                 </Button>
-                {e.has_photo && staff && (
-                  <Button
-                    size="compact-sm"
-                    variant="subtle"
-                    color="red"
-                    aria-label="Usuń zdjęcie"
-                    loading={deletePhoto.isPending}
-                    onClick={() => askDelete({ title: "Usunąć zdjęcie?", message: "Bez zdjęcia nie wydrukujesz karty.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && deletePhoto.mutate())}
-                  >
-                    <IconTrash size={14} />
-                  </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {e.status === "active" ? (
+                  <Menu.Item leftSection={<IconArchive size={16} />} onClick={() => setTerminateOpen(true)}>
+                    Przenieś do archiwum (zwolnienie)
+                  </Menu.Item>
+                ) : (
+                  <>
+                    <Menu.Item leftSection={<IconUserCheck size={16} />} onClick={() => setRehireOpen(true)}>
+                      Zatrudnij ponownie
+                    </Menu.Item>
+                    <Menu.Item leftSection={<IconRestore size={16} />} onClick={() => restore.mutate()}>
+                      Cofnij zwolnienie (omyłkowe)
+                    </Menu.Item>
+                  </>
                 )}
-              </Group>
-            )}
-          </Flex>
+              </Menu.Dropdown>
+            </Menu>
+          )}
+        </Group>
+      </header>
 
-          <Stack gap={6} style={{ flex: 1, minWidth: mobile ? "100%" : 260 }}>
-            <Group justify="space-between" align="flex-start">
-              <div>
-                <Title order={2} size={mobile ? "h3" : undefined}>
-                  {e.last_name} {e.first_name}
-                </Title>
-                <Group gap="xs" mt={4}>
-                  <Text c="dimmed" visibleFrom="sm">Nr ewidencyjny</Text>
-                  <Code fz="md">{e.number_display}</Code>
-                  {e.status === "active" ? (
-                    <Badge color="green" variant="light" leftSection={<IconCheck size={12} aria-hidden />}>
-                      aktywny
-                    </Badge>
-                  ) : (
-                    <Badge color="gray">archiwum od {formatDate(e.termination_date)}</Badge>
-                  )}
-                  {e.retention_until && (
-                    <Tooltip
-                      label={
-                        e.retention_hold_until
-                          ? "Usunięcie wstrzymane przez administratora"
-                          : "Po tej dacie administrator usunie dane trwale (okres przechowywania)"
-                      }
-                    >
-                      <Badge color={e.retention_hold_until ? "orange" : "gray"} variant="outline">
-                        przechowywane do {formatDate(e.retention_until)}
-                      </Badge>
-                    </Tooltip>
-                  )}
-                </Group>
-              </div>
-              <Group gap="xs">
-                {canEdit && (
-                  <Button component={Link} to={`/pracownicy/${e.id}/edycja`} leftSection={<IconPencil size={16} />}>
-                    Edytuj
-                  </Button>
-                )}
-                {canEdit && (
-                  <Button variant="light" leftSection={<IconPrinter size={16} />} onClick={() => setPrintOpen(true)}>
-                    Drukuj kartę
-                  </Button>
-                )}
-                {staff && e.status === "active" && (
-                  <Button
-                    variant="light"
-                    component={Link}
-                    to={`/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${e.last_name} ${e.first_name} (${e.number})`)}`}
-                    leftSection={<IconMessage size={16} />}
-                  >
-                    Napisz do pracownika
-                  </Button>
-                )}
-                {staff && (
-                  <Menu position="bottom-end">
-                    <Menu.Target>
-                      <Button variant="default" px="xs" aria-label="Więcej akcji">
-                        <IconDots size={16} />
-                      </Button>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      {e.status === "active" ? (
-                        <Menu.Item leftSection={<IconArchive size={16} />} onClick={() => setTerminateOpen(true)}>
-                          Przenieś do archiwum (zwolnienie)
-                        </Menu.Item>
-                      ) : (
-                        <>
-                          <Menu.Item leftSection={<IconUserCheck size={16} />} onClick={() => setRehireOpen(true)}>
-                            Zatrudnij ponownie
-                          </Menu.Item>
-                          <Menu.Item leftSection={<IconRestore size={16} />} onClick={() => restore.mutate()}>
-                            Cofnij zwolnienie (omyłkowe)
-                          </Menu.Item>
-                        </>
-                      )}
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
-              </Group>
-            </Group>
-
-            <SimpleGrid cols={{ base: 2, md: 3 }} mt="md" spacing="md" verticalSpacing="md">
-              <Field label="APT">{e.agency?.name ?? "—"}</Field>
-              <Field label="Wydział">{e.department?.name ?? "—"}</Field>
-              <Field label="Stanowisko">{e.position?.name ?? "—"}</Field>
-              <Field label="Data zatrudnienia">{formatDate(e.hire_date)}</Field>
+      <div className="ui-detail-cols">
+        <div className="ui-detail-main">
+          {canEdit && (overdueItems.length > 0 || pendingDocs.length > 0) && (
+            <AttentionSection items={overdueItems} docs={pendingDocs} onChange={() => qc.invalidateQueries({ queryKey: ["employee-checklists", Number(id)] })} />
+          )}
+          {canEdit && <DocumentsCard employee={e} />}
+          {canEdit && <ChecklistsCard employee={e} />}
+          {!isAgency && <TrainingsCard employee={e} />}
+          {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
+          {hasRole("admin", "hr") && <PermitsCard employee={e} />}
+          {!isAgency && <MentorProgramsCard employee={e} />}
+          {!isAgency && <TimelineCard employee={e} />}
+        </div>
+        <aside className="ui-detail-side">
+          <section className="ui-dsec">
+            <div className="ui-dsec-head">
+              <Title order={2} className="ui-dsec-title">Dane osobowe</Title>
+              {canEdit && (
+                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja`} fw={600} size="sm">
+                  Edytuj
+                </Anchor>
+              )}
+            </div>
+            <dl className="ui-dl">
               {e.personal_data_visible ? (
                 <>
-                  <Field label="PESEL">
+                  <dt>PESEL</dt>
+                  <dd>
                     <PeselValue employee={e} />
-                  </Field>
-                  <Field label="Data urodzenia">
+                  </dd>
+                  <dt>Data urodzenia</dt>
+                  <dd>
                     {formatDate(e.birth_date)}
                     {e.age !== null && <Text span c="dimmed"> ({e.age} lat)</Text>}
-                  </Field>
+                  </dd>
                 </>
               ) : (
-                <Field label="Wiek">{e.age !== null ? `${e.age} lat` : "—"}</Field>
+                <>
+                  <dt>Wiek</dt>
+                  <dd>{e.age !== null ? `${e.age} lat` : "—"}</dd>
+                </>
               )}
-              {(e.contact_phone || e.contact_email) && (
-                <Field label="Kontakt">
-                  <ContactLine employeeId={e.id} kind="phone" value={e.contact_phone} />
-                  <ContactLine employeeId={e.id} kind="email" value={e.contact_email} />
-                </Field>
-              )}
-              <Field label="Obywatelstwo">{e.country?.name ?? "—"}</Field>
-              <Field label="Płeć">{e.sex === "K" ? "kobieta" : e.sex === "M" ? "mężczyzna" : "—"}</Field>
-            </SimpleGrid>
-          </Stack>
-        </Group>
-      </Card>
+              <dt>Płeć</dt>
+              <dd>{sex}</dd>
+              <dt>Obywatelstwo</dt>
+              <dd>{e.country?.name ?? <Text span c="dimmed">nie podano</Text>}</dd>
+            </dl>
+          </section>
+          <section className="ui-dsec">
+            <Title order={2} className="ui-dsec-title">Zatrudnienie</Title>
+            <dl className="ui-dl">
+              <dt>Agencja (APT)</dt>
+              <dd>{e.agency?.name ?? "—"}</dd>
+              <dt>Wydział</dt>
+              <dd>{e.department?.name ?? "—"}</dd>
+              <dt>Stanowisko</dt>
+              <dd>{e.position?.name ?? "—"}</dd>
+              <dt>Od</dt>
+              <dd>{formatDate(e.hire_date)}</dd>
+            </dl>
+          </section>
+          <section className="ui-dsec">
+            <Title order={2} className="ui-dsec-title">Kontakt</Title>
+            <dl className="ui-dl">
+              <dt>Telefon</dt>
+              <dd>{e.contact_phone ? <ContactLine employeeId={e.id} kind="phone" value={e.contact_phone} /> : <Text span c="dimmed">nie podano</Text>}</dd>
+              <dt>E-mail</dt>
+              <dd>{e.contact_email ? <ContactLine employeeId={e.id} kind="email" value={e.contact_email} /> : <Text span c="dimmed">nie podano</Text>}</dd>
+            </dl>
+          </section>
+          {e.notes && (
+            <section className="ui-dsec">
+              <Title order={2} className="ui-dsec-title">Uwagi</Title>
+              <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mt={8}>
+                {e.notes}
+              </Text>
+            </section>
+          )}
+          {staff && <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />}
+          {staff && <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />}
+          {historyCard}
+        </aside>
+      </div>
 
-      {e.notes && (
-        <Card withBorder padding="lg">
-          <Title order={5} mb={4}>
-            Uwagi
-          </Title>
-          <Text style={{ whiteSpace: "pre-wrap" }}>{e.notes}</Text>
-        </Card>
-      )}
-
-      {canEdit && <DocumentsCard employee={e} />}
-
-      {canEdit && <ChecklistsCard employee={e} />}
-
-      {(canEdit || isAgency) && <MedicalExamsCard employee={e} />}
-
-      {hasRole("admin", "hr") && <PermitsCard employee={e} />}
-
-      {!isAgency && <TrainingsCard employee={e} />}
-
-      {!isAgency && <MentorProgramsCard employee={e} />}
-
-      {staff && <DataLinkCard key={`dl${e.contact_email ?? ""}`} employeeId={e.id} contactEmail={e.contact_email} contactPhone={e.contact_phone} />}
-
-      {staff && <EmployeeAccountCard key={e.contact_email ?? ""} employeeId={e.id} contactEmail={e.contact_email} />}
-
-      {!isAgency && <TimelineCard employee={e} />}
-
-      {historyCard}
-
-      {canPhoto && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
-      {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
-
+      {modals}
       {terminateModal}
-    </Stack>
+    </div>
+  );
+}
+
+/** „Wymaga uwagi”: zadania po terminie (do odhaczenia od razu) i dokumenty czekające na podpis. */
+function AttentionSection({ items, docs, onChange }: { items: ChecklistItem[]; docs: GeneratedDoc[]; onChange: () => void }) {
+  const qc = useQueryClient();
+  const done = useMutation({
+    mutationFn: (it: ChecklistItem) => api(`/checklist-items/${it.id}`, { method: "PATCH", body: { done: true } }),
+    onSuccess: () => {
+      onChange();
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
+      notifications.show({ color: "green", message: "Oznaczono jako zrobione." });
+    },
+    onError: (err) => notifications.show({ color: "red", message: errorText(err) }),
+  });
+  return (
+    <section className="ui-dsec">
+      <Title order={2} className="ui-dsec-title">Wymaga uwagi</Title>
+      <div className="ui-dlist">
+        {items.map((it) => (
+          <div key={it.id} className="ui-drow">
+            <div style={{ minWidth: 0 }}>
+              <div className="ui-drow-title">{it.label}</div>
+              <div className="ui-drow-meta">
+                <span className="ui-warn">po terminie od {formatDate(it.due_date)}</span> · {it.kind === "onboarding" ? "wdrożenie" : "odejście"} · {it.responsible === "manager" ? "kierownik" : "HR"}
+              </div>
+            </div>
+            {it.can_edit && (
+              <Button size="xs" variant="default" loading={done.isPending && done.variables?.id === it.id} onClick={() => done.mutate(it)}>
+                Oznacz jako zrobione
+              </Button>
+            )}
+          </div>
+        ))}
+        {docs.map((d) => (
+          <div key={d.id} className="ui-drow">
+            <div style={{ minWidth: 0 }}>
+              <div className="ui-drow-title">{d.template_name} – czeka na podpis</div>
+              <div className="ui-drow-meta">wygenerowany {formatDateTime(d.created_at)}</div>
+            </div>
+            <Button
+              size="xs"
+              variant="default"
+              onClick={() => {
+                const row = document.getElementById(`dok-${d.id}`);
+                row?.scrollIntoView({ behavior: "smooth", block: "center" });
+                row?.classList.add("ui-flash");
+                window.setTimeout(() => row?.classList.remove("ui-flash"), 1600);
+              }}
+            >
+              Pokaż dokument
+            </Button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

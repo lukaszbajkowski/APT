@@ -176,35 +176,49 @@ interface EmployeeReq {
   valid_until: string | null;
 }
 
-export function EmployeeRequirements({ employeeId, plain }: { employeeId: number; plain?: boolean }) {
+export function EmployeeRequirements({ employeeId, plain, onAdd }: { employeeId: number; plain?: boolean; onAdd?: () => void }) {
   const q = useQuery({
     queryKey: ["employee-requirements", employeeId],
     queryFn: () => api<EmployeeReq[]>(`/employees/${employeeId}/requirements`),
   });
   if (!q.data || q.data.length === 0) return null;
   const problems = q.data.filter((r) => r.state === "missing" || r.state === "expired").length;
-  if (plain)
-    // komputer: jedno zdanie zamiast ramki ze znaczkami; braki bursztynem
+  if (plain) {
+    // komputer: braki jako wiersze w ramce (każdy z „Dodaj szkolenie”), spełnione jednym szarym zdaniem
+    const bad = q.data.filter((r) => r.state === "missing" || r.state === "expired" || r.state === "expiring");
+    const ok = q.data.filter((r) => !bad.includes(r));
     return (
-      <Text size="sm">
-        <Text span c="dimmed">
-          Wymagane na stanowisku:{" "}
-        </Text>
-        {q.data.map((r, i) => {
-          const bad = r.state === "missing" || r.state === "expired";
-          return (
-            <span key={r.label}>
-              {i > 0 && " · "}
-              {r.label}{" "}
-              <span className={bad ? "ui-warn" : undefined} style={bad ? undefined : { color: "var(--mantine-color-dimmed)" }}>
-                {REQ_STATE[r.state].label.toLowerCase()}
-                {r.valid_until && r.state !== "missing" ? ` do ${formatDate(r.valid_until)}` : ""}
-              </span>
-            </span>
-          );
-        })}
-      </Text>
+      <Stack gap={8}>
+        {bad.length > 0 && (
+          <div className="ui-dlist ui-dlist-warn">
+            {bad.map((r) => (
+              <div key={r.label} className="ui-drow">
+                <div style={{ minWidth: 0 }}>
+                  <div className="ui-drow-title">{r.label}</div>
+                  <div className="ui-drow-meta">
+                    <span className="ui-warn">
+                      {r.state === "missing" ? "brak" : r.state === "expired" ? `wygasło ${formatDate(r.valid_until)}` : `kończy się ${formatDate(r.valid_until)}`}
+                    </span>{" "}
+                    · wymagane na stanowisku
+                  </div>
+                </div>
+                {onAdd && (
+                  <Button size="xs" variant="default" onClick={onAdd}>
+                    Dodaj szkolenie
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {ok.length > 0 && (
+          <Text size="sm" c="dimmed">
+            Wymagane na stanowisku, spełnione: {ok.map((r) => `${r.label}${r.valid_until ? ` (do ${formatDate(r.valid_until)})` : ""}`).join(" · ")}
+          </Text>
+        )}
+      </Stack>
     );
+  }
   return (
     <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-orange-light)" : undefined}>
       <Group gap={6} mb={6}>

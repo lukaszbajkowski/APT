@@ -9,7 +9,6 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconAlertTriangle,
-  IconBolt,
   IconDots,
   IconDotsVertical,
   IconCalendarEvent,
@@ -151,9 +150,13 @@ export function TimelineCard({ employee }: { employee: Employee }) {
       <div className="ui-dlist">
         {timelineEvents(periods, assignments).map((ev, i) => (
           <div key={i} className="ui-drow ui-trow">
-            <span className="ui-trow-date">{ev.date ? formatDate(ev.date) : "—"}</span>
+            <span className="ui-trow-date">
+              {ev.from} – {ev.to}
+            </span>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="ui-drow-title">{ev.title}</div>
+              <div className="ui-drow-title" style={ev.current ? undefined : { fontWeight: 500 }}>
+                {ev.title || "—"}
+              </div>
               {ev.meta && <div className="ui-drow-meta">{ev.meta}</div>}
             </div>
           </div>
@@ -163,19 +166,34 @@ export function TimelineCard({ employee }: { employee: Employee }) {
   );
 }
 
-/** Jedna lista zdarzeń (najnowsze na górze): zatrudnienia, zmiany przydziału, zwolnienia. */
+/**
+ * Okresy przydziału (najnowszy na górze): od kiedy do kiedy obowiązywał dany wydział, stanowisko i APT.
+ * Przydział kończy się dzień przed następnym albo w dniu zwolnienia; bieżący – „obecnie”.
+ */
 function timelineEvents(periods: Period[], assignments: AssignmentRow[]) {
-  const ev: { date: string; order: number; title: string; meta: string }[] = [];
-  for (const p of periods) {
-    ev.push({ date: p.hire_date ?? "", order: 0, title: "Zatrudnienie", meta: place(p) });
-    if (p.termination_date) ev.push({ date: p.termination_date, order: 2, title: "Zwolnienie", meta: "" });
-  }
-  for (const a of assignments) {
-    // przydział z dnia zatrudnienia jest już w wierszu „Zatrudnienie”
-    if (periods.some((p) => p.hire_date === a.valid_from)) continue;
-    ev.push({ date: a.valid_from, order: 1, title: "Zmiana przydziału", meta: [place(a), a.reason !== "zmiana" ? a.reason : null, a.changed_by].filter(Boolean).join(" · ") });
-  }
-  return ev.sort((x, y) => (x.date === y.date ? y.order - x.order : x.date < y.date ? 1 : -1));
+  const iso = (d: string) => formatDate(d);
+  const prevDay = (d: string) => {
+    const x = new Date(d + "T00:00:00");
+    x.setDate(x.getDate() - 1);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  };
+  if (assignments.length === 0)
+    return periods
+      .filter((p) => p.hire_date)
+      .map((p) => ({ from: iso(p.hire_date!), to: p.termination_date ? iso(p.termination_date) : "obecnie", current: !p.termination_date, title: place(p), meta: "" }));
+  const sorted = [...assignments].sort((x, y) => (x.valid_from < y.valid_from ? 1 : -1));
+  return sorted.map((a, i) => {
+    const period = periods.find((p) => p.hire_date && p.hire_date <= a.valid_from && (!p.termination_date || a.valid_from <= p.termination_date));
+    const nextStart = i > 0 ? prevDay(sorted[i - 1].valid_from) : null;
+    const end = [nextStart, period?.termination_date ?? null].filter(Boolean).sort()[0] as string | undefined;
+    return {
+      from: iso(a.valid_from),
+      to: end ? iso(end) : "obecnie",
+      current: !end,
+      title: place(a),
+      meta: [a.reason, a.changed_by].filter(Boolean).join(" · "),
+    };
+  });
 }
 
 // ---------- ponowne zatrudnienie ----------
@@ -281,6 +299,7 @@ export interface ChecklistItem {
   responsible: "hr" | "manager";
   due_date: string | null;
   auto: string | null;
+  auto_label?: string | null;
   state: ItemState;
   done_at: string | null;
   done_by_name: string | null;
@@ -325,7 +344,8 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
             {[
               RESPONSIBLE[it.responsible],
               it.state === "done" && it.done_by_name ? `${it.done_by_name}, ${formatDateTime(it.done_at)}` : null,
-              it.state === "auto" ? "spełnione automatycznie" : null,
+              it.state === "auto" ? `odhaczone samo – ${it.auto_label ?? "warunek spełniony"}` : null,
+              it.auto && it.state !== "auto" && !done && it.state !== "skipped" ? `odhaczy się samo: ${it.auto_label ?? "po spełnieniu warunku"}` : null,
               it.state === "skipped" ? "pominięte" : null,
               !done && it.state !== "skipped" && it.due_date ? `termin ${formatDate(it.due_date)}` : null,
               it.state === "overdue" ? "po terminie" : null,
@@ -353,7 +373,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
             ]}
           />
         </>
-      ) : !mobile && ((staff && !done && it.state !== "skipped") || it.auto || (it.can_edit && !done)) ? (
+      ) : !mobile && ((staff && !done && it.state !== "skipped") || (it.can_edit && !done)) ? (
         <Menu position="bottom-end" width={260} withinPortal>
           <Menu.Target>
             <ActionIcon variant="default" size={30} aria-label={`Więcej: ${it.label}`} style={{ flexShrink: 0 }}>
@@ -361,14 +381,6 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            {it.auto && it.state !== "auto" && (
-              <Menu.Label style={{ whiteSpace: "normal" }}>
-                <Group gap={6} wrap="nowrap" align="flex-start">
-                  <IconBolt size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                  Odhaczy się samo, gdy warunek zostanie spełniony.
-                </Group>
-              </Menu.Label>
-            )}
             {staff && !done && it.state !== "skipped" && (
               <Menu.Item leftSection={<IconCalendarEvent size={16} />} onClick={() => setDueOpen(true)}>
                 Zmień termin

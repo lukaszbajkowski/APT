@@ -267,3 +267,23 @@ def test_planned_change(admin_client):
     )
     c.post(f"/api/employees/{e['id']}/terminate", json={"termination_date": today.isoformat()})
     assert c.get(f"/api/employees/{e['id']}/planned-changes").json() == []
+
+
+def test_first_change_keeps_earlier_assignment(admin_client):
+    """Pracownik bez wpisów przydziału (np. sprzed tej funkcji): pierwsza zmiana dopisuje okres od zatrudnienia."""
+    from sqlalchemy import delete
+
+    from app.models import Assignment
+
+    c = admin_client
+    mont, mag, _ = _deps()
+    e = _emp(c, department_id=mont, hire_date="2026-01-01")
+    with SessionLocal() as db:
+        db.execute(delete(Assignment).where(Assignment.employee_id == e["id"]))
+        db.commit()
+    assert c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2026-03-01"}).status_code == 200
+    tl = c.get(f"/api/employees/{e['id']}/timeline").json()["assignments"]
+    assert [(a["valid_from"], a["department"]) for a in tl] == [
+        ("2026-03-01", "Magazyn"),
+        ("2026-01-01", "Montaż"),
+    ]

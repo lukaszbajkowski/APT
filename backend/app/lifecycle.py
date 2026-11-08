@@ -76,11 +76,38 @@ def check_effective_date(db: Session, e: Employee, effective: date) -> None:
         )
 
 
+def _ensure_baseline(db: Session, e: Employee, changes: dict[str, Any], effective: date) -> None:
+    """Pracownik bez żadnego wpisu przydziału (sprzed tej funkcji albo z importu): przed pierwszą zmianą
+    zapisujemy przydział sprzed zmiany – od daty zatrudnienia – żeby przebieg nie zgubił tego okresu."""
+    if db.scalar(select(func.count()).select_from(Assignment).where(Assignment.employee_id == e.id)):
+        return
+    start = e.hire_date
+    if start is None or start >= effective:
+        return
+
+    def old(field: str) -> int | None:
+        ch = changes.get(field)
+        return ch.get("from") if isinstance(ch, dict) else getattr(e, field)
+
+    db.add(
+        Assignment(
+            employee_id=e.id,
+            valid_from=start,
+            agency_name=_name(db, Agency, old("agency_id")),
+            department_name=_name(db, Department, old("department_id")),
+            position_name=_name(db, Position, old("position_id")),
+            reason="zatrudnienie",
+            changed_by_name=None,
+        )
+    )
+
+
 def after_update(
     db: Session, e: Employee, changes: dict[str, Any], user_name: str | None, effective: date | None = None
 ) -> None:
     if ASSIGNMENT_FIELDS & changes.keys():
         db.flush()
+        _ensure_baseline(db, e, changes, effective or date.today())
         record_assignment(db, e, effective or date.today(), "zmiana", user_name)
     if {"agency_id", "department_id", "hire_date"} & changes.keys():
         sync_checklist(db, e, "onboarding")

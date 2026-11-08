@@ -259,6 +259,7 @@ class ItemOut(BaseModel):
     responsible: str
     due_date: date | None
     auto: str | None
+    auto_label: str | None = None  # warunek, po którym zadanie odhacza się samo (np. „Zdjęcie w kartotece”)
     state: str  # done | auto | skipped | overdue | open
     done_at: datetime | None
     done_by_name: str | None
@@ -275,8 +276,23 @@ def _can_edit(user: User, it: ChecklistItem) -> bool:
     return user.role in (Role.admin, Role.hr) or (user.role == Role.manager and it.responsible == "manager")
 
 
+def _auto_label(db: Session, auto: str | None) -> str | None:
+    if not auto:
+        return None
+    if auto == "photo":
+        return "zdjęcie w kartotece"
+    if auto == "card":
+        return "wydrukowana karta"
+    kind, _, raw = auto.partition(":")
+    model = {"training": TrainingType, "document": DocumentTemplate, "signed": DocumentTemplate}.get(kind)
+    obj = db.get(model, int(raw)) if model and raw.isdigit() else None
+    name = obj.name if obj else "?"
+    return {"training": f"szkolenie „{name}”", "document": f"dokument „{name}”", "signed": f"podpisany dokument „{name}”"}.get(kind)
+
+
 def _item_out(db: Session, it: ChecklistItem, e: Employee, user: User) -> ItemOut:
     return ItemOut(
+        auto_label=_auto_label(db, it.auto),
         id=it.id,
         kind=it.kind,
         label=it.label,

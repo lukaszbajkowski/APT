@@ -522,9 +522,9 @@ export function TrainingsCard({ employee }: { employee: Employee }) {
   }
 
   return (
-    <section className="ui-dsec">
+    <section className="ui-dsec" id="szkolenia">
       <SectionHead title="Szkolenia i uprawnienia" action={staff ? { label: "Dodaj szkolenie", onClick: () => setModal({ open: true, editing: null }) } : undefined} />
-      <EmployeeRequirements employeeId={employee.id} plain />
+      <EmployeeRequirements employeeId={employee.id} plain onAdd={staff ? () => setModal({ open: true, editing: null }) : undefined} />
       {list.isLoading && <Loading />}
       {list.data && list.data.length === 0 && (
         <Text size="sm" c="dimmed">

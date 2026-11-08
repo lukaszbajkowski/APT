@@ -194,15 +194,6 @@ export function MentorProgramsCard({ employee }: { employee: Employee }) {
   }
 
   return (
-      <Section
-        title="Może prowadzić szkolenia"
-        action={staff ? { label: "Zmień", onClick: () => { setSelected(list.map((p) => String(p.id))); setEditing(true); } } : undefined}
-      >
-        {list.length === 0 ? <CompactEmpty title="Brak" text="Nie jest opiekunem żadnego szkolenia stanowiskowego." /> : list.map((p) => <ListRow key={p.id} title={programLabel(p)} />)}
-      </Section>
-    );
-
-  return (
     <section className="ui-dsec">
       <SectionHead
         title="Może prowadzić szkolenia"

@@ -233,6 +233,12 @@ export function EmployeeProfilePage() {
   });
 
   const emp = employee.data;
+  // braki szkoleń wymaganych na stanowisku (ten sam klucz co sekcja „Szkolenia”)
+  const reqQ = useQuery({
+    queryKey: ["employee-requirements", Number(id)],
+    queryFn: () => api<{ label: string; state: string }[]>(`/employees/${id}/requirements`),
+    enabled: canEdit && !isAgency,
+  });
   const checklists = useQuery({
     queryKey: ["employee-checklists", Number(id)],
     queryFn: () => api<{ onboarding: ChecklistItem[]; offboarding: ChecklistItem[] }>(`/employees/${id}/checklists`),
@@ -559,6 +565,7 @@ export function EmployeeProfilePage() {
 
   // ——— komputer: wzorzec „karta szczegółów” – nagłówek, po lewej praca, po prawej dane do wglądu ———
   const pendingDocs = (docsQ.data ?? []).filter((d) => d.signature_pending && !d.signed_at);
+  const reqMissing = (reqQ.data ?? []).filter((r) => r.state === "missing" || r.state === "expired").map((r) => r.label);
   const overdueItems = [...(checklists.data?.onboarding ?? []), ...(checklists.data?.offboarding ?? [])].filter((x) => x.state === "overdue");
   const meta = [e.position?.name && e.department?.name ? `${e.position.name}, ${e.department.name}` : e.position?.name ?? e.department?.name, e.agency?.name, e.hire_date ? `zatrudniony od ${formatDate(e.hire_date)}` : null].filter(Boolean).join(" · ");
   const writeTo = `/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${e.last_name} ${e.first_name} (${e.number})`)}`;
@@ -643,8 +650,8 @@ export function EmployeeProfilePage() {
 
       <div className="ui-detail-cols">
         <div className="ui-detail-main">
-          {canEdit && (overdueItems.length > 0 || pendingDocs.length > 0) && (
-            <AttentionSection items={overdueItems} docs={pendingDocs} />
+          {canEdit && (overdueItems.length > 0 || pendingDocs.length > 0 || reqMissing.length > 0) && (
+            <AttentionSection items={overdueItems} docs={pendingDocs} reqMissing={reqMissing} />
           )}
           {canEdit && <DocumentsCard employee={e} />}
           {canEdit && <ChecklistsCard employee={e} />}
@@ -740,12 +747,33 @@ export function EmployeeProfilePage() {
 }
 
 /** „Wymaga uwagi”: zadania po terminie (do odhaczenia od razu) i dokumenty czekające na podpis. */
-function AttentionSection({ items, docs }: { items: ChecklistItem[]; docs: GeneratedDoc[] }) {
+/** Przewija do sekcji i na chwilę ją podświetla. */
+function flash(id: string) {
+  const el = document.getElementById(id);
+  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  el?.classList.add("ui-flash");
+  window.setTimeout(() => el?.classList.remove("ui-flash"), 1600);
+}
+
+function AttentionSection({ items, docs, reqMissing }: { items: ChecklistItem[]; docs: GeneratedDoc[]; reqMissing: string[] }) {
   const remind = useRemindSignature();
   return (
     <section className="ui-dsec">
       <Title order={2} className="ui-dsec-title">Wymaga uwagi</Title>
       <div className="ui-dlist">
+        {reqMissing.length > 0 && (
+          <div className="ui-drow">
+            <div style={{ minWidth: 0 }}>
+              <div className="ui-drow-title">
+                Brak szkoleń wymaganych na stanowisku: {reqMissing.length}
+              </div>
+              <div className="ui-drow-meta">{reqMissing.join(" · ")}</div>
+            </div>
+            <Button size="xs" variant="default" onClick={() => flash("szkolenia")}>
+              Pokaż szkolenia
+            </Button>
+          </div>
+        )}
         {/* zadania z checklist: jeden wiersz na checklistę (pełna lista jest niżej w „Checklistach”) */}
         {(["onboarding", "offboarding"] as const).map((kind) => {
           const late = items.filter((it) => it.kind === kind);
@@ -765,12 +793,7 @@ function AttentionSection({ items, docs }: { items: ChecklistItem[]; docs: Gener
               <Button
                 size="xs"
                 variant="default"
-                onClick={() => {
-                  const el = document.getElementById("checklisty");
-                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  el?.classList.add("ui-flash");
-                  window.setTimeout(() => el?.classList.remove("ui-flash"), 1600);
-                }}
+                onClick={() => flash("checklisty")}
               >
                 Pokaż checklistę
               </Button>

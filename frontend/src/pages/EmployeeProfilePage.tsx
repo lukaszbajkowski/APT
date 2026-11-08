@@ -50,6 +50,7 @@ import { EmployeePhoto } from "../components/EmployeePhoto";
 import { PhotoEditor } from "../components/PhotoEditor";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { DocumentsCard } from "../components/DocumentsCard";
+import { EmployeeFormPage } from "./EmployeeFormPage";
 import { useRemindSignature } from "../components/Signatures";
 import { SectionHead } from "../components/Mobile";
 import { TrainingsCard } from "../components/TrainingsCard";
@@ -162,6 +163,7 @@ export function EmployeeProfilePage() {
   const staff = hasRole("admin", "hr");
   const canEdit = hasRole("admin", "hr", "manager");
   const isAgency = hasRole("agency");
+  const [editPart, setEditPart] = useState<"dane" | "zatrudnienie" | null>(null);
   const canPhoto = staff || isAgency;
 
   const employee = useQuery({ queryKey: ["employee", id], queryFn: () => api<Employee>(`/employees/${id}`) });
@@ -346,6 +348,10 @@ export function EmployeeProfilePage() {
   );
   const modals = (
     <>
+      {/* edycja danych osobowych / zatrudnienia w okienku na karcie (komputer) */}
+      <Modal opened={!!editPart} onClose={() => setEditPart(null)} size="lg" title={editPart === "dane" ? "Dane osobowe" : "Zatrudnienie"}>
+        {editPart && <EmployeeFormPage embed={{ id: String(e.id), part: editPart, onClose: () => setEditPart(null) }} />}
+      </Modal>
       {staff && e.status === "terminated" && <RehireModal employee={e} opened={rehireOpen} onClose={() => setRehireOpen(false)} />}
       {canPhoto && <PhotoEditor employee={e} opened={photoOpen} onClose={() => setPhotoOpen(false)} />}
       {canEdit && <PrintCardsModal ids={[e.id]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
@@ -666,7 +672,7 @@ export function EmployeeProfilePage() {
             <div className="ui-dsec-head">
               <Title order={2} className="ui-dsec-title">Dane osobowe</Title>
               {staff && (
-                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja?czesc=dane`} fw={600} size="sm" aria-label="Edytuj dane osobowe">
+                <Anchor component="button" type="button" onClick={() => setEditPart("dane")} fw={600} size="sm" aria-label="Edytuj dane osobowe">
                   Edytuj
                 </Anchor>
               )}
@@ -700,7 +706,7 @@ export function EmployeeProfilePage() {
             <div className="ui-dsec-head">
               <Title order={2} className="ui-dsec-title">Zatrudnienie</Title>
               {canEdit && (
-                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja?czesc=zatrudnienie`} fw={600} size="sm" aria-label="Edytuj zatrudnienie">
+                <Anchor component="button" type="button" onClick={() => setEditPart("zatrudnienie")} fw={600} size="sm" aria-label="Edytuj zatrudnienie">
                   Edytuj
                 </Anchor>
               )}

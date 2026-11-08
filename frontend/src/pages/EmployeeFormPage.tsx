@@ -109,12 +109,20 @@ function payload(f: FormState): Record<string, unknown> {
   };
 }
 
-export function EmployeeFormPage() {
-  const { id } = useParams();
+/** Osadzenie w okienku na karcie pracownika (komputer): bez nagłówka strony, przyciski na dole okienka. */
+export interface EmbedForm {
+  id: string;
+  part: "dane" | "zatrudnienie";
+  onClose: () => void;
+}
+
+export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
+  const params0 = useParams();
+  const id = embed?.id ?? params0.id;
   const editing = id !== undefined;
   // komputer: osobno dane osobowe (poprawki) i zatrudnienie (zmiana od dnia, ślad w przebiegu)
   const [params] = useSearchParams();
-  const part = editing ? (params.get("czesc") as "dane" | "zatrudnienie" | null) : null;
+  const part = editing ? (embed?.part ?? (params.get("czesc") as "dane" | "zatrudnienie" | null)) : null;
   const showPersonal = part !== "zatrudnienie";
   const showEmployment = part !== "dane";
   const navigate = useNavigate();
@@ -209,7 +217,8 @@ export function EmployeeFormPage() {
             ? `Zapisano. Zmiana przydziału zaplanowana na ${new Date(effectiveDate + "T00:00:00").toLocaleDateString("pl-PL")}.`
             : "Zapisano zmiany.",
       });
-      navigate(`/pracownicy/${e.id}`, { replace: true });
+      if (embed) embed.onClose();
+      else navigate(`/pracownicy/${e.id}`, { replace: true });
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === "possible_duplicate") {
@@ -264,7 +273,8 @@ export function EmployeeFormPage() {
 
   return (
     <form onSubmit={submit} className={mobile ? "ui-inpage" : undefined}>
-      <Stack maw={900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
+      <Stack maw={embed ? undefined : 900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
+        {!embed && (
         <Group justify="space-between" visibleFrom="sm">
           <div>
             <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" visibleFrom="sm">
@@ -293,6 +303,7 @@ export function EmployeeFormPage() {
             )}
           </div>
         </Group>
+        )}
 
         {mobile && (!form.last_name.trim() || !form.first_name.trim()) && (
           <span className="ui-hint-warn">Wpisz nazwisko i imię – reszta danych jest nieobowiązkowa.</span>
@@ -329,7 +340,7 @@ export function EmployeeFormPage() {
         )}
 
         {showPersonal && (
-        <Block mobile={!!mobile} title={part ? "" : "Dane osobowe"}>
+        <Block mobile={!!mobile || !!embed} title={part ? "" : "Dane osobowe"}>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <TextInput
               label="Nazwisko"
@@ -442,7 +453,7 @@ export function EmployeeFormPage() {
         )}
 
         {showEmployment && (
-        <Block mobile={!!mobile} title={part ? "" : "Zatrudnienie"}>
+        <Block mobile={!!mobile || !!embed} title={part ? "" : "Zatrudnienie"}>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <Select
               label="APT (agencja pracy)"
@@ -524,7 +535,17 @@ export function EmployeeFormPage() {
         </Block>
         )}
 
-        {!mobile && (
+        {!mobile && embed && (
+          <Group justify="flex-end" className="ui-modal-foot">
+            <Button variant="default" onClick={embed.onClose}>
+              Anuluj
+            </Button>
+            <Button type="submit" loading={save.isPending}>
+              Zapisz zmiany
+            </Button>
+          </Group>
+        )}
+        {!mobile && !embed && (
           <Group justify="flex-end">
             <Button variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"}>
               Anuluj

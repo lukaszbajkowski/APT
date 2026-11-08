@@ -444,11 +444,20 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
                 <Title order={2} size="h4">
                   {KIND_LABEL[k]}
                 </Title>
-                <Text size="sm" c="dimmed">
-                  {doneN} z {items.length} zrobione
-                </Text>
+                {doneN === items.length ? (
+                  // zakończona: jedna linia, lista po „Pokaż” (ślad zostaje)
+                  <Button variant="subtle" size="sm" h={44} px={8} aria-expanded={!!openDone[k]} onClick={() => setOpenDone((o) => ({ ...o, [k]: !o[k] }))}>
+                    wszystko zrobione · {openDone[k] ? "Zwiń" : "Pokaż"}
+                  </Button>
+                ) : (
+                  <Text size="sm" c="dimmed">
+                    {doneN} z {items.length} zrobione
+                  </Text>
+                )}
               </Group>
-              <Progress value={(doneN / items.length) * 100} color={doneN === items.length ? "teal" : undefined} size="md" aria-label={`Postęp: ${doneN} z ${items.length}`} />
+              {doneN < items.length && (
+                <Progress value={(doneN / items.length) * 100} size="md" aria-label={`Postęp: ${doneN} z ${items.length}`} />
+              )}
               {overdue > 0 && (
                 <Group gap={6} c="orange">
                   <IconAlertTriangle size={16} aria-hidden />
@@ -457,11 +466,13 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
                   </Text>
                 </Group>
               )}
-              <div className="ui-group">
-                {items.map((it) => (
-                  <ItemRow key={it.id} it={it} onChange={refresh} />
-                ))}
-              </div>
+              {(doneN < items.length || openDone[k]) && (
+                <div className="ui-group">
+                  {items.map((it) => (
+                    <ItemRow key={it.id} it={it} onChange={refresh} />
+                  ))}
+                </div>
+              )}
             </Stack>
           );
         })}

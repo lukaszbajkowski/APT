@@ -659,8 +659,8 @@ export function EmployeeProfilePage() {
           <section className="ui-dsec">
             <div className="ui-dsec-head">
               <Title order={2} className="ui-dsec-title">Dane osobowe</Title>
-              {canEdit && (
-                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja`} fw={600} size="sm">
+              {staff && (
+                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja?czesc=dane`} fw={600} size="sm" aria-label="Edytuj dane osobowe">
                   Edytuj
                 </Anchor>
               )}
@@ -691,7 +691,14 @@ export function EmployeeProfilePage() {
             </dl>
           </section>
           <section className="ui-dsec">
-            <Title order={2} className="ui-dsec-title">Zatrudnienie</Title>
+            <div className="ui-dsec-head">
+              <Title order={2} className="ui-dsec-title">Zatrudnienie</Title>
+              {canEdit && (
+                <Anchor component={Link} to={`/pracownicy/${e.id}/edycja?czesc=zatrudnienie`} fw={600} size="sm" aria-label="Edytuj zatrudnienie">
+                  Edytuj
+                </Anchor>
+              )}
+            </div>
             <dl className="ui-dl">
               <dt>Agencja (APT)</dt>
               <dd>{e.agency?.name ?? "—"}</dd>

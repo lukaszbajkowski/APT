@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge, SectionHead, FormDialog } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, CopyButton, Drawer, Group, Stack, Text, TextInput } from "@mantine/core";
-import { IconAlertCircle, IconMail, IconUserOff, IconDevices } from "@tabler/icons-react";
+import { ActionIcon, Alert, Button, Menu, CopyButton, Drawer, Group, Stack, Text, TextInput } from "@mantine/core";
+import { IconAlertCircle, IconDots, IconKey, IconMail, IconUserOff, IconDevices } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
@@ -198,86 +198,92 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
   }
   return (
     <section className="ui-dsec">
-      <SectionHead
-        title="Konto pracownika"
-        extra={
-          a?.exists && (
-            <Text size="sm" c="dimmed" className={a.active && !a.has_passkey ? "ui-warn" : undefined}>
-              {!a.active ? "wyłączone" : a.has_passkey ? "aktywne" : "czeka na aktywację"}
-            </Text>
-          )
-        }
-      />
+      <SectionHead title="Konto pracownika" />
       {error && (
         <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {error}
         </Alert>
       )}
-      {a?.exists && (
-        <Text size="sm" c="dimmed">
-          Login: {a.username}
-          {a.has_passkey ? " · klucz dostępu" : ""}
-          {a.last_login_at ? ` · ostatnie logowanie ${formatDateTime(a.last_login_at)}` : ""}
-          {a.invite_pending ? " · zaproszenie wysłane" : ""}
-        </Text>
-      )}
-      {!a?.exists && (
-        <Text size="sm" c="dimmed">
-          Pracownik nie ma konta. Wyślij zaproszenie – założy je sam na telefonie (twarz / odcisk palca).
-        </Text>
-      )}
       <Stack gap="sm">
-        {(!a?.exists || (a.active && !a.has_passkey)) && (
-          <>
-            <TextInput
-              label="E-mail do zaproszenia (opcjonalnie)"
-              description={contactEmail ? "Adres z kartoteki – możesz go zmienić." : "Bez adresu dostaniesz link do przekazania."}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-            />
-            <Button size="xs" variant="default" loading={invite.isPending} onClick={() => invite.mutate()} style={{ alignSelf: "flex-start" }}>
-              {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
-            </Button>
-          </>
-        )}
-        {a?.exists && !a.active && (
-          <Button size="xs" variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)} style={{ alignSelf: "flex-start" }}>
-            Włącz konto
-          </Button>
-        )}
-        {a?.exists && a.active && (
-          // rzadkie działania jako linki tekstowe; niebezpieczne na czerwono i zawsze z potwierdzeniem
-          <Group gap="lg" wrap="wrap" style={{ rowGap: 6 }}>
-            {activated && (
-              <Anchor component="button" type="button" size="sm" fw={600} onClick={() => setDevOpen(true)}>
-                Dodaj urządzenie
-              </Anchor>
-            )}
-            {activated && (
-              <Anchor
-                component="button"
-                type="button"
+        <div className="ui-acct">
+          <div className="ui-acct-state" data-tone={!a?.exists ? "none" : !a.active ? "off" : a.has_passkey ? "ok" : "warn"}>
+            <span className="ui-acct-dot" aria-hidden />
+            {!a?.exists ? "Bez konta" : !a.active ? "Konto wyłączone" : a.has_passkey ? "Konto aktywne" : "Czeka na aktywację"}
+          </div>
+          <Text size="sm" c="dimmed" mt={2}>
+            {!a?.exists
+              ? "Wyślij zaproszenie – pracownik założy konto sam na telefonie (twarz / odcisk palca)."
+              : [
+                  `Login: ${a.username}`,
+                  a.has_passkey ? "klucz dostępu" : null,
+                  a.last_login_at ? `ostatnio ${formatDateTime(a.last_login_at)}` : "jeszcze się nie logował(a)",
+                  a.invite_pending ? "zaproszenie wysłane" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+          </Text>
+          {(!a?.exists || (a.active && !a.has_passkey)) && (
+            <Stack gap="xs" mt="sm">
+              <TextInput
                 size="sm"
-                fw={600}
-                c="red"
-                onClick={() =>
-                  confirm({
-                    title: "Zresetować dostęp?",
-                    message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Np. po zgubieniu telefonu. Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
-                    confirmLabel: "Zresetuj dostęp",
-                    danger: true,
-                  }).then((ok) => ok && reset.mutate())
-                }
-              >
-                Zresetuj dostęp
-              </Anchor>
+                label="E-mail do zaproszenia (opcjonalnie)"
+                description={contactEmail ? "Adres z kartoteki – możesz go zmienić." : "Bez adresu dostaniesz link do przekazania."}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+              />
+            </Stack>
+          )}
+          <Group gap={8} mt="sm" wrap="nowrap">
+            {(!a?.exists || (a.active && !a.has_passkey)) && (
+              <Button size="xs" variant="default" leftSection={<IconMail size={14} />} loading={invite.isPending} onClick={() => invite.mutate()}>
+                {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
+              </Button>
             )}
-            <Anchor component="button" type="button" size="sm" fw={600} c="red" onClick={askDisable}>
-              Wyłącz konto
-            </Anchor>
+            {activated && a?.active && (
+              <Button size="xs" variant="default" leftSection={<IconDevices size={14} />} onClick={() => setDevOpen(true)}>
+                Dodaj urządzenie
+              </Button>
+            )}
+            {a?.exists && !a.active && (
+              <Button size="xs" variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)}>
+                Włącz konto
+              </Button>
+            )}
+            {a?.exists && a.active && (
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <ActionIcon variant="default" size={30} aria-label="Więcej działań na koncie">
+                    <IconDots size={16} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {activated && (
+                    <Menu.Item
+                      color="red"
+                      leftSection={<IconKey size={16} />}
+                      onClick={() =>
+                        confirm({
+                          title: "Zresetować dostęp?",
+                          message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Np. po zgubieniu telefonu. Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
+                          confirmLabel: "Zresetuj dostęp",
+                          danger: true,
+                        }).then((ok) => ok && reset.mutate())
+                      }
+                    >
+                      Zresetuj dostęp
+                      <Text size="xs" c="dimmed">Np. po zgubieniu telefonu</Text>
+                    </Menu.Item>
+                  )}
+                  <Menu.Item color="red" leftSection={<IconUserOff size={16} />} onClick={askDisable}>
+                    Wyłącz konto
+                    <Text size="xs" c="dimmed">Dane zostają w kartotece</Text>
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
           </Group>
-        )}
+        </div>
         {result && (
           <Alert color="green" variant="light" title={result.sent ? (mode === "device" ? "Link wysłany e-mailem" : "Zaproszenie wysłane e-mailem") : mode === "device" ? "Link „dodaj urządzenie”" : "Link do zaproszenia"}>
             <Text size="sm" style={{ wordBreak: "break-all" }}>

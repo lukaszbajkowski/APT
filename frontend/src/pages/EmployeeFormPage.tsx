@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, Card, Group, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
@@ -110,6 +110,11 @@ function payload(f: FormState): Record<string, unknown> {
 export function EmployeeFormPage() {
   const { id } = useParams();
   const editing = id !== undefined;
+  // komputer: osobno dane osobowe (poprawki) i zatrudnienie (zmiana od dnia, ślad w przebiegu)
+  const [params] = useSearchParams();
+  const part = editing ? (params.get("czesc") as "dane" | "zatrudnienie" | null) : null;
+  const showPersonal = part !== "zatrudnienie";
+  const showEmployment = part !== "dane";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { hasRole } = useAuth();
@@ -266,7 +271,13 @@ export function EmployeeFormPage() {
               </Group>
             </Anchor>
             <Title order={2} mt={4} visibleFrom="sm">
-              {editing ? `Edycja: ${current?.last_name} ${current?.first_name}` : "Nowy pracownik"}
+              {!editing
+                ? "Nowy pracownik"
+                : part === "dane"
+                  ? `Dane osobowe: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`
+                  : part === "zatrudnienie"
+                    ? `Zatrudnienie: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`
+                    : `Edycja: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`}
             </Title>
             {editing && current && (
               <Text c="dimmed" size="sm">
@@ -315,6 +326,7 @@ export function EmployeeFormPage() {
           </Alert>
         )}
 
+        {showPersonal && (
         <Block mobile={!!mobile} title="Dane osobowe">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <TextInput
@@ -425,7 +437,9 @@ export function EmployeeFormPage() {
             )}
           </SimpleGrid>
         </Block>
+        )}
 
+        {showEmployment && (
         <Block mobile={!!mobile} title="Zatrudnienie">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <Select
@@ -506,6 +520,7 @@ export function EmployeeFormPage() {
             onChange={(e) => set("notes", e.currentTarget.value)}
           />
         </Block>
+        )}
 
         {!mobile && (
           <Group justify="flex-end">

@@ -994,3 +994,12 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-linklike:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:2px}
 .mantine-Card-root > .ui-dsec-head{margin-bottom:var(--s-3)}
 .ui-drow-title.ui-linklike{font-size:15px;line-height:22px;font-weight:600}
+/* konto pracownika: ramka z wyraźnym stanem (kropka w kolorze roli) */
+.ui-acct{border:1px solid var(--mantine-color-default-border);border-radius:8px;padding:var(--s-3) var(--s-4)}
+.ui-acct-state{display:flex;align-items:center;gap:8px;font-size:15px;line-height:22px;font-weight:600}
+.ui-acct-dot{width:8px;height:8px;border-radius:50%;background:var(--mantine-color-gray-5);flex:none}
+.ui-acct-state[data-tone="ok"] .ui-acct-dot{background:var(--mantine-color-teal-6)}
+.ui-acct-state[data-tone="warn"] .ui-acct-dot{background:var(--mantine-color-yellow-6)}
+.ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-8)}
+[data-mantine-color-scheme="dark"] .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-5)}
+.ui-acct-state[data-tone="off"],.ui-acct-state[data-tone="none"]{color:var(--mantine-color-dimmed)}

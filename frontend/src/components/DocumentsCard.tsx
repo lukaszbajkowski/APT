@@ -12,7 +12,7 @@ import { DocumentViewer } from "./DocumentViewer";
 import { SignaturesModal, useRemindSignature } from "./Signatures";
 import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type FormatPreset } from "../masks";
 
-import { api, errorText, formatDate, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
+import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
 import { Loading } from "./States";
 import { DateField } from "./DateField";
 
@@ -588,7 +588,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               </div>
               <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
                 {d.signed_at ? (
-                  <Text size="sm">Podpisany {formatDate(d.signed_at)}</Text>
+                  <Text size="sm">Podpisany {formatDateTime(d.signed_at)}</Text>
                 ) : d.signature_pending ? (
                   <Text size="sm" className="ui-warn">
                     Czeka na podpis

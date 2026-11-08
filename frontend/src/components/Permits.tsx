@@ -2,13 +2,13 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog, SectionHead } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Card,  SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Group, Menu, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconDots, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee, type Permit } from "../api";
-import { EmptyState, Loading } from "./States";
+import { Loading } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -26,23 +26,23 @@ export const PERMIT_STATE: Record<Permit["state"], { label: string; color: strin
   expired: { label: "Nieważny", color: "red" },
 };
 
-function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: boolean; onClose: () => void }) {
+function AddPermit({ employee, opened, onClose, editing }: { employee: Employee; opened: boolean; onClose: () => void; editing?: Permit | null }) {
   const qc = useQueryClient();
-  const [kind, setKind] = useState("karta_pobytu");
-  const [from, setFrom] = useState("");
-  const [until, setUntil] = useState("");
-  const [notes, setNotes] = useState("");
+  const [kind, setKind] = useState(editing?.kind ?? "karta_pobytu");
+  const [from, setFrom] = useState(editing?.valid_from ?? "");
+  const [until, setUntil] = useState(editing?.valid_until ?? "");
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: () =>
-      api<Permit>(`/employees/${employee.id}/permits`, {
-        method: "POST",
+      api<Permit>(editing ? `/permits/${editing.id}` : `/employees/${employee.id}/permits`, {
+        method: editing ? "PATCH" : "POST",
         body: { kind, valid_from: from || null, valid_until: until, notes: notes.trim() || null },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["permits", employee.id] });
       qc.invalidateQueries({ queryKey: ["dashboard-upcoming"] });
-      notifications.show({ color: "green", message: "Dodano dokument." });
+      notifications.show({ color: "green", message: editing ? "Zapisano zmiany." : "Dodano dokument." });
       setFrom("");
       setUntil("");
       setNotes("");
@@ -51,7 +51,7 @@ function AddPermit({ employee, opened, onClose }: { employee: Employee; opened: 
     onError: (e) => setError(errorText(e)),
   });
   return (
-    <FormDialog opened={opened} onClose={onClose} title="Dokument pobytowy" subtitle="Karta pobytu, wiza lub zezwolenie na pracę" size="md" primary={{ label: "Zapisz", formId: "fd-permit", loading: save.isPending }}>
+    <FormDialog opened={opened} onClose={onClose} title={editing ? "Popraw dokument pobytowy" : "Dokument pobytowy"} subtitle="Karta pobytu, wiza lub zezwolenie na pracę" size="md" primary={{ label: "Zapisz", formId: "fd-permit", loading: save.isPending }}>
       <form id="fd-permit"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
@@ -77,7 +77,9 @@ export function PermitsCard({ employee }: { employee: Employee }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["permits", employee.id], queryFn: () => api<Permit[]>(`/employees/${employee.id}/permits`) });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Permit | null>(null);
   const ask = useConfirm();
+  const askDel = (x: Permit) => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id));
   const del = useMutation({
     mutationFn: (id: number) => api(`/permits/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -86,7 +88,6 @@ export function PermitsCard({ employee }: { employee: Employee }) {
       notifications.show({ color: "green", message: "Usunięto dokument." });
     },
   });
-  const latest = q.data?.[0];
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [sheet, setSheet] = useState<Permit | null>(null);
   const polish = /^pol(ska|and)$/i.test(employee.country?.name ?? "");
@@ -116,62 +117,59 @@ export function PermitsCard({ employee }: { employee: Employee }) {
           onClose={() => setSheet(null)}
           title={cap(sheet?.kind_label)}
           subtitle={sheet?.notes ?? undefined}
-          actions={sheet ? [{ label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(sheet.id)) }] : []}
+          actions={sheet ? [{ label: "Popraw dane", icon: <IconPencil size={20} />, onClick: () => setEditing(sheet) }, { label: "Usuń dokument", icon: <IconTrash size={20} />, danger: true, onClick: () => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(sheet.id)) }] : []}
         />
-        <AddPermit employee={employee} opened={open} onClose={() => setOpen(false)} />
+      {open && <AddPermit key="new" employee={employee} opened onClose={() => setOpen(false)} />}
+      {editing && <AddPermit key={editing.id} employee={employee} editing={editing} opened onClose={() => setEditing(null)} />}
       </>
     );
   }
   return (
-    <Card withBorder padding="lg">
-      <SectionHead
-        title="Dokumenty pobytowe i zezwolenia"
-        extra={
-          latest && (
-            <Text size="sm" c="dimmed" className={["green","teal"].includes(PERMIT_STATE[latest.state].color) ? undefined : "ui-warn"}>
-              {PERMIT_STATE[latest.state].label} do {formatDate(latest.valid_until)}
-            </Text>
-          )
-        }
-        action={{ label: "Dodaj dokument", onClick: () => setOpen(true) }}
-      />
+    <section className="ui-dsec">
+      <SectionHead title="Dokumenty pobytowe i zezwolenia" action={polish && !q.data?.length ? undefined : { label: "Dodaj dokument", onClick: () => setOpen(true) }} />
       {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
-        <EmptyState compact title="Brak dokumentów pobytowych"
-          text="Dotyczy cudzoziemców. Dodaj kartę pobytu, wizę lub zezwolenie, aby śledzić ich ważność." />
+        <Text size="sm" c="dimmed">
+          {polish ? "Nie dotyczy – obywatelstwo polskie." : "Brak dokumentów. Dodaj kartę pobytu, wizę lub zezwolenie, aby śledzić ich ważność."}
+        </Text>
       )}
       {q.data && q.data.length > 0 && (
-        <Table verticalSpacing={6} fz="sm">
-          <Table.Tbody>
-            {q.data.map((x) => (
-              <Table.Tr key={x.id}>
-                <Table.Td>
-                  <Text size="sm" fw={500}>
-                    {cap(x.kind_label)}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {x.valid_from ? `od ${formatDate(x.valid_from)}` : ""}
-                    {x.notes ? ` ${x.notes}` : ""}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" c={PERMIT_STATE[x.state].color}>
-                    do {formatDate(x.valid_until)}
-                  </Text>
-                </Table.Td>
-                <Table.Td ta="right">
-                  <Tooltip label="Usuń dokument">
-                    <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń dokument" loading={del.isPending} onClick={() => ask({ title: "Usunąć dokument?", message: "Dokument zostanie usunięty z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id))}>
-                      <IconTrash size={14} />
+        <div className="ui-dlist">
+          {q.data.map((x) => (
+            <div key={x.id} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">{cap(x.kind_label)}</div>
+                <div className="ui-drow-meta">
+                  {[x.valid_from ? `wydany ${formatDate(x.valid_from)}` : null, x.notes].filter(Boolean).join(" · ") || "bez daty wydania"}
+                </div>
+              </div>
+              <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
+                <Text size="sm" className={x.state === "valid" ? undefined : "ui-warn"}>
+                  {PERMIT_STATE[x.state].label} do {formatDate(x.valid_until)}
+                </Text>
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon variant="default" size={30} aria-label={`Więcej: ${x.kind_label}`}>
+                      <IconDots size={16} />
                     </ActionIcon>
-                  </Tooltip>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setEditing(x)}>
+                      Popraw dane
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => askDel(x)}>
+                      Usuń dokument
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            </div>
+          ))}
+        </div>
       )}
-      <AddPermit employee={employee} opened={open} onClose={() => setOpen(false)} />
-    </Card>
+      {open && <AddPermit key="new" employee={employee} opened onClose={() => setOpen(false)} />}
+      {editing && <AddPermit key={editing.id} employee={employee} editing={editing} opened onClose={() => setEditing(null)} />}
+    </section>
   );
 }

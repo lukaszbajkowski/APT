@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge } from "./Mobile";
+import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge, SectionHead, FormDialog } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, CopyButton, Drawer, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconCheck, IconMail, IconUserOff, IconDevices } from "@tabler/icons-react";
+import { Alert, Anchor, Button, CopyButton, Drawer, Group, Stack, Text, TextInput } from "@mantine/core";
+import { IconAlertCircle, IconMail, IconUserOff, IconDevices } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
@@ -29,6 +29,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
   const [inviteOpen, setInviteOpen] = useState(false);
   // ten sam panel: zaproszenie (pierwszy klucz) albo „dodaj urządzenie” (kolejny klucz, obecne zostają)
   const [mode, setMode] = useState<"invite" | "device">("invite");
+  const [devOpen, setDevOpen] = useState(false);
   const qc = useQueryClient();
   const key = ["account", employeeId];
   const acc = useQuery({ queryKey: key, queryFn: () => api<Account>(`/employees/${employeeId}/account`) });
@@ -196,34 +197,32 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
     );
   }
   return (
-    <Card withBorder padding="lg">
-      <Group justify="space-between" mb="xs">
-        <Title order={4}>Konto pracownika</Title>
-        {a?.exists && (
-          <Badge
-            variant="light"
-            color={a.active ? (a.has_passkey ? "green" : "orange") : "gray"}
-            leftSection={a.active && a.has_passkey ? <IconCheck size={12} aria-hidden /> : undefined}
-          >
-            {!a.active ? "wyłączone" : a.has_passkey ? "aktywne" : "czeka na aktywację"}
-          </Badge>
-        )}
-      </Group>
+    <section className="ui-dsec">
+      <SectionHead
+        title="Konto pracownika"
+        extra={
+          a?.exists && (
+            <Text size="sm" c="dimmed" className={a.active && !a.has_passkey ? "ui-warn" : undefined}>
+              {!a.active ? "wyłączone" : a.has_passkey ? "aktywne" : "czeka na aktywację"}
+            </Text>
+          )
+        }
+      />
       {error && (
-        <Alert color="red" icon={<IconAlertCircle size={18} />} mb="sm">
+        <Alert color="red" icon={<IconAlertCircle size={18} />}>
           {error}
         </Alert>
       )}
       {a?.exists && (
-        <Text size="sm" c="dimmed" mb="sm">
+        <Text size="sm" c="dimmed">
           Login: {a.username}
-          {a.has_passkey ? " · Klucz dostępu" : ""}
+          {a.has_passkey ? " · klucz dostępu" : ""}
           {a.last_login_at ? ` · ostatnie logowanie ${formatDateTime(a.last_login_at)}` : ""}
           {a.invite_pending ? " · zaproszenie wysłane" : ""}
         </Text>
       )}
       {!a?.exists && (
-        <Text size="sm" c="dimmed" mb="sm">
+        <Text size="sm" c="dimmed">
           Pracownik nie ma konta. Wyślij zaproszenie – założy je sam na telefonie (twarz / odcisk palca).
         </Text>
       )}
@@ -237,69 +236,47 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
             />
-            <Button variant="default" leftSection={<IconMail size={16} />} loading={invite.isPending} onClick={() => invite.mutate()} style={{ alignSelf: "flex-start" }}>
+            <Button size="xs" variant="default" loading={invite.isPending} onClick={() => invite.mutate()} style={{ alignSelf: "flex-start" }}>
               {a?.exists ? "Wyślij zaproszenie ponownie" : "Wyślij zaproszenie"}
             </Button>
           </>
         )}
-        {activated && a?.active && (
-          <>
-            <TextInput
-              label="E-mail do linku „dodaj urządzenie” (opcjonalnie)"
-              description="Pracownik doda klucz na komputerze albo nowym telefonie. Obecne klucze zostają. Link działa 48 godzin, jeden raz."
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-            />
-            <Button variant="default" leftSection={<IconDevices size={16} />} loading={device.isPending} onClick={() => { setMode("device"); device.mutate(); }} style={{ alignSelf: "flex-start" }}>
-              Wyślij link „dodaj urządzenie”
-            </Button>
-          </>
-        )}
         {a?.exists && !a.active && (
-          <Button variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)} style={{ alignSelf: "flex-start" }}>
+          <Button size="xs" variant="default" loading={toggle.isPending} onClick={() => toggle.mutate(true)} style={{ alignSelf: "flex-start" }}>
             Włącz konto
           </Button>
         )}
         {a?.exists && a.active && (
-          <Stack gap="xs" p="sm" mt="xs" className="danger-zone">
-            <Text size="sm" fw={700} c="red">
-              Działania wymagające ostrożności
-            </Text>
+          // rzadkie działania jako linki tekstowe; niebezpieczne na czerwono i zawsze z potwierdzeniem
+          <Group gap="lg" wrap="wrap" style={{ rowGap: 6 }}>
             {activated && (
-              <Button
-                variant="outline"
-                color="red"
-                justify="flex-start"
-                h="auto"
-                py={8}
-                loading={reset.isPending}
+              <Anchor component="button" type="button" size="sm" fw={600} onClick={() => setDevOpen(true)}>
+                Dodaj urządzenie
+              </Anchor>
+            )}
+            {activated && (
+              <Anchor
+                component="button"
+                type="button"
+                size="sm"
+                fw={600}
+                c="red"
                 onClick={() =>
                   confirm({
-                    title: "Zresetować konto?",
-                    message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
-                    confirmLabel: "Zresetuj konto",
+                    title: "Zresetować dostęp?",
+                    message: "Usunąć klucze, hasło i kody tego konta oraz wylogować pracownika? Np. po zgubieniu telefonu. Potem wyślij nowe zaproszenie.\n\nJeśli wpisano e-mail pracownika, dostanie wiadomość o resecie.",
+                    confirmLabel: "Zresetuj dostęp",
                     danger: true,
                   }).then((ok) => ok && reset.mutate())
                 }
               >
-                <Stack gap={0} align="flex-start">
-                  <span>Zresetuj dostęp</span>
-                  <Text span size="xs" c="dimmed" fw={400} style={{ whiteSpace: "normal", textAlign: "left" }}>
-                    Np. po zgubieniu telefonu. Stare klucze przestaną działać.
-                  </Text>
-                </Stack>
-              </Button>
+                Zresetuj dostęp
+              </Anchor>
             )}
-            <Button variant="outline" color="red" justify="flex-start" h="auto" py={8} loading={toggle.isPending} onClick={askDisable}>
-              <Stack gap={0} align="flex-start">
-                <span>Wyłącz konto</span>
-                <Text span size="xs" c="dimmed" fw={400} style={{ whiteSpace: "normal", textAlign: "left" }}>
-                  Pracownik nie zaloguje się, dane zostają w kartotece.
-                </Text>
-              </Stack>
-            </Button>
-          </Stack>
+            <Anchor component="button" type="button" size="sm" fw={600} c="red" onClick={askDisable}>
+              Wyłącz konto
+            </Anchor>
+          </Group>
         )}
         {result && (
           <Alert color="green" variant="light" title={result.sent ? (mode === "device" ? "Link wysłany e-mailem" : "Zaproszenie wysłane e-mailem") : mode === "device" ? "Link „dodaj urządzenie”" : "Link do zaproszenia"}>
@@ -316,6 +293,31 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
           </Alert>
         )}
       </Stack>
-    </Card>
+      <FormDialog
+        opened={devOpen}
+        onClose={() => setDevOpen(false)}
+        title="Dodaj urządzenie"
+        subtitle="Pracownik doda klucz na komputerze albo nowym telefonie. Obecne klucze zostają."
+        size="sm"
+        primary={{ label: email.trim() ? "Wyślij link" : "Utwórz link", formId: "fd-device", loading: device.isPending }}
+      >
+        <form
+          id="fd-device"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            setMode("device");
+            device.mutate(undefined, { onSuccess: () => setDevOpen(false) });
+          }}
+        >
+          <TextInput
+            label="E-mail pracownika (opcjonalnie)"
+            description="Bez adresu dostaniesz link do przekazania. Link działa 48 godzin, jeden raz."
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+          />
+        </form>
+      </FormDialog>
+    </section>
   );
 }

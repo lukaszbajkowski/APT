@@ -111,6 +111,36 @@ def add_permit(
     return _out(x)
 
 
+@router.patch("/permits/{permit_id}", response_model=PermitOut)
+def update_permit(permit_id: int, body: PermitIn, ctx: PermitAuth, request: Request, db: DbSession) -> PermitOut:
+    x = db.get(WorkPermit, permit_id)
+    if x is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono dokumentu.")
+    e = get_visible(db, ctx.user, x.employee_id)
+    if body.valid_from and body.valid_until < body.valid_from:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ważne do – nie wcześniej niż ważne od.")
+    before = {"kind": x.kind, "valid_until": x.valid_until.isoformat()}
+    x.kind, x.valid_from, x.valid_until = body.kind, body.valid_from, body.valid_until
+    x.notes = (body.notes or "").strip() or None
+    audit(
+        db,
+        request,
+        "permit_updated",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "before": before,
+            "kind": body.kind,
+            "valid_until": body.valid_until.isoformat(),
+        },
+    )
+    db.commit()
+    db.refresh(x)
+    return _out(x)
+
+
 @router.delete("/permits/{permit_id}", status_code=204)
 def delete_permit(permit_id: int, ctx: PermitAuth, request: Request, db: DbSession) -> Response:
     x = db.get(WorkPermit, permit_id)

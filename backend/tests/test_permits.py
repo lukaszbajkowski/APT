@@ -28,6 +28,10 @@ def test_permit_flow_and_report(admin_client):
     ev = c.get("/api/dashboard/upcoming?days=30").json()
     assert any(x["kind"] == "permit" for x in ev)
     pid = c.get(f"/api/employees/{eid}/permits").json()[0]["id"]
+    # poprawka: nowy termin zmienia stan; zła kolejność dat odrzucona
+    r = c.patch(f"/api/permits/{pid}", json={"kind": "wiza", "valid_until": soon, "notes": " D123 "})
+    assert r.status_code == 200 and r.json()["state"] == "expiring" and r.json()["notes"] == "D123"
+    assert c.patch(f"/api/permits/{pid}", json={"kind": "wiza", "valid_from": far, "valid_until": soon}).status_code == 400
     assert c.delete(f"/api/permits/{pid}").status_code == 204
 
 

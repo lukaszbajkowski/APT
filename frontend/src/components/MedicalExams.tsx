@@ -2,14 +2,14 @@ import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog, SectionHead } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Button, Card, FileInput, Group,  SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Button, FileInput, Group, Menu, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconFileText, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconDots, IconFileText, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct } from "../api";
-import { EmptyState, Loading } from "./States";
+import { Loading } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 
@@ -27,17 +27,22 @@ function addMonths(iso: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function AddExam({ employee, opened, onClose }: { employee: Employee; opened: boolean; onClose: () => void }) {
+function AddExam({ employee, opened, onClose, editing }: { employee: Employee; opened: boolean; onClose: () => void; editing?: MedicalExam | null }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
-  const [kind, setKind] = useState<string>("wstepne");
-  const [date, setDate] = useState(today);
-  const [validUntil, setValidUntil] = useState("");
-  const [notes, setNotes] = useState("");
+  const [kind, setKind] = useState<string>(editing?.kind ?? "wstepne");
+  const [date, setDate] = useState(editing?.exam_date ?? today);
+  const [validUntil, setValidUntil] = useState(editing?.valid_until ?? "");
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: () => {
+      if (editing)
+        return api<MedicalExam>(`/medical-exams/${editing.id}`, {
+          method: "PATCH",
+          body: { kind, exam_date: date, valid_until: validUntil || null, notes: notes.trim() || null },
+        });
       const f = new FormData();
       f.append("kind", kind);
       f.append("exam_date", date);
@@ -49,7 +54,7 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["medical-exams", employee.id] });
       qc.invalidateQueries({ queryKey: ["upcoming"] });
-      notifications.show({ color: "green", message: "Dodano badanie." });
+      notifications.show({ color: "green", message: editing ? "Zapisano zmiany." : "Dodano badanie." });
       setFile(null);
       setNotes("");
       setValidUntil("");
@@ -58,7 +63,7 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
     onError: (e) => setError(errorText(e)),
   });
   return (
-    <FormDialog opened={opened} onClose={onClose} title="Dodaj badanie lekarskie" size="md" primary={{ label: "Zapisz", formId: "fd-medical", loading: save.isPending }}>
+    <FormDialog opened={opened} onClose={onClose} title={editing ? "Popraw badanie lekarskie" : "Dodaj badanie lekarskie"} size="md" primary={{ label: "Zapisz", formId: "fd-medical", loading: save.isPending }}>
       <form id="fd-medical"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
@@ -80,7 +85,7 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
             onChange={(v) => v && setKind(v)}
           />
           <SimpleGrid cols={2}>
-            <DateField label="Ważne od"  required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
+            <DateField label="Data badania" required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
             <DateField label="Ważne do"  min={date} value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
           </SimpleGrid>
           <Group gap={6}>
@@ -93,14 +98,14 @@ function AddExam({ employee, opened, onClose }: { employee: Employee; opened: bo
               </Button>
             ))}
           </Group>
-          <FileInput
+          {!editing && <FileInput
             label="Orzeczenie (skan)"
             placeholder="PDF, JPG lub PNG"
             accept="application/pdf,image/jpeg,image/png"
             clearable
             value={file}
             onChange={setFile}
-          />
+          />}
           <TextInput label="Uwagi" maxLength={500} value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
         </Stack>
       </form>
@@ -117,7 +122,9 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
     queryFn: () => api<MedicalExam[]>(`/employees/${employee.id}/medical-exams`),
   });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<MedicalExam | null>(null);
   const ask = useConfirm();
+  const askDel = (x: MedicalExam) => ask({ title: "Usunąć badanie?", message: "Badanie zostanie usunięte z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id));
   const del = useMutation({
     mutationFn: (id: number) => api(`/medical-exams/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -125,12 +132,12 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
       notifications.show({ color: "green", message: "Usunięto badanie." });
     },
   });
-  const latest = q.data?.[0];
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [sheet, setSheet] = useState<MedicalExam | null>(null);
   if (mobile) {
     const acts: SheetAction[] = [];
     if (sheet?.has_file) acts.push({ label: "Pokaż orzeczenie", icon: <IconFileText size={20} />, onClick: () => window.open(withAcct(`/api/medical-exams/${sheet.id}/file`), "_blank") });
+    if (sheet?.can_delete) acts.push({ label: "Popraw dane", icon: <IconPencil size={20} />, onClick: () => setEditing(sheet) });
     if (sheet?.can_delete) acts.push({ label: "Usuń badanie", icon: <IconTrash size={20} />, danger: true, onClick: () => ask({ title: "Usunąć badanie?", message: "Badanie zostanie usunięte z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(sheet.id)) });
     return (
       <>
@@ -154,76 +161,71 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
           ))}
         </Section>
         <ActionSheet opened={!!sheet} onClose={() => setSheet(null)} title={cap(sheet?.kind_label)} actions={acts} />
-        {canAdd && <AddExam employee={employee} opened={open} onClose={() => setOpen(false)} />}
+      {canAdd && open && <AddExam key="new" employee={employee} opened onClose={() => setOpen(false)} />}
+      {editing && <AddExam key={editing.id} employee={employee} editing={editing} opened onClose={() => setEditing(null)} />}
       </>
     );
   }
   return (
-    <Card withBorder padding="lg">
-      <SectionHead
-        title="Badania lekarskie"
-        extra={
-          latest && (
-            <Text size="sm" c="dimmed" className={["green","teal"].includes(STATE[latest.state].color) ? undefined : "ui-warn"}>
-              {latest.valid_until ? `${STATE[latest.state].label} do ${formatDate(latest.valid_until)}` : STATE[latest.state].label}
-            </Text>
-          )
-        }
-        action={canAdd ? { label: "Dodaj badanie", onClick: () => setOpen(true) } : undefined}
-      />
+    <section className="ui-dsec">
+      <SectionHead title="Badania lekarskie" action={canAdd ? { label: "Dodaj badanie", onClick: () => setOpen(true) } : undefined} />
       {q.isLoading && <Loading />}
       {q.data && q.data.length === 0 && (
-        <EmptyState compact title="Brak badań lekarskich"
-          text="Dodaj pierwsze badanie, aby śledzić termin ważności." />
+        <Text size="sm" c="dimmed">
+          Brak badań. Dodaj badanie, aby śledzić termin ważności.
+        </Text>
       )}
       {q.data && q.data.length > 0 && (
-        <Table verticalSpacing={6} fz="sm">
-          <Table.Tbody>
-            {q.data.map((x, i) => (
-              <Table.Tr key={x.id} opacity={i === 0 ? 1 : 0.7}>
-                <Table.Td>
-                  <Text size="sm" fw={500}>
-                    {cap(x.kind_label)}
+        <div className="ui-dlist">
+          {q.data.map((x, i) => (
+            <div key={x.id} className="ui-drow">
+              <div style={{ minWidth: 0 }}>
+                <div className="ui-drow-title">Badanie {x.kind_label.toLowerCase()}</div>
+                <div className="ui-drow-meta">
+                  z {formatDate(x.exam_date)} · dodał(a) {x.created_by_name ?? "—"}
+                  {x.notes ? ` · ${x.notes}` : ""}
+                </div>
+              </div>
+              <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
+                {i === 0 ? (
+                  <Text size="sm" className={x.state === "valid" || x.state === "none" ? undefined : "ui-warn"}>
+                    {x.valid_until ? `${STATE[x.state].label} do ${formatDate(x.valid_until)}` : STATE[x.state].label}
                   </Text>
-                  <Text size="xs" c="dimmed">
-                    dodał(a) {x.created_by_name ?? "—"}
-                    {x.notes ? ` · ${x.notes}` : ""}
+                ) : (
+                  <Text size="sm" c="dimmed">
+                    {x.valid_until ? `do ${formatDate(x.valid_until)} · poprzednie` : "poprzednie"}
                   </Text>
-                </Table.Td>
-                <Table.Td>od {formatDate(x.exam_date)}</Table.Td>
-                <Table.Td>
-                  {x.valid_until ? (
-                    <Text size="sm" c={i === 0 ? STATE[x.state].color : undefined}>
-                      do {formatDate(x.valid_until)}
-                    </Text>
-                  ) : (
-                    "—"
-                  )}
-                </Table.Td>
-                <Table.Td ta="right">
-                  <Group gap={4} justify="flex-end" wrap="nowrap">
-                    {x.has_file && (
-                      <Anchor href={withAcct(`/api/medical-exams/${x.id}/file`)} target="_blank" size="sm">
-                        <Group gap={4} wrap="nowrap">
-                          <IconFileText size={14} /> orzeczenie
-                        </Group>
-                      </Anchor>
-                    )}
-                    {x.can_delete && (
-                      <Tooltip label="Usuń badanie">
-                        <ActionIcon variant="subtle" color="red" size="sm" aria-label="Usuń badanie" loading={del.isPending} onClick={() => ask({ title: "Usunąć badanie?", message: "Badanie zostanie usunięte z kartoteki.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && del.mutate(x.id))}>
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+                )}
+                {x.has_file && (
+                  <Button size="xs" variant="default" component="a" href={withAcct(`/api/medical-exams/${x.id}/file`)} target="_blank">
+                    Orzeczenie
+                  </Button>
+                )}
+                {x.can_delete && (
+                  <Menu position="bottom-end" withinPortal>
+                    <Menu.Target>
+                      <ActionIcon variant="default" size={30} aria-label={`Więcej: badanie z ${formatDate(x.exam_date)}`}>
+                        <IconDots size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setEditing(x)}>
+                        Popraw dane
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => askDel(x)}>
+                        Usuń badanie
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+              </Group>
+            </div>
+          ))}
+        </div>
       )}
-      {canAdd && <AddExam employee={employee} opened={open} onClose={() => setOpen(false)} />}
-    </Card>
+      {canAdd && open && <AddExam key="new" employee={employee} opened onClose={() => setOpen(false)} />}
+      {editing && <AddExam key={editing.id} employee={employee} editing={editing} opened onClose={() => setEditing(null)} />}
+    </section>
   );
 }

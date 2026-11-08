@@ -226,6 +226,17 @@ def test_agency_account_access(admin_client, make_user):
         data={"kind": "okresowe", "exam_date": str(today + timedelta(days=1))},
     )
     assert bad.status_code == 400
+    # poprawka danych badania (plik zostaje)
+    r = ac.patch(
+        f"/api/medical-exams/{ex['id']}",
+        json={"kind": "okresowe", "exam_date": str(today), "valid_until": str(today + timedelta(days=400))},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["state"] == "valid" and r.json()["kind"] == "okresowe" and r.json()["has_file"]
+    assert ac.patch(
+        f"/api/medical-exams/{ex['id']}",
+        json={"kind": "okresowe", "exam_date": str(today), "valid_until": str(today - timedelta(days=1))},
+    ).status_code == 400
     assert ac.delete(f"/api/medical-exams/{ex['id']}").status_code == 204
 
 

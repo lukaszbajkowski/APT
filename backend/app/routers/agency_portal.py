@@ -190,6 +190,48 @@ def exam_file(exam_id: int, ctx: ExamView, request: Request, db: DbSession) -> R
     )
 
 
+class ExamPatch(BaseModel):
+    kind: Literal["wstepne", "okresowe", "kontrolne"]
+    exam_date: date
+    valid_until: date | None = None
+    notes: str | None = Field(default=None, max_length=500)
+
+
+@router.patch("/medical-exams/{exam_id}", response_model=ExamOut)
+def update_exam(exam_id: int, body: ExamPatch, ctx: ExamEdit, request: Request, db: DbSession) -> ExamOut:
+    """Poprawka badania (np. literówka w dacie). Prawa jak przy usuwaniu; plik orzeczenia bez zmian."""
+    x, e = _exam(db, ctx, exam_id)
+    if not _exam_out(x, ctx.user).can_delete:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="Możesz poprawić tylko badanie dodane przez siebie."
+        )
+    if body.exam_date > date.today():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Data badania nie może być z przyszłości.")
+    if body.valid_until is not None and body.valid_until < body.exam_date:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ważne do – nie wcześniej niż data badania.")
+    before = {"kind": x.kind, "exam_date": x.exam_date.isoformat(), "valid_until": x.valid_until.isoformat() if x.valid_until else None}
+    x.kind, x.exam_date, x.valid_until = body.kind, body.exam_date, body.valid_until
+    x.notes = (body.notes or "").strip() or None
+    audit(
+        db,
+        request,
+        "medical_exam_updated",
+        user=ctx.user,
+        entity_type="employee",
+        entity_id=e.id,
+        details={
+            "number": format_number(e.number),
+            "before": before,
+            "kind": body.kind,
+            "exam_date": body.exam_date.isoformat(),
+            "valid_until": body.valid_until.isoformat() if body.valid_until else None,
+        },
+    )
+    db.commit()
+    db.refresh(x)
+    return _exam_out(x, ctx.user)
+
+
 @router.delete("/medical-exams/{exam_id}", status_code=204)
 def delete_exam(exam_id: int, ctx: ExamEdit, request: Request, db: DbSession) -> Response:
     x, e = _exam(db, ctx, exam_id)

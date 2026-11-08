@@ -22,15 +22,17 @@ function Block({ mobile, title, children }: { mobile: boolean; title: string; ch
   if (mobile)
     return (
       <section className="ui-form-group">
-        <h2 className="ui-section-title">{title}</h2>
+        {title && <h2 className="ui-section-title">{title}</h2>}
         {children}
       </section>
     );
   return (
     <Card withBorder padding="lg">
-      <Title order={4} mb="sm">
-        {title}
-      </Title>
+      {title && (
+        <Title order={4} mb="sm">
+          {title}
+        </Title>
+      )}
       {children}
     </Card>
   );
@@ -327,7 +329,7 @@ export function EmployeeFormPage() {
         )}
 
         {showPersonal && (
-        <Block mobile={!!mobile} title="Dane osobowe">
+        <Block mobile={!!mobile} title={part ? "" : "Dane osobowe"}>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <TextInput
               label="Nazwisko"
@@ -440,7 +442,7 @@ export function EmployeeFormPage() {
         )}
 
         {showEmployment && (
-        <Block mobile={!!mobile} title="Zatrudnienie">
+        <Block mobile={!!mobile} title={part ? "" : "Zatrudnienie"}>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={16} verticalSpacing={16}>
             <Select
               label="APT (agencja pracy)"

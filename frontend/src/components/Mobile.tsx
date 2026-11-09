@@ -4,7 +4,7 @@
  * linia opisu + strzałka, akcje wiersza w arkuszu od dołu z podpisami, pusta sekcja = jeden wiersz,
  * akcje nieodwracalne osobno w ramce z opisem skutku, stan zawsze z ikoną i słowem.
  */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , type KeyboardEvent, useLayoutEffect} from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type TouchEvent , type KeyboardEvent, type PointerEvent, useLayoutEffect} from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
@@ -160,10 +160,13 @@ export function CompactEmpty({ title, text, action }: { title: string; text?: st
 }
 
 /* ——— przeciąganie arkusza w dół, żeby go zamknąć (jak w iOS) ——— */
-export function useDragToClose(onClose: () => void) {
-  const st = useRef<{ y: number; dy: number; el: HTMLElement | null }>({ y: 0, dy: 0, el: null });
+export function useDragToClose(onClose: () => void, moved?: { current: boolean }) {
+  // zdarzenia wskaźnika z przechwyceniem: gest zostaje przy uchwycie także gdy palec z niego zjedzie,
+  // a touch-action: none (CSS) nie pozwala przeglądarce przejąć go jako przewijania
+  const st = useRef<{ y: number; dy: number; id: number | null; el: HTMLElement | null }>({ y: 0, dy: 0, id: null, el: null });
   const finish = () => {
     const { el, dy } = st.current;
+    st.current.id = null;
     if (!el) return;
     st.current.el = null;
     el.style.transition = "transform 180ms ease-out";
@@ -177,18 +180,27 @@ export function useDragToClose(onClose: () => void) {
     } else el.style.transform = "";
   };
   return {
-    onTouchStart: (e: TouchEvent) => {
-      st.current = { y: e.touches[0].clientY, dy: 0, el: (e.currentTarget as HTMLElement).closest(".mantine-Drawer-content") };
-      if (st.current.el) st.current.el.style.transition = "none";
+    onPointerDown: (e: PointerEvent<HTMLElement>) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.currentTarget.closest<HTMLElement>(".mantine-Drawer-content");
+      st.current = { y: e.clientY, dy: 0, id: e.pointerId, el };
+      if (moved) moved.current = false;
+      if (el) el.style.transition = "none";
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* starsze przeglądarki – działa bez przechwycenia */
+      }
     },
-    onTouchMove: (e: TouchEvent) => {
-      const dy = Math.max(0, e.touches[0].clientY - st.current.y);
+    onPointerMove: (e: PointerEvent<HTMLElement>) => {
+      if (st.current.id !== e.pointerId) return;
+      const dy = Math.max(0, e.clientY - st.current.y);
       st.current.dy = dy;
+      if (moved && dy > 6) moved.current = true;
       if (st.current.el) st.current.el.style.transform = `translateY(${dy}px)`;
     },
-    // Safari może przerwać gest (touchcancel) – kończymy go tak samo jak puszczenie palca
-    onTouchEnd: finish,
-    onTouchCancel: finish,
+    onPointerUp: finish,
+    onPointerCancel: finish,
   };
 }
 
@@ -322,10 +334,12 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
 
 /** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć. */
 export function SheetHandle({ onClose, children }: { onClose: () => void; children?: ReactNode }) {
-  const drag = useDragToClose(onClose);
+  const moved = useRef(false);
+  const drag = useDragToClose(onClose, moved);
   return (
     <div className="ui-sheet-drag" {...drag}>
-      <button type="button" className="ui-sheet-grip" aria-label="Zamknij" onClick={onClose} />
+      {/* stuknięcie zamyka; przeciągnięcie obsługuje useDragToClose (krótkie – arkusz wraca, nie zamyka się) */}
+      <button type="button" className="ui-sheet-grip" aria-label="Zamknij" onClick={() => !moved.current && onClose()} />
       {children}
     </div>
   );

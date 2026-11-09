@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Stack, Table, Tabs, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Progress, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume, IconUsers, IconArchive } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -16,7 +16,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, useMobileHeader, useNavHeightVar, useSwipeAnywhere } from "../components/Mobile";
+import { cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, useMobileHeader, useNavHeightVar, useSwipeAnywhere } from "../components/Mobile";
 
 interface FileRef {
   id: number;
@@ -53,7 +53,7 @@ interface Recipient {
  * Załącznik komunikatu: karta pliku (ikona, pełna nazwa, liczba stron, „Pełny ekran”) i pod nią strony jako obrazy
  * ze znakiem wodnym, bez pobierania pliku. Dotknięcie nagłówka albo stron otwiera dokument na pełnym ekranie.
  */
-function InlineDoc({ base }: { base: string }) {
+function InlineDoc({ base, compact, size }: { base: string; compact?: boolean; size?: number }) {
   const t = useT();
   const info = useQuery({ queryKey: ["bc-doc", base], queryFn: () => api<{ pages: number; title: string }>(base), gcTime: 0 });
   const [full, setFull] = useState(false);
@@ -64,6 +64,23 @@ function InlineDoc({ base }: { base: string }) {
   const few = pages % 10 >= 2 && pages % 10 <= 4 && (pages % 100 < 12 || pages % 100 > 14);
   const count = pages === 1 ? t("1 strona") : `${pages} ${few ? t("strony") : t("stron")}`;
   const open = () => setFull(true);
+  if (compact)
+    // załącznik jak w poczcie: ikona, nazwa, liczba stron i rozmiar, „Otwórz” (pełny ekran, bez pobierania)
+    return (
+      <div className="ui-attach">
+        <span className="ui-attach-ico" aria-hidden>
+          {ext ?? "PLIK"}
+        </span>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span className="ui-doc-name" style={{ display: "block" }}>{breakableName(title)}</span>
+          <span className="ui-doc-meta">{[count, size ? `${Math.max(1, Math.round(size / 1024))} KB` : null].filter(Boolean).join(" · ")}</span>
+        </span>
+        <Button size="xs" variant="default" onClick={open}>
+          {t("Otwórz")}
+        </Button>
+        {full && <DocumentViewer docId={base} opened onClose={() => setFull(false)} base={base} variant="attachment" />}
+      </div>
+    );
   return (
     <div className="ui-doc">
       <UnstyledButton className="ui-doc-head" onClick={open} aria-label={`${t("Otwórz na pełnym ekranie")}: ${title}`}>
@@ -94,11 +111,11 @@ function InlineDoc({ base }: { base: string }) {
   );
 }
 
-function FileDocs({ files, staff }: { files: FileRef[]; staff?: boolean }) {
+function FileDocs({ files, staff, compact }: { files: FileRef[]; staff?: boolean; compact?: boolean }) {
   return (
     <>
       {files.map((f) => (
-        <InlineDoc key={f.id} base={staff ? `/broadcasts/files/${f.id}/preview` : `/me/broadcasts/files/${f.id}/preview`} />
+        <InlineDoc key={f.id} compact={compact} size={f.size} base={staff ? `/broadcasts/files/${f.id}/preview` : `/me/broadcasts/files/${f.id}/preview`} />
       ))}
     </>
   );
@@ -287,8 +304,21 @@ export function BroadcastsPage() {
   });
   const opts = (d?: DictionaryItem[]) => (d ?? []).filter((x) => x.is_active).map((x) => ({ value: String(x.id), label: x.name }));
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(() => (window.matchMedia("(max-width: 48em)").matches ? "" : "open"));
+  const remindAll = useMutation({
+    mutationFn: (id: number) => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
+    onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane do ${r.unread} ${r.unread === 1 ? "osoby" : "osób"} (powiadomienie w aplikacji: ${r.pushed}).` }),
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
   const all = list.data ?? [];
+  // komputer: gdy nic nie jest „w toku”, na start pokazujemy zakończone (raz, po wczytaniu listy)
+  const fellBack = useRef(false);
+  useEffect(() => {
+    if (!mobile && !fellBack.current && list.data && !archive && status === "open") {
+      fellBack.current = true;
+      if (list.data.length && list.data.every((x) => x.finished)) setStatus("done");
+    }
+  }, [mobile, list.data, archive, status]);
   const rows = all.filter(
     (x) =>
       (!q.trim() || `${x.subject} ${x.target}`.toLowerCase().includes(q.trim().toLowerCase())) &&
@@ -485,103 +515,78 @@ export function BroadcastsPage() {
       </Stack>
     );
   }
+  const bcSeg = archive ? "a" : status === "done" ? "done" : "open";
   return (
     <MasterDetail
       mobile={!!mobile}
       showList={showList}
       showRight={showRight}
+      head={
+        <div className="ui-inbox-head">
+          <Title order={1}>Komunikaty</Title>
+          <Button onClick={() => { setOpenId(null); setComposing(true); }}>Nowy komunikat</Button>
+        </div>
+      }
       list={
         <>
-  <Stack p="sm" gap="xs">
-    <Group justify="space-between">
-      <Title order={4}>Komunikaty do grup</Title>
-      <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setOpenId(null); setComposing(true); }} aria-label="Nowy komunikat">
-        <IconPlus size={18} />
-      </ActionIcon>
-    </Group>
-    <SegmentedControl
-      size="xs"
-      fullWidth
-      value={archive ? "a" : "w"}
-      onChange={(v) => {
-        setArchive(v === "a");
-        back();
-      }}
-      data={[
-        { value: "w", label: "Aktywne" },
-        { value: "a", label: "Archiwum" },
-      ]}
-    />
-    <TextInput size="xs" aria-label="Szukaj komunikatów" placeholder="Szukaj: temat lub odbiorcy" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
-    <SegmentedControl
-      size="xs"
-      fullWidth
-      value={status}
-      onChange={setStatus}
-      data={[
-        { value: "", label: "Wszystkie" },
-        { value: "open", label: "W toku" },
-        { value: "done", label: "Zakończone" },
-      ]}
-    />
-  </Stack>
-  <ScrollArea style={{ flex: 1 }}>
-    {list.isLoading && <Loading />}
-    {!list.isLoading && rows.length === 0 && (
-      q.trim() || status ? (
-        <EmptyState
-          search
-          title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak komunikatów w tym filtrze"}
-          text="Sprawdź pisownię albo pokaż wszystkie komunikaty."
-          action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
-        />
-      ) : archive ? (
-        <EmptyState title="Archiwum jest puste" text="Zakończone komunikaty trafiają tu po archiwizacji albo po 30 dniach bez ruchu." />
-      ) : (
-        <EmptyState
-          title="Nie wysłano jeszcze komunikatów"
-          text="Komunikat trafia do wszystkich aktywnych pracowników wybranej agencji lub wydziału."
-          action={{ label: "Nowy komunikat", onClick: () => { setOpenId(null); setComposing(true); } }}
-        />
-      )
-    )}
-    {rows.map((x) => (
-      <UnstyledButton
-        key={x.id}
-        w="100%"
-        p="sm"
-        onClick={() => {
-          setComposing(false);
-          setOpenId(x.id);
-        }}
-        bg={openId === x.id ? "var(--mantine-color-default-hover)" : undefined}
-      >
-        <Group wrap="nowrap" align="flex-start">
-          <Avatar radius="xl" color={x.kind === "document" ? "teal" : "blue"}>
-            {x.kind === "document" ? <IconFileText size={18} /> : <IconSpeakerphone size={18} />}
-          </Avatar>
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <Group justify="space-between" wrap="nowrap" gap={4}>
-              <Text size="sm" fw={600} lineClamp={1}>
-                {x.subject}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {shortTime(x.created_at)}
-              </Text>
-            </Group>
-            <Group justify="space-between" wrap="nowrap" gap={4}>
-              <Text size="xs" c="dimmed" lineClamp={1} style={{ flex: 1 }}>
-                {x.target}
-              </Text>
-              <Badge size="xs" variant="light" color={x.read >= x.total ? "teal" : "gray"}>
-                {x.read}/{x.total}
-              </Badge>
-            </Group>
-          </Box>
-        </Group>
-      </UnstyledButton>
-    ))}
-  </ScrollArea>
+          <div className="ui-inbox-tools">
+            <TextInput aria-label="Szukaj komunikatów" placeholder="Szukaj: temat lub odbiorcy" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+            <SegmentedControl
+              fullWidth
+              value={bcSeg}
+              onChange={(v) => {
+                setArchive(v === "a");
+                setStatus(v === "done" ? "done" : v === "open" ? "open" : "");
+                back();
+              }}
+              data={[
+                { value: "open", label: "W toku" },
+                { value: "done", label: "Zakończone" },
+                { value: "a", label: "Archiwum" },
+              ]}
+            />
+          </div>
+          <ScrollArea style={{ flex: 1 }}>
+            {list.isLoading && <Loading />}
+            {!list.isLoading && rows.length === 0 &&
+              (q.trim() ? (
+                <EmptyState
+                  search
+                  title={`Brak wyników dla „${q.trim()}”`}
+                  text="Sprawdź pisownię albo wybierz inny filtr."
+                  action={{ label: "Wyczyść wyszukiwanie", onClick: () => setQ("") }}
+                />
+              ) : archive ? (
+                <EmptyState title="Archiwum jest puste" text="Zakończone komunikaty trafiają tu po archiwizacji albo po 30 dniach bez ruchu." />
+              ) : (
+                <EmptyState title={status === "done" ? "Brak zakończonych komunikatów" : "Brak komunikatów w toku"} text="Komunikat trafia do wszystkich aktywnych pracowników wybranej agencji lub wydziału." />
+              ))}
+            {rows.map((x) => (
+              <UnstyledButton
+                key={x.id}
+                className="ui-inrow"
+                data-selected={openId === x.id || undefined}
+                aria-current={openId === x.id || undefined}
+                onClick={() => {
+                  setComposing(false);
+                  setOpenId(x.id);
+                }}
+              >
+                <span className="ui-inrow-name" style={{ fontWeight: 600 }}>
+                  {x.subject}
+                </span>
+                <span className="ui-inrow-time">{shortTime(x.created_at)}</span>
+                <span className="ui-inrow-sub">
+                  {cap(x.target)}
+                  {x.kind === "document" ? " · dokument do zapoznania" : ""}
+                </span>
+                <span className="ui-inrow-st">
+                  przeczytało {x.read} z {x.total}
+                  {x.finished ? " · zakończony" : ""}
+                </span>
+              </UnstyledButton>
+            ))}
+          </ScrollArea>
         </>
       }
       detail={
@@ -625,7 +630,7 @@ export function BroadcastsPage() {
             ]}
           />
           <TextInput label="Temat" maxLength={80} value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
-          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
+          <Textarea label={files.length ? "Treść (opcjonalna – dokument będzie widoczny w komunikacie)" : "Treść"} placeholder="Treść komunikatu" autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
           <FileInput
             label="Dokumenty (PDF, JPG, PNG – do 5 plików, po 15 MB). Pracownik zobaczy je otwarte w aplikacji, bez pobierania."
             placeholder="Dodaj pliki"
@@ -664,7 +669,7 @@ export function BroadcastsPage() {
     </>
   ) : b === null ? (
     <Stack h="100%" align="center" justify="center">
-      <Text c="dimmed">Wybierz komunikat lub dodaj nowy („+”)</Text>
+      <Text c="dimmed">Wybierz komunikat z listy.</Text>
     </Stack>
   ) : mobile ? (
     <Stack gap={16}>
@@ -680,7 +685,7 @@ export function BroadcastsPage() {
         {[
           <Stack key="c" gap={16}>
             {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
-            <FileDocs files={b.files} staff />
+            <FileDocs files={b.files} staff compact={b.kind !== "document"} />
             <Section title="Szczegóły">
               <ListRow title="Odbiorcy" description={b.target} />
               <ListRow title="Wysłał(a)" description={`${b.created_by_name ?? "—"} · ${formatDateTime(b.created_at)}`} />
@@ -707,55 +712,60 @@ export function BroadcastsPage() {
     </Stack>
   ) : (
     <>
-      <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
-        {mobile && (
-          <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
-            <IconArrowLeft size={18} />
-          </ActionIcon>
-        )}
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <Group gap={8} wrap="nowrap" align="center">
-            <Text fw={600} lineClamp={2}>
-              {b.subject}
+      <div className="ui-dchat-head" style={{ alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Title order={2} className="ui-dsec-title">
+            {b.subject}
+          </Title>
+          <Text size="sm" c="dimmed">
+            {cap(b.target)} ({b.total} {b.total === 1 ? "osoba" : "osób"}) · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
+            {b.kind === "document" ? " · dokument do zapoznania" : ""}
+          </Text>
+          <Group gap={12} mt={8} wrap="wrap">
+            <Progress value={b.total ? (b.read / b.total) * 100 : 0} w={140} size="sm" aria-label={`Przeczytało ${b.read} z ${b.total}`} />
+            <Text size="sm" style={{ whiteSpace: "nowrap" }}>
+              przeczytało <b>{b.read} z {b.total}</b>
             </Text>
-            {b.kind === "document" && (
-              <Badge size="sm" variant="light" style={{ flexShrink: 0 }}>
-                dokument
-              </Badge>
+            {tab === "read" ? (
+              <Anchor component="button" type="button" size="sm" fw={600} onClick={() => setTab("content")}>
+                Wróć do treści
+              </Anchor>
+            ) : (
+              b.read < b.total && (
+                <Anchor component="button" type="button" size="sm" fw={600} onClick={() => setTab("read")}>
+                  Pokaż, kto nie przeczytał
+                </Anchor>
+              )
             )}
           </Group>
-          <Text size="xs" c="dimmed">
-            {b.target} · {formatDateTime(b.created_at)} · {b.created_by_name ?? "—"}
-          </Text>
-        </Box>
-        <Button
-          size="xs"
-          variant="default"
-          loading={arch.isPending}
-          disabled={!archive && !b.finished}
-          title={!archive && !b.finished ? "Archiwizować można zakończone komunikaty: przeczytane przez wszystkich albo starsze niż 3 dni." : undefined}
-          onClick={() => arch.mutate({ id: b.id, on: !archive })}
-        >
-          {archive ? "Przywróć" : "Archiwizuj"}
-        </Button>
-      </Group>
-      <Tabs value={tab} onChange={(v) => setTab(v === "read" ? "read" : "content")}>
-        <Tabs.List px="sm">
-          <Tabs.Tab value="content">Treść</Tabs.Tab>
-          <Tabs.Tab value="read">Kto przeczytał ({b.read}/{b.total})</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+        </div>
+        <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
+          {!archive && b.read < b.total && (
+            <Button size="xs" loading={remindAll.isPending} onClick={() => remindAll.mutate(b.id)}>
+              Przypomnij nieodczytanym ({b.total - b.read})
+            </Button>
+          )}
+          <RowMenu
+            label={b.subject}
+            items={[
+              { label: "Kto przeczytał", icon: <IconUsers size={16} />, onClick: () => setTab("read") },
+              { label: archive ? "Przywróć z archiwum" : "Archiwizuj", icon: <IconArchive size={16} />, onClick: () => arch.mutate({ id: b.id, on: !archive }), hidden: !archive && !b.finished },
+            ]}
+          />
+        </Group>
+      </div>
       {tab === "read" ? (
         <RecipientsPane id={b.id} />
       ) : (
-        <ScrollArea style={{ flex: 1 }} p="md">
-          <Stack gap="md" pb="md">
+        <ScrollArea style={{ flex: 1 }}>
+          <Stack gap="md" p="lg" pb="xl" maw="calc(72ch + 2 * var(--mantine-spacing-lg))">
             {b.body && <Text style={{ whiteSpace: "pre-wrap" }}>{b.body}</Text>}
-            <FileDocs files={b.files} staff />
+            {/* komunikat: plik jako załącznik (otwiera się na pełnym ekranie); dokument do zapoznania: strony na miejscu */}
+            <FileDocs files={b.files} staff compact={b.kind !== "document"} />
             {!archive && (
               <Text size="xs" c="dimmed">
-                Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować ręcznie
-                (pracownik archiwizuje u siebie osobno), a po 30 dniach bez ruchu trafia do archiwum obu stron.
+                Komunikat jest zakończony, gdy przeczytali go wszyscy albo minęły 3 dni; zakończony możesz zarchiwizować (w „⋯”), a po 30 dniach bez
+                ruchu trafia do archiwum sam.
               </Text>
             )}
           </Stack>
@@ -848,7 +858,7 @@ function MyBroadcastsMobile() {
             </Stack>
           </Group>
           {m.body && <Text size="md" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</Text>}
-          <FileDocs files={m.files} />
+          <FileDocs files={m.files} compact={m.kind !== "document"} />
           {canSpeak() && (
             <Button
               variant="default"
@@ -1115,7 +1125,7 @@ function MyBroadcastsDesktop() {
       <ScrollArea style={{ flex: 1 }} p="md">
         <Stack gap="sm" pb="md">
           {m.body && <Text style={{ whiteSpace: "pre-wrap" }}>{m.body}</Text>}
-          <FileDocs files={m.files} />
+          <FileDocs files={m.files} compact={m.kind !== "document"} />
           {canSpeak() && (
             <Group>
               <Button

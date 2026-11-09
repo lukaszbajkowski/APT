@@ -1093,7 +1093,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-inrow[data-unread] .ui-inrow-pv{color:var(--mantine-color-text)}
 .ui-inrow-st{grid-column:1/-1;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
 /* rozmowa */
-.ui-chat-head{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--apt-line)}
+.ui-dchat-head{flex:none;display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--apt-line)}
 .ui-chat-name{font-weight:600;font-size:15px;line-height:22px;color:inherit;text-decoration:underline;text-decoration-color:var(--mantine-color-default-border);text-underline-offset:3px}
 .ui-chat-name:hover{text-decoration-color:currentColor}
 .ui-chat-day{align-self:center;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);margin:var(--s-3) 0 var(--s-1)}
@@ -1119,3 +1119,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 @keyframes ui-mic-eq{0%,100%{height:4px}50%{height:16px}}
 @media (prefers-reduced-motion:reduce){.ui-mic[data-on]::before,.ui-mic[data-on]::after{display:none}.ui-mic-eq i{animation:none;height:10px}}
 @media (max-width:48em){.ui-mic{width:44px;height:44px}}
+/* załącznik komunikatu (wariant „jak w poczcie”) */
+.ui-attach{display:flex;align-items:center;gap:var(--s-3);border:1px solid var(--apt-line);border-radius:10px;padding:12px 14px;background:var(--mantine-color-body);max-width:72ch}
+.ui-attach-ico{width:40px;height:48px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--mantine-color-red-light);color:var(--mantine-color-red-text)}

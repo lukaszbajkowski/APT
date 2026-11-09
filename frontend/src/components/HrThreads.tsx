@@ -260,7 +260,7 @@ function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: n
   const seen = (m: { id: number; created_at: string }) => !!t?.other_seen_at && m.id === lastMineId && t.other_seen_at >= m.created_at;
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
-      <div className="ui-chat-head">
+      <div className="ui-dchat-head">
         <div style={{ minWidth: 0, flex: 1 }}>
           {staff && t?.employee_id ? (
             <Anchor component={Link} to={`/pracownicy/${t.employee_id}`} className="ui-chat-name">

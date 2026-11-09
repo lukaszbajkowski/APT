@@ -1068,3 +1068,5 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 [data-mantine-color-scheme="dark"] .mantine-Modal-content{box-shadow:0 24px 64px rgba(0,0,0,.7),0 4px 16px rgba(0,0,0,.5);border:1px solid var(--mantine-color-default-border)}
 [data-mantine-color-scheme="dark"] .mantine-Drawer-content{box-shadow:0 -8px 40px rgba(0,0,0,.6)}
 [data-mantine-color-scheme="dark"] .mantine-Notification-root{box-shadow:0 10px 30px rgba(0,0,0,.6)}
+/* uchwyt i nagłówek arkusza: gest należy do arkusza (nadpisuje touch-action: manipulation przycisków) */
+.ui-sheet-drag, .ui-sheet-drag * { touch-action: none !important; }

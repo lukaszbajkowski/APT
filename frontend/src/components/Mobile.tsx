@@ -162,6 +162,20 @@ export function CompactEmpty({ title, text, action }: { title: string; text?: st
 /* ——— przeciąganie arkusza w dół, żeby go zamknąć (jak w iOS) ——— */
 export function useDragToClose(onClose: () => void) {
   const st = useRef<{ y: number; dy: number; el: HTMLElement | null }>({ y: 0, dy: 0, el: null });
+  const finish = () => {
+    const { el, dy } = st.current;
+    if (!el) return;
+    st.current.el = null;
+    el.style.transition = "transform 180ms ease-out";
+    if (dy > 80) {
+      el.style.transform = "translateY(100%)";
+      window.setTimeout(() => {
+        onClose();
+        el.style.transform = "";
+        el.style.transition = "";
+      }, 170);
+    } else el.style.transform = "";
+  };
   return {
     onTouchStart: (e: TouchEvent) => {
       st.current = { y: e.touches[0].clientY, dy: 0, el: (e.currentTarget as HTMLElement).closest(".mantine-Drawer-content") };
@@ -172,19 +186,9 @@ export function useDragToClose(onClose: () => void) {
       st.current.dy = dy;
       if (st.current.el) st.current.el.style.transform = `translateY(${dy}px)`;
     },
-    onTouchEnd: () => {
-      const { el, dy } = st.current;
-      if (!el) return;
-      el.style.transition = "transform 180ms ease-out";
-      if (dy > 80) {
-        el.style.transform = "translateY(100%)";
-        window.setTimeout(() => {
-          onClose();
-          el.style.transform = "";
-          el.style.transition = "";
-        }, 170);
-      } else el.style.transform = "";
-    },
+    // Safari może przerwać gest (touchcancel) – kończymy go tak samo jak puszczenie palca
+    onTouchEnd: finish,
+    onTouchCancel: finish,
   };
 }
 

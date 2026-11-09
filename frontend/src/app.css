@@ -1030,3 +1030,14 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-embed-form .mantine-SimpleGrid-root{row-gap:20px!important;align-items:start}
 .ui-embed-form .mantine-Textarea-root{margin-top:20px}
 .ui-embed-form .mantine-SegmentedControl-root{min-height:36px;align-items:stretch}
+/* warstwy rozwijane: bez ramki fokusu (pozycję przy klawiaturze pokazuje podświetlenie), z cieniem i lekką ramką */
+.mantine-Menu-dropdown,.mantine-Popover-dropdown,.mantine-Combobox-dropdown{
+  box-shadow:0 8px 24px rgba(30,20,10,.14),0 2px 6px rgba(30,20,10,.08)!important;
+  border:1px solid var(--mantine-color-default-border);
+}
+[data-mantine-color-scheme="dark"] :is(.mantine-Menu-dropdown,.mantine-Popover-dropdown,.mantine-Combobox-dropdown){
+  box-shadow:0 10px 28px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.4)!important;
+}
+:is(.mantine-Menu-dropdown,.mantine-Popover-dropdown,.mantine-Combobox-dropdown):focus,
+:is(.mantine-Menu-dropdown,.mantine-Popover-dropdown,.mantine-Combobox-dropdown):focus-visible,
+[aria-expanded="true"]:is(.mantine-ActionIcon-root,.mantine-Button-root):focus-visible{outline:none!important}

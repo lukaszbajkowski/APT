@@ -779,6 +779,18 @@ export function BroadcastsPage() {
   );
 }
 
+/** Wyraźne oznaczenie dokumentu do zapoznania (u pracownika): bursztyn, dopóki nie potwierdzi. */
+function KindMark({ kind, done }: { kind: "info" | "document"; done: boolean }) {
+  const t = useT();
+  if (kind !== "document") return null;
+  return (
+    <span className="ui-kindmark" data-done={done || undefined}>
+      <IconFileText size={16} aria-hidden />
+      {done ? t("Dokument – zapoznanie potwierdzone") : t("Dokument – potwierdź zapoznanie się")}
+    </span>
+  );
+}
+
 interface Mine {
   id: number;
   archived: boolean;
@@ -851,9 +863,9 @@ function MyBroadcastsMobile() {
               <Title order={1} size="h3" lh={1.25} style={{ overflowWrap: "anywhere" }}>
                 {m.subject}
               </Title>
-              {m.kind === "document" && <Text size="sm" c="dimmed">{t("Dokument do zapoznania się")}</Text>}
+              <KindMark kind={m.kind} done={!!m.read_at} />
               <Group gap={8}>
-                {m.read_at ? <StatusBadge tone="ok">{t("Potwierdzone")}</StatusBadge> : <StatusBadge tone="wait">{t("Do potwierdzenia")}</StatusBadge>}
+                {m.kind !== "document" && (m.read_at ? <StatusBadge tone="ok">{t("Potwierdzone")}</StatusBadge> : <StatusBadge tone="wait">{t("Do potwierdzenia")}</StatusBadge>)}
               </Group>
             </Stack>
           </Group>
@@ -934,7 +946,10 @@ function MyBroadcastsMobile() {
                           <span className="ui-thread-time">{shortTime(x.sent_at)}</span>
                         </span>
                         <span className="ui-thread-line">
-                          <span className="ui-thread-snip">{x.body || (x.files.length ? x.files[0].name : "")}</span>
+                          <span className="ui-thread-snip">
+                            {x.kind === "document" && !x.read_at && <span className="ui-warn">{t("Dokument do potwierdzenia")} · </span>}
+                            {x.body || (x.files.length ? x.files[0].name : "")}
+                          </span>
                           {!x.read_at ? <span className="ui-thread-dot" role="img" aria-label={t("Nieprzeczytane")} /> : null}
                         </span>
                       </span>
@@ -1077,6 +1092,7 @@ function MyBroadcastsDesktop() {
             </Group>
             <Group justify="space-between" wrap="nowrap" gap={4}>
               <Text size={mobile ? "sm" : "xs"} c="dimmed" lineClamp={1} style={{ flex: 1 }}>
+                {x.kind === "document" && !x.read_at && <span className="ui-warn">{t("Dokument do potwierdzenia")} · </span>}
                 {x.body || (x.files.length ? x.files[0].name : "")}
               </Text>
               {!x.read_at ? (
@@ -1115,7 +1131,15 @@ function MyBroadcastsDesktop() {
           <Text size="xs" c="dimmed">
             {t("Kadry")} · {formatDateTime(m.sent_at)}
           </Text>
+          <Box mt={6}>
+            <KindMark kind={m.kind} done={!!m.read_at} />
+          </Box>
         </Box>
+        {!m.read_at && m.kind === "document" && (
+          <Button size="xs" loading={read.isPending} onClick={() => read.mutate(m.id)}>
+            {t("Zapoznałem(-am) się z dokumentem")}
+          </Button>
+        )}
         {m.read_at && (!m.archived || m.own_archived) && (
           <Button size="xs" variant="default" loading={arch.isPending} onClick={() => arch.mutate({ id: m.id, on: !m.own_archived })}>
             {m.own_archived ? t("Przywróć") : t("Archiwizuj")}
@@ -1157,17 +1181,20 @@ function MyBroadcastsDesktop() {
           )}
         </Stack>
       </ScrollArea>
-      <Box p="sm" style={{ borderTop: "1px solid var(--apt-line)" }}>
-        {!m.read_at ? (
-          <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
-            {m.kind === "document" ? t("Zapoznałem(-am) się z dokumentem") : t("Przeczytałem(-am)")}
-          </Button>
-        ) : (
-          <Badge variant="light" color="teal">
-            {t("Potwierdzone")} · {formatDateTime(m.read_at)}
-          </Badge>
-        )}
-      </Box>
+      {/* dokument: potwierdzenie jest na górze, przy znaczniku – tu tylko zwykły komunikat albo data potwierdzenia */}
+      {(m.read_at || m.kind !== "document") && (
+        <Box p="sm" style={{ borderTop: "1px solid var(--apt-line)" }}>
+          {!m.read_at ? (
+            <Button fullWidth loading={read.isPending} onClick={() => read.mutate(m.id)}>
+              {t("Przeczytałem(-am)")}
+            </Button>
+          ) : (
+            <Text size="sm" c="dimmed">
+              {t("Potwierdzone")} · {formatDateTime(m.read_at)}
+            </Text>
+          )}
+        </Box>
+      )}
     </>
   )}
         </>

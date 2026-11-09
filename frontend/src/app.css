@@ -43,6 +43,29 @@ html, body { background: var(--apt-ground); }
   outline-offset: 2px;
 }
 
+/* menu „⋯”, listy wyboru i okienka: bez ramki fokusu z klawiatury (pozycje podświetla się tłem) i z cieniem, żeby wychodziły na pierwszy plan */
+.mantine-Menu-dropdown :focus-visible,
+.mantine-Menu-dropdown:focus-visible,
+.mantine-Popover-dropdown :focus-visible,
+.mantine-Combobox-dropdown :focus-visible,
+[aria-haspopup="menu"]:focus-visible,
+[aria-haspopup="listbox"][aria-expanded="true"]:focus-visible,
+[aria-expanded="true"][data-expanded]:focus-visible {
+  outline: none !important;
+}
+:root { --apt-pop-shadow: 0 10px 28px rgba(20, 14, 10, 0.16), 0 2px 6px rgba(20, 14, 10, 0.10); }
+:root[data-mantine-color-scheme="dark"] { --apt-pop-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.45); }
+.mantine-Menu-dropdown,
+.mantine-Popover-dropdown,
+.mantine-Combobox-dropdown,
+.mantine-Select-dropdown,
+.mantine-MultiSelect-dropdown,
+.mantine-Autocomplete-dropdown,
+.mantine-DatePickerInput-dropdown,
+.mantine-Tooltip-tooltip {
+  box-shadow: var(--apt-pop-shadow) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
@@ -473,7 +496,7 @@ html, body { background: var(--apt-ground); }
     padding: 12px 12px calc(16px + env(safe-area-inset-bottom)) !important;
     border-radius: 18px 18px 0 0 !important;
     border: 0 !important;
-    box-shadow: none !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.28) !important;
     z-index: 401 !important;
     background: var(--apt-surface) !important;
     animation: sheet-up 200ms ease-out;

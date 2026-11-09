@@ -3,10 +3,10 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Menu, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { IconCertificate, IconChevronDown, IconChevronUp, IconFilter, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
+import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -17,7 +17,7 @@ import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { ActionSheet, Chips, ListRow, PageHead, PickSheet, Segments, SheetHandle, StatusBadge as Status } from "../components/Mobile";
+import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status } from "../components/Mobile";
 
 const PAGE_SIZE = 50;
 
@@ -160,6 +160,14 @@ export function EmployeesPage() {
     placeholderData: keepPreviousData,
   });
 
+  // „Wymaga uwagi” dla widocznej strony – jedno zapytanie
+  const pageIds = (list.data?.items ?? []).map((e) => e.id);
+  const attention = useQuery({
+    queryKey: ["employees-attention", pageIds],
+    queryFn: () => api<Record<number, string[]>>(`/employees/attention?${pageIds.map((i) => `ids=${i}`).join("&")}`),
+    enabled: !mobile && canPrint && pageIds.length > 0,
+    placeholderData: keepPreviousData,
+  });
   const sortHeader = (key: string, label: string) => {
     const active = sort === key || sort === `-${key}`;
     const desc = sort === `-${key}`;
@@ -177,31 +185,6 @@ export function EmployeesPage() {
     );
   };
 
-  const exportMenu = list.data ? (
-        <Menu position="bottom-end" width={260}>
-          <Menu.Target>
-            <Button size="xs" variant="default" leftSection={<IconFileSpreadsheet size={14} />} loading={exporting}>
-              Eksport ({list.data.total})
-            </Button>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Label>Eksport wyników z bieżącymi filtrami</Menu.Label>
-            <Menu.Item onClick={() => exportXlsx(false)}>Pobierz listę (Excel)</Menu.Item>
-            <Menu.Item onClick={() => exportXlsx(false, "pdf")}>Pobierz listę (PDF)</Menu.Item>
-            {staff && (
-              <>
-                <Menu.Divider />
-                <Menu.Item color="orange" onClick={() => exportXlsx(true)}>
-                  Z numerami PESEL (Excel)
-                </Menu.Item>
-                <Menu.Item color="orange" onClick={() => exportXlsx(true, "pdf")}>
-                  Z numerami PESEL (PDF)
-                </Menu.Item>
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>
-  ) : null;
 
   if (mobile) {
     const STATUS = [
@@ -539,50 +522,45 @@ export function EmployeesPage() {
     );
   }
 
+  const countText = list.data
+    ? list.data.total === 0
+      ? params.toString() ? "brak wyników" : "brak pracowników"
+      : status === "active" && !params.toString().replace(/(^|&)sort=[^&]*/, "")
+        ? `${list.data.total} aktywnych`
+        : `znaleziono: ${list.data.total}`
+    : null;
   return (
-    <Stack>
-      <Group justify="space-between">
-        <div>
-          <Title order={2}>Pracownicy</Title>
-          {list.data && (
-            <Text size="sm" c="dimmed" role="status" aria-live="polite">
-              {list.data.total === 0 ? (params.toString() ? "Brak wyników" : "Brak pracowników") : `Znaleziono: ${list.data.total}`}
+    <Stack gap="md">
+      <div className="ui-inbox-head">
+        <Group gap={12} align="baseline">
+          <Title order={1}>Pracownicy</Title>
+          {countText && (
+            <Text c="dimmed" role="status" aria-live="polite">
+              {countText}
             </Text>
           )}
-        </div>
+        </Group>
         {staff && (
-          <Menu position="bottom-end" width={290}>
-            <Menu.Target>
-              {mobile ? (
-                <ActionIcon size={44} radius="md" aria-label="Dodaj pracownika">
-                  <IconPlus size={22} />
-                </ActionIcon>
-              ) : (
-                <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
-                  Dodaj pracownika
-                </Button>
-              )}
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item component={Link} to="/pracownicy/nowy" leftSection={<IconPencil size={16} />}>
-                Wpisz ręcznie
-              </Menu.Item>
-              <Menu.Item component={Link} to="/pracownicy/import" leftSection={<IconFileSpreadsheet size={16} />}>
-                Importuj z arkusza (Excel, Numbers, CSV)
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <Group gap={8}>
+            <Button variant="default" component={Link} to="/pracownicy/import">
+              Import z arkusza
+            </Button>
+            <Button component={Link} to="/pracownicy/nowy">
+              Dodaj pracownika
+            </Button>
+          </Group>
         )}
-      </Group>
+      </div>
 
-      <Group align="flex-end" gap="sm">
+      {/* pasek filtrów: najczęstsze filtry zawsze widoczne, rzadsze pod „Więcej filtrów” */}
+      <Group align="center" gap="sm" wrap="wrap">
         <TextInput
           aria-label="Szukaj pracownika"
-          placeholder="Nazwisko, imię lub nr karty"
+          placeholder="Nazwisko lub nr karty"
           leftSection={<IconSearch size={16} aria-hidden />}
           value={q}
           onChange={(e) => update({ q: e.currentTarget.value })}
-          w={{ base: "100%", sm: 320 }}
+          style={{ flex: "1 1 190px", maxWidth: 340, minWidth: 190 }}
         />
         <SegmentedControl
           value={status}
@@ -593,79 +571,58 @@ export function EmployeesPage() {
             { value: "all", label: "Wszyscy" },
           ]}
         />
-        <Button
-          variant={filtersOpen || activeFilters ? "light" : "default"}
-          leftSection={<IconFilter size={16} />}
-          rightSection={filtersOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-          onClick={() => setFiltersOpen((o) => !o)}
-        >
-          Filtry{activeFilters ? ` (${activeFilters})` : ""}
-        </Button>
-      </Group>
-      <Collapse in={filtersOpen}>
-        <Group align="flex-end" gap="sm">
         <Select
-          label="APT (agencja pracy)"
-          placeholder="Wszystkie"
+          aria-label="Agencja"
+          placeholder="Agencja"
           clearable
           searchable
-          w={{ base: "100%", sm: 200 }}
+          w={150}
           data={options(agencies.data, agency ? Number(agency) : null)}
           value={agency}
           onChange={(v) => update({ agency: v })}
         />
         <Select
-          label="Wydział"
-          placeholder="Wszystkie"
+          aria-label="Wydział"
+          placeholder="Wydział"
           clearable
           searchable
-          w={{ base: "100%", sm: 200 }}
+          w={150}
           data={options(departments.data, department ? Number(department) : null)}
           value={department}
           onChange={(v) => update({ department: v, position: null })}
         />
-        <Select
-          label="Stanowisko"
-          placeholder="Wszystkie"
-          clearable
-          searchable
-          w={{ base: "100%", sm: 200 }}
-          data={options(
-            positions.data,
-            position ? Number(position) : null,
-            (p) => !department || p.department_id === null || p.department_id === Number(department),
-          )}
-          value={position}
-          onChange={(v) => update({ position: v })}
-        />
         <MultiSelect
-          label="Braki danych"
-          placeholder={missing.length ? undefined : "—"}
+          aria-label="Braki danych"
+          placeholder={missing.length ? undefined : "Braki"}
           clearable
-          w={{ base: "100%", sm: 230 }}
+          w={missing.length ? 240 : 132}
           data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
           value={missing}
           onChange={(v) => update({ missing: v })}
         />
+        <Anchor component="button" type="button" fw={600} size="sm" onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen}>
+          {filtersOpen ? "Mniej filtrów" : position ? "Więcej filtrów (1)" : "Więcej filtrów"}
+        </Anchor>
+      </Group>
+      <Collapse in={filtersOpen}>
+        <Group align="flex-end" gap="sm">
+          <Select
+            label="Stanowisko"
+            placeholder="Wszystkie"
+            clearable
+            searchable
+            w={220}
+            data={options(
+              positions.data,
+              position ? Number(position) : null,
+              (p) => !department || p.department_id === null || p.department_id === Number(department),
+            )}
+            value={position}
+            onChange={(v) => update({ position: v })}
+          />
           <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
         </Group>
       </Collapse>
-
-      {canPrint && list.data && list.data.total > 0 && (
-        <Group justify="space-between" gap="xs">
-          <Text size="xs" c="dimmed" visibleFrom="sm" style={{ visibility: selected.size ? "hidden" : undefined }}>
-            Zaznacz pola przy nazwiskach, aby drukować karty lub wystawiać dokumenty. Shift + kliknięcie zaznacza zakres.
-          </Text>
-          <Group gap="xs">
-            {!mobile && selected.size === 0 && (
-              <Button size="xs" variant="subtle" loading={selectingAll} onClick={selectAllResults}>
-                Zaznacz wszystkie ({list.data.total})
-              </Button>
-            )}
-            {exportMenu}
-          </Group>
-        </Group>
-      )}
 
       {list.isLoading && <Loading />}
       {list.error && <ErrorState error={list.error} onRetry={() => list.refetch()} />}
@@ -724,8 +681,9 @@ export function EmployeesPage() {
       )}
 
       {list.data && list.data.items.length > 0 && !mobile && (
+        <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
         <Table.ScrollContainer minWidth={900}>
-          <Table highlightOnHover verticalSpacing={6}>
+          <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Thead>
               <Table.Tr>
                 {canPrint && (
@@ -748,13 +706,13 @@ export function EmployeesPage() {
                     />
                   </Table.Th>
                 )}
-                <Table.Th w={52} />
-                {sortHeader("number", "Nr")}
                 {sortHeader("name", "Nazwisko i imię")}
-                <Table.Th>APT</Table.Th>
+                {sortHeader("number", "Nr")}
+                <Table.Th>Agencja</Table.Th>
                 <Table.Th>Wydział</Table.Th>
                 <Table.Th>Stanowisko</Table.Th>
                 {sortHeader("hire_date", "Zatrudniony")}
+                {canPrint && <Table.Th>Wymaga uwagi</Table.Th>}
                 {status !== "active" && <Table.Th>Status</Table.Th>}
               </Table.Tr>
             </Table.Thead>
@@ -777,22 +735,25 @@ export function EmployeesPage() {
                     </Table.Td>
                   )}
                   <Table.Td>
-                    <EmployeePhoto employee={e} width={30} />
+                    <Group gap={10} wrap="nowrap">
+                      <span style={{ width: 28, flex: "none" }}>
+                        <EmployeePhoto employee={e} width={28} />
+                      </span>
+                      <Link
+                        to={`/pracownicy/${e.id}`}
+                        onClick={(ev) => ev.stopPropagation()}
+                        style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}
+                      >
+                        {e.last_name} {e.first_name}
+                      </Link>
+                    </Group>
                   </Table.Td>
-                  <Table.Td ff="monospace">{e.number_display}</Table.Td>
-                  <Table.Td>
-                    <Link
-                      to={`/pracownicy/${e.id}`}
-                      onClick={(ev) => ev.stopPropagation()}
-                      style={{ color: "inherit", textDecoration: "none", fontWeight: 500 }}
-                    >
-                      {e.last_name} {e.first_name}
-                    </Link>
-                  </Table.Td>
+                  <Table.Td className="ui-mono">{e.number_display}</Table.Td>
                   <Table.Td>{e.agency?.name ?? "—"}</Table.Td>
                   <Table.Td>{e.department?.name ?? "—"}</Table.Td>
                   <Table.Td>{e.position?.name ?? "—"}</Table.Td>
                   <Table.Td>{formatDate(e.hire_date)}</Table.Td>
+                  {canPrint && <Table.Td className="ui-warn">{(attention.data?.[e.id] ?? []).join(", ")}</Table.Td>}
                   {status !== "active" && (
                     <Table.Td>
                       <StatusBadge active={e.status === "active"} />
@@ -803,6 +764,7 @@ export function EmployeesPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        </Paper>
       )}
 
       {canPrint && list.data && !mobile && (
@@ -832,6 +794,43 @@ export function EmployeesPage() {
             </Tooltip>
           )}
         </SelectionBar>
+      )}
+
+      {list.data && list.data.total > 0 && (
+        <Group justify="space-between" gap="sm">
+          <Text size="sm" c="dimmed">
+            {list.data.total === 1 ? "1 osoba" : `${list.data.total} osób`}
+            {canPrint && " · Shift + kliknięcie zaznacza zakres"}
+            {canPrint && selected.size === 0 && list.data.total > 1 && (
+              <>
+                {" · "}
+                <Anchor component="button" type="button" size="sm" onClick={selectAllResults}>
+                  zaznacz wszystkich ({list.data.total})
+                </Anchor>
+              </>
+            )}
+          </Text>
+          <Group gap={8}>
+            <Text size="sm" c="dimmed">
+              Eksport listy z bieżącymi filtrami:
+            </Text>
+            <Button size="xs" variant="default" loading={exporting} onClick={() => exportXlsx(false)}>
+              Excel
+            </Button>
+            <Button size="xs" variant="default" loading={exporting} onClick={() => exportXlsx(false, "pdf")}>
+              PDF
+            </Button>
+            {staff && (
+              <RowMenu
+                label="eksport z numerami PESEL"
+                items={[
+                  { label: "Excel z numerami PESEL", onClick: () => exportXlsx(true) },
+                  { label: "PDF z numerami PESEL", onClick: () => exportXlsx(true, "pdf") },
+                ]}
+              />
+            )}
+          </Group>
+        </Group>
       )}
 
       {list.data && list.data.total > PAGE_SIZE && (

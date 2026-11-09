@@ -506,6 +506,63 @@ def list_employees(
     )
 
 
+@router.get("/attention", response_model=dict[int, list[str]])
+def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))], db: DbSession, ids: Annotated[list[int], Query(max_length=200)]) -> dict[int, list[str]]:
+    """„Wymaga uwagi” dla wierszy listy (jedno zapytanie na stronę): krótkie, konkretne powody."""
+    from datetime import timedelta
+
+    from app.models import ChecklistItem, MedicalExam, WorkPermit
+
+    today = date.today()
+    visible = list(db.scalars(apply_scope(select(Employee).where(Employee.id.in_(ids)), ctx.user)).unique())
+    out: dict[int, list[str]] = {e.id: [] for e in visible}
+    vid = list(out)
+    if not vid:
+        return out
+    fmt = lambda d: d.strftime("%d.%m")  # noqa: E731
+    # ostatni dokument pobytowy i ostatnie badanie każdej osoby
+    permits: dict[int, date] = {}
+    for eid, until in db.execute(select(WorkPermit.employee_id, func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id.in_(vid)).group_by(WorkPermit.employee_id)):
+        permits[eid] = until
+    exams: dict[int, date | None] = {}
+    for eid, until in db.execute(select(MedicalExam.employee_id, func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id.in_(vid)).group_by(MedicalExam.employee_id)):
+        exams[eid] = until
+    # zadania po terminie (bez spełnionych automatycznie)
+    overdue: dict[int, int] = {}
+    by_id = {e.id: e for e in visible}
+    for it in db.scalars(
+        select(ChecklistItem).where(
+            ChecklistItem.employee_id.in_(vid),
+            ChecklistItem.done_at.is_(None),
+            ChecklistItem.skipped.is_(False),
+            ChecklistItem.due_date < today,
+        )
+    ):
+        if lifecycle.item_state(db, it, by_id[it.employee_id], today) == "overdue":
+            overdue[it.employee_id] = overdue.get(it.employee_id, 0) + 1
+    for e in visible:
+        r = out[e.id]
+        missing = [x for x, ok in (("zdjęcia", e.photo is not None), ("PESEL", e.pesel_hash is not None)) if not ok]
+        if missing:
+            r.append("brak " + ", ".join(missing))
+        if e.id in permits:
+            u = permits[e.id]
+            if u < today:
+                r.append("dokument pobytowy nieważny")
+            elif u - today <= timedelta(days=60):
+                r.append(f"dokument pobytowy do {fmt(u)}")
+        if e.id in exams and exams[e.id]:
+            u = exams[e.id]
+            if u < today:
+                r.append("badania nieważne")
+            elif u - today <= timedelta(days=30):
+                r.append(f"badania do {fmt(u)}")
+        n = overdue.get(e.id, 0)
+        if n:
+            r.append("1 zadanie po terminie" if n == 1 else f"{n} zadania po terminie" if n < 5 else f"{n} zadań po terminie")
+    return out
+
+
 @router.get("/ids", response_model=list[int])
 def list_ids(ctx: Auth, db: DbSession, filters: Filters) -> list[int]:
     """Identyfikatory wszystkich pracowników spełniających filtry (np. „zaznacz wszystkie” do druku)."""

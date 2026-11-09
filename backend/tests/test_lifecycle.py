@@ -287,3 +287,17 @@ def test_first_change_keeps_earlier_assignment(admin_client):
         ("2026-03-01", "Magazyn"),
         ("2026-01-01", "Montaż"),
     ]
+
+
+def test_list_attention(admin_client):
+    c = admin_client
+    e = _emp(c, hire_date="2026-01-01")
+    from datetime import date as _d, timedelta as _t
+
+    soon = (_d.today() + _t(days=10)).isoformat()
+    c.post(f"/api/employees/{e['id']}/permits", json={"kind": "wiza", "valid_until": soon})
+    r = c.get("/api/employees/attention", params=[("ids", e["id"]), ("ids", 999999)])
+    assert r.status_code == 200, r.text
+    reasons = r.json()[str(e["id"])]
+    assert any("brak zdjęcia" in x for x in reasons) and any("dokument pobytowy do" in x for x in reasons)
+    assert "999999" not in r.json()

@@ -1070,3 +1070,52 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 [data-mantine-color-scheme="dark"] .mantine-Notification-root{box-shadow:0 10px 30px rgba(0,0,0,.6)}
 /* uchwyt i nagłówek arkusza: gest należy do arkusza (nadpisuje touch-action: manipulation przycisków) */
 .ui-sheet-drag, .ui-sheet-drag * { touch-action: none !important; }
+
+/* ---- Wzorzec „skrzynka” (Wiadomości, Komunikaty) na komputerze ---- */
+.ui-inbox-page{display:flex;flex-direction:column;gap:var(--s-4)}
+.ui-inbox-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s-4)}
+.ui-inbox{display:flex;height:calc(100dvh - 110px);min-height:420px;overflow:hidden}
+.ui-inbox[data-head]{height:calc(100dvh - 164px)}
+.ui-inbox-list{width:380px;flex:none;border-right:1px solid var(--apt-line);min-height:0}
+@media (min-width:1600px){.ui-inbox-list{width:400px}}
+.ui-inbox-aside{display:none;width:320px;flex:none;border-left:1px solid var(--apt-line);overflow:auto;padding:var(--s-4)}
+@media (min-width:1600px){.ui-inbox-aside{display:block}}
+.ui-inbox-tools{padding:var(--s-3);border-bottom:1px solid var(--apt-line);display:flex;flex-direction:column;gap:var(--s-2)}
+.ui-inrow{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;width:100%;padding:12px 16px;border-bottom:1px solid var(--apt-line);text-align:left;transition:background-color .15s}
+.ui-inrow:hover{background:var(--mantine-color-default-hover)}
+.ui-inrow[data-selected]{background:var(--apt-subtle)}
+.ui-inrow-name{font-size:15px;line-height:22px;font-weight:500;overflow-wrap:anywhere}
+.ui-inrow[data-unread] .ui-inrow-name{font-weight:700}
+.ui-inrow-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mantine-primary-color-filled);margin-right:6px;vertical-align:1px}
+.ui-inrow-time{font-size:13px;line-height:22px;color:var(--mantine-color-dimmed);white-space:nowrap}
+.ui-inrow-sub{grid-column:1/-1;font-size:14px;line-height:20px;color:var(--mantine-color-dimmed);overflow-wrap:anywhere}
+.ui-inrow-pv{grid-column:1/-1;font-size:14px;line-height:20px;color:var(--mantine-color-dimmed);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ui-inrow[data-unread] .ui-inrow-pv{color:var(--mantine-color-text)}
+.ui-inrow-st{grid-column:1/-1;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+/* rozmowa */
+.ui-chat-head{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--apt-line)}
+.ui-chat-name{font-weight:600;font-size:15px;line-height:22px;color:inherit;text-decoration:underline;text-decoration-color:var(--mantine-color-default-border);text-underline-offset:3px}
+.ui-chat-name:hover{text-decoration-color:currentColor}
+.ui-chat-day{align-self:center;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);margin:var(--s-3) 0 var(--s-1)}
+.ui-bub{max-width:min(560px,72ch);padding:10px 14px;border-radius:14px;background:var(--apt-subtle);align-self:flex-start;font-size:15px;line-height:22px}
+.ui-bub[data-mine]{align-self:flex-end;background:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
+.ui-bub-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;line-height:16px;opacity:.72;margin-top:4px}
+.ui-chat-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);text-align:center;padding:var(--s-6)}
+/* kolumna pracownika */
+.ui-aside-sec{margin-top:var(--s-4)}
+.ui-aside-sec h3{font-size:15px;line-height:22px;font-weight:600;margin:0 0 4px}
+.ui-aside-row{padding:6px 0;border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
+.ui-aside-row:first-of-type{border-top:0}
+/* dyktowanie: przycisk mikrofonu; w trakcie nasłuchu fale wokół i „grające” słupki */
+.ui-mic{position:relative;width:36px;height:36px;flex:none;border-radius:50%;border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body);color:var(--mantine-color-text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s}
+.ui-mic:hover{background:var(--mantine-color-default-hover)}
+.ui-mic[data-on]{background:var(--mantine-primary-color-filled);border-color:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
+.ui-mic[data-on]::before,.ui-mic[data-on]::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:2px solid var(--mantine-primary-color-filled);animation:ui-mic-ring 1.6s ease-out infinite;pointer-events:none}
+.ui-mic[data-on]::after{animation-delay:.8s}
+@keyframes ui-mic-ring{from{transform:scale(1);opacity:.55}to{transform:scale(1.9);opacity:0}}
+.ui-mic-eq{display:flex;gap:3px;align-items:center;height:16px}
+.ui-mic-eq i{display:block;width:3px;height:4px;border-radius:2px;background:currentColor;animation:ui-mic-eq .9s ease-in-out infinite}
+.ui-mic-eq i:nth-child(1){animation-delay:-.2s}.ui-mic-eq i:nth-child(2){animation-delay:-.55s}.ui-mic-eq i:nth-child(3){animation-delay:-.1s}.ui-mic-eq i:nth-child(4){animation-delay:-.7s}
+@keyframes ui-mic-eq{0%,100%{height:4px}50%{height:16px}}
+@media (prefers-reduced-motion:reduce){.ui-mic[data-on]::before,.ui-mic[data-on]::after{display:none}.ui-mic-eq i{animation:none;height:10px}}
+@media (max-width:48em){.ui-mic{width:44px;height:44px}}

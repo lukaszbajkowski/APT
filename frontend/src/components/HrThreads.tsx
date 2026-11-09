@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Avatar, Badge, Box, Button, Group, Paper, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconArchive, IconArchiveOff, IconArrowLeft, IconMicrophone, IconPlayerStop, IconPencil, IconPlus, IconSearch, IconSend, IconVolume } from "@tabler/icons-react";
+import { IconArchive, IconArchiveOff, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
-import { api, errorText, formatDateTime, shortTime } from "../api";
+import { api, errorText, shortTime, type Employee } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { useUrlOpen, useUrlTab } from "../lib/urlState";
 import { useDraft } from "../lib/draft";
-import { currentTz, timeIn } from "../lib/time";
+import { currentTz, differsFromHome, timeIn, tzCity } from "../lib/time";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail } from "./MasterDetail";
-import { useNavigate } from "react-router-dom";
-import { ActionSheet, CompactEmpty, PageHead, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
+import { EmployeeAside } from "./EmployeeAside";
+import { Link, useNavigate } from "react-router-dom";
+import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
 export interface ThreadRow {
@@ -96,16 +97,26 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
       },
     );
   }
+  // nasłuch: fale rozchodzą się od przycisku, słupki „grają” – widać, że aplikacja słucha (tekst wpada do pola)
   return (
-    <Tooltip label={T("Dyktuj głosem (dźwięk może być przetwarzany przez dostawcę przeglądarki: Google lub Apple)")} multiline w={260}>
-      <ActionIcon size="lg" radius="xl" variant={on ? "filled" : "light"} color={on ? "red" : "blue"} onClick={toggle} aria-label={on ? T("Zatrzymaj dyktowanie") : T("Dyktuj głosem")}>
-        {on ? <IconPlayerStop size={18} /> : <IconMicrophone size={18} />}
-      </ActionIcon>
+    <Tooltip label={on ? T("Słucham… – kliknij, aby zakończyć") : T("Dyktuj głosem (dźwięk może być przetwarzany przez dostawcę przeglądarki: Google lub Apple)")} multiline w={260}>
+      <button type="button" className="ui-mic" data-on={on || undefined} onClick={toggle} aria-pressed={on} aria-label={on ? T("Zakończ dyktowanie") : T("Dyktuj głosem")}>
+        {on ? (
+          <span className="ui-mic-eq" aria-hidden>
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+        ) : (
+          <IconMicrophone size={18} aria-hidden />
+        )}
+      </button>
     </Tooltip>
   );
 }
 
-function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
+function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
   const T = useT();
   const qc = useQueryClient();
   // szkic odpowiedzi zostaje po wyjściu z rozmowy (np. przypadkowe „Wstecz”) aż do wysłania
@@ -115,6 +126,11 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
   const q = useQuery({ queryKey: ["thread", base, id], queryFn: () => api<Thread>(`${base}/${id}`), refetchInterval: 3000, ...LIVE });
   const t = q.data;
   const count = t?.messages.length ?? 0;
+  const emp = useQuery({
+    queryKey: ["employee", String(t?.employee_id)],
+    queryFn: () => api<Employee>(`/employees/${t!.employee_id}`),
+    enabled: staff && !mobile && !!t?.employee_id,
+  });
   // tłumaczenie na żądanie (Google Cloud Translation); funkcja ukryta, gdy serwer nie ma klucza
   const { me: account } = useAuth();
   const cfg = useQuery({ queryKey: ["translate-config"], queryFn: () => api<{ enabled: boolean; exhausted: boolean; languages: { code: string; name: string }[] }>("/translate/config"), staleTime: 3_600_000 });
@@ -228,65 +244,85 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
       />
     );
   }
+  // komputer: nagłówek z osobą (link do karty), separatory dni, godzina bez strefy przy dymku
+  const tzNote = differsFromHome() ? ` · ${T("czas")}: ${tzCity(currentTz())}` : "";
+  const items: ({ kind: "day"; label: string; key: string } | { kind: "msg"; m: Thread["messages"][number] })[] = [];
+  let lastDay = "";
+  for (const m of t?.messages ?? []) {
+    const d = dayLabel(m.created_at, T);
+    if (d !== lastDay) {
+      items.push({ kind: "day", label: d, key: `d-${m.id}` });
+      lastDay = d;
+    }
+    items.push({ kind: "msg", m });
+  }
+  const lastMineId = [...(t?.messages ?? [])].reverse().find((m) => m.kind === "message" && m.from_staff === staff)?.id;
+  const seen = (m: { id: number; created_at: string }) => !!t?.other_seen_at && m.id === lastMineId && t.other_seen_at >= m.created_at;
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
-      <Group justify="space-between" p="sm" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
-        <Group gap="sm" wrap="nowrap">
-          {showBack && (
-            <ActionIcon variant="subtle" onClick={onBack} aria-label={T("Wróć")}>
-              <IconArrowLeft size={18} />
-            </ActionIcon>
+      <div className="ui-chat-head">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          {staff && t?.employee_id ? (
+            <Anchor component={Link} to={`/pracownicy/${t.employee_id}`} className="ui-chat-name">
+              {t.employee_name}
+            </Anchor>
+          ) : (
+            <Text fw={600}>{staff ? (t?.employee_name ?? "…") : (t?.subject ?? "…")}</Text>
           )}
-          <Box>
-            <Text fw={600} lineClamp={1}>
-              {staff ? (t?.employee_name ?? "…") : (t?.subject ?? "…")}
+          {staff && t?.employee_number && (
+            <Text span size="sm" c="dimmed" className="ui-mono">
+              {" "}
+              · {t.employee_number}
             </Text>
-            <Text size="xs" c="dimmed" lineClamp={1}>
-              {staff ? `${t?.subject ?? ""} · ${t?.employee_number ?? ""}` : T("Kadry")}
-            </Text>
-          </Box>
-        </Group>
+          )}
+          <Text size="sm" c="dimmed">
+            {staff ? [t?.subject, emp.data ? [emp.data.position?.name, emp.data.department?.name, emp.data.agency?.name].filter(Boolean).join(", ") : null].filter(Boolean).join(" · ") : T("Kadry")}
+          </Text>
+        </div>
         {t && (
-          <Group gap="xs" wrap="nowrap">
+          <Group gap={8} wrap="nowrap" style={{ flex: "none" }}>
             {staff ? (
-              <Select
-                size="xs"
-                aria-label="Status rozmowy"
-                w={140}
-                allowDeselect={false}
-                value={t.status}
-                data={Object.entries(THREAD_STATUS).map(([value, v]) => ({ value, label: T(v.label) }))}
-                onChange={(v) => v && setStatus.mutate(v)}
-              />
-            ) : (
-              <Badge color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>
-            )}
-            {t.archived ? (
-              <Button size="xs" variant="default" leftSection={<IconArchiveOff size={14} />} loading={archive.isPending} onClick={() => archive.mutate(false)}>
-                {T("Przywróć")}
-              </Button>
-            ) : (
-              t.status === "done" && (
-                <Button size="xs" variant="light" leftSection={<IconArchive size={14} />} loading={archive.isPending} onClick={() => archive.mutate(true)}>
-                  {T("Archiwizuj")}
+              t.status !== "done" ? (
+                <Button size="xs" variant="default" loading={setStatus.isPending} onClick={() => setStatus.mutate("done")}>
+                  Oznacz jako zakończoną
                 </Button>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  zakończona
+                </Text>
               )
+            ) : (
+              <Text size="sm" c="dimmed">
+                {T(THREAD_STATUS[t.status].label)}
+              </Text>
             )}
+            <RowMenu
+              label={t.subject}
+              items={[
+                { label: "Oznacz jako w toku", icon: <IconProgress size={16} />, onClick: () => setStatus.mutate("in_progress"), hidden: !staff || t.status === "in_progress" },
+                { label: T("Przywróć z archiwum"), icon: <IconArchiveOff size={16} />, onClick: () => archive.mutate(false), hidden: !t.archived },
+                { label: T("Archiwizuj"), icon: <IconArchive size={16} />, onClick: () => archive.mutate(true), hidden: t.archived || t.status !== "done" },
+              ]}
+            />
           </Group>
         )}
-      </Group>
-      {cfg.data?.enabled && (
-        <Group px="sm" py={4} gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
-          <Text size="xs" c="dimmed" style={{ flex: 1 }} lineClamp={2}>
-            {cfg.data.exhausted
-              ? T("Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca.")
-              : T("„Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.")}
-          </Text>
-        </Group>
+      </div>
+      {cfg.data?.enabled && cfg.data.exhausted && (
+        <Text size="xs" c="dimmed" px="lg" py={4} style={{ borderBottom: "1px solid var(--apt-line)" }}>
+          {T("Miesięczny limit tłumaczeń wykorzystany – wróci od początku miesiąca.")}
+        </Text>
       )}
-      <ScrollArea style={{ flex: 1 }} px="sm" type="auto">
-        <Stack gap={6} py="sm">
-          {t?.messages.map((m) => {
+      <ScrollArea style={{ flex: 1 }} type="auto">
+        <Stack gap={6} py="sm" px="lg">
+          {items.map((it) => {
+            if (it.kind === "day")
+              return (
+                <div key={it.key} className="ui-chat-day">
+                  {it.label}
+                  {tzNote}
+                </div>
+              );
+            const m = it.m;
             if (m.kind === "status") {
               const label = T(THREAD_STATUS[m.body as ThreadRow["status"]]?.label ?? m.body);
               const text = m.body === "done_auto"
@@ -295,61 +331,51 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
                 ? `${T("Status rozmowy zmieniono na: {label}", { label })}${staff && m.author_name ? ` (${m.author_name})` : ""}`
                 : T("Rozmowa została otwarta ponownie");
               return (
-                <Text key={m.id} size="xs" c="dimmed" ta="center" py={6}>
-                  {text} · {formatDateTime(m.created_at)}
+                <Text key={m.id} size="xs" c="dimmed" ta="center" py={4}>
+                  {text} · {hm(m.created_at)}
                 </Text>
               );
             }
             const mine = m.from_staff === staff;
+            const trx = tr[m.id];
             return (
-              <Group key={m.id} justify={mine ? "flex-end" : "flex-start"}>
-                <Paper
-                  px="sm"
-                  py={6}
-                  radius="lg"
-                  maw="75%"
-                  bg={mine ? "var(--mantine-color-blue-filled)" : "var(--mantine-color-default-hover)"}
-                  c={mine ? "white" : undefined}
-                >
-                  <Text style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.body}</Text>
-                  {tr[m.id] && tr[m.id] !== "loading" && (
-                    <Box mt={4} pt={4} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
-                      <Text size="xs" opacity={0.75}>
-                        {T("Tłumaczenie:")} {langName((tr[m.id] as { source: string | null }).source)} → {langName((tr[m.id] as { target: string }).target)}
-                      </Text>
-                      <Text style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{(tr[m.id] as { text: string }).text}</Text>
-                    </Box>
-                  )}
-                  {!staff && canSpeak() && (
-                    <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => listen(m)}>
-                      <Group gap={3} wrap="nowrap">
-                        {speakingId === m.id ? <IconPlayerStop size={11} /> : <IconVolume size={11} />}
-                        {speakingId === m.id ? T("Zatrzymaj") : T("Odsłuchaj")}
-                      </Group>
-                    </Anchor>
-                  )}
-                  <Group justify="space-between" gap="xs" wrap="nowrap">
-                    {cfg.data?.enabled && !cfg.data.exhausted ? (
-                      tr[m.id] === "loading" ? (
-                        <Text size="10px" opacity={0.7}>{T("Tłumaczę…")}</Text>
-                      ) : tr[m.id] ? (
-                        <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => setTr((x) => { const { [m.id]: _d, ...rest } = x; return rest; })}>
+              <div key={m.id} className="ui-bub" data-mine={mine || undefined}>
+                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</div>
+                {trx && trx !== "loading" && (
+                  <Box mt={6} pt={6} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
+                    <Text size="xs" opacity={0.75}>
+                      {T("Tłumaczenie:")} {langName(trx.source)} → {langName(trx.target)}
+                    </Text>
+                    <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{trx.text}</div>
+                  </Box>
+                )}
+                <div className="ui-bub-meta">
+                  <span style={{ display: "flex", gap: 10 }}>
+                    {cfg.data?.enabled && !cfg.data.exhausted && (
+                      trx === "loading" ? (
+                        <span>{T("Tłumaczę…")}</span>
+                      ) : trx ? (
+                        <Anchor component="button" type="button" size="12px" c="inherit" onClick={() => setTr((x) => { const { [m.id]: _d, ...rest } = x; return rest; })}>
                           {T("Ukryj tłumaczenie")}
                         </Anchor>
                       ) : (
-                        <Anchor component="button" type="button" size="10px" c="inherit" onClick={() => translateMessage(m.id)}>
+                        <Anchor component="button" type="button" size="12px" c="inherit" title={T("„Przetłumacz” wysyła treść jednej wiadomości do Google Cloud Translation.")} onClick={() => translateMessage(m.id)}>
                           {T("Przetłumacz")}
                         </Anchor>
                       )
-                    ) : (
-                      <span />
                     )}
-                    <Text size="10px" ta="right" opacity={0.7}>
-                      {formatDateTime(m.created_at)}
-                    </Text>
-                  </Group>
-                </Paper>
-              </Group>
+                    {!staff && canSpeak() && (
+                      <Anchor component="button" type="button" size="12px" c="inherit" onClick={() => listen(m)}>
+                        {speakingId === m.id ? T("Zatrzymaj") : T("Odsłuchaj")}
+                      </Anchor>
+                    )}
+                  </span>
+                  <span>
+                    {hm(m.created_at)}
+                    {mine && seen(m) ? ` · ${T("przeczytana")}` : ""}
+                  </span>
+                </div>
+              </div>
             );
           })}
           <div ref={bottom} />
@@ -365,14 +391,15 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
           {error}
         </Alert>
       )}
-      <Group p="sm" align="flex-end" wrap="nowrap" style={{ borderTop: "1px solid var(--apt-line)" }}>
+      <Group px="lg" py="sm" align="flex-end" wrap="nowrap" gap={8} style={{ borderTop: "1px solid var(--apt-line)" }}>
+        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
         <Textarea
           style={{ flex: 1 }}
           aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
-          placeholder={staff ? "Napisz odpowiedź…" : T("Napisz wiadomość…")}
+          placeholder={staff ? "Twoja odpowiedź" : T("Twoja wiadomość")}
           autosize
           minRows={1}
-          maxRows={5}
+          maxRows={6}
           maxLength={2000}
           value={body}
           onChange={(e) => setBody(e.currentTarget.value)}
@@ -383,14 +410,14 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
             }
           }}
         />
-        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
-        <ActionIcon size="lg" radius="xl" loading={send.isPending} disabled={!body.trim()} onClick={submit} aria-label={T("Wyślij")}>
-          <IconSend size={18} />
-        </ActionIcon>
+        <Button loading={send.isPending} disabled={!body.trim()} onClick={submit}>
+          {T("Wyślij")}
+        </Button>
       </Group>
     </Stack>
   );
 }
+
 
 // godziny i dni rozmowy w strefie użytkownika (konto albo urządzenie) – jak w reszcie aplikacji
 const hm = (iso: string) => timeIn(new Date(iso));
@@ -834,6 +861,19 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   });
   const segQ = { all: useQuery(segQuery("all")), new: useQuery(segQuery("new")), archive: useQuery(segQuery("archive")) } as Record<string, ReturnType<typeof useQuery<ThreadRow[]>>>;
   const counts = useQuery({ queryKey: ["hr-count", "seg"], queryFn: () => api<{ new: number; unread: number }>("/hr-messages/count"), enabled: staff && !!mobile, refetchInterval: 10000, ...LIVE });
+  const deskCounts = useQuery({ queryKey: ["hr-count", "desk"], queryFn: () => api<{ new: number; unread: number }>("/hr-messages/count"), enabled: staff && !mobile, refetchInterval: 10000, ...LIVE });
+  const newRows = useQuery({
+    queryKey: ["threads", base, "", "new", "active"],
+    queryFn: () => api<ThreadRow[]>(`${base}?status_filter=new`),
+    enabled: staff && !mobile,
+    refetchInterval: 10000,
+    ...LIVE,
+  });
+  // komputer: na start „Nowe”, a gdy nowych nie ma – „W toku” (bez osobnego „Wszystkie”)
+  useEffect(() => {
+    if (staff && !mobile && view === "active" && status === "" && deskCounts.data) setStatus(deskCounts.data.new ? "new" : "in_progress");
+  }, [staff, mobile, view, status, deskCounts.data]);
+  const oldestNew = [...(newRows.data ?? [])].sort((x, y) => (x.updated_at < y.updated_at ? -1 : 1))[0];
   const showList = !mobile || (openId === null && !composing);
   const showRight = !mobile || openId !== null || composing;
   const back = () => {
@@ -922,127 +962,123 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     );
   }
 
+  // komputer: filtr statusu jednym przełącznikiem na szerokość wyszukiwarki
+  const deskSeg = view === "archive" ? "archive" : status || "all";
+  const deskItems = staff
+    ? [
+        { value: "new", label: deskCounts.data?.new ? `${T("Nowe")} (${deskCounts.data.new})` : T("Nowe") },
+        { value: "in_progress", label: T("W toku") },
+        { value: "done", label: T("Zakończone") },
+        { value: "archive", label: T("Archiwum") },
+      ]
+    : [
+        { value: "all", label: T("Aktywne") },
+        { value: "archive", label: T("Archiwum") },
+      ];
+  const compose = () => {
+    setComposing(true);
+    setOpenId(null);
+  };
+  const openRow = rows.find((r) => r.id === openId);
   return (
     <MasterDetail
       mobile={!!mobile}
       showList={showList}
       showRight={showRight}
       plainDetail
+      head={
+        <div className="ui-inbox-head">
+          <Title order={1}>{staff ? "Wiadomości" : T("Napisz do kadr")}</Title>
+          <Button onClick={compose}>{T("Nowa wiadomość")}</Button>
+        </div>
+      }
+      aside={staff && !composing && openRow?.employee_id ? <EmployeeAside employeeId={openRow.employee_id} threadId={openRow.id} /> : undefined}
       list={
         <>
-  <Stack p="sm" gap="xs">
-    <Group justify="space-between">
-      <Title order={4}>{staff ? "Wiadomości" : T("Napisz do kadr")}</Title>
-      <ActionIcon variant="light" size="lg" radius="xl" onClick={() => { setComposing(true); setOpenId(null); }} aria-label={T("Nowa wiadomość")}>
-        <IconPlus size={18} />
-      </ActionIcon>
-    </Group>
-    <SegmentedControl
-      size="xs"
-      fullWidth
-      value={view}
-      onChange={(v) => {
-        setView(v as "active" | "archive");
-        setOpenId(null);
-        setComposing(false);
-      }}
-      data={[
-        { value: "active", label: T("Aktywne") },
-        { value: "archive", label: T("Archiwum") },
-      ]}
-    />
-    {staff && (
-      <>
-        <TextInput size="xs" aria-label="Szukaj wiadomości" placeholder="Szukaj: nazwisko lub temat" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
-        <SegmentedControl
-          size="xs"
-          fullWidth
-          value={status}
-          onChange={setStatus}
-          data={[
-            { value: "", label: "Wszystkie" },
-            { value: "new", label: "Nowe" },
-            { value: "in_progress", label: "W toku" },
-            { value: "done", label: "Zakończone" },
-          ]}
-        />
-      </>
-    )}
-  </Stack>
-  <ScrollArea style={{ flex: 1 }}>
-    {rows.length === 0 && (
-      q.trim() || status ? (
-        <EmptyState
-          search
-          title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak wiadomości w tym filtrze"}
-          text="Sprawdź pisownię albo pokaż wszystkie wiadomości."
-          action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
-        />
-      ) : view === "archive" ? (
-        <EmptyState
-          title={T("Archiwum jest puste")}
-          text={T("Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")}
-        />
-      ) : (
-        <EmptyState
-          title={staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
-          text={staff ? "Pracownicy nie napisali jeszcze do kadr. Możesz też sam zacząć rozmowę." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
-          action={{ label: T("Nowa wiadomość"), onClick: () => { setComposing(true); setOpenId(null); } }}
-        />
-      )
-    )}
-    {rows.map((t) => {
-      const name = staff ? (t.employee_name ?? "") : T("Kadry");
-      return (
-        <UnstyledButton
-          key={t.id}
-          w="100%"
-          p="sm"
-          onClick={() => { setOpenId(t.id); setComposing(false); }}
-          bg={openId === t.id ? "var(--mantine-color-default-hover)" : undefined}
-        >
-          <Group wrap="nowrap" align="flex-start">
-            <Avatar radius="xl" color="blue">
-              {initials(name)}
-            </Avatar>
-            <Box style={{ flex: 1, minWidth: 0 }}>
-              <Group justify="space-between" wrap="nowrap" gap={4}>
-                <Text size="sm" fw={t.unread ? 700 : 500} lineClamp={1}>
-                  {name}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {shortTime(t.updated_at)}
-                </Text>
-              </Group>
-              <Text size="xs" c="dimmed" lineClamp={1}>
-                {t.subject}
-              </Text>
-              <Group justify="space-between" wrap="nowrap" gap={4}>
-                <Text size="xs" fw={t.unread ? 700 : 400} lineClamp={1} style={{ flex: 1 }}>
-                  {(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}
-                </Text>
-                {t.unread ? <Badge size="xs" circle aria-label={T("Nieprzeczytane")} /> : <Badge size="xs" variant="light" color={THREAD_STATUS[t.status].color}>{T(THREAD_STATUS[t.status].label)}</Badge>}
-              </Group>
-            </Box>
-          </Group>
-        </UnstyledButton>
-      );
-    })}
-  </ScrollArea>
+          <div className="ui-inbox-tools">
+            {staff && (
+              <TextInput aria-label="Szukaj wiadomości" placeholder="Szukaj: nazwisko, temat, treść" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+            )}
+            <SegmentedControl
+              fullWidth
+              value={deskSeg === "all" && staff ? "" : deskSeg}
+              onChange={(v) => {
+                setView(v === "archive" ? "archive" : "active");
+                setStatus(v === "archive" || v === "all" ? "" : v);
+                setOpenId(null);
+                setComposing(false);
+              }}
+              data={deskItems}
+            />
+          </div>
+          <ScrollArea style={{ flex: 1 }}>
+            {rows.length === 0 &&
+              (q.trim() || status ? (
+                <EmptyState
+                  search
+                  title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak rozmów w tym filtrze"}
+                  text="Sprawdź pisownię albo wybierz inny filtr."
+                  action={{ label: "Wyczyść wyszukiwanie i filtr", onClick: () => { setQ(""); setStatus(""); } }}
+                />
+              ) : view === "archive" ? (
+                <EmptyState title={T("Archiwum jest puste")} text={T("Zakończone rozmowy trafiają tu po kliknięciu „Archiwizuj” albo po 30 dniach bez ruchu.")} />
+              ) : (
+                <EmptyState
+                  title={staff ? T("Brak wiadomości") : T("Nie masz jeszcze wiadomości")}
+                  text={staff ? "Pracownicy nie napisali jeszcze do kadr. Możesz też sam zacząć rozmowę." : T("Masz pytanie do kadr? Napisz tutaj – odpowiedź zobaczysz w tym miejscu.")}
+                />
+              ))}
+            {rows.map((t) => {
+              const name = staff ? (t.employee_name ?? "") : t.subject;
+              return (
+                <UnstyledButton
+                  key={t.id}
+                  className="ui-inrow"
+                  data-unread={t.unread || undefined}
+                  data-selected={openId === t.id || undefined}
+                  aria-current={openId === t.id || undefined}
+                  onClick={() => { setOpenId(t.id); setComposing(false); }}
+                >
+                  <span className="ui-inrow-name">
+                    {t.unread && <span className="ui-inrow-dot" aria-label={T("Nieprzeczytane")} />}
+                    {name}
+                  </span>
+                  <span className="ui-inrow-time">{shortTime(t.updated_at)}</span>
+                  {staff && <span className="ui-inrow-sub">{t.subject}</span>}
+                  <span className="ui-inrow-pv">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}</span>
+                  {t.status === "done" && <span className="ui-inrow-st">{T("zakończona")}</span>}
+                </UnstyledButton>
+              );
+            })}
+          </ScrollArea>
         </>
       }
       detail={
-        <>
-  {composing ? (
-    <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} mobile={!!mobile} />
-  ) : openId !== null ? (
-    <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} mobile={!!mobile} />
-  ) : (
-    <Stack h="100%" align="center" justify="center">
-      <Text c="dimmed">{T("Wybierz rozmowę")}</Text>
-    </Stack>
-  )}
-        </>
+        composing ? (
+          <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} mobile={!!mobile} />
+        ) : openId !== null ? (
+          <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} mobile={!!mobile} />
+        ) : staff && (deskCounts.data?.new ?? 0) > 0 ? (
+          <div className="ui-chat-empty">
+            <Text fw={600} size="lg">
+              {deskCounts.data!.new === 1 ? "1 nowa rozmowa czeka na odpowiedź" : `Nowe rozmowy czekające na odpowiedź: ${deskCounts.data!.new}`}
+            </Text>
+            {oldestNew && (
+              <>
+                <Text c="dimmed" size="sm">
+                  Najstarsza: {oldestNew.employee_name}, {shortTime(oldestNew.updated_at)}
+                </Text>
+                <Button variant="default" onClick={() => setOpenId(oldestNew.id)}>
+                  Otwórz najstarszą
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="ui-chat-empty">
+            <Text c="dimmed">{T("Wybierz rozmowę z listy.")}</Text>
+          </div>
+        )
       }
     />
   );

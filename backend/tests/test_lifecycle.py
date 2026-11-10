@@ -301,3 +301,10 @@ def test_list_attention(admin_client):
     reasons = r.json()[str(e["id"])]
     assert any("brak zdjęcia" in x for x in reasons) and any("dokument pobytowy do" in x for x in reasons)
     assert "999999" not in r.json()
+
+
+def test_attention_filter(admin_client):
+    c = admin_client
+    a = _emp(c, hire_date="2026-01-01")
+    r = c.get("/api/employees", params={"attention": "true"}).json()
+    assert a["id"] in [x["id"] for x in r["items"]]  # bez zdjęcia i PESEL

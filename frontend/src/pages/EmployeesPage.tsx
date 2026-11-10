@@ -3,7 +3,7 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Anchor, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Chip, Collapse, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
@@ -48,6 +48,7 @@ export function EmployeesPage() {
   const department = params.get("department");
   const position = params.get("position");
   const missing = params.getAll("missing");
+  const attentionOnly = params.get("uwaga") === "1";
   const sort = params.get("sort") ?? "name";
   const page = Number(params.get("page") ?? "1");
   const [debouncedQ] = useDebouncedValue(q, 300);
@@ -80,8 +81,9 @@ export function EmployeesPage() {
     if (department) p.set("department_id", department);
     if (position) p.set("position_id", position);
     missing.forEach((m) => p.append("missing", m));
+    if (attentionOnly) p.set("attention", "true");
     return p.toString();
-  }, [status, sort, page, debouncedQ, agency, department, position, missing]);
+  }, [status, sort, page, debouncedQ, agency, department, position, missing, attentionOnly]);
 
   const filterQuery = useMemo(() => {
     const p = new URLSearchParams(query);
@@ -270,6 +272,7 @@ export function EmployeesPage() {
             { label: nFilters ? `Filtry · ${nFilters}` : "Filtry", icon: <IconAdjustmentsHorizontal size={16} stroke={2.2} aria-hidden />, active: nFilters > 0, onClick: () => setPick("filters") },
             { label: curView ? curView.name : "Zapisane", icon: <IconBookmark size={15} stroke={2.2} aria-hidden />, active: !!curView, menu: true, onClick: () => setPick("saved") },
             { label: STATUS.find((x) => x.value === status)?.label ?? "Aktywni", menu: true, onClick: () => setPick("status") },
+            ...(canPrint ? [{ label: "Wymaga uwagi", warn: true, active: attentionOnly, onClick: () => update({ uwaga: attentionOnly ? null : "1" }) }] : []),
             { label: missing.length ? `Braki: ${missing.length}` : "Z brakami", warn: true, active: missing.length > 0, menu: true, onClick: () => setPick("missing") },
             { label: name(agencies.data, agency) ?? "Agencja", active: !!agency, menu: true, onClick: () => setPick("agency") },
           ]}
@@ -553,14 +556,14 @@ export function EmployeesPage() {
       </div>
 
       {/* pasek filtrów: najczęstsze filtry zawsze widoczne, rzadsze pod „Więcej filtrów” */}
-      <Group align="center" gap="sm" wrap="wrap">
+      <Group align="center" gap={10} wrap="wrap">
         <TextInput
           aria-label="Szukaj pracownika"
           placeholder="Nazwisko lub nr karty"
           leftSection={<IconSearch size={16} aria-hidden />}
           value={q}
           onChange={(e) => update({ q: e.currentTarget.value })}
-          style={{ flex: "1 1 190px", maxWidth: 340, minWidth: 190 }}
+          style={{ flex: "1 1 200px", maxWidth: 340, minWidth: 200 }}
         />
         <SegmentedControl
           value={status}
@@ -591,18 +594,13 @@ export function EmployeesPage() {
           value={department}
           onChange={(v) => update({ department: v, position: null })}
         />
-        <MultiSelect
-          aria-label="Braki danych"
-          comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          placeholder={missing.length ? undefined : "Braki"}
-          clearable
-          w={missing.length ? 240 : 132}
-          data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
-          value={missing}
-          onChange={(v) => update({ missing: v })}
-        />
+        {canPrint && (
+          <Chip checked={attentionOnly} onChange={() => update({ uwaga: attentionOnly ? null : "1" })} color="yellow" variant="outline" radius="sm">
+            Wymaga uwagi
+          </Chip>
+        )}
         <Anchor component="button" type="button" fw={600} size="sm" onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen}>
-          {filtersOpen ? "Mniej filtrów" : position ? "Więcej filtrów (1)" : "Więcej filtrów"}
+          {filtersOpen ? "Mniej filtrów" : position || missing.length ? `Więcej filtrów (${(position ? 1 : 0) + (missing.length ? 1 : 0)})` : "Więcej filtrów"}
         </Anchor>
       </Group>
       <Collapse in={filtersOpen}>
@@ -620,6 +618,16 @@ export function EmployeesPage() {
             )}
             value={position}
             onChange={(v) => update({ position: v })}
+          />
+          <MultiSelect
+            label="Braki danych"
+            comboboxProps={{ width: "max-content", position: "bottom-start" }}
+            placeholder={missing.length ? undefined : "Bez filtra"}
+            clearable
+            w={260}
+            data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
+            value={missing}
+            onChange={(v) => update({ missing: v })}
           />
           <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
         </Group>

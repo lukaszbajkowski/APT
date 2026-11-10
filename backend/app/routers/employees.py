@@ -433,7 +433,9 @@ class ListFilters:
         status_: Annotated[Literal["active", "terminated", "all"], Query(alias="status")] = "active",
         missing: Annotated[list[MissingKey] | None, Query()] = None,
         sort: SortKey = "name",
+        attention: bool = False,
     ):
+        self.attention = attention
         self.q, self.agency_id, self.department_id, self.position_id = (
             q,
             agency_id,
@@ -472,6 +474,35 @@ class ListFilters:
                 conditions.append(Employee.country_id.is_(None))
             else:
                 conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
+        if self.attention:
+            # ci sami co w kolumnie „Wymaga uwagi”: braki, kończące się/nieważne dokumenty pobytowe i badania,
+            # zadania z checklist po terminie
+            from datetime import timedelta
+
+            from app.models import ChecklistItem, MedicalExam, WorkPermit
+
+            today = date.today()
+            permit_until = select(func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id == Employee.id).scalar_subquery()
+            exam_until = select(func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id == Employee.id).scalar_subquery()
+            overdue = (
+                select(ChecklistItem.id)
+                .where(
+                    ChecklistItem.employee_id == Employee.id,
+                    ChecklistItem.done_at.is_(None),
+                    ChecklistItem.skipped.is_(False),
+                    ChecklistItem.due_date < today,
+                )
+                .exists()
+            )
+            conditions.append(
+                or_(
+                    ~select(Photo.id).where(Photo.employee_id == Employee.id).exists(),
+                    Employee.pesel_hash.is_(None),
+                    permit_until <= today + timedelta(days=60),
+                    exam_until <= today + timedelta(days=30),
+                    overdue,
+                )
+            )
         base = select(Employee).where(and_(*conditions)) if conditions else select(Employee)
         return apply_scope(base, user)
 

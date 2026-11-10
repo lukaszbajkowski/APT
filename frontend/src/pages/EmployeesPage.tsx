@@ -3,7 +3,7 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
@@ -13,6 +13,7 @@ import { notifications } from "@mantine/notifications";
 import { useAuth } from "../auth";
 import { options, useAgencies, useDepartments, usePositions } from "../dictionaries";
 import { EmployeePhoto } from "../components/EmployeePhoto";
+import { MultiPick } from "../components/MultiPick";
 import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
@@ -614,15 +615,7 @@ export function EmployeesPage() {
           value={position}
           onChange={(v) => update({ position: v })}
         />
-        <MultiSelect
-          aria-label="Braki danych"
-          comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          placeholder={missing.length || attentionOnly ? undefined : "Braki danych"}
-          clearable
-          data={brakiOptions}
-          value={brakiValue}
-          onChange={setBraki}
-        />
+        <MultiPick label="Braki danych" options={brakiOptions} value={brakiValue} onChange={setBraki} />
         <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
       </div>
 

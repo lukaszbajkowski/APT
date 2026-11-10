@@ -646,7 +646,7 @@ function AccountMenu({
           </UnstyledButton>
         ) : (
           <UnstyledButton aria-label={t("Konto użytkownika")} className="account-button">
-            <Avatar radius="xl" size={34} color="orzech" variant="light">
+            <Avatar radius="xl" size={36} color="orzech" variant="filled">
               {initials}
             </Avatar>
             <Box style={{ lineHeight: 1.25, minWidth: 0, flex: 1 }}>

@@ -238,15 +238,17 @@ function AppLayoutInner() {
     }
   });
   const rail = !mobile && (railPref === "rail" || (railPref === "auto" && narrow));
-  const toggleRail = () => {
-    const next = rail ? "full" : "rail";
+  const chooseRail = (next: "auto" | "rail" | "full") => {
     setRailPref(next);
     try {
-      localStorage.setItem("apt-nav-rail", next);
+      if (next === "auto") localStorage.removeItem("apt-nav-rail");
+      else localStorage.setItem("apt-nav-rail", next);
     } catch {
       /* bez pamięci przeglądarki – działa do odświeżenia */
     }
   };
+  const toggleRail = () => chooseRail(rail ? "full" : "rail");
+  const navPref = mobile ? undefined : { value: railPref, onChange: chooseRail };
   const [collapsed, setCollapsed] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("apt-nav-collapsed-v2") ?? JSON.stringify([ADMIN_GROUP])) as string[];
@@ -375,7 +377,7 @@ function AppLayoutInner() {
               <RailList items={items} path={location.pathname} />
             </AppShell.Section>
             <AppShell.Section pt={6} className="ui-rail-foot">
-              <AccountMenu compact rail />
+              <AccountMenu compact rail navPref={navPref} />
               <Tooltip label="Rozwiń menu" position="right" withArrow>
                 <ActionIcon variant="subtle" color="gray" size={36} onClick={toggleRail} aria-label="Rozwiń menu">
                   <IconLayoutSidebarLeftExpand size={20} />
@@ -406,7 +408,7 @@ function AppLayoutInner() {
         <AppShell.Section pt="xs" style={{ borderTop: "1px solid var(--apt-line)" }}>
           <Group gap={4} wrap="nowrap" align="center">
             <Box style={{ flex: 1, minWidth: 0 }}>
-              <AccountMenu />
+              <AccountMenu navPref={navPref} />
             </Box>
             {!mobile && (
               <Tooltip label="Zwiń menu do ikon" withArrow>
@@ -610,7 +612,16 @@ function CountBadge({ n }: { n: number }) {
   );
 }
 
-function AccountMenu({ compact, rail }: { compact?: boolean; rail?: boolean }): ReactNode {
+function AccountMenu({
+  compact,
+  rail,
+  navPref,
+}: {
+  compact?: boolean;
+  rail?: boolean;
+  /** komputer: menu boczne – automatycznie (ikony poniżej 1280 px), zawsze pełne albo zawsze ikony */
+  navPref?: { value: "auto" | "rail" | "full"; onChange: (v: "auto" | "rail" | "full") => void };
+}): ReactNode {
   const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -691,6 +702,27 @@ function AccountMenu({ compact, rail }: { compact?: boolean; rail?: boolean }): 
             ]}
           />
         </Box>
+        {navPref && (
+          <>
+            <Menu.Label>{t("Menu boczne")}</Menu.Label>
+            <Box px="xs" pb="xs">
+              <SegmentedControl
+                fullWidth
+                size="xs"
+                value={navPref.value}
+                onChange={(v) => navPref.onChange(v as "auto" | "rail" | "full")}
+                data={[
+                  { value: "auto", label: t("Automatycznie") },
+                  { value: "full", label: t("Pełne") },
+                  { value: "rail", label: t("Ikony") },
+                ]}
+              />
+              <Text size="xs" c="dimmed" mt={4}>
+                {t("Automatycznie: same ikony, gdy okno jest węższe niż 1280 px.")}
+              </Text>
+            </Box>
+          </>
+        )}
         <Menu.Divider />
         {hasRole("employee") && (
           <>

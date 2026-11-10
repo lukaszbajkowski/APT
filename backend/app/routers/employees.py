@@ -444,7 +444,7 @@ class ListFilters:
         )
         self.status, self.missing, self.sort = status_, missing or [], sort
 
-    def query(self, user: User) -> Select:
+    def query(self, user: User, db: Session | None = None) -> Select:
         conditions: list[Any] = []
         if self.q and self.q.strip():
             for token in self.q.split():
@@ -474,37 +474,14 @@ class ListFilters:
                 conditions.append(Employee.country_id.is_(None))
             else:
                 conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
-        if self.attention:
-            # ci sami co w kolumnie „Wymaga uwagi”: braki, kończące się/nieważne dokumenty pobytowe i badania,
-            # zadania z checklist po terminie
-            from datetime import timedelta
-
-            from app.models import ChecklistItem, MedicalExam, WorkPermit
-
-            today = date.today()
-            permit_until = select(func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id == Employee.id).scalar_subquery()
-            exam_until = select(func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id == Employee.id).scalar_subquery()
-            overdue = (
-                select(ChecklistItem.id)
-                .where(
-                    ChecklistItem.employee_id == Employee.id,
-                    ChecklistItem.done_at.is_(None),
-                    ChecklistItem.skipped.is_(False),
-                    ChecklistItem.due_date < today,
-                )
-                .exists()
-            )
-            conditions.append(
-                or_(
-                    ~select(Photo.id).where(Photo.employee_id == Employee.id).exists(),
-                    Employee.pesel_hash.is_(None),
-                    permit_until <= today + timedelta(days=60),
-                    exam_until <= today + timedelta(days=30),
-                    overdue,
-                )
-            )
         base = select(Employee).where(and_(*conditions)) if conditions else select(Employee)
-        return apply_scope(base, user)
+        base = apply_scope(base, user)
+        if self.attention and db is not None:
+            # ci sami co w kolumnie „Wymaga uwagi” – liczone tą samą funkcją (bez rozjazdu filtra i kolumny)
+            cand = list(db.scalars(base.limit(5000)).unique())
+            keep = [eid for eid, r in attention_reasons(db, cand).items() if r]
+            base = base.where(Employee.id.in_(keep or [-1]))
+        return base
 
     def order(self) -> tuple:
         return {
@@ -528,7 +505,7 @@ def list_employees(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[EmployeeOut]:
-    base = filters.query(ctx.user)
+    base = filters.query(ctx.user, db)
     total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
     rows = db.scalars(base.order_by(*filters.order()).limit(limit).offset(offset)).unique()
     today = date.today()
@@ -537,28 +514,29 @@ def list_employees(
     )
 
 
-@router.get("/attention", response_model=dict[int, list[str]])
-def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))], db: DbSession, ids: Annotated[list[int], Query(max_length=200)]) -> dict[int, list[str]]:
-    """„Wymaga uwagi” dla wierszy listy (jedno zapytanie na stronę): krótkie, konkretne powody."""
+def attention_reasons(db: Session, visible: list[Employee], today: date | None = None) -> dict[int, list[str]]:
+    """Powody „Wymaga uwagi” (jedno źródło dla kolumny listy i filtra): braki danych, dokumenty pobytowe
+    i badania nieważne albo kończące się, zadania z checklist po terminie (bez spełnionych automatycznie)."""
     from datetime import timedelta
 
     from app.models import ChecklistItem, MedicalExam, WorkPermit
 
-    today = date.today()
-    visible = list(db.scalars(apply_scope(select(Employee).where(Employee.id.in_(ids)), ctx.user)).unique())
+    today = today or date.today()
     out: dict[int, list[str]] = {e.id: [] for e in visible}
     vid = list(out)
     if not vid:
         return out
     fmt = lambda d: d.strftime("%d.%m")  # noqa: E731
-    # ostatni dokument pobytowy i ostatnie badanie każdej osoby
-    permits: dict[int, date] = {}
-    for eid, until in db.execute(select(WorkPermit.employee_id, func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id.in_(vid)).group_by(WorkPermit.employee_id)):
-        permits[eid] = until
-    exams: dict[int, date | None] = {}
-    for eid, until in db.execute(select(MedicalExam.employee_id, func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id.in_(vid)).group_by(MedicalExam.employee_id)):
-        exams[eid] = until
-    # zadania po terminie (bez spełnionych automatycznie)
+    permits = dict(
+        db.execute(
+            select(WorkPermit.employee_id, func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id.in_(vid)).group_by(WorkPermit.employee_id)
+        ).all()
+    )
+    exams = dict(
+        db.execute(
+            select(MedicalExam.employee_id, func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id.in_(vid)).group_by(MedicalExam.employee_id)
+        ).all()
+    )
     overdue: dict[int, int] = {}
     by_id = {e.id: e for e in visible}
     for it in db.scalars(
@@ -573,17 +551,29 @@ def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin,
             overdue[it.employee_id] = overdue.get(it.employee_id, 0) + 1
     for e in visible:
         r = out[e.id]
-        missing = [x for x, ok in (("zdjęcia", e.photo is not None), ("PESEL", e.pesel_hash is not None)) if not ok]
-        if missing:
-            r.append("brak " + ", ".join(missing))
-        if e.id in permits:
-            u = permits[e.id]
+        gaps = [
+            label
+            for label, ok in (
+                ("zdjęcia", e.photo is not None),
+                ("PESEL", e.pesel_hash is not None),
+                ("daty urodzenia", e.birth_date is not None),
+                ("obywatelstwa", e.country_id is not None),
+                ("agencji", e.agency_id is not None),
+                ("wydziału", e.department_id is not None),
+                ("stanowiska", e.position_id is not None),
+            )
+            if not ok
+        ]
+        if gaps:
+            r.append("brak " + ", ".join(gaps))
+        u = permits.get(e.id)
+        if u:
             if u < today:
                 r.append("dokument pobytowy nieważny")
             elif u - today <= timedelta(days=60):
                 r.append(f"dokument pobytowy do {fmt(u)}")
-        if e.id in exams and exams[e.id]:
-            u = exams[e.id]
+        u = exams.get(e.id)
+        if u:
             if u < today:
                 r.append("badania nieważne")
             elif u - today <= timedelta(days=30):
@@ -594,10 +584,17 @@ def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin,
     return out
 
 
+@router.get("/attention", response_model=dict[int, list[str]])
+def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))], db: DbSession, ids: Annotated[list[int], Query(max_length=200)]) -> dict[int, list[str]]:
+    """„Wymaga uwagi” dla wierszy listy (jedno zapytanie na stronę), w zakresie widoczności."""
+    visible = list(db.scalars(apply_scope(select(Employee).where(Employee.id.in_(ids)), ctx.user)).unique())
+    return attention_reasons(db, visible)
+
+
 @router.get("/ids", response_model=list[int])
 def list_ids(ctx: Auth, db: DbSession, filters: Filters) -> list[int]:
     """Identyfikatory wszystkich pracowników spełniających filtry (np. „zaznacz wszystkie” do druku)."""
-    base = filters.query(ctx.user).with_only_columns(Employee.id)
+    base = filters.query(ctx.user, db).with_only_columns(Employee.id)
     return list(db.scalars(base.order_by(*filters.order()).limit(5000)))
 
 

@@ -131,7 +131,7 @@ def export_employees(
     personal = full_access(user)
     if include_pesel and not personal:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień do eksportu numerów PESEL.")
-    emps = list(db.scalars(filters.query(user).order_by(*filters.order()).limit(MAX_EXPORT + 1)).unique())
+    emps = list(db.scalars(filters.query(user, db).order_by(*filters.order()).limit(MAX_EXPORT + 1)).unique())
     if len(emps) > MAX_EXPORT:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=f"Za dużo wyników (ponad {MAX_EXPORT}). Zawęź filtry."

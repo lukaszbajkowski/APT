@@ -3,7 +3,7 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Anchor, Chip, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, MultiSelect, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
@@ -49,6 +49,13 @@ export function EmployeesPage() {
   const position = params.get("position");
   const missing = params.getAll("missing");
   const attentionOnly = params.get("uwaga") === "1";
+  // „Wymaga uwagi” to pierwsza opcja „Braków danych”: dowolny powód z kolumny (braki, terminy, zaległe zadania)
+  const brakiOptions = [
+    ...(canPrint ? [{ value: "attention", label: "Wymaga uwagi" }] : []),
+    ...(staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))),
+  ];
+  const brakiValue = [...(attentionOnly ? ["attention"] : []), ...missing];
+  const setBraki = (v: string[]) => update({ uwaga: v.includes("attention") ? "1" : null, missing: v.filter((x) => x !== "attention") });
   const sort = params.get("sort") ?? "name";
   const page = Number(params.get("page") ?? "1");
   const [debouncedQ] = useDebouncedValue(q, 300);
@@ -273,8 +280,7 @@ export function EmployeesPage() {
             { label: nFilters ? `Filtry · ${nFilters}` : "Filtry", icon: <IconAdjustmentsHorizontal size={16} stroke={2.2} aria-hidden />, active: nFilters > 0, onClick: () => setPick("filters") },
             { label: curView ? curView.name : "Zapisane", icon: <IconBookmark size={15} stroke={2.2} aria-hidden />, active: !!curView, menu: true, onClick: () => setPick("saved") },
             { label: STATUS.find((x) => x.value === status)?.label ?? "Aktywni", menu: true, onClick: () => setPick("status") },
-            ...(canPrint ? [{ label: "Wymaga uwagi", warn: true, active: attentionOnly, onClick: () => update({ uwaga: attentionOnly ? null : "1" }) }] : []),
-            { label: missing.length ? `Braki: ${missing.length}` : "Z brakami", warn: true, active: missing.length > 0, menu: true, onClick: () => setPick("missing") },
+            { label: brakiValue.length ? (attentionOnly && !missing.length ? "Wymaga uwagi" : `Braki: ${brakiValue.length}`) : "Z brakami", warn: true, active: brakiValue.length > 0, menu: true, onClick: () => setPick("missing") },
             { label: name(agencies.data, agency) ?? "Agencja", active: !!agency, menu: true, onClick: () => setPick("agency") },
           ]}
         />
@@ -482,7 +488,7 @@ export function EmployeesPage() {
         </Modal>
 
         <PickSheet opened={pick === "status"} onClose={() => setPick(null)} title="Pokaż" options={STATUS} value={[status]} onChange={(v) => update({ status: v[0] === "active" ? null : v[0] })} />
-        <PickSheet opened={pick === "missing" || sub === "missing"} onClose={() => { setPick((x) => (x === "missing" ? null : x)); setSub(null); }} title="Braki w danych" options={missingOpts} value={missing} multiple clearLabel="Bez filtra" onChange={(v) => update({ missing: v })} />
+        <PickSheet opened={pick === "missing" || sub === "missing"} onClose={() => { setPick((x) => (x === "missing" ? null : x)); setSub(null); }} title="Braki w danych" options={brakiOptions} value={brakiValue} multiple clearLabel="Bez filtra" onChange={(v) => setBraki(v as string[])} />
         <PickSheet
           opened={pick === "agency" || sub === "agency"}
           onClose={() => { setPick((x) => (x === "agency" ? null : x)); setSub(null); }}
@@ -576,7 +582,7 @@ export function EmployeesPage() {
           ]}
         />
       </Group>
-      <div className="ui-filterbar" data-attention={canPrint || undefined}>
+      <div className="ui-filterbar">
         <Select
           aria-label="Agencja"
           placeholder="Agencja"
@@ -611,17 +617,12 @@ export function EmployeesPage() {
         <MultiSelect
           aria-label="Braki danych"
           comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          placeholder={missing.length ? undefined : "Braki danych"}
+          placeholder={missing.length || attentionOnly ? undefined : "Braki danych"}
           clearable
-          data={staff ? MISSING : MISSING.filter((m) => !["pesel", "birth_date"].includes(m.value))}
-          value={missing}
-          onChange={(v) => update({ missing: v })}
+          data={brakiOptions}
+          value={brakiValue}
+          onChange={setBraki}
         />
-        {canPrint && (
-          <Chip checked={attentionOnly} onChange={() => update({ uwaga: attentionOnly ? null : "1" })} color="yellow" variant="outline" radius="sm" size="md">
-            Wymaga uwagi
-          </Chip>
-        )}
         <SavedFilters params={params} onApply={(p) => setParams(p, { replace: true })} />
       </div>
 
@@ -758,7 +759,7 @@ export function EmployeesPage() {
                   <Table.Td>{e.department?.name ?? "—"}</Table.Td>
                   <Table.Td>{e.position?.name ?? "—"}</Table.Td>
                   <Table.Td>{formatDate(e.hire_date)}</Table.Td>
-                  {canPrint && <Table.Td className="ui-warn">{(attention.data?.[e.id] ?? []).join(", ")}</Table.Td>}
+                  {canPrint && <Table.Td className="ui-warn ui-emp-att">{(attention.data?.[e.id] ?? []).join(", ")}</Table.Td>}
                   {status !== "active" && (
                     <Table.Td>
                       <StatusBadge active={e.status === "active"} />

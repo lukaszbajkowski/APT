@@ -1139,7 +1139,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-seg-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n)); border-radius: 9px; background: var(--apt-subtle); transform: translateX(calc(var(--i) * (100% + 4px))); transition: transform .32s cubic-bezier(.34,1.56,.64,1); z-index: 0; }
 @media (prefers-reduced-motion: reduce) { .ui-seg-ind { transition: none; } }
 /* lista pracowników (komputer): drugi wiersz – filtry rozciągnięte na całą szerokość */
-.ui-filterbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto auto;gap:10px;align-items:center}
-.ui-filterbar:not([data-attention]){grid-template-columns:repeat(4,minmax(0,1fr)) auto}
+.ui-filterbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:center}
 .ui-filterbar .mantine-Chip-label{height:36px}
 .ui-filterbar .mantine-Chip-label:not([data-checked]){border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body)}
+.ui-emp-table td{white-space:nowrap}.ui-emp-table td.ui-emp-att{white-space:normal;min-width:220px}

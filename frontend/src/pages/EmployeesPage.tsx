@@ -4,14 +4,13 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
-import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "../auth";
-import { options, useAgencies, useDepartments, usePositions } from "../dictionaries";
+import { useAgencies, useDepartments, usePositions } from "../dictionaries";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { MultiPick } from "../components/MultiPick";
 import { PrintCardsModal } from "../components/PrintCardsModal";
@@ -45,9 +44,13 @@ export function EmployeesPage() {
 
   const q = params.get("q") ?? "";
   const status = params.get("status") ?? "active";
-  const agency = params.get("agency");
-  const department = params.get("department");
-  const position = params.get("position");
+  // wielokrotny wybór: ?agency=1&agency=2 …; „agency” itd. = pierwsza wartość (do krótkich podpisów)
+  const agencyIds = params.getAll("agency");
+  const departmentIds = params.getAll("department");
+  const positionIds = params.getAll("position");
+  const agency = agencyIds[0] ?? null;
+  const department = departmentIds[0] ?? null;
+  const position = positionIds[0] ?? null;
   const missing = params.getAll("missing");
   const attentionOnly = params.get("uwaga") === "1";
   // „Wymaga uwagi” to pierwsza opcja „Braków danych”: dowolny powód z kolumny (braki, terminy, zaległe zadania)
@@ -85,13 +88,13 @@ export function EmployeesPage() {
       offset: String((page - 1) * PAGE_SIZE),
     });
     if (debouncedQ.trim()) p.set("q", debouncedQ.trim());
-    if (agency) p.set("agency_id", agency);
-    if (department) p.set("department_id", department);
-    if (position) p.set("position_id", position);
+    agencyIds.forEach((v) => p.append("agency_id", v));
+    departmentIds.forEach((v) => p.append("department_id", v));
+    positionIds.forEach((v) => p.append("position_id", v));
     missing.forEach((m) => p.append("missing", m));
     if (attentionOnly) p.set("attention", "true");
     return p.toString();
-  }, [status, sort, page, debouncedQ, agency, department, position, missing, attentionOnly]);
+  }, [status, sort, page, debouncedQ, agencyIds.join(), departmentIds.join(), positionIds.join(), missing, attentionOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterQuery = useMemo(() => {
     const p = new URLSearchParams(query);
@@ -203,7 +206,12 @@ export function EmployeesPage() {
       { value: "terminated", label: "Archiwum" },
       { value: "all", label: "Wszyscy" },
     ];
-    const name = (list: { id: number; name: string }[] | undefined, id: string | null) => list?.find((x) => String(x.id) === id)?.name;
+    const name1 = (list: { id: number; name: string }[] | undefined, id: string | null) => list?.find((x) => String(x.id) === id)?.name;
+    // jedna wybrana – jej nazwa, kilka – „n wybrane”
+    const name = (list: { id: number; name: string }[] | undefined, id: string | null) => {
+      const ids = list === agencies.data ? agencyIds : list === departments.data ? departmentIds : list === positions.data ? positionIds : id ? [id] : [];
+      return ids.length > 1 ? `${ids.length} wybrane` : name1(list, id);
+    };
     const names = {
       agency: (id: string) => name(agencies.data, id),
       department: (id: string) => name(departments.data, id),
@@ -225,7 +233,7 @@ export function EmployeesPage() {
         : summary || q.trim()
         ? `${total} ${people(total)} · ${summary || `„${q.trim()}”`}`
         : `${total} · ${STATUS.find((x) => x.value === status)?.label.toLowerCase()}`;
-    const positionOpts = (positions.data ?? []).filter((p) => !department || p.department_id === null || p.department_id === Number(department));
+    const positionOpts = (positions.data ?? []).filter((p) => !departmentIds.length || p.department_id === null || departmentIds.includes(String(p.department_id)));
     const exitSel = () => {
       setSelMode(false);
       setSelected(new Set());
@@ -495,27 +503,30 @@ export function EmployeesPage() {
           onClose={() => { setPick((x) => (x === "agency" ? null : x)); setSub(null); }}
           title="Agencja (APT)"
           options={(agencies.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
-          value={agency ? [agency] : []}
+          value={agencyIds}
+          multiple
           clearLabel="Wszystkie agencje"
-          onChange={(v) => update({ agency: v[0] ?? null })}
+          onChange={(v) => update({ agency: v as string[] })}
         />
         <PickSheet
           opened={sub === "department"}
           onClose={() => setSub(null)}
           title="Wydział"
           options={(departments.data ?? []).map((a) => ({ value: String(a.id), label: a.name }))}
-          value={department ? [department] : []}
+          value={departmentIds}
+          multiple
           clearLabel="Wszystkie wydziały"
-          onChange={(v) => update({ department: v[0] ?? null, position: null })}
+          onChange={(v) => update({ department: v as string[], position: null })}
         />
         <PickSheet
           opened={sub === "position"}
           onClose={() => setSub(null)}
           title="Stanowisko"
           options={positionOpts.map((a) => ({ value: String(a.id), label: a.name }))}
-          value={position ? [position] : []}
+          value={positionIds}
+          multiple
           clearLabel="Wszystkie stanowiska"
-          onChange={(v) => update({ position: v[0] ?? null })}
+          onChange={(v) => update({ position: v as string[] })}
         />
         <ActionSheet
           opened={pick === "add"}
@@ -584,35 +595,14 @@ export function EmployeesPage() {
         />
       </Group>
       <div className="ui-filterbar">
-        <Select
-          aria-label="Agencja"
-          placeholder="Agencja"
-          clearable
-          comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          data={options(agencies.data, agency ? Number(agency) : null)}
-          value={agency}
-          onChange={(v) => update({ agency: v })}
-        />
-        <Select
-          aria-label="Wydział"
-          placeholder="Wydział"
-          clearable
-          comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          data={options(departments.data, department ? Number(department) : null)}
-          value={department}
-          onChange={(v) => update({ department: v, position: null })}
-        />
-        <Select
-          aria-label="Stanowisko"
-          placeholder="Stanowisko"
-          clearable
-          comboboxProps={{ width: "max-content", position: "bottom-start" }}
-          data={options(
-            positions.data,
-            position ? Number(position) : null,
-            (p) => !department || p.department_id === null || p.department_id === Number(department),
-          )}
-          value={position}
+        <MultiPick label="Agencja" options={(agencies.data ?? []).filter((x) => x.is_active || agencyIds.includes(String(x.id))).map((x) => ({ value: String(x.id), label: x.name }))} value={agencyIds} onChange={(v) => update({ agency: v })} />
+        <MultiPick label="Wydział" options={(departments.data ?? []).filter((x) => x.is_active || departmentIds.includes(String(x.id))).map((x) => ({ value: String(x.id), label: x.name }))} value={departmentIds} onChange={(v) => update({ department: v, position: null })} />
+        <MultiPick
+          label="Stanowisko"
+          options={(positions.data ?? [])
+            .filter((x) => (x.is_active || positionIds.includes(String(x.id))) && (!departmentIds.length || x.department_id === null || departmentIds.includes(String(x.department_id))))
+            .map((x) => ({ value: String(x.id), label: x.name }))}
+          value={positionIds}
           onChange={(v) => update({ position: v })}
         />
         <MultiPick label="Braki danych" options={brakiOptions} value={brakiValue} onChange={setBraki} />

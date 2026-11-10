@@ -427,9 +427,9 @@ class ListFilters:
     def __init__(
         self,
         q: str | None = None,
-        agency_id: int | None = None,
-        department_id: int | None = None,
-        position_id: int | None = None,
+        agency_id: Annotated[list[int] | None, Query()] = None,
+        department_id: Annotated[list[int] | None, Query()] = None,
+        position_id: Annotated[list[int] | None, Query()] = None,
         status_: Annotated[Literal["active", "terminated", "all"], Query(alias="status")] = "active",
         missing: Annotated[list[MissingKey] | None, Query()] = None,
         sort: SortKey = "name",
@@ -457,12 +457,13 @@ class ListFilters:
                         cast(Employee.number, String) == digits if token.isdigit() else false(),
                     )
                 )
-        if self.agency_id is not None:
-            conditions.append(Employee.agency_id == self.agency_id)
-        if self.department_id is not None:
-            conditions.append(Employee.department_id == self.department_id)
-        if self.position_id is not None:
-            conditions.append(Employee.position_id == self.position_id)
+        # wielokrotny wybór: osoba pasuje, gdy należy do którejkolwiek z wybranych agencji / wydziałów / stanowisk
+        if self.agency_id:
+            conditions.append(Employee.agency_id.in_(self.agency_id))
+        if self.department_id:
+            conditions.append(Employee.department_id.in_(self.department_id))
+        if self.position_id:
+            conditions.append(Employee.position_id.in_(self.position_id))
         if self.status != "all":
             conditions.append(Employee.status == EmployeeStatus(self.status))
         for m in self.missing:

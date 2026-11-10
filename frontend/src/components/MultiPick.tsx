@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { CloseButton, Combobox, Group, InputBase, Text, useCombobox } from "@mantine/core";
 import { IconCheck, IconSelector } from "@tabler/icons-react";
 
@@ -19,6 +20,8 @@ export function MultiPick({
   /** tekst w polu, gdy coś wybrano (domyślnie: jedna nazwa albo „<etykieta>: n”) */
   summary?: (picked: { value: string; label: string }[]) => string;
 }) {
+  const target = useRef<HTMLButtonElement>(null);
+  const [minW, setMinW] = useState<number | undefined>(undefined);
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
   const picked = options.filter((o) => value.includes(o.value));
   const text = !picked.length ? null : summary ? summary(picked) : picked.length === 1 ? picked[0].label : `${label}: ${picked.length}`;
@@ -27,13 +30,17 @@ export function MultiPick({
     <Combobox store={combobox} onOptionSubmit={toggle} withinPortal width="max-content" position="bottom-start">
       <Combobox.Target>
         <InputBase
+          ref={target}
           component="button"
           type="button"
           pointer
           aria-label={label}
           aria-haspopup="listbox"
           aria-expanded={combobox.dropdownOpened}
-          onClick={() => combobox.toggleDropdown()}
+          onClick={() => {
+            setMinW(target.current?.offsetWidth);
+            combobox.toggleDropdown();
+          }}
           rightSectionPointerEvents={picked.length ? "all" : "none"}
           rightSection={
             picked.length ? (
@@ -54,7 +61,7 @@ export function MultiPick({
           )}
         </InputBase>
       </Combobox.Target>
-      <Combobox.Dropdown>
+      <Combobox.Dropdown miw={minW}>
         <Combobox.Options>
           {options.map((o) => (
             <Combobox.Option key={o.value} value={o.value} active={value.includes(o.value)} aria-selected={value.includes(o.value)}>

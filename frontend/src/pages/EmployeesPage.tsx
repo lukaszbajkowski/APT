@@ -170,14 +170,16 @@ export function EmployeesPage() {
     enabled: !mobile && canPrint && pageIds.length > 0,
     placeholderData: keepPreviousData,
   });
+  // sortowanie kolumną: rosnąco → malejąco → wyłączone (domyślna kolejność alfabetyczna, bez strzałki)
+  const explicitSort = params.get("sort");
   const sortHeader = (key: string, label: string) => {
-    const active = sort === key || sort === `-${key}`;
-    const desc = sort === `-${key}`;
+    const active = explicitSort === key || explicitSort === `-${key}`;
+    const desc = explicitSort === `-${key}`;
     return (
-      <Table.Th>
+      <Table.Th aria-sort={!active ? undefined : desc ? "descending" : "ascending"}>
         <button
           type="button"
-          onClick={() => update({ sort: active && !desc ? `-${key}` : key }, false)}
+          onClick={() => update({ sort: !active ? key : !desc ? `-${key}` : null }, false)}
           style={{ all: "unset", cursor: "pointer", fontWeight: 600 }}
         >
           {label}

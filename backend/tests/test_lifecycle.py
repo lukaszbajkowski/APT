@@ -326,3 +326,15 @@ def test_work_queue_cases(admin_client):
     renew = [x for x in d["cases"] if x["group"] == "renew"]
     assert renew and renew[0]["employee_id"] == e["id"] and renew[0]["action"] == "Wpisz nowy"
     assert any(x["group"] == "data" and x["employee_id"] == e["id"] for x in d["cases"])
+
+
+def test_work_queue_cases_roles(client, make_user):
+    from app.models import Role
+    from tests.conftest import login
+
+    for role in (Role.manager, Role.agency):
+        make_user(role.value, role)
+        login(client, role.value)
+        r = client.get("/api/work-queue/cases")
+        assert r.status_code == 200, (role, r.text)
+        assert all(c["group"] in ("tasks", "renew", "data") for c in r.json()["cases"])

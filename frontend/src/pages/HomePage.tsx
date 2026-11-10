@@ -550,7 +550,7 @@ export function HomePage() {
   const [q, setQ] = useState("");
   const mobile = useMobile();
   // komputer, kadry: „Dziś” to jedna skrzynka spraw (zastępuje Do zrobienia, Zadania i Braki w danych)
-  const inbox = staff && !mobile;
+  const inbox = !mobile; // komputer: ten sam układ „Dziś” dla każdej roli personelu
   const cases = useCases();
 
   return (

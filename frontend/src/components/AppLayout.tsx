@@ -300,7 +300,7 @@ function AppLayoutInner() {
 
   const staff = hasRole("admin", "hr");
   const canScan = !hasRole("agency", "employee");
-  const inbox = staff && !mobile;
+  const inbox = !mobile && !hasRole("employee");
   const cases = useCases(inbox);
   const items: NavItem[] = [
     // pracownik
@@ -329,7 +329,7 @@ function AppLayoutInner() {
 
     { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconUserCircle, show: staff, group: ADMIN_GROUP },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: staff, group: ADMIN_GROUP },
-    { to: "/checklisty", label: "Checklisty", icon: IconChecklist, show: inbox, group: ADMIN_GROUP },
+    { to: "/checklisty", label: "Checklisty", icon: IconChecklist, show: inbox && staff, group: ADMIN_GROUP },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUserCog, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: ADMIN_GROUP },

@@ -1166,6 +1166,9 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .ui-emp .col-split{display:none}
   .ui-emp .col-combo{display:table-cell}
   .ui-saved-label{display:none}
+  .ui-saved-btn{padding-inline:0;width:36px}
+  .ui-saved-btn .mantine-Button-label{display:none}
+  .ui-saved-btn .mantine-Button-inner{justify-content:center}
   .ui-saved-btn .mantine-Button-section{margin:0}
   .ui-filterbar{grid-template-columns:repeat(4,minmax(0,1fr)) auto!important}
 }

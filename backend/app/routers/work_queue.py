@@ -242,7 +242,7 @@ def cases(ctx: StaffAuth, db: DbSession) -> CasesOut:
     for r in summary(db, user).rows:
         miss = ", ".join(_low(CHECKS.get(m, m).removeprefix("Brak ")) for m in r.missing)
         out.append(CaseOut(group="data", key=f"q{r.id}", employee_id=r.id, name=f"{r.last_name} {r.first_name}",
-                           sub=r.number, what=f"brak: {miss}", due=None, overdue=False, when=None,
+                           sub=r.number, what=f"Brak: {miss}", due=None, overdue=False, when=None,
                            action="Uzupełnij", url=f"/pracownicy/{r.id}"))
     # w grupie: najpierw przeterminowane i najstarsze
     order = {"reply": 0, "decide": 1, "tasks": 2, "renew": 3, "data": 4}

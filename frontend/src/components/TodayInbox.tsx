@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 
 import { api, errorText } from "../api";
 import { ErrorState, RowsSkeleton } from "./States";
+import { cap } from "./Mobile";
 
 /** Sprawa z kolejki kadr (GET /work-queue/cases). */
 export interface Case {
@@ -123,7 +124,7 @@ export function TodayInbox() {
         )}
         {c.sub && <span className="ui-case-sub ui-mono">{c.sub}</span>}
       </div>
-      <div className="ui-case-what">{c.what}</div>
+      <div className="ui-case-what">{cap(c.what)}</div>
       <div className={c.overdue ? "ui-case-when ui-warn" : "ui-case-when"}>{c.when}</div>
       <div className="ui-case-act">{act(c, c.key === primaryKey)}</div>
     </div>
@@ -198,7 +199,7 @@ export function TodayInbox() {
               <div className="ui-case-chips">
                 {cs.map((c) => (
                   <span key={c.key} className="ui-case-chip" data-warn={c.overdue || c.group !== "data" || undefined}>
-                    {c.what}
+                    {cap(c.what)}
                     {c.when ? ` · ${c.when}` : ""}
                   </span>
                 ))}
@@ -219,7 +220,7 @@ export function TodayInbox() {
             <div key={c.key} className="ui-case-side">
               <div style={{ minWidth: 0 }}>
                 <Text size="sm" fw={600}>
-                  {c.what}
+                  {cap(c.what)}
                 </Text>
                 {c.when && (
                   <Text size="xs" c={c.overdue ? "orange.8" : "dimmed"} fw={c.overdue ? 600 : undefined}>

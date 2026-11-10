@@ -18,7 +18,7 @@ interface Task extends ChecklistItem {
   department: string | null;
 }
 
-export function TasksPage() {
+export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
@@ -38,6 +38,13 @@ export function TasksPage() {
           }
         />
         {settings ? <ChecklistTemplates /> : <OpenTasks />}
+      </Stack>
+    );
+  if (settingsOnly)
+    return (
+      <Stack maw={1300}>
+        <PageTitle title="Checklisty" description="Szablony wdrożenia i odejścia. Otwarte zadania z checklist są w „Dziś”." />
+        <ChecklistTemplates />
       </Stack>
     );
   return (

@@ -25,7 +25,8 @@ import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
-import { CompactEmpty, ListRow, Section, StatusBadge, cap } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageTitle, Section, StatusBadge, cap } from "../components/Mobile";
+import { TodayInbox, useCases } from "../components/TodayInbox";
 
 const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
 /** ton plakietki zdarzenia: zaległe i nieważne – bursztyn, terminy – oczekiwanie, reszta – neutralnie */
@@ -463,17 +464,51 @@ export function HomePage() {
   const staff = hasRole("admin", "hr");
   const data = useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard") });
   const [q, setQ] = useState("");
+  const mobile = useMobile();
+  // komputer, kadry: „Dziś” to jedna skrzynka spraw (zastępuje Do zrobienia, Zadania i Braki w danych)
+  const inbox = staff && !mobile;
+  const cases = useCases();
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end" gap="md">
-        <Title order={1} size="h2">
-          {todayLabel()}
-        </Title>
-        <Group gap="sm" wrap="wrap" style={{ flex: "1 1 320px", justifyContent: "flex-end" }}>
-          <form
+      {mobile ? (
+        <Group justify="space-between" align="flex-end" gap="md">
+          <Title order={1} size="h2">
+            {todayLabel()}
+          </Title>
+          <Group gap="sm" wrap="wrap" style={{ flex: "1 1 320px", justifyContent: "flex-end" }}>
+            <form
+              role="search"
+              style={{ flex: "1 1 260px", maxWidth: 380 }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                navigate(q.trim() ? `/pracownicy?q=${encodeURIComponent(q.trim())}` : "/pracownicy");
+              }}
+            >
+              <TextInput
+                aria-label="Szukaj pracownika"
+                placeholder="Szukaj: nazwisko, nr karty"
+                leftSection={<IconSearch size={16} aria-hidden />}
+                value={q}
+                onChange={(e) => setQ(e.currentTarget.value)}
+                size="md"
+              />
+            </form>
+            {staff && (
+              <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />} visibleFrom="sm">
+                Dodaj pracownika
+              </Button>
+            )}
+          </Group>
+        </Group>
+      ) : (
+        <PageTitle
+          title={inbox ? "Dziś" : todayLabel()}
+          meta={inbox ? `${todayLabel()}${cases.data ? ` · ${cases.data.total ? `${cases.data.total} ${cases.data.total === 1 ? "sprawa czeka" : cases.data.total % 10 >= 2 && cases.data.total % 10 <= 4 && (cases.data.total % 100 < 12 || cases.data.total % 100 > 14) ? "sprawy czekają" : "spraw czeka"}` : "nic nie czeka"}` : ""}` : undefined}
+          actions={
+            <form
             role="search"
-            style={{ flex: "1 1 260px", maxWidth: 380 }}
+            style={{ width: 320 }}
             onSubmit={(e) => {
               e.preventDefault();
               navigate(q.trim() ? `/pracownicy?q=${encodeURIComponent(q.trim())}` : "/pracownicy");
@@ -485,21 +520,16 @@ export function HomePage() {
               leftSection={<IconSearch size={16} aria-hidden />}
               value={q}
               onChange={(e) => setQ(e.currentTarget.value)}
-              size="md"
             />
           </form>
-          {staff && (
-            <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />} visibleFrom="sm">
-              Dodaj pracownika
-            </Button>
-          )}
-        </Group>
-      </Group>
+          }
+        />
+      )}
 
       {data.isLoading && <Loading />}
       {data.error && <ErrorState error={data.error} onRetry={() => data.refetch()} />}
 
-      {data.data && !(staff && data.data.active === 0 && data.data.recent.length === 0) && (
+      {data.data && !inbox && !(staff && data.data.active === 0 && data.data.recent.length === 0) && (
         <Summary d={data.data} manager={hasRole("manager")} />
       )}
       {data.data && (
@@ -521,10 +551,11 @@ export function HomePage() {
             <GettingStarted employees={data.data.active} />
           ) : (
             <>
+              {inbox && <TodayInbox />}
               <Grid gutter="lg" align="flex-start">
                 <Grid.Col span={{ base: 12, lg: 7 }}>
                   <Stack gap="lg">
-                    <TodayCard d={data.data} full={staff} />
+                    {!inbox && <TodayCard d={data.data} full={staff} />}
                     <UpcomingCard />
                   </Stack>
                 </Grid.Col>

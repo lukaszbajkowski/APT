@@ -75,6 +75,7 @@ import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
 import { useDocTitle } from "../lib/docTitle";
 import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
+import { useCases } from "./TodayInbox";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string; /** krótsza etykieta w dolnym menu telefonu */ tab?: string };
 
@@ -98,6 +99,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/szkolenia/import": "Import szkoleń",
   "/dokumenty-pobytowe": "Dokumenty pobytowe",
   "/braki": "Braki w danych",
+  "/checklisty": "Checklisty",
   "/zgloszenia": "Zgłoszenia",
   "/zestawienia": "Zestawienia",
   "/raporty": "Raporty",
@@ -298,6 +300,8 @@ function AppLayoutInner() {
 
   const staff = hasRole("admin", "hr");
   const canScan = !hasRole("agency", "employee");
+  const inbox = staff && !mobile;
+  const cases = useCases(inbox);
   const items: NavItem[] = [
     // pracownik
     { to: "/moje-konto", label: "Moje konto", icon: IconHome, show: hasRole("employee") },
@@ -306,24 +310,26 @@ function AppLayoutInner() {
     { to: "/moje-konto/wiadomosci", label: "Napisz do kadr", tab: "Wiadomości", icon: IconMessage, show: hasRole("employee"), badge: myCount.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/moje-konto/klucze", label: "Logowanie i powiadomienia", icon: IconFingerprint, show: hasRole("employee"), group: "Ustawienia" },
     // personel
-    { to: "/", label: "Dziś", icon: IconHome, show: !hasRole("employee") },
+    { to: "/", label: "Dziś", icon: IconHome, show: !hasRole("employee"), badge: inbox ? (cases.data?.total ?? 0) : 0 },
     { to: "/pracownicy", label: "Pracownicy", icon: IconUsersGroup, show: !hasRole("employee") },
     { to: "/skaner", label: "Skaner kart", icon: IconScan, show: canScan },
-    { to: "/do-zrobienia", label: "Do zrobienia", icon: IconTargetArrow, show: staff },
+    // na komputerze kadry mają to wszystko w „Dziś”
+    { to: "/do-zrobienia", label: "Do zrobienia", icon: IconTargetArrow, show: staff && !inbox },
 
     { to: "/wiadomosci", label: "Wiadomości", icon: IconMessage, show: staff, badge: count.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: staff, group: "Komunikacja" },
 
-    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
+    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager") && !inbox, group: "Kadry" },
     { to: "/szkolenia", label: "Szkolenia", icon: IconSchool, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
     { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconCertificate2, show: staff, group: "Kadry" },
-    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
+    { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager") && !inbox, group: "Kadry" },
     { to: "/zgloszenia", label: "Zgłoszenia nowych osób", icon: IconUserPlus, show: hasRole("admin", "hr", "agency"), group: "Kadry" },
     { to: "/zestawienia", label: "Zestawienia dla agencji", icon: IconFileSpreadsheet, show: hasRole("admin", "hr", "agency"), group: "Kadry" },
     { to: "/raporty", label: "Raporty", icon: IconChartBar, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
 
     { to: "/konta-pracownikow", label: "Konta pracowników", icon: IconUserCircle, show: staff, group: ADMIN_GROUP },
     { to: "/slowniki", label: "Słowniki", icon: IconBook, show: staff, group: ADMIN_GROUP },
+    { to: "/checklisty", label: "Checklisty", icon: IconChecklist, show: inbox, group: ADMIN_GROUP },
     { to: "/szablony", label: "Szablony dokumentów", icon: IconFileText, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/uzytkownicy", label: "Użytkownicy", icon: IconUserCog, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/przeglad-dostepu", label: "Przegląd dostępu", icon: IconShieldCheck, show: hasRole("admin"), group: ADMIN_GROUP },

@@ -308,3 +308,21 @@ def test_attention_filter(admin_client):
     a = _emp(c, hire_date="2026-01-01")
     r = c.get("/api/employees", params={"attention": "true"}).json()
     assert a["id"] in [x["id"] for x in r["items"]]  # bez zdjęcia i PESEL
+
+
+def test_work_queue_cases(admin_client):
+    c = admin_client
+    e = _emp(c, hire_date="2026-01-01")
+    from datetime import date as _d, timedelta as _t
+
+    c.post(f"/api/employees/{e['id']}/permits", json={"kind": "wiza", "valid_until": (_d.today() + _t(days=10)).isoformat()})
+    r = c.get("/api/work-queue/cases")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["total"] == len(d["cases"])
+    groups = [c["group"] for c in d["cases"]]
+    order = ["reply", "decide", "tasks", "renew", "data"]
+    assert [order.index(g) for g in groups] == sorted(order.index(g) for g in groups)
+    renew = [x for x in d["cases"] if x["group"] == "renew"]
+    assert renew and renew[0]["employee_id"] == e["id"] and renew[0]["action"] == "Wpisz nowy"
+    assert any(x["group"] == "data" and x["employee_id"] == e["id"] for x in d["cases"])

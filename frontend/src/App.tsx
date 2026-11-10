@@ -256,6 +256,14 @@ export function App() {
           }
         />
         <Route
+          path="checklisty"
+          element={
+            <RequireAuth roles={["admin", "hr"]}>
+              <TasksPage settingsOnly />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="zadania"
           element={
             <RequireAuth roles={["admin", "hr", "manager"]}>

@@ -1219,3 +1219,15 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .ui-case-person{grid-template-columns:28px minmax(0,1fr)}
   .ui-case-chips,.ui-case-person .ui-case-when{grid-column:2}
 }
+
+/* Dziś – sekcje pod skrzynką */
+.ui-home-extras{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--s-6);margin-top:var(--s-4)}
+@media (max-width:80em){.ui-home-extras{grid-template-columns:minmax(0,1fr)}}
+.ui-up-row{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
+.ui-up-row:first-child{border-top:0}
+.ui-up-day{font-weight:600}
+.ui-cases > .ui-up-person{border-top:1px solid var(--apt-line)}
+.ui-cases > .ui-up-person:first-child{border-top:0}
+.ui-home-extras section{display:flex;flex-direction:column;gap:var(--s-2);min-width:0}
+.ui-up-row a{color:inherit;text-decoration:none;font-weight:600}
+.ui-up-row a:hover{text-decoration:underline}

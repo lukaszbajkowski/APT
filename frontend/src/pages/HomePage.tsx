@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, Paper, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
   IconChevronRight,
@@ -23,9 +23,9 @@ import { api, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { ErrorState, EmptyState, Loading } from "../components/States";
+import { ErrorState, EmptyState, Loading, RowsSkeleton } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
-import { CompactEmpty, ListRow, PageTitle, Section, StatusBadge, cap } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageTitle, Section, SectionHead, StatusBadge, cap } from "../components/Mobile";
 import { TodayInbox, useCases } from "../components/TodayInbox";
 
 const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
@@ -309,6 +309,90 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
   );
 }
 
+/**
+ * Komputer, kadry: pod skrzynką spraw tylko to, czego w niej nie ma – terminy na najbliższe dni
+ * (bez zaległości, te są wyżej), ostatnio dodani i stan kopii. Sekcje na tle, ramka tylko wokół listy.
+ */
+function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
+  const navTo = useNavigate();
+  const q = useQuery({ queryKey: ["dashboard-upcoming"], queryFn: () => api<UpcomingEvent[]>("/dashboard/upcoming") });
+  const late = new Set(["task_overdue", "permit_expired", "medical_expired"]);
+  const events = (q.data ?? []).filter((e) => !late.has(e.kind));
+  const [all, setAll] = useState(false);
+  const shown = all ? events : events.slice(0, 8);
+  const problems = admin ? backupProblems(d.backup) : [];
+  return (
+    <div className="ui-home-extras">
+      <section>
+        <SectionHead
+          title="Najbliższe 14 dni"
+          extra={events.length > 0 ? <Text c="dimmed">{events.length}</Text> : undefined}
+          action={events.length > 8 ? { label: all ? "Pokaż mniej" : `Pokaż wszystkie ${events.length}`, onClick: () => setAll((a) => !a) } : undefined}
+        />
+        {q.isLoading ? (
+          <RowsSkeleton />
+        ) : events.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            Nic nie jest zaplanowane: brak egzaminów, końców ważności i nowych osób.
+          </Text>
+        ) : (
+          <Paper withBorder radius="md" className="ui-cases">
+            {shown.map((e, i) => (
+              <div key={i} className="ui-up-row">
+                <span className="ui-up-day">{cap(dayLabel(e.date))}</span>
+                <span style={{ minWidth: 0 }}>
+                  <Link to={`/pracownicy/${e.employee_id}`} className="ui-case-link">
+                    {e.employee}
+                  </Link>
+                  <Text span c="dimmed">
+                    {" "}
+                    · {e.title}
+                  </Text>
+                </span>
+                <StatusBadge tone={EVENT_TONE[e.kind] ?? "neutral"}>{EVENT_LABEL[e.kind] ?? "termin"}</StatusBadge>
+              </div>
+            ))}
+          </Paper>
+        )}
+      </section>
+      <section>
+        <SectionHead title="Ostatnio dodani" action={{ label: "Wszyscy", onClick: () => navTo("/pracownicy") }} />
+        {d.recent.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            Kartoteka jest pusta.
+          </Text>
+        ) : (
+          <Paper withBorder radius="md" className="ui-cases">
+            {d.recent.map((e) => (
+              <UnstyledButton key={e.id} component={Link} to={`/pracownicy/${e.id}`} className="list-row ui-up-person">
+                <EmployeePhoto employee={e} width={28} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text size="sm" fw={600} truncate>
+                    {e.last_name} {e.first_name}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {[e.department?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+                  </Text>
+                </div>
+                <Text size="xs" c="dimmed" className="ui-mono">
+                  {e.number_display}
+                </Text>
+              </UnstyledButton>
+            ))}
+          </Paper>
+        )}
+        {admin && (
+          <Text size="xs" c={problems.length ? "yellow.8" : "dimmed"} fw={problems.length ? 600 : undefined} mt="sm">
+            {problems.length
+              ? problems.join(" ")
+              : `Kopie zapasowe w porządku: na serwerze ${d.backup?.local ? formatDateTime(d.backup.local.at) : "—"}, poza serwerem ${d.backup?.offsite ? formatDateTime(d.backup.offsite.at) : "nie skonfigurowano"}.`}
+          </Text>
+        )}
+      </section>
+    </div>
+  );
+}
+
 const STALE_HOURS = 36;
 
 function backupProblems(b: BackupStatus | null): string[] {
@@ -551,11 +635,16 @@ export function HomePage() {
             <GettingStarted employees={data.data.active} />
           ) : (
             <>
-              {inbox && <TodayInbox />}
-              <Grid gutter="lg" align="flex-start">
+              {inbox && (
+                <>
+                  <TodayInbox />
+                  <InboxExtras d={data.data} admin={hasRole("admin")} />
+                </>
+              )}
+              {!inbox && <Grid gutter="lg" align="flex-start">
                 <Grid.Col span={{ base: 12, lg: 7 }}>
                   <Stack gap="lg">
-                    {!inbox && <TodayCard d={data.data} full={staff} />}
+                    <TodayCard d={data.data} full={staff} />
                     <UpcomingCard />
                   </Stack>
                 </Grid.Col>
@@ -565,7 +654,7 @@ export function HomePage() {
                     {hasRole("admin") && <BackupCard status={data.data.backup} />}
                   </Stack>
                 </Grid.Col>
-              </Grid>
+              </Grid>}
             </>
           )}
         </>

@@ -73,7 +73,7 @@ export function TodayInbox() {
     }
   };
   const done = useMutation({
-    mutationFn: (id: number) => api(`/checklist-items/${id}`, { method: "PATCH", body: JSON.stringify({ done: true }) }),
+    mutationFn: (id: number) => api(`/checklist-items/${id}`, { method: "PATCH", body: { done: true } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["work-cases"] });
       notifications.show({ color: "teal", message: "Zadanie odhaczone." });

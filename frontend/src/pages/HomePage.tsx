@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, Paper, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Badge, Button, Card, Grid, Group, Paper, Skeleton, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
   IconChevronRight,
@@ -23,7 +23,7 @@ import { api, formatDateTime, type BackupStatus, type Dashboard } from "../api";
 import { ActionButton } from "../components/ActionButton";
 import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { ErrorState, EmptyState, Loading, RowsSkeleton } from "../components/States";
+import { ErrorState, EmptyState, Loading } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
 import { CompactEmpty, ListRow, PageTitle, Section, SectionHead, StatusBadge, cap } from "../components/Mobile";
 import { TodayInbox, useCases } from "../components/TodayInbox";
@@ -313,14 +313,14 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
  * Komputer, kadry: pod skrzynką spraw tylko to, czego w niej nie ma – terminy na najbliższe dni
  * (bez zaległości, te są wyżej), ostatnio dodani i stan kopii. Sekcje na tle, ramka tylko wokół listy.
  */
-function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
+function InboxExtras({ d, admin }: { d?: Dashboard; admin: boolean }) {
   const navTo = useNavigate();
   const q = useQuery({ queryKey: ["dashboard-upcoming"], queryFn: () => api<UpcomingEvent[]>("/dashboard/upcoming") });
   const late = new Set(["task_overdue", "permit_expired", "medical_expired"]);
   const events = (q.data ?? []).filter((e) => !late.has(e.kind));
   const [all, setAll] = useState(false);
   const shown = all ? events : events.slice(0, 8);
-  const problems = admin ? backupProblems(d.backup) : [];
+  const problems = admin && d ? backupProblems(d.backup) : [];
   return (
     <div className="ui-home-extras">
       <section>
@@ -330,7 +330,15 @@ function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
           action={events.length > 8 ? { label: all ? "Pokaż mniej" : `Pokaż wszystkie ${events.length}`, onClick: () => setAll((a) => !a) } : undefined}
         />
         {q.isLoading ? (
-          <RowsSkeleton />
+          <Paper withBorder radius="md" className="ui-cases" aria-busy="true" aria-label="Ładowanie">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="ui-up-row">
+                <Skeleton height={12} width={60} />
+                <Skeleton height={12} width={`${70 - i * 12}%`} />
+                <Skeleton height={18} width={90} radius="xl" />
+              </div>
+            ))}
+          </Paper>
         ) : events.length === 0 ? (
           <Text size="sm" c="dimmed">
             Nic nie jest zaplanowane: brak egzaminów, końców ważności i nowych osób.
@@ -357,7 +365,20 @@ function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
       </section>
       <section>
         <SectionHead title="Ostatnio dodani" action={{ label: "Wszyscy", onClick: () => navTo("/pracownicy") }} />
-        {d.recent.length === 0 ? (
+        {!d ? (
+          <Paper withBorder radius="md" className="ui-cases" aria-busy="true" aria-label="Ładowanie">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="list-row ui-up-person">
+                <Skeleton width={28} height={37} radius={6} />
+                <div style={{ flex: 1 }}>
+                  <Skeleton height={12} width={`${60 - (i % 2) * 15}%`} mb={8} />
+                  <Skeleton height={9} width="40%" />
+                </div>
+                <Skeleton height={10} width={48} />
+              </div>
+            ))}
+          </Paper>
+        ) : d.recent.length === 0 ? (
           <Text size="sm" c="dimmed">
             Kartoteka jest pusta.
           </Text>
@@ -381,7 +402,7 @@ function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
             ))}
           </Paper>
         )}
-        {admin && (
+        {admin && d && (
           <Text size="xs" c={problems.length ? undefined : "dimmed"} className={problems.length ? "ui-warn" : undefined} mt="sm">
             {problems.length
               ? problems.join(" ")
@@ -610,7 +631,13 @@ export function HomePage() {
         />
       )}
 
-      {data.isLoading && <Loading />}
+      {data.isLoading && !inbox && <Loading />}
+      {data.isLoading && inbox && (
+        <>
+          <TodayInbox />
+          <InboxExtras admin={hasRole("admin")} />
+        </>
+      )}
       {data.error && <ErrorState error={data.error} onRetry={() => data.refetch()} />}
 
       {data.data && !inbox && !(staff && data.data.active === 0 && data.data.recent.length === 0) && (

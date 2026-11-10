@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Drawer, Group, Paper, SegmentedControl, Text, UnstyledButton } from "@mantine/core";
+import { Button, Drawer, Group, Paper, SegmentedControl, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
 import { api, errorText } from "../api";
-import { ErrorState, RowsSkeleton } from "./States";
+import { ErrorState } from "./States";
 import { cap } from "./Mobile";
 
 /** Sprawa z kolejki kadr (GET /work-queue/cases). */
@@ -146,6 +146,9 @@ export function TodayInbox() {
   return (
     <div className="ui-today">
       <div className="ui-today-bar">
+        {!q.data ? (
+          <Skeleton height={36} width={420} radius="md" />
+        ) : (
         <SegmentedControl
           value={filter}
           onChange={setFilter}
@@ -154,6 +157,7 @@ export function TodayInbox() {
             ...GROUPS.filter((g) => counts[g.key]).map((g) => ({ value: g.key, label: `${g.label} ${counts[g.key]}` })),
           ]}
         />
+        )}
         <SegmentedControl
           value={mode}
           onChange={setMode}
@@ -164,7 +168,7 @@ export function TodayInbox() {
           ]}
         />
       </div>
-      {q.isLoading && <RowsSkeleton />}
+      {q.isLoading && <CasesSkeleton />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && all.length === 0 && (
         <Paper withBorder radius="md" p="lg">
@@ -252,5 +256,28 @@ export function TodayInbox() {
         )}
       </Drawer>
     </div>
+  );
+}
+
+/** Szkielet skrzynki: te same kolumny co wiersz sprawy, żeby treść nie skakała po załadowaniu. */
+export function CasesSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <Paper withBorder radius="md" className="ui-cases" aria-busy="true" aria-label="Ładowanie">
+      <div className="ui-case-head">
+        <Skeleton height={12} width={220} />
+      </div>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="ui-case">
+          <Skeleton width={28} height={28} radius={6} />
+          <div>
+            <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={6} />
+            <Skeleton height={9} width={56} />
+          </div>
+          <Skeleton height={12} width={`${55 - (i % 2) * 20}%`} />
+          <Skeleton height={10} width={70} />
+          <Skeleton height={30} width={96} radius="sm" />
+        </div>
+      ))}
+    </Paper>
   );
 }

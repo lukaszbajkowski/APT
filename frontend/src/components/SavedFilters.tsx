@@ -93,8 +93,8 @@ export function SavedFilters({ params, onApply }: { params: URLSearchParams; onA
     <>
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
-          <Button variant="default" leftSection={<IconBookmark size={16} />}>
-            Zapisane filtry{items.length ? ` (${items.length})` : ""}
+          <Button variant="default" leftSection={<IconBookmark size={16} />} aria-label={`Zapisane filtry${items.length ? ` (${items.length})` : ""}`} className="ui-saved-btn">
+            <span className="ui-saved-label">Zapisane filtry{items.length ? ` (${items.length})` : ""}</span>
           </Button>
         </Menu.Target>
         <Menu.Dropdown>

@@ -184,11 +184,11 @@ export function EmployeesPage() {
   });
   // sortowanie kolumną: rosnąco → malejąco → wyłączone (domyślna kolejność alfabetyczna, bez strzałki)
   const explicitSort = params.get("sort");
-  const sortHeader = (key: string, label: string) => {
+  const sortHeader = (key: string, label: string, className?: string) => {
     const active = explicitSort === key || explicitSort === `-${key}`;
     const desc = explicitSort === `-${key}`;
     return (
-      <Table.Th aria-sort={!active ? undefined : desc ? "descending" : "ascending"}>
+      <Table.Th className={className} aria-sort={!active ? undefined : desc ? "descending" : "ascending"}>
         <button
           type="button"
           onClick={() => update({ sort: !active ? key : !desc ? `-${key}` : null }, false)}
@@ -554,7 +554,7 @@ export function EmployeesPage() {
         : `znaleziono: ${list.data.total}`
     : null;
   return (
-    <Stack gap="md">
+    <Stack gap="md" className="ui-emp">
       <div className="ui-inbox-head">
         <Group gap={12} align="baseline">
           <Title order={1}>Pracownicy</Title>
@@ -669,7 +669,7 @@ export function EmployeesPage() {
 
       {list.data && list.data.items.length > 0 && !mobile && (
         <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
-        <Table.ScrollContainer minWidth={900}>
+        <Table.ScrollContainer minWidth={560}>
           <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Thead>
               <Table.Tr>
@@ -694,11 +694,12 @@ export function EmployeesPage() {
                   </Table.Th>
                 )}
                 {sortHeader("name", "Nazwisko i imię")}
-                {sortHeader("number", "Nr")}
-                <Table.Th>Agencja</Table.Th>
-                <Table.Th>Wydział</Table.Th>
-                <Table.Th>Stanowisko</Table.Th>
-                {sortHeader("hire_date", "Zatrudniony")}
+                {sortHeader("number", "Nr", "col-nr")}
+                <Table.Th className="col-split">Agencja</Table.Th>
+                <Table.Th className="col-split">Wydział</Table.Th>
+                <Table.Th className="col-split">Stanowisko</Table.Th>
+                <Table.Th className="col-combo">Przydział</Table.Th>
+                {sortHeader("hire_date", "Zatrudniony", "col-hire")}
                 {canPrint && <Table.Th>Wymaga uwagi</Table.Th>}
                 {status !== "active" && <Table.Th>Status</Table.Th>}
               </Table.Tr>
@@ -730,20 +731,30 @@ export function EmployeesPage() {
                       <span style={{ width: 28, flex: "none" }}>
                         <EmployeePhoto employee={e} width={28} />
                       </span>
-                      <Link
-                        to={`/pracownicy/${e.id}`}
-                        onClick={(ev) => ev.stopPropagation()}
-                        style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}
-                      >
-                        {e.last_name} {e.first_name}
-                      </Link>
+                      <div style={{ minWidth: 0 }}>
+                        <Link
+                          to={`/pracownicy/${e.id}`}
+                          onClick={(ev) => ev.stopPropagation()}
+                          style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}
+                        >
+                          {e.last_name} {e.first_name}
+                        </Link>
+                        <span className="col-nr-in ui-mono">{e.number_display}</span>
+                      </div>
                     </Group>
                   </Table.Td>
-                  <Table.Td className="ui-mono">{e.number_display}</Table.Td>
-                  <Table.Td>{e.agency?.name ?? "—"}</Table.Td>
-                  <Table.Td>{e.department?.name ?? "—"}</Table.Td>
-                  <Table.Td>{e.position?.name ?? "—"}</Table.Td>
-                  <Table.Td>{formatDate(e.hire_date)}</Table.Td>
+                  <Table.Td className="ui-mono col-nr">{e.number_display}</Table.Td>
+                  <Table.Td className="col-split">{e.agency?.name ?? "—"}</Table.Td>
+                  <Table.Td className="col-split">{e.department?.name ?? "—"}</Table.Td>
+                  <Table.Td className="col-split">{e.position?.name ?? "—"}</Table.Td>
+                  {/* węższy ekran: przydział w jednej kolumnie (stanowisko, a pod nim wydział i agencja) */}
+                  <Table.Td className="col-combo">
+                    <div>{e.position?.name ?? "—"}</div>
+                    <Text size="xs" c="dimmed">
+                      {[e.department?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td className="col-hire">{formatDate(e.hire_date)}</Table.Td>
                   {canPrint && (
                     <Table.Td className="ui-warn ui-emp-att">
                       <AttentionCell reasons={attention.data?.[e.id] ?? []} compact={!!narrowList} />
@@ -856,7 +867,7 @@ function AttentionCell({ reasons, compact }: { reasons: string[]; compact: boole
   const more = n - 1;
   return (
     <Tooltip label={full} multiline w={280} withArrow>
-      <span style={{ whiteSpace: "nowrap", cursor: "help" }} tabIndex={0}>
+      <span className="ui-att-short" style={{ cursor: "help" }} tabIndex={0}>
         {parts[0]} · {more === 1 ? "+1 powód" : more < 5 ? `+${more} powody` : `+${more} powodów`}
       </span>
     </Tooltip>

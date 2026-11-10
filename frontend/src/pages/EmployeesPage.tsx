@@ -575,7 +575,7 @@ export function EmployeesPage() {
       </div>
 
       {/* wiersz 1: wyszukiwarka i status; wiersz 2: wszystkie filtry na całą szerokość */}
-      <Group align="center" gap={10} wrap="nowrap">
+      <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
         <TextInput
           aria-label="Szukaj pracownika"
           placeholder="Nazwisko, imię lub nr karty"

@@ -1143,3 +1143,10 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-filterbar .mantine-Chip-label{height:36px}
 .ui-filterbar .mantine-Chip-label:not([data-checked]){border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body)}
 .ui-emp-table td{white-space:nowrap}.ui-emp-table td.ui-emp-att{white-space:normal;min-width:220px}
+/* wąskie okno (komputer): nagłówek i filtry przechodzą do kolejnych wierszy zamiast się ściskać */
+.ui-inbox-head{flex-wrap:wrap;row-gap:var(--s-3)}
+.ui-inbox-head > .mantine-Group-root{flex-wrap:nowrap}
+.ui-filterbar{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))!important}
+.ui-filterbar > *{min-width:0}
+.ui-filterbar .mantine-InputBase-input,.ui-filterbar button.mantine-Input-input{white-space:nowrap}
+@media (max-width:900px){.ui-emp-search-row{flex-wrap:wrap!important}.ui-emp-search-row > .mantine-TextInput-root{flex:1 1 100%!important}}

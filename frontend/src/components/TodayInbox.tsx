@@ -41,6 +41,8 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
+const pkey = (c: Case) => (c.employee_id ? `e${c.employee_id}` : `n${c.key}`);
+
 function readMode(): "cases" | "people" {
   try {
     return localStorage.getItem("apt-today-mode") === "people" ? "people" : "cases";
@@ -87,7 +89,7 @@ export function TodayInbox() {
   const people = useMemo(() => {
     const m = new Map<string, Case[]>();
     for (const c of shown) {
-      const k = c.employee_id ? `e${c.employee_id}` : `n${c.key}`;
+      const k = pkey(c);
       m.set(k, [...(m.get(k) ?? []), c]);
     }
     // najpierw osoby z czymś po terminie, potem z największą liczbą spraw
@@ -110,18 +112,26 @@ export function TodayInbox() {
     </Button>
   );
   const row = (c: Case) => (
-    <div key={c.key} className="ui-case">
+    // klik w wiersz: panel z boku ze wszystkimi sprawami tej osoby
+    <div
+      key={c.key}
+      className="ui-case ui-case-click"
+      role="button"
+      tabIndex={0}
+      aria-label={`${c.name}: wszystkie sprawy`}
+      onClick={() => setPerson(pkey(c))}
+      onKeyDown={(ev) => {
+        if (ev.target === ev.currentTarget && (ev.key === "Enter" || ev.key === " ")) {
+          ev.preventDefault();
+          setPerson(pkey(c));
+        }
+      }}
+    >
       <span className="ui-case-ini" aria-hidden>
         {initials(c.name)}
       </span>
       <div className="ui-case-name">
-        {c.employee_id ? (
-          <UnstyledButton className="ui-case-link" onClick={() => navigate(`/pracownicy/${c.employee_id}`)}>
-            {c.name}
-          </UnstyledButton>
-        ) : (
-          c.name
-        )}
+        {c.name}
         {c.sub && <span className="ui-case-sub ui-mono">{c.sub}</span>}
       </div>
       <div className="ui-case-what">{cap(c.what)}</div>
@@ -130,7 +140,8 @@ export function TodayInbox() {
     </div>
   );
 
-  const open = person ? people.find(([k]) => k === person)?.[1] ?? [] : [];
+  // panel pokazuje wszystkie sprawy osoby, niezależnie od filtra
+  const open = person ? all.filter((c) => pkey(c) === person) : [];
 
   return (
     <div className="ui-today">

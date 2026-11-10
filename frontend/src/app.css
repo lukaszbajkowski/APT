@@ -1231,3 +1231,5 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-home-extras section{display:flex;flex-direction:column;gap:var(--s-2);min-width:0}
 .ui-up-row a{color:inherit;text-decoration:none;font-weight:600}
 .ui-up-row a:hover{text-decoration:underline}
+.ui-case-click{cursor:pointer;transition:background-color .15s}
+.ui-case-click:hover{background:var(--mantine-color-default-hover)}

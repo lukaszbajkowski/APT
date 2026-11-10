@@ -1126,3 +1126,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-kindmark{display:inline-flex;align-items:center;gap:6px;font-size:14px;line-height:20px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--mantine-color-yellow-light);color:var(--mantine-color-yellow-light-color)}
 .ui-kindmark[data-done]{background:var(--apt-subtle);color:var(--mantine-color-dimmed);font-weight:500}
 .ui-emp-table td{font-size:14px}
+/* pola wielokrotnego wyboru: bez wewnętrznej ramki fokusu na ukrytym polu tekstowym (obwódkę ma całe pole) */
+.mantine-PillsInput-field:focus-visible, .mantine-MultiSelect-inputField:focus-visible { outline: none !important; }
+.mantine-PillsInput-input:focus-within { border-color: var(--mantine-primary-color-filled); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-primary-color-filled) 22%, transparent); }

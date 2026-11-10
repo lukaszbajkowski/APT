@@ -575,7 +575,7 @@ export function EmployeesPage() {
           aria-label="Agencja"
           placeholder="Agencja"
           clearable
-          searchable
+          comboboxProps={{ width: "max-content", position: "bottom-start" }}
           w={150}
           data={options(agencies.data, agency ? Number(agency) : null)}
           value={agency}
@@ -585,7 +585,7 @@ export function EmployeesPage() {
           aria-label="Wydział"
           placeholder="Wydział"
           clearable
-          searchable
+          comboboxProps={{ width: "max-content", position: "bottom-start" }}
           w={150}
           data={options(departments.data, department ? Number(department) : null)}
           value={department}
@@ -593,6 +593,7 @@ export function EmployeesPage() {
         />
         <MultiSelect
           aria-label="Braki danych"
+          comboboxProps={{ width: "max-content", position: "bottom-start" }}
           placeholder={missing.length ? undefined : "Braki"}
           clearable
           w={missing.length ? 240 : 132}
@@ -610,7 +611,7 @@ export function EmployeesPage() {
             label="Stanowisko"
             placeholder="Wszystkie"
             clearable
-            searchable
+            comboboxProps={{ width: "max-content", position: "bottom-start" }}
             w={220}
             data={options(
               positions.data,
@@ -725,7 +726,11 @@ export function EmployeesPage() {
                   onClick={() => navigate(`/pracownicy/${e.id}`)}
                 >
                   {canPrint && (
-                    <Table.Td onClick={(ev) => ev.stopPropagation()}>
+                    <Table.Td
+                      onClick={(ev) => ev.stopPropagation()}
+                      // Shift + kliknięcie zaznacza zakres wierszy – bez zaznaczania przy tym tekstu na stronie
+                      onMouseDown={(ev) => ev.shiftKey && ev.preventDefault()}
+                    >
                       <Checkbox
                         aria-label={`Zaznacz ${e.last_name} ${e.first_name}`}
                         checked={selected.has(e.id)}

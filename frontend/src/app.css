@@ -1207,6 +1207,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-case-what{min-width:0;overflow-wrap:anywhere}
 .ui-case-when{color:var(--mantine-color-dimmed);font-size:13px}
 .ui-case-when.ui-warn{font-weight:600;color:var(--mantine-color-yellow-8)}
+[data-mantine-color-scheme="dark"] .ui-case-when.ui-warn,[data-mantine-color-scheme="dark"] .ui-case-chip[data-warn],[data-mantine-color-scheme="dark"] .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-5)}
 .ui-case-act{justify-self:end}
 .ui-case-more{display:block;width:100%;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:13px;font-weight:600;color:var(--mantine-primary-color-filled)}
 .ui-case-more:hover{background:var(--mantine-color-default-hover)}

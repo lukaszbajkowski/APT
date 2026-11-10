@@ -382,7 +382,7 @@ function InboxExtras({ d, admin }: { d: Dashboard; admin: boolean }) {
           </Paper>
         )}
         {admin && (
-          <Text size="xs" c={problems.length ? "yellow.8" : "dimmed"} fw={problems.length ? 600 : undefined} mt="sm">
+          <Text size="xs" c={problems.length ? undefined : "dimmed"} className={problems.length ? "ui-warn" : undefined} mt="sm">
             {problems.length
               ? problems.join(" ")
               : `Kopie zapasowe w porządku: na serwerze ${d.backup?.local ? formatDateTime(d.backup.local.at) : "—"}, poza serwerem ${d.backup?.offsite ? formatDateTime(d.backup.offsite.at) : "nie skonfigurowano"}.`}

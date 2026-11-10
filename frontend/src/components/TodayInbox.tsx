@@ -234,7 +234,7 @@ export function TodayInbox() {
                   {cap(c.what)}
                 </Text>
                 {c.when && (
-                  <Text size="xs" c={c.overdue ? "orange.8" : "dimmed"} fw={c.overdue ? 600 : undefined}>
+                  <Text size="xs" c={c.overdue ? undefined : "dimmed"} className={c.overdue ? "ui-warn" : undefined}>
                     {c.when}
                   </Text>
                 )}

@@ -1129,3 +1129,12 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* pola wielokrotnego wyboru: bez wewnętrznej ramki fokusu na ukrytym polu tekstowym (obwódkę ma całe pole) */
 .mantine-PillsInput-field:focus-visible, .mantine-MultiSelect-inputField:focus-visible { outline: none !important; }
 .mantine-PillsInput-input:focus-within { border-color: var(--mantine-primary-color-filled); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mantine-primary-color-filled) 22%, transparent); }
+/* przełączniki (SegmentedControl i zakładki na telefonie): bez separatorów między opcjami */
+.mantine-SegmentedControl-control::before, .mantine-SegmentedControl-control::after { display: none !important; }
+.mantine-SegmentedControl-control { border: 0 !important; }
+/* zakładki na telefonie: wskaźnik przesuwa się z lekkim odbiciem zamiast przeskakiwać */
+.ui-seg { position: relative; }
+.ui-seg-item { position: relative; z-index: 1; transition: color .2s; }
+.ui-seg-item[data-active] { background: transparent; }
+.ui-seg-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n)); border-radius: 9px; background: var(--apt-subtle); transform: translateX(calc(var(--i) * (100% + 4px))); transition: transform .32s cubic-bezier(.34,1.56,.64,1); z-index: 0; }
+@media (prefers-reduced-motion: reduce) { .ui-seg-ind { transition: none; } }

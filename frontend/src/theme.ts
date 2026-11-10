@@ -1,4 +1,4 @@
-import { Combobox, createTheme, Menu, Modal, Popover, type MantineColorsTuple } from "@mantine/core";
+import { Combobox, createTheme, SegmentedControl, Menu, Modal, Popover, type MantineColorsTuple } from "@mantine/core";
 
 /*
  * Paleta „ciepłe neutralne” – jasny i ciemny motyw.
@@ -74,5 +74,7 @@ export const theme = createTheme({
     Menu: Menu.extend({ defaultProps: { shadow: "md" } }),
     Popover: Popover.extend({ defaultProps: { shadow: "md" } }),
     Combobox: Combobox.extend({ defaultProps: { shadow: "md" } }),
+    // przełączniki: wskaźnik przesuwa się płynnie z lekkim odbiciem (bez separatorów – w CSS)
+    SegmentedControl: SegmentedControl.extend({ defaultProps: { transitionDuration: 320, transitionTimingFunction: "cubic-bezier(.34,1.56,.64,1)" } }),
   },
 });

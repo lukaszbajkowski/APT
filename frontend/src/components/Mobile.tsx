@@ -557,7 +557,14 @@ export function Segments({ value, onChange, items, swipe }: { value: string; onC
     (e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[n])?.focus();
   };
   return (
-    <div className="ui-seg" role="tablist" onKeyDown={onKey} style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+    <div
+      className="ui-seg"
+      role="tablist"
+      onKeyDown={onKey}
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, ["--n" as string]: items.length, ["--i" as string]: Math.max(0, items.findIndex((x) => x.value === value)) }}
+    >
+      {/* wskaźnik wybranej zakładki przesuwa się z lekkim odbiciem */}
+      <span className="ui-seg-ind" aria-hidden />
       {items.map((i) => (
         <UnstyledButton
           key={i.value}

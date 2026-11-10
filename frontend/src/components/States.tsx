@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Alert, Box, Button, Group, Progress, Skeleton, Stack, Text, ThemeIcon } from "@mantine/core";
-import { IconAlertTriangle, IconInbox, IconSearchOff, IconWifiOff } from "@tabler/icons-react";
+import { IconAlertTriangle, IconInbox, IconSearch, IconWifiOff } from "@tabler/icons-react";
 
 import { ApiError, slowStore } from "../api";
 
@@ -38,7 +38,7 @@ export function EmptyState({
   return (
     <Stack align="center" gap="xs" p={compact ? "md" : "xl"} ta="center" role="status">
       <ThemeIcon size={compact ? 40 : 56} radius="xl" variant="light">
-        {icon ?? (search ? <IconSearchOff size={26} /> : <IconInbox size={26} />)}
+        {icon ?? (search ? <IconSearch size={26} /> : <IconInbox size={26} />)}
       </ThemeIcon>
       <Text fw={600}>{title}</Text>
       {text && (

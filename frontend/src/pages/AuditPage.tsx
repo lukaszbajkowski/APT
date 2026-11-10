@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconAdjustmentsHorizontal, IconSearch } from "@tabler/icons-react";
-import { Chips, CompactEmpty, FilterSheet, ListRow, Pager, PageHead } from "../components/Mobile";
+import { Chips, CompactEmpty, FilterSheet, ListRow, Pager, PageHead, PageTitle } from "../components/Mobile";
 import { ErrorState } from "../components/States";
 
 import { ACTION_LABELS, api, ApiError, formatDateTime, type AuditEntry, type Page } from "../api";
@@ -145,7 +145,9 @@ export function AuditPage() {
 
   return (
     <Stack>
-      <Title order={2}>Dziennik zdarzeń</Title>
+      <PageTitle
+        title="Dziennik zdarzeń"
+      />
       <Group align="flex-end">
         <Select
           label="Zdarzenie"

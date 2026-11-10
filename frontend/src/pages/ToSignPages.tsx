@@ -13,7 +13,7 @@ import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
 import { EmptyState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, FormScreen, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, FormScreen, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -76,7 +76,7 @@ export function ToSignListPage() {
   }
   return (
     <Stack maw={640}>
-      <Title order={2}>{t("Do podpisu")}</Title>
+      <PageTitle title={t("Do podpisu")} />
       {list.isLoading && <Loading />}
       {list.data && list.data.pending.length === 0 && (
         <EmptyState compact title={t("Nie masz dokumentów do podpisu")} text={t("O nowym dokumencie dostaniesz powiadomienie.")} />
@@ -314,7 +314,7 @@ export function ToSignPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>{info.data?.document ?? t("Podpis")}</Title>
+      <PageTitle title={info.data?.document ?? t("Podpis")} />
       {accounts.length > 1 && (
         <Alert color="blue" icon={<IconAlertCircle size={18} />}>
           {t("W tej przeglądarce jest zalogowanych kilka kont. Podpisujesz jako:")} <b>{me?.user.full_name}</b>.

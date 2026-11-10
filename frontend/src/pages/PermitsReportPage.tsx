@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, Stack, Switch, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Stack, Switch, Table, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, formatDate, type PermitRow } from "../api";
 import { PERMIT_STATE } from "../components/Permits";
 import { ErrorState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 
 export function PermitsReportPage() {
   const [all, setAll] = useState(false);
@@ -19,15 +19,19 @@ export function PermitsReportPage() {
   if (mobile) return <PermitsMobile all={all} setAll={setAll} />;
   return (
     <Stack>
-      <Group justify="space-between">
-        <div>
-          <Title order={2}>Dokumenty pobytowe i zezwolenia</Title>
-          <Text c="dimmed" size="sm">
+      <PageTitle
+        title="Dokumenty pobytowe i zezwolenia"
+        description={
+          <>
             Nieważne i kończące się w ciągu 60 dni (aktywni pracownicy). Przypomnienie e-mail przychodzi w poniedziałki.
-          </Text>
-        </div>
-        <Switch label="Pokaż także ważne" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />
-      </Group>
+          </>
+        }
+        actions={
+          <>
+            <Switch label="Pokaż także ważne" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />
+          </>
+        }
+      />
       {q.isLoading && <Loading />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <Alert color="teal">Nic nie wymaga uwagi.</Alert>}

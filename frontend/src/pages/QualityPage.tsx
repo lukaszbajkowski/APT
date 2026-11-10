@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { Chips, CompactEmpty, ListRow, PageHead, cap } from "../components/Mobile";
+import { Chips, CompactEmpty, ListRow, PageHead, cap, PageTitle } from "../components/Mobile";
 
 import { api, errorText } from "../api";
 import { Loading } from "../components/States";
@@ -96,13 +96,15 @@ export function QualityPage() {
 
   return (
     <Stack>
-      <div>
-        <Title order={2}>Braki w danych</Title>
-        <Text c="dimmed" size="sm">
-          Aktywni pracownicy z niekompletną kartoteką ({data.rows.length} z {data.active_total}). Przypomnienie e-mail
-          wychodzi w poniedziałki do administratorów, HR i kierowników.
-        </Text>
-      </div>
+      <PageTitle
+        title="Braki w danych"
+        description={
+          <>
+            Aktywni pracownicy z niekompletną kartoteką ({data.rows.length} z {data.active_total}). Przypomnienie e-mail
+            wychodzi w poniedziałki do administratorów, HR i kierowników.
+          </>
+        }
+      />
 
       {data.rows.length === 0 ? (
         <Alert color="green" icon={<IconCircleCheck />}>

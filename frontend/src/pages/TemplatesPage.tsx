@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, FileInput, Group,  SimpleGrid, Stack, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, FileInput, Group,  SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDateTime, LANGUAGES, type DocTemplate } from "../api";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, ListRow, PageHead, StatusBadge, FormDialog } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, StatusBadge, FormDialog, PageTitle } from "../components/Mobile";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -53,28 +53,32 @@ export function TemplatesPage() {
   return (
     <Stack>
       {mobile && <PageHead title="Szablony" subtitle="Dokumenty Word ze znacznikami" action={{ label: "Dodaj szablon", icon: <IconPlus size={22} />, onClick: openNew }} />}
-      {!mobile && <Group justify="space-between">
-        <div>
-          <Title order={2}>Szablony dokumentów</Title>
-          <Text size="sm" c="dimmed">
-            Dokumenty Word (.docx) ze znacznikami {"{{ … }}"}. Dane z kartoteki wstawiają się same, o resztę
-            aplikacja zapyta przy generowaniu.
-          </Text>
-        </div>
-        <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => {
-            setName("");
-            setDescription("");
-            setFile(null);
-            setLanguage("pl");
-            setError(null);
-            setOpen(true);
-          }}
-        >
-          Dodaj szablon
-        </Button>
-      </Group>}
+      {!mobile && (
+          <PageTitle
+            title="Szablony dokumentów"
+            description={
+              <>
+                Dokumenty Word (.docx) ze znacznikami {"{{ … }}"}. Dane z kartoteki wstawiają się same, o resztę
+                aplikacja zapyta przy generowaniu.
+              </>
+            }
+          actions={
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => {
+                setName("");
+                setDescription("");
+                setFile(null);
+                setLanguage("pl");
+                setError(null);
+                setOpen(true);
+              }}
+            >
+              Dodaj szablon
+            </Button>
+          }
+        />
+      )}
 
       {templates.isLoading && <Loading />}
       {templates.error && <ErrorState error={templates.error} onRetry={() => templates.refetch()} />}

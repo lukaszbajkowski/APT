@@ -5,7 +5,7 @@ import { Alert, Box, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, 
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
 import { EmptyState, Loading } from "../components/States";
@@ -164,22 +164,26 @@ export function ReportsPage() {
 
   return (
     <Stack maw={1200}>
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Raporty</Title>
-          <Text c="dimmed" size="sm">
+      <PageTitle
+        title="Raporty"
+        description={
+          <>
             Zestawienie aktywnych pracowników · stan na {formatDateTime(s.generated_at)}
-          </Text>
-        </div>
-        <Group gap="xs">
-          <Button leftSection={<IconFileSpreadsheet size={16} />} onClick={() => download("xlsx")} loading={busy === "xlsx"}>
-            Excel
-          </Button>
-          <Button variant="default" leftSection={<IconFileTypePdf size={16} />} onClick={() => download("pdf")} loading={busy === "pdf"}>
-            PDF
-          </Button>
-        </Group>
-      </Group>
+          </>
+        }
+        actions={
+          <>
+            <Group gap="xs">
+              <Button leftSection={<IconFileSpreadsheet size={16} />} onClick={() => download("xlsx")} loading={busy === "xlsx"}>
+                Excel
+              </Button>
+              <Button variant="default" leftSection={<IconFileTypePdf size={16} />} onClick={() => download("pdf")} loading={busy === "pdf"}>
+                PDF
+              </Button>
+            </Group>
+          </>
+        }
+      />
 
       <SimpleGrid cols={{ base: 2, md: s.missing_pesel === null ? 3 : 4 }}>
         {[

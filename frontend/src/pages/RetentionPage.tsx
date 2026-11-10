@@ -26,7 +26,7 @@ import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog, PageTitle } from "../components/Mobile";
 
 const CONFIRM = "USUŃ";
 
@@ -280,14 +280,16 @@ export function RetentionPage() {
 
   return (
     <Stack maw={1100}>
-      <div>
-        <Title order={2}>Retencja danych</Title>
-        <Text c="dimmed" size="sm">
-          Dane zwolnionych pracowników są przechowywane {d.years} lat, licząc od końca roku kalendarzowego, w którym
-          nastąpiło zwolnienie (np. zwolnienie w 2026 → do 31.12.{2026 + d.years}). Po tym czasie usuń je trwale –
-          razem ze zdjęciem i wygenerowanymi dokumentami. W dzienniku zdarzeń zostanie tylko numer ewidencyjny.
-        </Text>
-      </div>
+      <PageTitle
+        title="Retencja danych"
+        description={
+          <>
+            Dane zwolnionych pracowników są przechowywane {d.years} lat, licząc od końca roku kalendarzowego, w którym
+            nastąpiło zwolnienie (np. zwolnienie w 2026 → do 31.12.{2026 + d.years}). Po tym czasie usuń je trwale –
+            razem ze zdjęciem i wygenerowanymi dokumentami. W dzienniku zdarzeń zostanie tylko numer ewidencyjny.
+          </>
+        }
+      />
 
       <Section
         title="Do usunięcia"

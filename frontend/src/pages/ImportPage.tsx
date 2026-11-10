@@ -8,6 +8,7 @@ import { Select } from "../components/AptSelect";
 import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, withAcct } from "../api";
+import { PageTitle } from "../components/Mobile";
 
 interface FieldDef {
   key: string;
@@ -247,10 +248,9 @@ export function ImportPage() {
             <IconArrowLeft size={14} /> Wróć do listy pracowników
           </Group>
         </Anchor>
-        <Title order={2} mt={4}>Import pracowników</Title>
-        <Text c="dimmed" size="sm">
-          Wczytaj listę z Excela (.xlsx), Numbers na Macu (.numbers) lub CSV. Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.
-        </Text>
+        <div style={{ marginTop: 8 }}>
+          <PageTitle title="Import pracowników" description={<>Wczytaj listę z Excela (.xlsx), Numbers na Macu (.numbers) lub CSV. Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.</>} />
+        </div>
       </div>
 
       {error && (

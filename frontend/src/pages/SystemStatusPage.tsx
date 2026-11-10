@@ -4,7 +4,7 @@ import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } f
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
 import { useState } from "react";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 
@@ -140,12 +140,14 @@ export function SystemStatusPage() {
   }
   return (
     <Stack>
-      <div>
-        <Title order={2}>Stan systemu</Title>
-        <Text c="dimmed" size="sm">
-          Wersja {s.version}, migracja {s.migration ?? "?"}. Odświeża się co minutę.
-        </Text>
-      </div>
+      <PageTitle
+        title="Stan systemu"
+        description={
+          <>
+            Wersja {s.version}, migracja {s.migration ?? "?"}. Odświeża się co minutę.
+          </>
+        }
+      />
       {s.unusual.length > 0 && (
         <Alert color="red" title="Nietypowa aktywność (ostatnie 24 godz.)">
           {s.unusual.map((x) => (

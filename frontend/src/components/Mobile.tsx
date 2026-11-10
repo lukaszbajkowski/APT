@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
 import { useConfirm } from "../lib/confirm";
-import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Text, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconDots, IconX } from "@tabler/icons-react";
 
@@ -447,6 +447,31 @@ export function StatusBadge({ tone, children }: { tone: Tone; children: ReactNod
 
 /** Pierwsza litera wielka (etykiety z serwera bywają pisane małą literą). */
 export const cap = (s: string | null | undefined) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+
+/* ——— nagłówek strony (komputer): tytuł z licznikiem po lewej, akcje po prawej, opis pod spodem.
+   Ten sam układ na każdej stronie – wzorem jest lista Pracownicy. ——— */
+export function PageTitle({ title, meta, description, actions }: { title: ReactNode; meta?: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="ui-page-title">
+      <div className="ui-inbox-head">
+        <Group gap={12} align="baseline">
+          <Title order={1}>{title}</Title>
+          {meta && (
+            <Text c="dimmed" role="status" aria-live="polite">
+              {meta}
+            </Text>
+          )}
+        </Group>
+        {actions && <Group gap={8}>{actions}</Group>}
+      </div>
+      {description && (
+        <Text c="dimmed" size="sm" className="ui-page-desc">
+          {description}
+        </Text>
+      )}
+    </div>
+  );
+}
 
 /* ——— nagłówek ekranu listy (telefon): duży tytuł, opis, jedna akcja obok ——— */
 export function PageHead({

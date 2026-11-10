@@ -2,14 +2,14 @@ import { useState, type FormEvent } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, FormDialog } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, FormDialog, PageTitle } from "../components/Mobile";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -288,32 +288,36 @@ export function EmployeeRequestsPage() {
           <Segments value={show} onChange={(x) => setShow(x as "pending" | "all")} items={[{ value: "pending", label: `Oczekujące · ${pending}` }, { value: "all", label: "Wszystkie" }]} />
         </>
       ) : (
-        <Group justify="space-between" align="flex-end">
-          <div>
-            <Title order={2}>Zgłoszenia nowych osób</Title>
-            <Text c="dimmed" size="sm">
+        <PageTitle
+          title="Zgłoszenia nowych osób"
+          description={
+            <>
               {isAgency
                 ? "Zgłoś osobę, która ma zacząć pracę – kadry sprawdzą dane i dodadzą ją do kartoteki."
                 : "Osoby zgłoszone przez agencje pracy. Zatwierdzenie dodaje osobę do kartoteki (te same kontrole co przy ręcznym dodaniu)."}
-            </Text>
-          </div>
-          <Group gap="sm">
-            <SegmentedControl
-              size="xs"
-              value={show}
-              onChange={(x) => setShow(x as "pending" | "all")}
-              data={[
-                { value: "pending", label: `Oczekujące (${pending})` },
-                { value: "all", label: "Wszystkie" },
-              ]}
-            />
-            {isAgency && (
-              <Button leftSection={<IconPlus size={16} />} onClick={() => setNewOpen(true)}>
-                Zgłoś osobę
-              </Button>
-            )}
-          </Group>
-        </Group>
+            </>
+          }
+          actions={
+            <>
+              <Group gap="sm">
+                <SegmentedControl
+                  size="xs"
+                  value={show}
+                  onChange={(x) => setShow(x as "pending" | "all")}
+                  data={[
+                    { value: "pending", label: `Oczekujące (${pending})` },
+                    { value: "all", label: "Wszystkie" },
+                  ]}
+                />
+                {isAgency && (
+                  <Button leftSection={<IconPlus size={16} />} onClick={() => setNewOpen(true)}>
+                    Zgłoś osobę
+                  </Button>
+                )}
+              </Group>
+            </>
+          }
+        />
       )}
       {q.isLoading && <Loading />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}

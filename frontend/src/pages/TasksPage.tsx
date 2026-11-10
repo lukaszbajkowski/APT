@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconListCheck, IconUser } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 import { ErrorState, Loading } from "../components/States";
-import { ActionSheet, CompactEmpty, GroupLabel, PageHead, Segments, SwipePager } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, GroupLabel, PageHead, Segments, SwipePager, PageTitle } from "../components/Mobile";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -42,13 +42,15 @@ export function TasksPage() {
     );
   return (
     <Stack maw={1300}>
-      <div>
-        <Title order={2}>Zadania</Title>
-        <Text c="dimmed" size="sm">
-          Checklisty wdrożenia i odejścia. Odhaczasz tutaj albo w kartotece pracownika. Pozycje z ⚡ odhaczą się same (np. po wydruku
-          karty lub wpisaniu szkolenia).
-        </Text>
-      </div>
+      <PageTitle
+        title="Zadania"
+        description={
+          <>
+            Checklisty wdrożenia i odejścia. Odhaczasz tutaj albo w kartotece pracownika. Pozycje z ⚡ odhaczą się same (np. po wydruku
+            karty lub wpisaniu szkolenia).
+          </>
+        }
+      />
       <Tabs defaultValue="open" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="open">Otwarte zadania</Tabs.Tab>

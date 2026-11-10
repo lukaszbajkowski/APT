@@ -8,7 +8,7 @@ import { IconCamera, IconMail, IconMessage, IconPhone } from "@tabler/icons-reac
 
 import { api, errorText, formatDate, withAcct } from "../api";
 import { MyDataCards, MyPhotoEditor, type MyEmployee } from "../components/MyDataCards";
-import { CompactEmpty, DangerAction, DangerZone, FormScreen, InfoRow, ListRow, Section, StatusBadge, SwipePager } from "../components/Mobile";
+import { CompactEmpty, DangerAction, DangerZone, FormScreen, InfoRow, ListRow, Section, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
 import { Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { useT } from "../lib/i18n";
@@ -156,7 +156,7 @@ export function MyDataPage() {
       return n;
     });
 
-  if (!mobile) return <Stack maw={760}><Title order={2}>{t("Moje dane")}</Title><MyDataCards /></Stack>;
+  if (!mobile) return <Stack maw={760}><PageTitle title={t("Moje dane")} /><MyDataCards /></Stack>;
   const d = mine.data;
   if (mine.isLoading || !d) return <Loading rows={4} />;
   const idx = tabs.findIndex((x) => x.v === tab);

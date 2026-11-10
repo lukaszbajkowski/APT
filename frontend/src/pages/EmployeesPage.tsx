@@ -3,7 +3,7 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
 
@@ -17,7 +17,7 @@ import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status } from "../components/Mobile";
+import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status, PageTitle } from "../components/Mobile";
 
 const PAGE_SIZE = 50;
 
@@ -555,26 +555,22 @@ export function EmployeesPage() {
     : null;
   return (
     <Stack gap="md" className="ui-emp">
-      <div className="ui-inbox-head">
-        <Group gap={12} align="baseline">
-          <Title order={1}>Pracownicy</Title>
-          {countText && (
-            <Text c="dimmed" role="status" aria-live="polite">
-              {countText}
-            </Text>
-          )}
-        </Group>
-        {staff && (
-          <Group gap={8}>
-            <Button variant="default" component={Link} to="/pracownicy/import">
-              Import z arkusza
-            </Button>
-            <Button component={Link} to="/pracownicy/nowy">
-              Dodaj pracownika
-            </Button>
-          </Group>
-        )}
-      </div>
+      <PageTitle
+        title="Pracownicy"
+        meta={countText}
+        actions={
+          staff && (
+            <>
+              <Button variant="default" component={Link} to="/pracownicy/import">
+                Import z arkusza
+              </Button>
+              <Button component={Link} to="/pracownicy/nowy">
+                Dodaj pracownika
+              </Button>
+            </>
+          )
+        }
+      />
 
       {/* wiersz 1: wyszukiwarka i status; wiersz 2: wszystkie filtry na całą szerokość */}
       <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -9,7 +9,7 @@ import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
+import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
 
 interface Item {
   id: number;
@@ -309,7 +309,9 @@ export function DictionariesPage() {
   }
   return (
     <Stack>
-      <Title order={2}>Słowniki</Title>
+      <PageTitle
+        title="Słowniki"
+      />
       <Tabs defaultValue="agencies" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="agencies">APT</Tabs.Tab>

@@ -23,6 +23,8 @@ Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduce
 - Kolory: orzech = główna akcja i wybór, bursztyn = wymaga działania, czerwień = błąd / usuwanie,
   szałwia = potwierdzenie po akcji; reszta szarym lub zwykłym tekstem. Paleta bez zmian.
 - Akcje: jedna pełna akcja główna na widok, reszta obramowana / tekstowa, rzadkie i niebezpieczne w „⋯”.
+- Nagłówek strony: zawsze `PageTitle` z `components/Mobile.tsx` (wzór: lista Pracownicy) – tytuł i licznik
+  po lewej, akcje po prawej w tej samej linii, opis pod spodem (≤ 72 znaki szerokości). Bez własnych układów nagłówka.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Na później (zapisane na prośbę właściciela)

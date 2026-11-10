@@ -1,14 +1,14 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconId, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { MyDataCards, MyPhotoEditor, type MyEmployee } from "../components/MyDataCards";
 import { Messenger } from "../components/HrThreads";
 import { useT } from "../lib/i18n";
-import { ListRow, PageHead, Section, CompactEmpty, StatusBadge } from "../components/Mobile";
+import { ListRow, PageHead, Section, CompactEmpty, StatusBadge, PageTitle } from "../components/Mobile";
 
 export function EmployeeMessagesPage() {
   return <Messenger staff={false} />;
@@ -115,7 +115,7 @@ export function EmployeeHome() {
 
   return (
     <Stack maw={760}>
-      <Title order={2}>{t("Moje konto")}</Title>
+      <PageTitle title={t("Moje konto")} />
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
         <Tile icon={IconSignature} title={t("Do podpisu")} hint={t("Dokumenty czekające na Twój podpis")} to="/moje-konto/do-podpisu" badge={toSign.data?.pending || undefined} />
         {toSign.data?.last_signed && (

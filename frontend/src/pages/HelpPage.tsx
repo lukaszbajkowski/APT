@@ -8,7 +8,7 @@ import { IconArrowLeft, IconClock, IconEdit, IconMail, IconPhone, IconUser } fro
 import { api, errorText, formatDateTime } from "../api";
 import { useAuth } from "../auth";
 import { AuthShell } from "../components/AuthShell";
-import { FormDialog } from "../components/Mobile";
+import { FormDialog, PageTitle } from "../components/Mobile";
 import { Loading } from "../components/States";
 import { useT } from "../lib/i18n";
 
@@ -108,9 +108,7 @@ export function HelpPage() {
             </Button>
           )}
         </Group>
-        <Title order={1} fz={26}>
-          {T("Pomoc i prywatność")}
-        </Title>
+        <PageTitle title={T("Pomoc i prywatność")} />
         {q.isLoading && <Loading />}
         {q.error && <Alert color="red">{errorText(q.error)}</Alert>}
         {d && (

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Tabs, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -10,7 +10,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, EmptyState, Loading } from "../components/States";
-import { ActionSheet, CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, type SheetAction } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, type SheetAction, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => r !== "employee").map((r) => ({ value: r, label: ROLE_LABELS[r] }));
@@ -186,12 +186,14 @@ export function UsersPage() {
       {mobile ? (
         <PageHead title="Użytkownicy" subtitle="Konta systemu" action={{ label: "Dodaj użytkownika", icon: <IconPlus size={22} />, onClick: openNew }} />
       ) : (
-        <Group justify="space-between">
-          <Title order={2}>Użytkownicy</Title>
-          <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
-            Dodaj użytkownika
-          </Button>
-        </Group>
+        <PageTitle
+          title="Użytkownicy"
+          actions={
+            <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
+              Dodaj użytkownika
+            </Button>
+          }
+        />
       )}
 
       {mobile && (

@@ -19,7 +19,7 @@ import { Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormScreen, ListRow, Section, StatusBadge } from "../components/Mobile";
+import { FormScreen, ListRow, Section, StatusBadge, PageTitle } from "../components/Mobile";
 
 export function TemplateEditPage() {
   const { id } = useParams();
@@ -180,26 +180,30 @@ export function TemplateEditPage() {
           <IconArrowLeft size={14} /> Szablony
         </Group>
       </Anchor>
-      <Group justify="space-between">
-        <div>
-          <Title order={2}>{t.name}</Title>
-          <Text size="sm" c="dimmed">
+      <PageTitle
+        title={t.name}
+        description={
+          <>
             Plik: {t.original_filename} · wersja {t.version}
-          </Text>
-        </div>
-        <Group>
-          <Button variant="default" component="a" href={withAcct(`/api/templates/${t.id}/file`)} leftSection={<IconDownload size={16} />}>
-            Pobierz .docx
-          </Button>
-          <FileButton accept=".docx" onChange={(f) => f && replace.mutate(f)}>
-            {(props) => (
-              <Button {...props} variant="light" leftSection={<IconUpload size={16} />} loading={replace.isPending}>
-                Wgraj nową wersję
+          </>
+        }
+        actions={
+          <>
+            <Group>
+              <Button variant="default" component="a" href={withAcct(`/api/templates/${t.id}/file`)} leftSection={<IconDownload size={16} />}>
+                Pobierz .docx
               </Button>
-            )}
-          </FileButton>
-        </Group>
-      </Group>
+              <FileButton accept=".docx" onChange={(f) => f && replace.mutate(f)}>
+                {(props) => (
+                  <Button {...props} variant="light" leftSection={<IconUpload size={16} />} loading={replace.isPending}>
+                    Wgraj nową wersję
+                  </Button>
+                )}
+              </FileButton>
+            </Group>
+          </>
+        }
+      />
 
       {error && (
         <Alert color="red" withCloseButton onClose={() => setError(null)}>

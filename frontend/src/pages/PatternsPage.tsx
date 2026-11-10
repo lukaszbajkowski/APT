@@ -2,21 +2,14 @@ import { useState } from "react";
 import { Button, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
 import { IconDownload, IconEye, IconFileText, IconPencil, IconPlus, IconPrinter, IconSignature } from "@tabler/icons-react";
 
-import { ActionSheet, CompactEmpty, DangerAction, DangerZone, InfoRow, ListRow, Section, StatusBadge } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, DangerAction, DangerZone, InfoRow, ListRow, Section, StatusBadge, PageTitle } from "../components/Mobile";
 
 /** Wzornik: wszystkie wspólne klocki w jednym miejscu – do sprawdzenia na telefonie (jasny i ciemny motyw). */
 export function PatternsPage() {
   const [sheet, setSheet] = useState(false);
   return (
     <Stack gap="lg" maw={640}>
-      <div>
-        <Title order={1} size="h2">
-          Wzornik
-        </Title>
-        <Text c="dimmed" size="sm">
-          Wspólne elementy ekranów. Przewiń w dół – nazwa ekranu pojawi się w pasku u góry.
-        </Text>
-      </div>
+      <PageTitle title="Wzornik" description="Wspólne elementy ekranów. Przewiń w dół – nazwa ekranu pojawi się w pasku u góry." />
 
       <Foundations />
 

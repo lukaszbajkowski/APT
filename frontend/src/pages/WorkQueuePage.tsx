@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, errorText } from "../api";
 import { Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Section } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Section, PageTitle } from "../components/Mobile";
 
 interface Item {
   title: string;
@@ -49,12 +49,14 @@ export function WorkQueuePage() {
     );
   return (
     <Stack>
-      <div>
-        <Title order={2}>Do zrobienia</Title>
-        <Text c="dimmed" size="sm">
-          Wszystko, co czeka na kadry, w jednym miejscu: {d.total} pozycji. Kliknij nagłówek grupy, aby zobaczyć pełną listę.
-        </Text>
-      </div>
+      <PageTitle
+        title="Do zrobienia"
+        description={
+          <>
+            Wszystko, co czeka na kadry, w jednym miejscu: {d.total} pozycji. Kliknij nagłówek grupy, aby zobaczyć pełną listę.
+          </>
+        }
+      />
       {d.groups.length === 0 && <Alert color="teal">Nic nie czeka na Twoją uwagę.</Alert>}
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         {d.groups.map((g) => (

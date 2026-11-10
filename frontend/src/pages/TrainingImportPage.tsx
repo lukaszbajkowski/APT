@@ -8,6 +8,7 @@ import { Select } from "../components/AptSelect";
 import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
 import { api, errorText, withAcct } from "../api";
+import { PageTitle } from "../components/Mobile";
 
 interface FieldDef {
   key: string;
@@ -211,11 +212,10 @@ export function TrainingImportPage() {
             <IconArrowLeft size={14} /> Wróć do szkoleń
           </Group>
         </Anchor>
-        <Title order={2} mt={4}>Import szkoleń</Title>
-        <Text c="dimmed" size="sm">
-          Wczytaj historię szkoleń z Excela (.xlsx), Numbers (.numbers) lub CSV – jeden wiersz to jedno szkolenie jednej osoby.
-          Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.
-        </Text>
+        <div style={{ marginTop: 8 }}>
+          <PageTitle title="Import szkoleń" description={<>Wczytaj historię szkoleń z Excela (.xlsx), Numbers (.numbers) lub CSV – jeden wiersz to jedno szkolenie jednej osoby.
+          Przed zapisem zobaczysz, co zostanie dodane, a co wymaga poprawy.</>} />
+        </div>
       </div>
 
       {error && (

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog } from "../components/Mobile";
+import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Title, Drawer, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
@@ -853,35 +853,37 @@ export function TrainingsPage() {
   if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
     <Stack>
-      <Group justify="space-between" align="flex-start">
-      <div>
-        <Title order={2}>Szkolenia</Title>
-        <Text c="dimmed" size="sm">
-          Szkolenia wpisuje się w kartotece pracownika, kilku osobom naraz – z listy pracowników (zaznacz osoby → „Szkolenie”).
-          Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
-        </Text>
-      </div>
-      {staff && (
-        <Menu position="bottom-end" width={290}>
-            <Menu.Target>
-              <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
-                Dodaj szkolenie
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item component={Link} to="/pracownicy" leftSection={<IconPencil size={16} />}>
-                Wpisz ręcznie (w kartotece pracownika)
-              </Menu.Item>
-              <Menu.Item component={Link} to="/pracownicy" leftSection={<IconUsers size={16} />}>
-                Dla kilku osób (zaznacz na liście pracowników)
-              </Menu.Item>
-              <Menu.Item component={Link} to="/szkolenia/import" leftSection={<IconFileSpreadsheet size={16} />}>
-                Importuj z arkusza (Excel, Numbers, CSV)
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-      )}
-      </Group>
+      <PageTitle
+        title="Szkolenia"
+        description={
+          <>
+            Szkolenia wpisuje się w kartotece pracownika, kilku osobom naraz – z listy pracowników (zaznacz osoby → „Szkolenie”).
+            Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
+          </>
+        }
+        actions={
+          staff && (
+          <Menu position="bottom-end" width={290}>
+              <Menu.Target>
+                <Button leftSection={<IconPlus size={16} />} rightSection={<IconChevronDown size={14} />}>
+                  Dodaj szkolenie
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item component={Link} to="/pracownicy" leftSection={<IconPencil size={16} />}>
+                  Wpisz ręcznie (w kartotece pracownika)
+                </Menu.Item>
+                <Menu.Item component={Link} to="/pracownicy" leftSection={<IconUsers size={16} />}>
+                  Dla kilku osób (zaznacz na liście pracowników)
+                </Menu.Item>
+                <Menu.Item component={Link} to="/szkolenia/import" leftSection={<IconFileSpreadsheet size={16} />}>
+                  Importuj z arkusza (Excel, Numbers, CSV)
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )
+        }
+      />
       <Tabs defaultValue="expiring" keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="expiring">Kończące się (30 dni)</Tabs.Tab>

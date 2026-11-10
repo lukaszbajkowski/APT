@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconDownload, IconMail } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge } from "../components/Mobile";
+import { ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 
 import { useAuth } from "../auth";
@@ -176,13 +176,15 @@ export function AgencyReportPage() {
 
   return (
     <Stack>
-      <div>
-        <Title order={2}>Zestawienie dla agencji</Title>
-        <Text c="dimmed" size="sm">
-          Osoby, które w danym miesiącu choć jeden dzień pracowały w APT, z okresem zatrudnienia w tym miesiącu.
-          {staff && " 1. dnia miesiąca zestawienie za poprzedni miesiąc wychodzi automatycznie na adres e-mail APT (kopia do kadr)."}
-        </Text>
-      </div>
+      <PageTitle
+        title="Zestawienie dla agencji"
+        description={
+          <>
+            Osoby, które w danym miesiącu choć jeden dzień pracowały w APT, z okresem zatrudnienia w tym miesiącu.
+            {staff && " 1. dnia miesiąca zestawienie za poprzedni miesiąc wychodzi automatycznie na adres e-mail APT (kopia do kadr)."}
+          </>
+        }
+      />
 
       <Group align="flex-end" gap="sm" wrap="wrap">
         {staff && (

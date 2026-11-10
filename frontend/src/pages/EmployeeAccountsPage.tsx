@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, ErrorState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
+import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
 
 interface Row {
   employee_id: number;
@@ -102,10 +102,14 @@ export function EmployeeAccountsPage() {
 
   return (
     <Stack>
-      <Title order={2}>Konta pracowników</Title>
-      <Text size="sm" c="dimmed">
-        Zaproszenia, reset dostępu i wyłączenie konta wykonasz w karcie pracownika.
-      </Text>
+      <PageTitle
+        title="Konta pracowników"
+        description={
+          <>
+            Zaproszenia, reset dostępu i wyłączenie konta wykonasz w karcie pracownika.
+          </>
+        }
+      />
       <Group>
         <TextInput
           aria-label="Szukaj konta"

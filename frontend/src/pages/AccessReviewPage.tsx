@@ -10,7 +10,7 @@ import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
 import { ErrorState, Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap } from "../components/Mobile";
+import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 
 const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
@@ -326,7 +326,9 @@ export function AccessReviewPage() {
     );
   return (
     <Stack>
-      <Title order={2}>Przegląd dostępu</Title>
+      <PageTitle
+        title="Przegląd dostępu"
+      />
       <SegmentedControl
         w="fit-content"
         value={tab}

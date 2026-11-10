@@ -7,7 +7,7 @@ import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } fr
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { useMediaQuery } from "@mantine/hooks";
-import { useMobileHeader, useNavHeightVar } from "../components/Mobile";
+import { useMobileHeader, useNavHeightVar, PageTitle } from "../components/Mobile";
 
 type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 declare global {
@@ -192,12 +192,14 @@ export function ScannerPage() {
 
   return (
     <Stack maw={live ? undefined : 560} className={live ? "ui-scan-live" : undefined}>
-      <div className="ui-scan-head">
-        <Title order={2}>Skaner kart</Title>
-        <Text c="dimmed" size="sm">
-          Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem.
-        </Text>
-      </div>
+      <PageTitle
+        title="Skaner kart"
+        description={
+          <>
+            Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem.
+          </>
+        }
+      />
 
       <Box
         pos="relative"

@@ -1184,3 +1184,6 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .ui-emp-search-row{flex-wrap:wrap!important}
   .ui-emp-search-row > .mantine-TextInput-root{flex:1 1 100%!important}
 }
+
+/* nagłówek strony (PageTitle) */
+.ui-page-desc{margin-top:var(--s-1);max-width:72ch}

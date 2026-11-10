@@ -16,7 +16,7 @@ import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle, PageTitle } from "../components/Mobile";
 
 interface Options {
   challenge_id: string;
@@ -500,7 +500,7 @@ export function MyAccountPage() {
 
   return (
     <Stack maw={640}>
-      <Title order={2}>{t("Logowanie i powiadomienia")}</Title>
+      <PageTitle title={t("Logowanie i powiadomienia")} />
       <InstallApp />
       <PushCard />
       <TimezoneSetting />

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useState, type ReactNode } from "
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Badge,
@@ -14,6 +15,7 @@ import {
   SegmentedControl,
   Stack,
   Text,
+  Tooltip,
   UnstyledButton,
   useMantineColorScheme,
   type MantineColorScheme,
@@ -21,6 +23,8 @@ import {
 import { useMediaQuery } from "@mantine/hooks";
 import {
   IconBook,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconChartBar,
   IconCertificate2,
   IconChecklist,
@@ -224,6 +228,25 @@ function AppLayoutInner() {
   }, [location.pathname, navType]);
   const t = useT();
   const lang = useLang();
+  // pasek boczny: same ikony poniżej 1280 px albo z wyboru (zapamiętane w przeglądarce)
+  const narrow = useMediaQuery("(max-width: 80em)", false, { getInitialValueInEffect: false });
+  const [railPref, setRailPref] = useState<"auto" | "rail" | "full">(() => {
+    try {
+      return (localStorage.getItem("apt-nav-rail") as "rail" | "full" | null) ?? "auto";
+    } catch {
+      return "auto";
+    }
+  });
+  const rail = !mobile && (railPref === "rail" || (railPref === "auto" && narrow));
+  const toggleRail = () => {
+    const next = rail ? "full" : "rail";
+    setRailPref(next);
+    try {
+      localStorage.setItem("apt-nav-rail", next);
+    } catch {
+      /* bez pamięci przeglądarki – działa do odświeżenia */
+    }
+  };
   const [collapsed, setCollapsed] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("apt-nav-collapsed-v2") ?? JSON.stringify([ADMIN_GROUP])) as string[];
@@ -329,7 +352,7 @@ function AppLayoutInner() {
     <AppShell
       header={{ height: 52, collapsed: !mobile }}
       footer={{ height: 58, collapsed: !mobile }}
-      navbar={{ width: 256, breakpoint: "sm", collapsed: { mobile: true } }}
+      navbar={{ width: rail ? 64 : 256, breakpoint: "sm", collapsed: { mobile: true } }}
       padding={mobile ? "sm" : "lg"}
     >
       {mobile && (
@@ -338,7 +361,30 @@ function AppLayoutInner() {
         </AppShell.Header>
       )}
 
-      <AppShell.Navbar p="sm">
+      <AppShell.Navbar p={rail ? 8 : "sm"} className="ui-nav" data-rail={rail || undefined}>
+        {rail ? (
+          <>
+            <AppShell.Section>
+              <Tooltip label="Identyfikacja pracowników APT" position="right" withArrow>
+                <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link ui-rail-brand" aria-label="Strona główna">
+                  <BrandMark />
+                </Link>
+              </Tooltip>
+            </AppShell.Section>
+            <AppShell.Section grow component={ScrollArea} type="never">
+              <RailList items={items} path={location.pathname} />
+            </AppShell.Section>
+            <AppShell.Section pt={6} className="ui-rail-foot">
+              <AccountMenu compact rail />
+              <Tooltip label="Rozwiń menu" position="right" withArrow>
+                <ActionIcon variant="subtle" color="gray" size={36} onClick={toggleRail} aria-label="Rozwiń menu">
+                  <IconLayoutSidebarLeftExpand size={20} />
+                </ActionIcon>
+              </Tooltip>
+            </AppShell.Section>
+          </>
+        ) : (
+          <>
         <AppShell.Section>
           <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link">
             <Group gap={10} wrap="nowrap" px={6} pt={4} pb="md">
@@ -358,8 +404,21 @@ function AppLayoutInner() {
           {navList()}
         </AppShell.Section>
         <AppShell.Section pt="xs" style={{ borderTop: "1px solid var(--apt-line)" }}>
-          <AccountMenu />
+          <Group gap={4} wrap="nowrap" align="center">
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <AccountMenu />
+            </Box>
+            {!mobile && (
+              <Tooltip label="Zwiń menu do ikon" withArrow>
+                <ActionIcon variant="subtle" color="gray" size={36} onClick={toggleRail} aria-label="Zwiń menu do ikon">
+                  <IconLayoutSidebarLeftCollapse size={20} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
         </AppShell.Section>
+          </>
+        )}
       </AppShell.Navbar>
 
       {mobile && (
@@ -519,6 +578,30 @@ function NavList({
   );
 }
 
+/** Pasek z samymi ikonami: nazwa w dymku (mysz i klawiatura), grupy oddzielone kreską, liczniki na ikonie. */
+function RailList({ items, path }: { items: NavItem[]; path: string }) {
+  const t = useT();
+  return (
+    <Stack gap={2} align="center">
+      {items.map((i, idx, arr) => {
+        const active = isActivePath(i.to, path);
+        const first = !!i.group && i.group !== arr[idx - 1]?.group;
+        return (
+          <Fragment key={i.to + i.label}>
+            {first && idx > 0 && <div className="ui-rail-sep" aria-hidden />}
+            <Tooltip label={t(i.label)} position="right" withArrow openDelay={150}>
+              <Link to={i.to} className="ui-rail-item" data-active={active || undefined} aria-current={active ? "page" : undefined} aria-label={t(i.label)}>
+                <i.icon size={20} stroke={1.8} />
+                {!!i.badge && <span className="ui-rail-badge">{i.badge > 99 ? "99+" : i.badge}</span>}
+              </Link>
+            </Tooltip>
+          </Fragment>
+        );
+      })}
+    </Stack>
+  );
+}
+
 function CountBadge({ n }: { n: number }) {
   return (
     <Badge size="sm" variant="filled" aria-label={`${n} nowych`}>
@@ -527,7 +610,7 @@ function CountBadge({ n }: { n: number }) {
   );
 }
 
-function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
+function AccountMenu({ compact, rail }: { compact?: boolean; rail?: boolean }): ReactNode {
   const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -542,7 +625,7 @@ function AccountMenu({ compact }: { compact?: boolean }): ReactNode {
   const role = me ? ROLE_LABELS[me.user.role] + (me.sim_role ? " (symulacja)" : "") : "";
 
   return (
-    <Menu position={compact ? "bottom-end" : "top-start"} width={270} closeOnItemClick opened={open} onChange={setOpen}>
+    <Menu position={rail ? "right-end" : compact ? "bottom-end" : "top-start"} width={270} closeOnItemClick opened={open} onChange={setOpen}>
       <Menu.Target>
         {compact ? (
           <UnstyledButton aria-label={t("Konto użytkownika")} p={4}>

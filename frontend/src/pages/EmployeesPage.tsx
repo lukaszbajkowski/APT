@@ -35,6 +35,8 @@ export function EmployeesPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  // węższe okno: kolumna „Wymaga uwagi” skrócona (pierwszy powód i liczba, pełna lista w dymku)
+  const narrowList = useMediaQuery("(max-width: 80em)", false, { getInitialValueInEffect: false });
   const canPrint = hasRole("admin", "hr", "manager");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [printOpen, setPrintOpen] = useState(false);
@@ -742,7 +744,11 @@ export function EmployeesPage() {
                   <Table.Td>{e.department?.name ?? "—"}</Table.Td>
                   <Table.Td>{e.position?.name ?? "—"}</Table.Td>
                   <Table.Td>{formatDate(e.hire_date)}</Table.Td>
-                  {canPrint && <Table.Td className="ui-warn ui-emp-att">{(attention.data?.[e.id] ?? []).join(", ")}</Table.Td>}
+                  {canPrint && (
+                    <Table.Td className="ui-warn ui-emp-att">
+                      <AttentionCell reasons={attention.data?.[e.id] ?? []} compact={!!narrowList} />
+                    </Table.Td>
+                  )}
                   {status !== "active" && (
                     <Table.Td>
                       <StatusBadge active={e.status === "active"} />
@@ -838,6 +844,22 @@ export function EmployeesPage() {
       )}
       {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
     </Stack>
+  );
+}
+
+function AttentionCell({ reasons, compact }: { reasons: string[]; compact: boolean }) {
+  const full = reasons.join(", ");
+  // „brak zdjęcia, PESEL, obywatelstwa” liczy się jako kilka powodów
+  const parts = reasons.flatMap((r) => (r.startsWith("brak ") ? r.slice(5).split(", ").map((x, i) => (i === 0 ? `brak ${x}` : `brak ${x}`)) : [r]));
+  if (!compact || parts.length <= 1) return <>{full}</>;
+  const n = parts.length;
+  const more = n - 1;
+  return (
+    <Tooltip label={full} multiline w={280} withArrow>
+      <span style={{ whiteSpace: "nowrap", cursor: "help" }} tabIndex={0}>
+        {parts[0]} · {more === 1 ? "+1 powód" : more < 5 ? `+${more} powody` : `+${more} powodów`}
+      </span>
+    </Tooltip>
   );
 }
 

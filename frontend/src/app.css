@@ -1142,7 +1142,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-filterbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:center}
 .ui-filterbar .mantine-Chip-label{height:36px}
 .ui-filterbar .mantine-Chip-label:not([data-checked]){border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body)}
-.ui-emp-table td{white-space:nowrap}.ui-emp-table td.ui-emp-att{white-space:normal;min-width:220px}
+.ui-emp-table td{white-space:nowrap}.ui-emp-table td.ui-emp-att{white-space:normal;min-width:180px}
 /* wąskie okno (komputer): nagłówek i filtry przechodzą do kolejnych wierszy zamiast się ściskać */
 .ui-inbox-head{flex-wrap:wrap;row-gap:var(--s-3)}
 .ui-inbox-head > .mantine-Group-root{flex-wrap:nowrap}
@@ -1150,3 +1150,13 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-filterbar > *{min-width:0}
 .ui-filterbar .mantine-InputBase-input,.ui-filterbar button.mantine-Input-input{white-space:nowrap}
 @media (max-width:900px){.ui-emp-search-row{flex-wrap:wrap!important}.ui-emp-search-row > .mantine-TextInput-root{flex:1 1 100%!important}}
+/* pasek boczny zwinięty do ikon (komputer < 1280 px albo z wyboru) */
+.ui-nav{transition:width .2s ease}
+.ui-rail-brand{display:flex;justify-content:center;padding:6px 0 14px}
+.ui-rail-item{position:relative;width:44px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--mantine-color-dimmed);transition:background-color .15s,color .15s}
+.ui-rail-item:hover{background:var(--mantine-color-default-hover);color:var(--mantine-color-text)}
+.ui-rail-item[data-active]{background:var(--apt-subtle);color:var(--mantine-color-text)}
+.ui-rail-badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast);font-size:10px;font-weight:700;line-height:16px;text-align:center}
+.ui-rail-sep{width:28px;height:1px;background:var(--apt-line);margin:6px 0}
+.ui-rail-foot{display:flex;flex-direction:column;align-items:center;gap:4px;border-top:1px solid var(--apt-line)}
+@media (prefers-reduced-motion:reduce){.ui-nav{transition:none}}

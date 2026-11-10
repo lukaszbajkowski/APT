@@ -1176,7 +1176,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-att-short{white-space:nowrap}
 @container emp (max-width:760px){
   .ui-emp .col-hire,.ui-emp .col-nr{display:none}
-  .ui-emp .col-nr-in{display:block;font-size:12px;line-height:16px;color:var(--mantine-color-dimmed)}
+  .ui-emp .col-nr-in{display:block;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
   .ui-emp-table td.col-combo{white-space:normal}
   .ui-emp-table td.ui-emp-att{min-width:120px}
   .ui-emp-table td{white-space:normal}
@@ -1204,16 +1204,16 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-case-ini{background:var(--apt-subtle)}
 .ui-case-name{font-weight:600;min-width:0;overflow-wrap:anywhere}
 .ui-case-link{font-weight:600}.ui-case-link:hover{text-decoration:underline}
-.ui-case-sub{display:block;font-weight:400;font-size:12px;line-height:16px;color:var(--mantine-color-dimmed)}
+.ui-case-sub{display:block;font-weight:400;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
 .ui-case-what{min-width:0;overflow-wrap:anywhere}
-.ui-case-when{color:var(--mantine-color-dimmed);font-size:13px}
+.ui-case-when{color:var(--mantine-color-dimmed);font-size:13px;line-height:18px}
 .ui-case-when.ui-warn{font-weight:600;color:var(--mantine-color-yellow-8)}
 [data-mantine-color-scheme="dark"] .ui-case-when.ui-warn,[data-mantine-color-scheme="dark"] .ui-case-chip[data-warn],[data-mantine-color-scheme="dark"] .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-5)}
 .ui-case-act{justify-self:end}
-.ui-case-more{display:block;width:100%;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:13px;font-weight:600;color:var(--mantine-primary-color-filled)}
+.ui-case-more{display:block;width:100%;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-filled)}
 .ui-case-more:hover{background:var(--mantine-color-default-hover)}
 .ui-case-chips{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
-.ui-case-chip{font-size:12px;line-height:18px;font-weight:600;border-radius:6px;padding:1px 8px;background:var(--apt-subtle);color:var(--mantine-color-dimmed)}
+.ui-case-chip{font-size:13px;line-height:18px;font-weight:600;border-radius:6px;padding:1px 8px;background:var(--apt-subtle);color:var(--mantine-color-dimmed)}
 .ui-case-chip[data-warn]{background:var(--mantine-color-yellow-light);color:var(--mantine-color-yellow-8)}
 .ui-case-side{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line)}
 .ui-case-side:first-child{border-top:0}

@@ -20,6 +20,58 @@ function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { va
 
 type Month = ReportSummary["months"][number];
 
+/** Wykres słupkowy 12 miesięcy (komputer i telefon): zatrudnieni – orzech, zwolnieni – szary; rysowany w rzeczywistej szerokości. */
+function MonthsChart({ months, active, onHover, onPick }: { months: Month[]; active: string | null; onHover: (k: string | null) => void; onPick: (k: string) => void }) {
+  const max = Math.max(1, ...months.flatMap((m) => [m.hired, m.terminated]));
+  const step = max <= 4 ? 1 : max <= 10 ? 2 : Math.ceil(max / 5);
+  const top = Math.ceil(max / step) * step;
+  const { ref: box, width: boxW } = useElementSize();
+  const W = Math.max(280, Math.round(boxW) || 960), H = 220, L = 32, B = 28, T = 12;
+  const cw = (W - L) / months.length;
+  const bw = Math.min(18, cw / 3.2);
+  const y = (v: number) => H - B - ((H - B - T) * v) / top;
+  return (
+    <>
+            <div ref={box}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="ui-chart" role="img" aria-label="Wykres zatrudnień i zwolnień w ostatnich 12 miesiącach">
+        {Array.from({ length: top / step + 1 }, (_, i) => i * step).map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W} y1={y(v)} y2={y(v)} className="ui-chart-grid" />
+            <text x={L - 8} y={y(v) + 4} textAnchor="end" className="ui-chart-axis">
+              {v}
+            </text>
+          </g>
+        ))}
+        {months.map((m, i) => {
+          const cx = L + cw * i + cw / 2;
+          const on = active === m.month;
+          return (
+            <g key={m.month} onMouseEnter={() => onHover(m.month)} onMouseLeave={() => onHover(null)} onClick={() => onPick(m.month)}>
+              <rect x={L + cw * i} y={T} width={cw} height={H - B - T} className="ui-chart-hit" data-active={on || undefined} />
+              <rect x={cx - bw - 1} y={y(m.hired)} width={bw} height={H - B - y(m.hired)} rx={3} className="ui-chart-bar ui-bar-hired" />
+              <rect x={cx + 1} y={y(m.terminated)} width={bw} height={H - B - y(m.terminated)} rx={3} className="ui-chart-bar ui-bar-term" />
+              {on && (
+                // podpis wartości zawsze w obrębie wykresu (skrajne miesiące nie ucinają tekstu)
+                <text x={Math.min(W - 24, Math.max(L + 24, cx))} y={Math.min(y(m.hired), y(m.terminated)) - 6} textAnchor="middle" className="ui-chart-val">
+                  {m.hired} / {m.terminated}
+                </text>
+              )}
+              {/* wąski wykres: podpis co drugiego miesiąca (wybrany zawsze) */}
+              {(cw >= 36 || on || i % 2 === 0) && (
+                <text x={cx} y={H - 8} textAnchor="middle" className="ui-chart-axis" data-active={on || undefined}>
+                  {m.label.split(" ")[0]}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      </div>
+    </>
+  );
+}
+
+
 /**
  * Zatrudnienia i zwolnienia: pasek 12 miesięcy; po kliknięciu w miesiąc albo „Pokaż wykres” rozwija się
  * wykres słupkowy (zatrudnieni – orzech, zwolnieni – szary), wybrany miesiąc podświetlony, wartości po najechaniu.
@@ -28,15 +80,6 @@ function MonthsSection({ months }: { months: Month[] }) {
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
-  const max = Math.max(1, ...months.flatMap((m) => [m.hired, m.terminated]));
-  const step = max <= 4 ? 1 : max <= 10 ? 2 : Math.ceil(max / 5);
-  const top = Math.ceil(max / step) * step;
-  // wykres rysowany w rzeczywistej szerokości (tekst zawsze 13 px, także w wąskim oknie)
-  const { ref: box, width: boxW } = useElementSize();
-  const W = Math.max(320, Math.round(boxW) || 960), H = 220, L = 32, B = 28, T = 12;
-  const cw = (W - L) / months.length;
-  const bw = Math.min(18, cw / 3.2);
-  const y = (v: number) => H - B - ((H - B - T) * v) / top;
   const active = hover ?? pick;
   const toggle = (k?: string) => {
     if (k) {
@@ -80,37 +123,7 @@ function MonthsSection({ months }: { months: Month[] }) {
               <span><i className="ui-sw ui-sw-hired" /> Zatrudnieni</span>
               <span><i className="ui-sw ui-sw-term" /> Zwolnieni</span>
             </div>
-            <div ref={box}>
-            <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="ui-chart" role="img" aria-label="Wykres zatrudnień i zwolnień w ostatnich 12 miesiącach">
-              {Array.from({ length: top / step + 1 }, (_, i) => i * step).map((v) => (
-                <g key={v}>
-                  <line x1={L} x2={W} y1={y(v)} y2={y(v)} className="ui-chart-grid" />
-                  <text x={L - 8} y={y(v) + 4} textAnchor="end" className="ui-chart-axis">
-                    {v}
-                  </text>
-                </g>
-              ))}
-              {months.map((m, i) => {
-                const cx = L + cw * i + cw / 2;
-                const on = active === m.month;
-                return (
-                  <g key={m.month} onMouseEnter={() => setHover(m.month)} onMouseLeave={() => setHover(null)} onClick={() => setPick(m.month)}>
-                    <rect x={L + cw * i} y={T} width={cw} height={H - B - T} className="ui-chart-hit" data-active={on || undefined} />
-                    <rect x={cx - bw - 1} y={y(m.hired)} width={bw} height={H - B - y(m.hired)} rx={3} className="ui-chart-bar ui-bar-hired" />
-                    <rect x={cx + 1} y={y(m.terminated)} width={bw} height={H - B - y(m.terminated)} rx={3} className="ui-chart-bar ui-bar-term" />
-                    {on && (
-                      <text x={cx} y={Math.min(y(m.hired), y(m.terminated)) - 6} textAnchor="middle" className="ui-chart-val">
-                        {m.hired} / {m.terminated}
-                      </text>
-                    )}
-                    <text x={cx} y={H - 8} textAnchor="middle" className="ui-chart-axis" data-active={on || undefined}>
-                      {m.label.split(" ")[0]}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-            </div>
+            <MonthsChart months={months} active={active} onHover={setHover} onPick={setPick} />
           </div>
         </div>
       </Paper>
@@ -149,6 +162,37 @@ function CountList({ title, rows, limit = 8 }: { title: string; rows: ReportRow[
         </Paper>
       )}
     </section>
+  );
+}
+
+/* telefon: zatrudnienia i zwolnienia – „Pokaż wykres” rozwija wykres nad listą, dotknięcie miesiąca go podświetla */
+function MobileMonths({ months }: { months: Month[] }) {
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+  return (
+    <Section title="Zatrudnienia i zwolnienia" action={{ label: open ? "Ukryj wykres" : "Pokaż wykres", onClick: () => setOpen((o) => !o) }}>
+      <div className="ui-chart-wrap ui-chart-mobile" data-open={open || undefined}>
+        <div className="ui-chart-inner">
+          <div className="ui-chart-legend" aria-hidden>
+            <span><i className="ui-sw ui-sw-hired" /> Zatrudnieni</span>
+            <span><i className="ui-sw ui-sw-term" /> Zwolnieni</span>
+          </div>
+          <MonthsChart months={months} active={pick} onHover={() => undefined} onPick={setPick} />
+        </div>
+      </div>
+      {months.map((m) => (
+        <ListRow
+          key={m.month}
+          title={m.label}
+          description={`Zatrudnieni: ${m.hired} · zwolnieni: ${m.terminated}`}
+          onClick={() => {
+            setPick(m.month);
+            setOpen(true);
+          }}
+          trailing={open && pick === m.month ? <StatusBadge tone="ok">Na wykresie</StatusBadge> : undefined}
+        />
+      ))}
+    </Section>
   );
 }
 
@@ -221,11 +265,7 @@ export function ReportsPage() {
         <MobileCounts title="Wydziały" rows={s.by_department} />
         <MobileCounts title="Stanowiska" rows={s.by_position} />
         <MobileCounts title="Obywatelstwo" rows={s.by_country} />
-        <Section title="Zatrudnienia i zwolnienia">
-          {s.months.map((m) => (
-            <ListRow key={m.month} title={m.label} description={`Zatrudnieni: ${m.hired} · zwolnieni: ${m.terminated}`} />
-          ))}
-        </Section>
+        <MobileMonths months={s.months} />
         <Section title="APT × wydział">
           {s.agency_department.length === 0 ? (
             <CompactEmpty title="Brak danych" />

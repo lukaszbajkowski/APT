@@ -1302,3 +1302,4 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-chart-bar{transform-box:fill-box;transform-origin:bottom;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
 .ui-chart-wrap:not([data-open]) .ui-chart-bar{transform:scaleY(0)}
 @media (prefers-reduced-motion:reduce){.ui-chart-wrap,.ui-chart-bar{transition:none}}
+.ui-chart-mobile[data-open]{border-top:0;border-bottom:1px solid var(--apt-line)}

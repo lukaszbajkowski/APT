@@ -1,3 +1,4 @@
+import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Group, Stack, Text, TextInput, Textarea } from "@mantine/core";
@@ -7,7 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { IconLanguage, IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
-import { CompactEmpty, FormDialog, ListRow, PageHead, Segments, StatusBadge, PageLoading } from "../components/Mobile";
+import { CompactEmpty, FormDialog, ListRow, PageHead, Segments, StatusBadge, PageLoading, PageTitle } from "../components/Mobile";
 import { Loading } from "../components/States";
 
 type Origin = "manual" | "glossary" | "google";
@@ -44,6 +45,7 @@ const KNOWN: Record<string, string> = { uk: "Ukraiński", ru: "Rosyjski", en: "A
  * Kolejność ważności: poprawka tutaj → słownik sprawdzonych słów (w kodzie) → tłumaczenie Google.
  */
 export function TranslationsPage() {
+  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const langs = useQuery({ queryKey: ["i18n-admin-langs"], queryFn: () => api<Lang[]>("/i18n/admin/languages") });
   const names = useQuery({
     queryKey: ["i18n-languages", "pl"],
@@ -76,10 +78,17 @@ export function TranslationsPage() {
 
   return (
     <Stack gap={20} maw={820}>
-      <PageHead
-        title="Tłumaczenia"
-        subtitle="Tak widzą aplikację pracownicy w innych językach. Popraw tłumaczenie, które brzmi źle – poprawka obowiązuje od razu u wszystkich."
-      />
+      {mobile ? (
+        <PageHead
+          title="Tłumaczenia"
+          subtitle="Tak widzą aplikację pracownicy w innych językach. Popraw tłumaczenie, które brzmi źle – poprawka obowiązuje od razu u wszystkich."
+        />
+      ) : (
+        <PageTitle
+          title="Tłumaczenia"
+          description="Tak widzą aplikację pracownicy w innych językach. Popraw tłumaczenie, które brzmi źle – poprawka obowiązuje od razu u wszystkich."
+        />
+      )}
       {names.data && !names.data.enabled && (
         <Alert color="gray" variant="light">
           Tłumaczenie automatyczne jest wyłączone (brak klucza Google na serwerze). Działają tylko słownik i Twoje poprawki.

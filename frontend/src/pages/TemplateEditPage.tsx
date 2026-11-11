@@ -15,11 +15,10 @@ import {
 import { FieldsEditor } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
-import { Loading } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormScreen, ListRow, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { FormScreen, ListRow, Section, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 
 export function TemplateEditPage() {
   const { id } = useParams();
@@ -85,7 +84,7 @@ export function TemplateEditPage() {
     onError: (e) => setError(errorText(e)),
   });
 
-  if (template.isLoading) return <Loading />;
+  if (template.isLoading) return <PageLoading title="Szablon" />;
   if (!template.data) return <Alert color="red">Nie znaleziono szablonu.</Alert>;
   const t = template.data;
   const builtinLabel = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;

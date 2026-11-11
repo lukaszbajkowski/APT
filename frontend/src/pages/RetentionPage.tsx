@@ -22,11 +22,10 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type RetentionItem, type RetentionOverview } from "../api";
-import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog, PageTitle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog, PageTitle, PageLoading } from "../components/Mobile";
 
 const CONFIRM = "USUŃ";
 
@@ -131,7 +130,7 @@ export function RetentionPage() {
     },
   });
 
-  if (data.isLoading) return <Loading />;
+  if (data.isLoading) return <PageLoading title="Retencja danych" />;
   if (data.error || !data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const d = data.data;
   const allDue = d.due.map((i) => i.id);

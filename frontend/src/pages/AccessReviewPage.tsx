@@ -116,7 +116,7 @@ function UsersTab() {
       <Text size="sm" c="dimmed">
         {rows.length} kont funkcyjnych, {attention} wymaga uwagi (konta pracowników są w „Kontach pracowników”).
       </Text>
-      <Table.ScrollContainer minWidth={760}>
+      <Table.ScrollContainer minWidth={560}>
         <Table verticalSpacing="xs" highlightOnHover>
           <Table.Thead>
             <Table.Tr>

@@ -5,10 +5,10 @@ import { Alert, Box, Button, Card, Grid, Group, SimpleGrid, Stack, Table, Text, 
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
-import { EmptyState, Loading } from "../components/States";
+import { EmptyState } from "../components/States";
 
 function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
@@ -113,7 +113,7 @@ export function ReportsPage() {
 
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [more, setMore] = useState(false);
-  if (data.isLoading) return <Loading />;
+  if (data.isLoading) return <PageLoading title="Raporty" />;
   if (!data.data) return <Alert color="red">{errorText(data.error)}</Alert>;
   const s = data.data;
   const maxMonth = Math.max(1, ...s.months.flatMap((m) => [m.hired, m.terminated]));

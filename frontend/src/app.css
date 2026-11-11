@@ -1238,3 +1238,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-up-row a:hover{text-decoration:underline}
 .ui-case-click{cursor:pointer;transition:background-color .15s}
 .ui-case-click:hover{background:var(--mantine-color-default-hover)}
+
+/* tabele: etykiet nie ucinamy (tłumaczenia bywają dłuższe) – plakietka zawija się, login nie łamie się w środku */
+.mantine-Table-td .mantine-Badge-root{height:auto;max-width:100%;padding-block:2px;overflow:visible}
+.mantine-Table-td .mantine-Badge-label{white-space:normal;overflow:visible;text-overflow:clip;line-height:16px}
+.mantine-Table-td code{white-space:nowrap}

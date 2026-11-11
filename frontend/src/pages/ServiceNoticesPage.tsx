@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Group, Menu, Select, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import { ActionIcon, Alert, Button, Group, Menu, Select, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconEdit, IconPlayerStop, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
-import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, StatusBadge, type SheetAction } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, PageTitle, Section, StatusBadge, type SheetAction, PageLoading } from "../components/Mobile";
 import { isOngoing, NOTICE_KINDS, whenText, type NoticeKind, type ServiceNotice } from "../components/ServiceNotices";
-import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { TimeField } from "../components/TimeField";
 import { allTimezones, HOME_TZ, isoToZonedInput, tzCity, tzLabel, zonedInputToIso } from "../lib/time";
@@ -185,7 +184,7 @@ export function ServiceNoticesPage() {
     setEditing(n);
   };
 
-  if (q.isLoading) return <Loading />;
+  if (q.isLoading) return <PageLoading title="Komunikaty techniczne" />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const now = Date.now();
   const all = q.data ?? [];
@@ -267,11 +266,23 @@ export function ServiceNoticesPage() {
 
   return (
     <Stack gap={24} maw={760}>
-      <PageHead
-        title="Komunikaty techniczne"
-        subtitle="Prace serwisowe, wdrożenia i awarie. Widzą je zalogowani użytkownicy – pasek na górze aplikacji."
-        action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => open("new") }}
-      />
+      {mobile ? (
+        <PageHead
+          title="Komunikaty techniczne"
+          subtitle="Prace serwisowe, wdrożenia i awarie. Widzą je zalogowani użytkownicy – pasek na górze aplikacji."
+          action={{ label: "Nowy komunikat", icon: <IconPlus size={22} />, onClick: () => open("new") }}
+        />
+      ) : (
+        <PageTitle
+          title="Komunikaty techniczne"
+          description="Prace serwisowe, wdrożenia i awarie. Widzą je zalogowani użytkownicy – pasek na górze aplikacji."
+          actions={
+            <Button leftSection={<IconPlus size={16} />} onClick={() => open("new")}>
+              Nowy komunikat
+            </Button>
+          }
+        />
+      )}
       {all.length === 0 && (
         <CompactEmpty
           title="Brak komunikatów"

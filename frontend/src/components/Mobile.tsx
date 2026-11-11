@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useT } from "../lib/i18n";
 import { useConfirm } from "../lib/confirm";
+import { RowsSkeleton } from "./States";
 import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Text, Title, UnstyledButton } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconDots, IconX } from "@tabler/icons-react";
@@ -469,6 +470,16 @@ export function PageTitle({ title, meta, description, actions }: { title: ReactN
           {description}
         </Text>
       )}
+    </div>
+  );
+}
+
+/** Ekran w trakcie ładowania: nagłówek od razu, pod nim szkielet – strona nie „wyskakuje” po załadowaniu. */
+export function PageLoading({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--s-4)" }}>
+      <PageTitle title={title} />
+      {children ?? <RowsSkeleton rows={4} />}
     </div>
   );
 }

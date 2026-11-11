@@ -268,7 +268,7 @@ export function UsersPage() {
       )}
 
       {!mobile && users.data && visible.length > 0 && (
-        <Table.ScrollContainer minWidth={760}>
+        <Table.ScrollContainer minWidth={560}>
           <Table striped highlightOnHover verticalSpacing="xs">
             <Table.Thead>
               <Table.Tr>

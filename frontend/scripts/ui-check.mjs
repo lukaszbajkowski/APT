@@ -43,10 +43,19 @@ let clicks = 0;
 const note = (where, what) => report.push(`${where}: ${what}`);
 const slug = (p) => p.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "dzis";
 
+/** Nasłuch błędów dla jednej strony; zwraca funkcję, która go wyłącza (żeby błędy nie trafiały pod następną stronę). */
 function watch(page, where) {
-  page.on("pageerror", (e) => note(where, `błąd JS: ${e.message}`));
-  page.on("console", (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && note(where, `konsola: ${m.text().slice(0, 160)}`));
-  page.on("response", (r) => r.url().includes("/api/") && r.status() >= 400 && note(where, `API ${r.status()} ${r.request().method()} ${r.url().replace(base, "")}`));
+  const onErr = (e) => note(where, `błąd JS: ${e.message}`);
+  const onCon = (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && note(where, `konsola: ${m.text().slice(0, 160)}`);
+  const onRes = (r) => r.url().includes("/api/") && r.status() >= 400 && note(where, `API ${r.status()} ${r.request().method()} ${r.url().replace(base, "")}`);
+  page.on("pageerror", onErr);
+  page.on("console", onCon);
+  page.on("response", onRes);
+  return () => {
+    page.off("pageerror", onErr);
+    page.off("console", onCon);
+    page.off("response", onRes);
+  };
 }
 
 async function login(ctx, user) {
@@ -74,7 +83,7 @@ for (const user of users) {
       }
       for (const path of pages) {
         const where = `${user} · ${scheme} · ${width} · ${path}`;
-        watch(page, where);
+        const stop = watch(page, where);
         // najpierw inny ekran (aplikacja już uruchomiona), potem przejście w aplikacji – jak u użytkownika;
         // dopiero wtedy opóźniamy dane (inaczej widać tylko start aplikacji)
         await page.unroute("**/api/**");
@@ -98,6 +107,7 @@ for (const user of users) {
         await page.screenshot({ path: `${name}.png`, fullPage: true });
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         if (overflow > 2) note(where, `strona przewija się w bok o ${overflow}px`);
+        stop();
       }
       await ctx.close();
     }
@@ -115,11 +125,12 @@ for (const user of users) {
   for (const path of pages) {
     await page.goto(base + path);
     await page.waitForLoadState("networkidle").catch(() => {});
-    const labels = await page
-      .locator("main button:visible, main [role=button]:visible, main a.mantine-Button-root:visible")
-      .evaluateAll((els) => els.map((e) => (e.getAttribute("aria-label") || e.textContent || "").trim()).filter(Boolean));
+    // klikamy po kolei elementy według pozycji na stronie (nazwy wierszy i zakładek bywają długie albo złożone)
+    const SEL = "main button:visible, main [role=button]:visible, main [role=tab]:visible, main a.mantine-Button-root:visible";
+    const labels = await page.locator(SEL).evaluateAll((els) => els.map((e) => (e.getAttribute("aria-label") || e.textContent || "").trim().replace(/\s+/g, " ")));
     const seen = new Set();
-    for (const label of labels.slice(0, 40)) {
+    for (let i = 0; i < Math.min(labels.length, 40); i++) {
+      const label = labels[i] || `element ${i + 1}`;
       if (DANGER.test(label) || seen.has(label)) continue;
       seen.add(label);
       const where = `${user} · klik „${label.slice(0, 40)}” · ${path}`;
@@ -131,8 +142,8 @@ for (const user of users) {
       try {
         await page.goto(base + path);
         await page.waitForLoadState("networkidle").catch(() => {});
-        // dokładnie ten przycisk (wiersz z role=button też zawiera tekst przycisku, więc nie „hasText”)
-        const target = page.locator("main").getByRole("button", { name: label, exact: true }).or(page.locator("main").getByRole("link", { name: label, exact: true })).first();
+        const target = page.locator(SEL).nth(i);
+        if (await target.isDisabled().catch(() => false)) throw new Error("przycisk nieaktywny – pomijam");
         await target.click({ timeout: 3000 });
         clicks++;
         await page.waitForTimeout(900);
@@ -140,7 +151,7 @@ for (const user of users) {
         for (const t of red) note(where, `czerwone powiadomienie: ${t.slice(0, 120)}`);
         await page.keyboard.press("Escape");
       } catch (e) {
-        note(where, `nie da się kliknąć (${String(e.message).split("\n")[0].slice(0, 80)})`);
+        if (!/nieaktywny/.test(e.message)) note(where, `nie da się kliknąć (${String(e.message).split("\n")[0].slice(0, 80)})`);
       }
       page.off("pageerror", onErr);
       page.off("response", onRes);

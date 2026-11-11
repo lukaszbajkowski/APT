@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 
 import { api, errorText, formatDateTime } from "../api";
-import { EmptyState, Loading } from "../components/States";
+import { EmptyState } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 import { useState } from "react";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 
@@ -72,7 +72,7 @@ export function SystemStatusPage() {
   const q = useQuery({ queryKey: ["system-status"], queryFn: () => api<Status>("/system/status"), refetchInterval: 60_000 });
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   const [detail, setDetail] = useState<{ title: string; info: string } | null>(null);
-  if (q.isLoading) return <Loading />;
+  if (q.isLoading) return <PageLoading title="Stan systemu" />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const s = q.data!;
   const tPct = s.translation.limit > 0 ? Math.min(100, Math.round((100 * s.translation.used) / s.translation.limit)) : 0;

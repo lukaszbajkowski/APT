@@ -43,6 +43,7 @@ import {
   type AuditEntry,
   type Employee,
   type GeneratedDoc,
+  ApiError,
 } from "../api";
 import { useAuth } from "../auth";
 import { MedicalExamsCard } from "../components/MedicalExams";
@@ -59,7 +60,7 @@ import { ChecklistsCard, RehireModal, TimelineCard, type ChecklistItem } from ".
 import { MentorProgramsCard } from "../components/MentorPrograms";
 import { DataLinkCard } from "../components/DataLinkCard";
 import { EmployeeAccountCard } from "../components/EmployeeAccountCard";
-import { DetailSkeleton, Loading } from "../components/States";
+import { DetailSkeleton, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { ActionSheet, CompactEmpty, InfoRow, ListRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
@@ -268,7 +269,16 @@ export function EmployeeProfilePage() {
 
   if (employee.isLoading) return mobile ? <Loading /> : <DetailSkeleton />;
   if (employee.error || !employee.data)
-    return <Alert color="red">{employee.error ? errorText(employee.error) : "Brak danych."}</Alert>;
+    return employee.error instanceof ApiError && employee.error.status === 404 ? (
+      // spoza zakresu roli albo usunięty: zwykły pusty stan z powrotem, nie czerwony błąd
+      <EmptyState
+        title="Nie ma takiej osoby na Twojej liście"
+        text="Pracownik został usunięty albo jest poza Twoim zakresem (agencja, wydział)."
+        action={{ label: "Wróć do listy pracowników", onClick: () => navigate("/pracownicy") }}
+      />
+    ) : (
+      <Alert color="red">{employee.error ? errorText(employee.error) : "Brak danych."}</Alert>
+    );
   const e = employee.data;
 
   const terminateModal = (

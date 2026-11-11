@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconLanguage, IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
-import { CompactEmpty, FormDialog, ListRow, PageHead, Segments, StatusBadge } from "../components/Mobile";
+import { CompactEmpty, FormDialog, ListRow, PageHead, Segments, StatusBadge, PageLoading } from "../components/Mobile";
 import { Loading } from "../components/States";
 
 type Origin = "manual" | "glossary" | "google";
@@ -71,7 +71,7 @@ export function TranslationsPage() {
   });
 
   const nameOf = (code: string) => names.data?.languages.find((l) => l.code === code)?.name ?? KNOWN[code] ?? code.toUpperCase();
-  if (langs.isLoading) return <Loading />;
+  if (langs.isLoading) return <PageLoading title="Tłumaczenia" />;
   if (langs.error) return <Alert color="red">{errorText(langs.error)}</Alert>;
 
   return (

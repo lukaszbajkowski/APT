@@ -1337,3 +1337,4 @@ a.ui-case-link:hover{text-decoration:underline}
   .ui-tpl-chips:not([data-all]) [data-extra]{display:none}
   .ui-tpl-more{display:inline-block}
 }
+.ui-tpl-single .ui-inbox-list{width:100%;border-right:0}

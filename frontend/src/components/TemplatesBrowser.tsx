@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Image, SegmentedControl, Skeleton, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconFileTypeDocx, IconSearch } from "@tabler/icons-react";
+import { IconArrowLeft, IconFileTypeDocx, IconSearch } from "@tabler/icons-react";
+import { useElementSize } from "@mantine/hooks";
 
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDate, formatDateTime, LANGUAGES, withAcct, type DocTemplate } from "../api";
 import { useUrlOpen } from "../lib/urlState";
@@ -49,7 +50,10 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
       (!needle || t.name.toLowerCase().includes(needle)) &&
       (filter === "all" || (filter === "used" && (use.get(t.id)?.count ?? 0) > 0) || (filter === "pesel" && t.sensitive) || (filter === "off" && !t.is_active)),
   );
-  const current = all.find((t) => t.id === openId) ?? shown[0] ?? null;
+  // za mało miejsca na listę i szczegóły obok siebie: jedno naraz (jak poczta na telefonie)
+  const { ref: box, width } = useElementSize();
+  const single = width > 0 && width < 1040; // szczegóły muszą mieć co najmniej ~640 px
+  const current = all.find((t) => t.id === openId) ?? (single ? null : shown[0]) ?? null;
 
   const list = (
     <>
@@ -116,10 +120,11 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
   );
 
   return (
+    <div ref={box} className={single ? "ui-tpl-single" : undefined}>
     <MasterDetail
       mobile={false}
-      showList
-      showRight
+      showList={!single || !current}
+      showRight={!single || !!current}
       head={
         <PageTitle
           title="Szablony dokumentów"
@@ -128,9 +133,16 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
         />
       }
       list={list}
-      detail={current ? <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} /> : <div />}
+      detail={
+        current ? (
+          <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} onBack={single ? () => setOpenId(null) : undefined} />
+        ) : (
+          <div />
+        )
+      }
       plainDetail
     />
+    </div>
   );
 }
 
@@ -158,7 +170,7 @@ function Chips({ items }: { items: { key: string; text: string; warn?: boolean }
   );
 }
 
-function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
+function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; onBack?: () => void }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [thumbOk, setThumbOk] = useState(true);
@@ -179,6 +191,11 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
   });
   return (
     <div className="ui-tpl-detail">
+      {onBack && (
+        <Button variant="subtle" size="compact-sm" leftSection={<IconArrowLeft size={16} />} onClick={onBack} mb="md" ml={-8}>
+          Wszystkie szablony
+        </Button>
+      )}
       <div className="ui-tpl-grid">
       <div className="ui-tpl-page">
         {thumbOk ? (

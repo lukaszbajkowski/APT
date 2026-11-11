@@ -1342,3 +1342,9 @@ a.ui-case-link:hover{text-decoration:underline}
 /* jedna kolumna: „Ostatnio wygenerowane” na końcu, pod opisem */
 @container tpl (max-width:620px){.ui-tpl-left{display:contents}.ui-tpl-left .ui-tpl-page{align-self:start}.ui-tpl-recent-sec{order:3}}
 .ui-tpl-actions-end{display:inline-flex;align-items:center;gap:var(--s-2)}
+.ui-tpl-thumb-skel{width:100%;aspect-ratio:210/297;height:auto!important}
+.ui-tpl-thumb{opacity:0;transition:opacity .25s}
+.ui-tpl-thumb[data-loaded]{opacity:1}
+.ui-tpl-page:has(.ui-tpl-thumb-skel) .ui-tpl-thumb{position:absolute;inset:0}
+.ui-tpl-page{position:relative}
+@media (prefers-reduced-motion:reduce){.ui-tpl-thumb{transition:none}}

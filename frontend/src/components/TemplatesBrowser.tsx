@@ -135,7 +135,9 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
       list={list}
       detail={
         current ? (
-          <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} onBack={single ? () => setOpenId(null) : undefined} />
+          <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} usageLoading={usage.isLoading} onBack={single ? () => setOpenId(null) : undefined} />
+        ) : loading ? (
+          <TemplateDetailSkeleton />
         ) : (
           <div />
         )
@@ -168,10 +170,11 @@ function Chips({ items }: { items: { key: string; text: string; warn?: boolean }
   );
 }
 
-function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; onBack?: () => void }) {
+function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; usage?: Usage; usageLoading?: boolean; onBack?: () => void }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [thumbOk, setThumbOk] = useState(true);
+  const [thumbLoaded, setThumbLoaded] = useState(false);
   const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
   const label = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;
   const SENS = new Set(["pesel", "data_urodzenia", "birth_date"]);
@@ -198,7 +201,17 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
       <div className="ui-tpl-left">
       <div className="ui-tpl-page">
         {thumbOk ? (
-          <Image src={withAcct(`/api/templates/${t.id}/thumbnail?v=${t.version}`)} alt={`Pierwsza strona: ${t.name}`} onError={() => setThumbOk(false)} />
+          <>
+            {!thumbLoaded && <Skeleton className="ui-tpl-thumb-skel" radius={0} />}
+            <Image
+              src={withAcct(`/api/templates/${t.id}/thumbnail?v=${t.version}`)}
+              alt={`Pierwsza strona: ${t.name}`}
+              onLoad={() => setThumbLoaded(true)}
+              onError={() => setThumbOk(false)}
+              className="ui-tpl-thumb"
+              data-loaded={thumbLoaded || undefined}
+            />
+          </>
         ) : (
           <div className="ui-tpl-noprev">
             <IconFileTypeDocx size={40} aria-hidden />
@@ -257,7 +270,7 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
           <dt>Kierownik</dt>
           <dd>{t.allow_manager ? (t.sensitive ? "Może wygenerować – bez PESEL i daty urodzenia" : "Może wygenerować") : "Nie widzi szablonu"}</dd>
           <dt>Użycie</dt>
-          <dd>{usage?.count ? `${usage.count} ${plural(usage.count, "dokument", "dokumenty", "dokumentów")} · ostatnio ${ago(usage.last_used_at!)}` : "Jeszcze nieużyty"}</dd>
+          <dd>{usageLoading ? <Skeleton height={12} width={180} mt={4} /> : usage?.count ? `${usage.count} ${plural(usage.count, "dokument", "dokumenty", "dokumentów")} · ostatnio ${ago(usage.last_used_at!)}` : "Jeszcze nieużyty"}</dd>
         </dl>
         <div className="ui-tpl-actions">
           <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
@@ -278,6 +291,37 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
           </span>
         </div>
       </div>
+      </div>
+    </div>
+  );
+}
+
+/** Szkielet szczegółów szablonu: podgląd strony, tytuł, wiersze opisu i przyciski – ten sam układ co treść. */
+function TemplateDetailSkeleton() {
+  return (
+    <div className="ui-tpl-detail" aria-busy="true" aria-label="Ładowanie">
+      <div className="ui-tpl-grid">
+        <div className="ui-tpl-left">
+          <Skeleton className="ui-tpl-thumb-skel" radius={6} />
+          <div>
+            <Skeleton height={14} width="70%" mb={12} />
+            <Skeleton height={44} radius="md" />
+          </div>
+        </div>
+        <div>
+          <Skeleton height={20} width="55%" mb={8} />
+          <Skeleton height={12} width="75%" mb={24} />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, marginBottom: 16 }}>
+              <Skeleton height={12} width="60%" />
+              <Skeleton height={12} width={`${75 - (i % 3) * 15}%`} />
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
+            <Skeleton height={36} width={190} radius="sm" />
+            <Skeleton height={36} width={170} radius="sm" />
+          </div>
+        </div>
       </div>
     </div>
   );

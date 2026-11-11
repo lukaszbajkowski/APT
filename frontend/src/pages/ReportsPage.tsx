@@ -26,7 +26,7 @@ function MonthsChart({ months, active, onHover, onPick }: { months: Month[]; act
   const step = max <= 4 ? 1 : max <= 10 ? 2 : Math.ceil(max / 5);
   const top = Math.ceil(max / step) * step;
   const { ref: box, width: boxW } = useElementSize();
-  const W = Math.max(280, Math.round(boxW) || 960), H = 220, L = 32, B = 28, T = 12;
+  const W = Math.max(280, Math.round(boxW) || 960), H = 236, L = 32, B = 28, T = 28; // T: miejsce na podpis wartości nad najwyższym słupkiem
   const cw = (W - L) / months.length;
   const bw = Math.min(18, cw / 3.2);
   const y = (v: number) => H - B - ((H - B - T) * v) / top;
@@ -48,11 +48,16 @@ function MonthsChart({ months, active, onHover, onPick }: { months: Month[]; act
           return (
             <g key={m.month} onMouseEnter={() => onHover(m.month)} onMouseLeave={() => onHover(null)} onClick={() => onPick(m.month)}>
               <rect x={L + cw * i} y={T} width={cw} height={H - B - T} className="ui-chart-hit" data-active={on || undefined} />
-              <rect x={cx - bw - 1} y={y(m.hired)} width={bw} height={H - B - y(m.hired)} rx={3} className="ui-chart-bar ui-bar-hired" />
-              <rect x={cx + 1} y={y(m.terminated)} width={bw} height={H - B - y(m.terminated)} rx={3} className="ui-chart-bar ui-bar-term" />
+              {/* para słupków wyśrodkowana w miesiącu; gdy jeden jest zerowy, drugi stoi na środku */}
+              {m.hired > 0 && (
+                <rect x={m.terminated > 0 ? cx - bw - 1 : cx - bw / 2} y={y(m.hired)} width={bw} height={H - B - y(m.hired)} rx={3} className="ui-chart-bar ui-bar-hired" />
+              )}
+              {m.terminated > 0 && (
+                <rect x={m.hired > 0 ? cx + 1 : cx - bw / 2} y={y(m.terminated)} width={bw} height={H - B - y(m.terminated)} rx={3} className="ui-chart-bar ui-bar-term" />
+              )}
               {on && (
                 // podpis wartości zawsze w obrębie wykresu (skrajne miesiące nie ucinają tekstu)
-                <text x={Math.min(W - 24, Math.max(L + 24, cx))} y={Math.min(y(m.hired), y(m.terminated)) - 6} textAnchor="middle" className="ui-chart-val">
+                <text x={Math.min(W - 18, Math.max(L + 18, cx))} y={Math.min(y(m.hired), y(m.terminated)) - 6} textAnchor="middle" className="ui-chart-val">
                   {m.hired} / {m.terminated}
                 </text>
               )}

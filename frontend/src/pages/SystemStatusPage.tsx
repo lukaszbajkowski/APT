@@ -100,7 +100,7 @@ export function SystemStatusPage() {
                   {`Wolne ${String(s.disk.free_gb).replace(".", ",")} GB z ${String(s.disk.total_gb).replace(".", ",")} GB`}
                 </span>
               }
-              trailing={<StatusBadge tone={s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok"}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>}
+              trailing={<span className="ui-bar-trail"><StatusBadge tone={s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok"}>{`${s.disk.used_percent}% zajęte`}</StatusBadge></span>}
             />
           ) : (
             <CompactEmpty title="Dysk: brak danych" text="Pojawią się po pierwszym uruchomieniu zadań cyklicznych." />
@@ -117,7 +117,7 @@ export function SystemStatusPage() {
                 "Brak klucza – pracownik widzi teksty po polsku"
               )
             }
-            trailing={s.translation.enabled ? <StatusBadge tone={pctTone(tPct)}>{tPct > 90 ? "Kończy się" : "OK"}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>}
+            trailing={<span className="ui-bar-trail">{s.translation.enabled ? <StatusBadge tone={pctTone(tPct)}>{tPct > 90 ? "Kończy się" : "OK"}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>}</span>}
             onClick={s.translation.enabled ? () => setDetail({ title: "Tłumaczenia", info: `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu` }) : undefined}
           />
           <ListRow title="Wysyłka e-mail" trailing={<StatusBadge tone={s.mail_enabled ? "ok" : "warn"}>{s.mail_enabled ? "Włączona" : "Wyłączona"}</StatusBadge>} />

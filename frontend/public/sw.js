@@ -1,13 +1,15 @@
 // Service worker: instalacja aplikacji na telefonie, powiadomienia push i strona „Przerwa techniczna”.
 // W pamięci podręcznej jest wyłącznie statyczna strona offline.html (bez danych) – dokumenty i dane osobowe
 // zawsze idą prosto z serwera. Powiadomienia mają ogólną treść.
-const OFFLINE_CACHE = "apt-offline-v1";
+const OFFLINE_CACHE = "apt-offline-v2";
 const OFFLINE_URL = "/offline.html";
+// krój Golos Text dla strony offline (ten sam wygląd co w aplikacji, także bez połączenia)
+const OFFLINE_FONTS = [400, 600, 800].flatMap((w) => [`/fonts/golos-text-latin-${w}-normal.woff2`, `/fonts/golos-text-latin-ext-${w}-normal.woff2`]);
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches
       .open(OFFLINE_CACHE)
-      .then((c) => c.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .then((c) => c.addAll([OFFLINE_URL, ...OFFLINE_FONTS].map((u) => new Request(u, { cache: "reload" }))))
       .catch(() => undefined)
       .then(() => self.skipWaiting()),
   );
@@ -24,6 +26,11 @@ self.addEventListener("activate", (e) =>
 // przeglądarki pokazujemy wyjaśnienie, która sama sprawdza, czy aplikacja wróciła
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  // czcionki strony offline: z pamięci, gdy serwer nie odpowiada
+  if (req.method === "GET" && new URL(req.url).pathname.startsWith("/fonts/golos-text-")) {
+    event.respondWith(fetch(req).catch(() => caches.match(req).then((r) => r || Response.error())));
+    return;
+  }
   if (req.mode !== "navigate" || req.method !== "GET") return;
   event.respondWith(
     fetch(req).then(

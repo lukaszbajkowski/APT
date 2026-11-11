@@ -184,7 +184,7 @@ export function SystemStatusPage() {
             <SectionHead title="Dysk" />
             {s.disk ? (
               <Paper withBorder radius="md" className="ui-cases">
-                <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                <div className="ui-cnt-row ui-bar-row">
                   <Progress value={s.disk.used_percent} color={diskTone === "error" ? "red" : diskTone === "warn" ? "yellow" : "teal"} />
                   <StatusBadge tone={diskTone}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>
                 </div>
@@ -204,7 +204,7 @@ export function SystemStatusPage() {
             <Paper withBorder radius="md" className="ui-cases">
               {s.translation.enabled ? (
                 <>
-                  <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                  <div className="ui-cnt-row ui-bar-row">
                     <Progress value={tPct} color={tPct > 90 ? "red" : tPct > 70 ? "yellow" : "teal"} />
                     <StatusBadge tone={(tPct > 90 ? "error" : tPct > 70 ? "warn" : "ok")}>{`${tPct}% limitu`}</StatusBadge>
                   </div>
@@ -213,7 +213,7 @@ export function SystemStatusPage() {
                   </div>
                 </>
               ) : (
-                <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                <div className="ui-cnt-row ui-bar-row">
                   <span className="ui-cnt-dim">Brak klucza – pracownik widzi teksty po polsku</span>
                   <StatusBadge tone="neutral">Wyłączone</StatusBadge>
                 </div>

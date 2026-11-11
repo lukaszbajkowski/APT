@@ -37,7 +37,7 @@ try {
   process.exit(2);
 }
 mkdirSync(out, { recursive: true });
-const DANGER = /usuń|wyloguj|archiw|zwolnij|wyłącz|unieważ|odrzuć|trwale|resetuj|anuluj|zmień hasło|kosz/i;
+const DANGER = /usuń|wyloguj|archiw|zwolnij|wyłącz|włącz|przerw|unieważ|odrzuć|trwale|resetuj|anuluj|zmień hasło|kosz|wyślij|opublikuj|importuj|zapisz|wgraj|zatwierdź|przypomnij|kopi[ęa]/i;
 const report = [];
 let clicks = 0;
 const note = (where, what) => report.push(`${where}: ${what}`);

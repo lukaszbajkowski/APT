@@ -1197,7 +1197,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-cases{overflow:hidden}
 .ui-case-head{display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:var(--s-3) var(--s-4);font-size:15px;line-height:22px;font-weight:600}
 .ui-case-head > span:last-child{color:var(--mantine-color-dimmed)}
-.ui-case{display:grid;grid-template-columns:28px minmax(160px,240px) minmax(0,1fr) 110px auto;align-items:center;gap:var(--s-3);width:100%;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px;text-align:left}
+.ui-case{display:grid;grid-template-columns:28px minmax(160px,240px) minmax(0,1fr) 110px auto;align-items:center;gap:var(--s-3);width:100%;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px;text-align:left}
 .ui-case-person{grid-template-columns:28px minmax(160px,240px) minmax(0,1fr) 80px;transition:background-color .15s}
 .ui-case-person:hover{background:var(--mantine-color-default-hover)}
 .ui-case-ini{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--mantine-color-dimmed)}
@@ -1210,7 +1210,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-case-when.ui-warn{font-weight:600;color:var(--mantine-color-yellow-8)}
 [data-mantine-color-scheme="dark"] .ui-case-when.ui-warn,[data-mantine-color-scheme="dark"] .ui-case-chip[data-warn],[data-mantine-color-scheme="dark"] .ui-acct-state[data-tone="warn"]{color:var(--mantine-color-yellow-5)}
 .ui-case-act{justify-self:end}
-.ui-case-more{display:block;width:100%;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-filled)}
+.ui-case-more{display:block;width:100%;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-filled)}
 .ui-case-more:hover{background:var(--mantine-color-default-hover)}
 .ui-case-chips{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
 .ui-case-chip{font-size:13px;line-height:18px;font-weight:600;border-radius:6px;padding:1px 8px;background:var(--apt-subtle);color:var(--mantine-color-dimmed)}
@@ -1228,7 +1228,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 /* Dziś – sekcje pod skrzynką */
 .ui-home-extras{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--s-6);margin-top:var(--s-4)}
 @media (max-width:80em){.ui-home-extras{grid-template-columns:minmax(0,1fr)}}
-.ui-up-row{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding:10px var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
+.ui-up-row{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
 .ui-up-row:first-child{border-top:0}
 .ui-up-day{font-weight:600}
 .ui-cases > .ui-up-person{border-top:1px solid var(--apt-line)}

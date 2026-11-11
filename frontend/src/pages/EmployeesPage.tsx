@@ -375,8 +375,13 @@ export function EmployeesPage() {
           actions={[
             ...(canPrint ? [{ label: "Zaznacz kilka osób", description: staff ? "Druk kart, dokumenty, szkolenie dla grupy" : "Druk kart dla grupy", icon: <IconChecks size={20} />, onClick: () => setSelMode(true) }] : []),
             { label: "Zapisz ten widok", description: describeQuery(curQuery, names), icon: <IconBookmark size={20} />, onClick: () => openSave(curView?.name ?? "") },
-            { label: "Pobierz listę – Excel", description: "Z bieżącymi filtrami", icon: <IconFileSpreadsheet size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false) },
-            { label: "Pobierz listę – PDF", icon: <IconFileText size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false, "pdf") },
+            // eksport: te same role co na serwerze (raporty) – agencja ma swoje „Zestawienia”
+            ...(canPrint
+              ? [
+                  { label: "Pobierz listę – Excel", description: "Z bieżącymi filtrami", icon: <IconFileSpreadsheet size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false) },
+                  { label: "Pobierz listę – PDF", icon: <IconFileText size={20} />, disabled: exporting || !total, onClick: () => exportXlsx(false, "pdf") },
+                ]
+              : []),
             ...(staff
               ? [
                   { label: "Z numerami PESEL – Excel", description: "Dane wrażliwe · pobranie trafia do dziennika", icon: <IconAlertTriangle size={20} />, warn: true, disabled: exporting || !total, onClick: () => exportXlsx(true) },
@@ -812,6 +817,7 @@ export function EmployeesPage() {
               </>
             )}
           </Text>
+          {canPrint && (
           <Group gap={8}>
             <Text size="sm" c="dimmed">
               Eksport listy z bieżącymi filtrami:
@@ -832,6 +838,7 @@ export function EmployeesPage() {
               />
             )}
           </Group>
+          )}
         </Group>
       )}
 

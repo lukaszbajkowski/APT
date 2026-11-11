@@ -147,7 +147,7 @@ export function TodayInbox() {
     <div className="ui-today">
       <div className="ui-today-bar">
         {!q.data ? (
-          <Skeleton height={36} width={420} radius="md" />
+          <Skeleton height={36} width={420} maw="100%" radius="md" />
         ) : (
         <SegmentedControl
           value={filter}
@@ -273,9 +273,15 @@ export function CasesSkeleton({ rows = 6 }: { rows?: number }) {
             <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={6} />
             <Skeleton height={9} width={56} />
           </div>
-          <Skeleton height={12} width={`${55 - (i % 2) * 20}%`} />
-          <Skeleton height={10} width={70} />
-          <Skeleton height={30} width={96} radius="sm" />
+          <div className="ui-case-what">
+            <Skeleton height={12} width={`${55 - (i % 2) * 20}%`} />
+          </div>
+          <div className="ui-case-when">
+            <Skeleton height={10} width={70} />
+          </div>
+          <div className="ui-case-act">
+            <Skeleton height={30} width={96} radius="sm" />
+          </div>
         </div>
       ))}
     </Paper>

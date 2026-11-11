@@ -27,6 +27,24 @@ Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduce
   po lewej, akcje po prawej w tej samej linii, opis pod spodem (≤ 72 znaki szerokości). Bez własnych układów nagłówka.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
+## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)
+
+Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienionego ekranu:
+
+1. **Styl:** `cd frontend && node scripts/check-style.mjs origin/main` – rozmiary tekstu i odstępy ze skali,
+   polskie cudzysłowy, kolory przez zmienne (bez `yellow.8` / `#…` na sztywno), teksty od wielkiej litery.
+2. **Przegląd ekranu:** `APT_UI_PASSWORD=… node scripts/ui-check.mjs /ścieżka [/inna]` (tylko lokalne demo –
+   klika przyciski i zmienia dane). Robi zrzuty dla każdej roli (admin, kierownik, agencja) × jasny/ciemny ×
+   1440/800 px, w trakcie ładowania (opóźnione API) i po nim, klika przyciski i zgłasza błędy JS, odpowiedzi
+   API ≥ 400 i czerwone powiadomienia.
+3. **Obejrzyj zrzuty** – skrypt nie oceni wyglądu: ciemny motyw (kontrast bursztynu), wąskie okno (nic nie
+   ucięte, brak przewijania w bok), szkielet w kształcie treści, jedna pełna akcja główna, brak kart w kartach.
+4. **Globalnie:** zmiana na komputerze dotyczy wszystkich ról personelu, nie tylko kadr – sprawdź, co widzi
+   każda rola i czy nie widzi akcji, do której serwer jej nie dopuści.
+5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend).
+
+W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”).
+
 ## Na później (zapisane na prośbę właściciela)
 
 - **Lepszy silnik tłumaczeń** – model językowy z kontekstem („aplikacja kadrowa, to etykieta przycisku”) zamiast

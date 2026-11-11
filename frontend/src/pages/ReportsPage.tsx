@@ -149,8 +149,9 @@ export function ReportsPage() {
   const facts: { text: string; to: string; warn?: boolean }[] = [
     { text: `${s.active} aktywnych`, to: "/pracownicy" },
     { text: `${s.terminated} w archiwum`, to: "/pracownicy?status=terminated" },
-    ...(s.missing_photo ? [{ text: `${s.missing_photo} bez zdjęcia`, to: "/pracownicy?missing=photo", warn: true }] : []),
-    ...(s.missing_pesel ? [{ text: `${s.missing_pesel} bez PESEL`, to: "/pracownicy?missing=pesel", warn: true }] : []),
+    // te same pozycje co na telefonie (także zera); bursztyn tylko przy brakach
+    { text: s.missing_photo ? `${s.missing_photo} bez zdjęcia – ich karty się nie wydrukują` : "0 bez zdjęcia", to: "/pracownicy?missing=photo", warn: !!s.missing_photo },
+    ...(s.missing_pesel === null ? [] : [{ text: `${s.missing_pesel} bez PESEL`, to: "/pracownicy?missing=pesel", warn: !!s.missing_pesel }]),
   ];
   return (
     <Stack gap="xl" className="ui-page-narrow">
@@ -180,13 +181,13 @@ export function ReportsPage() {
         ))}
       </Text>
       <div className="ui-two">
-        <CountList title="Według APT" rows={s.by_agency} />
-        <CountList title="Według wydziałów" rows={s.by_department} />
-        <CountList title="Według stanowisk" rows={s.by_position} />
-        <CountList title="Według obywatelstwa" rows={s.by_country} />
+        <CountList title="APT" rows={s.by_agency} />
+        <CountList title="Wydziały" rows={s.by_department} />
+        <CountList title="Stanowiska" rows={s.by_position} />
+        <CountList title="Obywatelstwo" rows={s.by_country} />
       </div>
       <section className="ui-dsec">
-        <SectionHead title="Zatrudnienia i zwolnienia – 12 miesięcy" extra={<Text size="sm" c="dimmed">przyjęci / zwolnieni</Text>} />
+        <SectionHead title="Zatrudnienia i zwolnienia – 12 miesięcy" extra={<Text size="sm" c="dimmed">zatrudnieni / zwolnieni</Text>} />
         <Paper withBorder radius="md" className="ui-months">
           {s.months.map((m) => (
             <div key={m.month} className="ui-month">
@@ -200,9 +201,13 @@ export function ReportsPage() {
           ))}
         </Paper>
       </section>
-      {s.agency_department.length > 0 && (
         <section className="ui-dsec">
           <SectionHead title="APT × wydział" />
+          {s.agency_department.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              Brak danych.
+            </Text>
+          ) : (
           <Paper withBorder radius="md" className="ui-cases">
             {s.agency_department.map((r) => (
               <div key={`${r.agency}|${r.department}`} className="ui-cnt-row ui-cnt-row-3">
@@ -212,8 +217,8 @@ export function ReportsPage() {
               </div>
             ))}
           </Paper>
+          )}
         </section>
-      )}
       <Text size="sm" c="dimmed">
         Listę pracowników z dowolnymi filtrami pobierzesz na liście Pracownicy (Eksport: Excel lub PDF).
       </Text>

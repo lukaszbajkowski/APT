@@ -1245,7 +1245,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .mantine-Table-td code{white-space:nowrap}
 
 /* ekrany przeglądowe (Raporty, Stan systemu, Retencja): sekcje na tle, listy w ramce */
-.ui-page-narrow{max-width:1200px}
+.ui-page-narrow{max-width:1760px}
 .ui-facts{font-size:15px;line-height:22px;color:var(--mantine-color-dimmed)}
 .ui-two{container:two/inline-size;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-6) var(--s-6)}
 @media (max-width:62em){.ui-two{grid-template-columns:minmax(0,1fr)}}

@@ -439,3 +439,9 @@ def test_template_cannot_escape_the_sandbox(admin):
         tid = r.json()["id"]
         g = admin.post(f"/api/employees/{e['id']}/documents", json={"template_id": tid, "pdf": False})
         assert g.status_code == 400 and "unsafe" in g.text
+
+
+def test_templates_usage_and_thumbnail(admin_client):
+    r = admin_client.get("/api/templates-usage")
+    assert r.status_code == 200 and isinstance(r.json(), list)
+    assert admin_client.get("/api/templates/999999/thumbnail").status_code == 404

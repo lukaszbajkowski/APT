@@ -365,6 +365,55 @@ def download_template(template_id: int, ctx: AdminAuth, db: DbSession) -> Respon
     )
 
 
+class TemplateUsageOut(BaseModel):
+    template_id: int
+    count: int
+    last_used_at: datetime | None
+
+
+@router.get("/templates-usage", response_model=list[TemplateUsageOut])
+def templates_usage(ctx: AdminAuth, db: DbSession) -> list[TemplateUsageOut]:
+    """Ile dokumentów powstało z każdego szablonu i kiedy ostatnio (lista szablonów administratora)."""
+    rows = db.execute(
+        select(GeneratedDocument.template_id, func.count(), func.max(GeneratedDocument.created_at))
+        .where(GeneratedDocument.template_id.is_not(None))
+        .group_by(GeneratedDocument.template_id)
+    ).all()
+    return [TemplateUsageOut(template_id=t, count=n, last_used_at=last) for t, n, last in rows]
+
+
+_THUMBS: dict[tuple[int, int], bytes] = {}  # (id szablonu, wersja) → PNG pierwszej strony
+
+
+@router.get("/templates/{template_id}/thumbnail")
+def template_thumbnail(template_id: int, ctx: AdminAuth, db: DbSession) -> Response:
+    """Pierwsza strona szablonu (ze znacznikami {{ … }}) jako obraz – podgląd w liście szablonów.
+    Wymaga LibreOffice na serwerze; bez niego 404 i aplikacja pokazuje ikonę dokumentu."""
+    from io import BytesIO
+
+    from app import pdfium_safe
+
+    t = _get_template(db, template_id)
+    key = (t.id, t.version)
+    if key not in _THUMBS:
+        if not templating.soffice_path():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny.")
+        try:
+            pdf = templating.to_pdf(_template_path(t).read_bytes())
+            img = pdfium_safe.page_image(pdf, 0, 1.0, forms=False)
+        except Exception:
+            img = None
+        if img is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Podgląd niedostępny.")
+        img.thumbnail((600, 800))
+        buf = BytesIO()
+        img.convert("RGB").save(buf, "PNG", optimize=True)
+        if len(_THUMBS) > 200:
+            _THUMBS.clear()
+        _THUMBS[key] = buf.getvalue()
+    return Response(_THUMBS[key], media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
+
+
 # ---------- dokumenty pracownika ----------
 
 

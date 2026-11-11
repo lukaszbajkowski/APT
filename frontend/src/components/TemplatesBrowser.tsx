@@ -1,0 +1,212 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, Image, SegmentedControl, Skeleton, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconFileTypeDocx, IconSearch } from "@tabler/icons-react";
+
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDate, LANGUAGES, withAcct, type DocTemplate } from "../api";
+import { useUrlOpen } from "../lib/urlState";
+import { MasterDetail } from "./MasterDetail";
+import { PageTitle, RowMenu } from "./Mobile";
+
+interface Usage {
+  template_id: number;
+  count: number;
+  last_used_at: string | null;
+}
+const plural = (n: number, one: string, few: string, many: string) =>
+  n === 1 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many;
+const fieldsText = (n: number) => `${n} ${plural(n, "pole", "pola", "pól")}`;
+function ago(iso: string) {
+  const d = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  return d <= 0 ? "dziś" : d === 1 ? "wczoraj" : d < 30 ? `${d} dni temu` : formatDate(iso.slice(0, 10));
+}
+
+/**
+ * Szablony na komputerze (wariant A): lista z wyszukiwarką i filtrem po lewej, szczegóły wybranego obok –
+ * podgląd pierwszej strony, co wstawia się samo, o co aplikacja zapyta, kto może używać i ile razy użyto.
+ */
+export function TemplatesBrowser({ templates, loading, onAdd }: { templates: DocTemplate[] | undefined; loading: boolean; onAdd: () => void }) {
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [openId, setOpenId] = useUrlOpen();
+  const usage = useQuery({ queryKey: ["templates-usage"], queryFn: () => api<Usage[]>("/templates-usage") });
+  const use = useMemo(() => new Map((usage.data ?? []).map((u) => [u.template_id, u])), [usage.data]);
+  const all = useMemo(
+    () => [...(templates ?? [])].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name, "pl")),
+    [templates],
+  );
+  const counts = {
+    all: all.length,
+    used: all.filter((t) => (use.get(t.id)?.count ?? 0) > 0).length,
+    pesel: all.filter((t) => t.sensitive).length,
+    off: all.filter((t) => !t.is_active).length,
+  };
+  const needle = q.trim().toLowerCase();
+  const shown = all.filter(
+    (t) =>
+      (!needle || t.name.toLowerCase().includes(needle)) &&
+      (filter === "all" || (filter === "used" && (use.get(t.id)?.count ?? 0) > 0) || (filter === "pesel" && t.sensitive) || (filter === "off" && !t.is_active)),
+  );
+  const current = all.find((t) => t.id === openId) ?? shown[0] ?? null;
+
+  const list = (
+    <>
+      <div className="ui-tpl-tools">
+        <TextInput aria-label="Szukaj szablonu" placeholder="Szukaj szablonu" leftSection={<IconSearch size={16} aria-hidden />} value={q} onChange={(e) => setQ(e.currentTarget.value)} />
+        {loading ? (
+          <Skeleton height={30} radius="md" />
+        ) : (
+        <SegmentedControl
+          fullWidth
+          size="xs"
+          value={filter}
+          onChange={setFilter}
+          data={[
+            { value: "all", label: `Wszystkie ${counts.all}` },
+            { value: "used", label: `Używane ${counts.used}` },
+            { value: "pesel", label: `Z PESEL ${counts.pesel}` },
+            ...(counts.off ? [{ value: "off", label: `Wyłączone ${counts.off}` }] : []),
+          ]}
+        />
+        )}
+      </div>
+      <div className="ui-tpl-scroll">
+        {loading &&
+          [0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="ui-tpl-item" aria-hidden>
+              <Skeleton width={24} height={28} radius={4} />
+              <span style={{ flex: 1 }}>
+                <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={6} />
+                <Skeleton height={9} width="40%" />
+              </span>
+            </div>
+          ))}
+        {!loading && shown.length === 0 && (
+          <Text size="sm" c="dimmed" p="md">
+            {all.length ? "Brak szablonów dla tego wyszukiwania." : "Brak szablonów. Dodaj pierwszy plik Word ze znacznikami {{ … }}."}
+          </Text>
+        )}
+        {shown.map((t) => {
+          const u = use.get(t.id);
+          const meta = [fieldsText(t.fields.length), t.language !== "pl" ? (LANGUAGES[t.language] ?? t.language).toLowerCase() : null, t.is_active ? (u?.count ? `${u.count} ${plural(u.count, "raz", "razy", "razy")}` : "nieużywany") : "wyłączony"]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <UnstyledButton
+              key={t.id}
+              className="ui-tpl-item"
+              data-selected={current?.id === t.id || undefined}
+              data-off={!t.is_active || undefined}
+              aria-current={current?.id === t.id || undefined}
+              onClick={() => setOpenId(t.id)}
+            >
+              <IconFileTypeDocx size={24} aria-hidden className="ui-tpl-ico" />
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span className="ui-tpl-name">{t.name}</span>
+                <span className="ui-tpl-meta">{meta}</span>
+              </span>
+              {t.sensitive && t.is_active && <span className="ui-tpl-pesel">PESEL</span>}
+            </UnstyledButton>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  return (
+    <MasterDetail
+      mobile={false}
+      showList
+      showRight
+      head={
+        <PageTitle
+          title="Szablony dokumentów"
+          meta={templates ? `${all.length} ${plural(all.length, "szablon", "szablony", "szablonów")}${counts.off ? ` · ${counts.off} ${plural(counts.off, "wyłączony", "wyłączone", "wyłączonych")}` : ""}` : undefined}
+          actions={<Button onClick={onAdd}>Dodaj szablon</Button>}
+        />
+      }
+      list={list}
+      detail={current ? <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} /> : <div />}
+      plainDetail
+    />
+  );
+}
+
+function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [thumbOk, setThumbOk] = useState(true);
+  const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
+  const label = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;
+  const SENS = new Set(["pesel", "data_urodzenia", "birth_date"]);
+  const toggle = useMutation({
+    mutationFn: () => api(`/templates/${t.id}`, { method: "PATCH", body: { is_active: !t.is_active } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["templates"] });
+      notifications.show({ color: "teal", message: t.is_active ? "Szablon wyłączony." : "Szablon włączony." });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  const asked = t.fields.slice(0, 6);
+  return (
+    <div className="ui-tpl-detail">
+      <div className="ui-tpl-grid">
+      <div className="ui-tpl-page">
+        {thumbOk ? (
+          <Image src={withAcct(`/api/templates/${t.id}/thumbnail?v=${t.version}`)} alt={`Pierwsza strona: ${t.name}`} onError={() => setThumbOk(false)} />
+        ) : (
+          <div className="ui-tpl-noprev">
+            <IconFileTypeDocx size={40} aria-hidden />
+            <span>Podgląd niedostępny</span>
+          </div>
+        )}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div className="ui-tpl-dhead">
+          <h2 className="ui-dsec-title">{t.name}</h2>
+          <RowMenu
+            label={t.name}
+            items={[
+              { label: "Pobierz plik .docx", onClick: () => window.open(withAcct(`/api/templates/${t.id}/file`), "_blank") },
+              { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
+            ]}
+          />
+        </div>
+        <Text size="sm" c="dimmed" mb="md">
+          Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))} · plik {t.original_filename}
+        </Text>
+        {t.description && <Text mb="md">{t.description}</Text>}
+        <dl className="ui-tpl-kv">
+          <dt>Język</dt>
+          <dd>{LANGUAGES[t.language] ?? t.language}</dd>
+          <dt>Pobieranie</dt>
+          <dd>{DOWNLOAD_FORMAT_LABELS[t.download_formats]}</dd>
+          <dt>Dane z kartoteki</dt>
+          <dd className="ui-tpl-chips">
+            {t.builtins.length ? t.builtins.map((b) => <span key={b} className="ui-case-chip" data-warn={SENS.has(b) || undefined}>{label(b)}</span>) : <Text span c="dimmed">Żadne</Text>}
+          </dd>
+          <dt>Pyta przy generowaniu</dt>
+          <dd className="ui-tpl-chips">
+            {asked.length ? asked.map((f) => <span key={f.key} className="ui-case-chip">{f.label}</span>) : <Text span c="dimmed">O nic</Text>}
+            {t.fields.length > asked.length && <span className="ui-case-chip">+ {t.fields.length - asked.length}</span>}
+          </dd>
+          <dt>Kierownik</dt>
+          <dd>{t.allow_manager ? (t.sensitive ? "Może wygenerować – bez PESEL i daty urodzenia" : "Może wygenerować") : "Nie widzi szablonu"}</dd>
+          <dt>Użycie</dt>
+          <dd>{usage?.count ? `${usage.count} ${plural(usage.count, "dokument", "dokumenty", "dokumentów")} · ostatnio ${ago(usage.last_used_at!)}` : "Jeszcze nieużyty"}</dd>
+        </dl>
+        <div className="ui-tpl-actions">
+          <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
+            Edytuj ustawienia i pola
+          </Button>
+          <Button variant="default" onClick={() => navigate(`/szablony/${t.id}#plik`)}>
+            Wgraj nową wersję
+          </Button>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}

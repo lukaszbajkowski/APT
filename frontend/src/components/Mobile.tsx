@@ -459,7 +459,8 @@ export function PageTitle({ title, meta, description, actions }: { title: ReactN
           <Title order={1}>{title}</Title>
           {meta && (
             <Text c="dimmed" role="status" aria-live="polite">
-              {meta}
+              {/* każdy fragment („Wersja 0.1.0 · Migracja 0047”) od wielkiej litery – jak na telefonie */}
+              {typeof meta === "string" ? meta.split(" · ").map(cap).join(" · ") : meta}
             </Text>
           )}
         </Group>

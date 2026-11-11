@@ -25,6 +25,7 @@ Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduce
 - Akcje: jedna pełna akcja główna na widok, reszta obramowana / tekstowa, rzadkie i niebezpieczne w „⋯”.
 - Nagłówek strony: zawsze `PageTitle` z `components/Mobile.tsx` (wzór: lista Pracownicy) – tytuł i licznik
   po lewej, akcje po prawej w tej samej linii, opis pod spodem (≤ 72 znaki szerokości). Bez własnych układów nagłówka.
+  Licznik obok tytułu: każdy fragment po „·” od wielkiej litery („Wersja 0.1.0 · Migracja 0047”), ta sama treść co na telefonie.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)

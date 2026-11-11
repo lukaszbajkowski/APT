@@ -59,7 +59,7 @@ export function SystemStatusPage() {
     const pctTone = (p: number) => (p > 90 ? "error" : p > 70 ? "warn" : "ok") as "error" | "warn" | "ok";
     return (
       <Stack gap={24}>
-        <PageHead title="Stan systemu" subtitle={`Wersja ${s.version} · migracja ${s.migration ?? "?"}`} />
+        <PageHead title="Stan systemu" subtitle={`Wersja ${s.version} · Migracja ${s.migration ?? "?"}`} />
         {(() => {
           const states = [runState(s.backup?.local, 36), runState(s.backup?.offsite, 36), runState(s.restore_test, 15 * 24)];
           const problems =
@@ -94,7 +94,12 @@ export function SystemStatusPage() {
           {s.disk ? (
             <ListRow
               title="Dysk"
-              description={`Wolne ${String(s.disk.free_gb).replace(".", ",")} GB z ${String(s.disk.total_gb).replace(".", ",")} GB`}
+              description={
+                <span className="ui-row-progress">
+                  <Progress value={s.disk.used_percent} size="sm" color={s.disk.used_percent > 85 ? "red" : s.disk.used_percent > 70 ? "yellow" : "teal"} />
+                  {`Wolne ${String(s.disk.free_gb).replace(".", ",")} GB z ${String(s.disk.total_gb).replace(".", ",")} GB`}
+                </span>
+              }
               trailing={<StatusBadge tone={s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok"}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>}
             />
           ) : (
@@ -102,7 +107,16 @@ export function SystemStatusPage() {
           )}
           <ListRow
             title="Tłumaczenia"
-            description={s.translation.enabled ? `Wykorzystano ${tPct}% miesięcznego limitu` : "Brak klucza – pracownik widzi teksty po polsku"}
+            description={
+              s.translation.enabled ? (
+                <span className="ui-row-progress">
+                  <Progress value={tPct} size="sm" color={tPct > 90 ? "red" : tPct > 70 ? "yellow" : "teal"} />
+                  {`Wykorzystano ${tPct}% miesięcznego limitu`}
+                </span>
+              ) : (
+                "Brak klucza – pracownik widzi teksty po polsku"
+              )
+            }
             trailing={s.translation.enabled ? <StatusBadge tone={pctTone(tPct)}>{tPct > 90 ? "Kończy się" : "OK"}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>}
             onClick={s.translation.enabled ? () => setDetail({ title: "Tłumaczenia", info: `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu` }) : undefined}
           />
@@ -143,7 +157,7 @@ export function SystemStatusPage() {
   const diskTone = s.disk ? (s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok") : "neutral";
   return (
     <Stack gap="xl" className="ui-page-narrow">
-      <PageTitle title="Stan systemu" meta={`wersja ${s.version} · migracja ${s.migration ?? "?"} · odświeża się co minutę`} />
+      <PageTitle title="Stan systemu" meta={`Wersja ${s.version} · Migracja ${s.migration ?? "?"}`} />
       <Text className={issues.length ? "ui-facts ui-warn" : "ui-facts ui-ok-text"}>
         {issues.length ? `Wymaga uwagi: ${issues.join(", ")} – szczegóły niżej.` : "Wszystko działa: kopie zapasowe, dysk i wysyłka są w porządku."}
       </Text>
@@ -165,33 +179,52 @@ export function SystemStatusPage() {
         </Paper>
       </section>
       <div className="ui-two">
-        <section className="ui-dsec">
-          <SectionHead title="Dysk" />
-          {s.disk ? (
+        <div className="ui-dsec" style={{ gap: "var(--s-6)" }}>
+          <section className="ui-dsec">
+            <SectionHead title="Dysk" />
+            {s.disk ? (
+              <Paper withBorder radius="md" className="ui-cases">
+                <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                  <Progress value={s.disk.used_percent} color={diskTone === "error" ? "red" : diskTone === "warn" ? "yellow" : "teal"} />
+                  <StatusBadge tone={diskTone}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>
+                </div>
+                <div className="ui-cnt-row ui-cnt-dim" style={{ gridTemplateColumns: "1fr" }}>
+                  Wolne {String(s.disk.free_gb).replace(".", ",")} GB z {String(s.disk.total_gb).replace(".", ",")} GB
+                </div>
+              </Paper>
+            ) : (
+              <Text size="sm" c="dimmed">
+                Brak danych – pojawią się po pierwszym uruchomieniu zadań cyklicznych.
+              </Text>
+            )}
+          </section>
+          {/* tłumaczenia jak dysk: pasek wykorzystania miesięcznego limitu */}
+          <section className="ui-dsec">
+            <SectionHead title="Tłumaczenia" />
             <Paper withBorder radius="md" className="ui-cases">
-              <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
-                <Progress value={s.disk.used_percent} color={diskTone === "error" ? "red" : diskTone === "warn" ? "yellow" : "teal"} />
-                <StatusBadge tone={diskTone}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>
-              </div>
-              <div className="ui-cnt-row ui-cnt-dim" style={{ gridTemplateColumns: "1fr" }}>
-                Wolne {String(s.disk.free_gb).replace(".", ",")} GB z {String(s.disk.total_gb).replace(".", ",")} GB
-              </div>
+              {s.translation.enabled ? (
+                <>
+                  <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                    <Progress value={tPct} color={tPct > 90 ? "red" : tPct > 70 ? "yellow" : "teal"} />
+                    <StatusBadge tone={(tPct > 90 ? "error" : tPct > 70 ? "warn" : "ok")}>{`${tPct}% limitu`}</StatusBadge>
+                  </div>
+                  <div className="ui-cnt-row ui-cnt-dim" style={{ gridTemplateColumns: "1fr" }}>
+                    {s.translation.used.toLocaleString("pl-PL")} z {s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu
+                  </div>
+                </>
+              ) : (
+                <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                  <span className="ui-cnt-dim">Brak klucza – pracownik widzi teksty po polsku</span>
+                  <StatusBadge tone="neutral">Wyłączone</StatusBadge>
+                </div>
+              )}
             </Paper>
-          ) : (
-            <Text size="sm" c="dimmed">
-              Brak danych – pojawią się po pierwszym uruchomieniu zadań cyklicznych.
-            </Text>
-          )}
-        </section>
+          </section>
+        </div>
         <section className="ui-dsec">
-          <SectionHead title="Usługi" />
+          <SectionHead title="Pozostałe" />
           <Paper withBorder radius="md" className="ui-cases">
             {row("Wysyłka e-mail", "", <StatusBadge tone={s.mail_enabled ? "ok" : "warn"}>{s.mail_enabled ? "Włączona" : "Wyłączona"}</StatusBadge>)}
-            {row(
-              "Tłumaczenia",
-              s.translation.enabled ? `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu` : "Brak klucza – pracownik widzi teksty po polsku",
-              s.translation.enabled ? <StatusBadge tone={tPct > 90 ? "error" : tPct > 70 ? "warn" : "ok"}>{`${tPct}%`}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>,
-            )}
             {row(
               "Dane po okresie przechowywania",
               "",

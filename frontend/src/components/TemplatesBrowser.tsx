@@ -197,6 +197,7 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
         </Button>
       )}
       <div className="ui-tpl-grid">
+      <div className="ui-tpl-left">
       <div className="ui-tpl-page">
         {thumbOk ? (
           <Image src={withAcct(`/api/templates/${t.id}/thumbnail?v=${t.version}`)} alt={`Pierwsza strona: ${t.name}`} onError={() => setThumbOk(false)} />
@@ -206,6 +207,31 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
             <span>Podgląd niedostępny</span>
           </div>
         )}
+      </div>
+        <section className="ui-dsec ui-tpl-recent-sec">
+          <SectionHead title="Ostatnio wygenerowane" extra={usage?.count ? <Text c="dimmed">{usage.count}</Text> : undefined} />
+          {recent.isLoading ? (
+            <Skeleton height={44} radius="md" />
+          ) : !recent.data?.length ? (
+            <Text size="sm" c="dimmed">
+              Z tego szablonu nie powstał jeszcze żaden dokument.
+            </Text>
+          ) : (
+            <div className="ui-cases ui-tpl-recent">
+              {recent.data.map((r, i) => (
+                <div key={i} className="ui-tpl-recent-row">
+                  <Link to={`/pracownicy/${r.employee_id}`} className="ui-case-link">
+                    {r.employee}
+                  </Link>
+                  <span className="ui-tpl-meta">
+                    {formatDateTime(r.created_at)}
+                    {r.created_by_name ? ` · ${r.created_by_name}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
       <div style={{ minWidth: 0 }}>
         <div className="ui-tpl-dhead">
@@ -250,28 +276,6 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
             ]}
           />
         </div>
-        <section className="ui-dsec" style={{ marginTop: "var(--s-7)" }}>
-          <SectionHead title="Ostatnio wygenerowane" extra={usage?.count ? <Text c="dimmed">{usage.count}</Text> : undefined} />
-          {recent.isLoading ? (
-            <Skeleton height={44} radius="md" />
-          ) : !recent.data?.length ? (
-            <Text size="sm" c="dimmed">
-              Z tego szablonu nie powstał jeszcze żaden dokument.
-            </Text>
-          ) : (
-            <div className="ui-cases ui-tpl-recent">
-              {recent.data.map((r, i) => (
-                <div key={i} className="ui-cnt-row ui-tpl-recent-row">
-                  <Link to={`/pracownicy/${r.employee_id}`} className="ui-case-link">
-                    {r.employee}
-                  </Link>
-                  <span className="ui-cnt-dim">{r.created_by_name ?? ""}</span>
-                  <span className="ui-cnt-dim">{formatDateTime(r.created_at)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
       </div>
     </div>

@@ -445,3 +445,7 @@ def test_templates_usage_and_thumbnail(admin_client):
     r = admin_client.get("/api/templates-usage")
     assert r.status_code == 200 and isinstance(r.json(), list)
     assert admin_client.get("/api/templates/999999/thumbnail").status_code == 404
+
+
+def test_template_recent(admin_client):
+    assert admin_client.get("/api/templates/999999/recent").status_code == 404

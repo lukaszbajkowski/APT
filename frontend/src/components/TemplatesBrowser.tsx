@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Image, SegmentedControl, Skeleton, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconFileTypeDocx, IconSearch } from "@tabler/icons-react";
 
-import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDate, LANGUAGES, withAcct, type DocTemplate } from "../api";
+import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDate, formatDateTime, LANGUAGES, withAcct, type DocTemplate } from "../api";
 import { useUrlOpen } from "../lib/urlState";
 import { MasterDetail } from "./MasterDetail";
-import { PageTitle, RowMenu } from "./Mobile";
+import { PageTitle, RowMenu, SectionHead } from "./Mobile";
 
 interface Usage {
   template_id: number;
@@ -141,6 +141,10 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
   const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
   const label = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;
   const SENS = new Set(["pesel", "data_urodzenia", "birth_date"]);
+  const recent = useQuery({
+    queryKey: ["template-recent", t.id],
+    queryFn: () => api<{ employee_id: number; employee: string; created_at: string; created_by_name: string | null }[]>(`/templates/${t.id}/recent`),
+  });
   const toggle = useMutation({
     mutationFn: () => api(`/templates/${t.id}`, { method: "PATCH", body: { is_active: !t.is_active } }),
     onSuccess: () => {
@@ -149,7 +153,6 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
-  const asked = t.fields.slice(0, 6);
   return (
     <div className="ui-tpl-detail">
       <div className="ui-tpl-grid">
@@ -189,8 +192,8 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
           </dd>
           <dt>Pyta przy generowaniu</dt>
           <dd className="ui-tpl-chips">
-            {asked.length ? asked.map((f) => <span key={f.key} className="ui-case-chip">{f.label}</span>) : <Text span c="dimmed">O nic</Text>}
-            {t.fields.length > asked.length && <span className="ui-case-chip">+ {t.fields.length - asked.length}</span>}
+            {/* wszystkie pola – miejsca jest dość, nie chowamy pod „+ n” */}
+            {t.fields.length ? t.fields.map((f) => <span key={f.key} className="ui-case-chip">{f.label}</span>) : <Text span c="dimmed">O nic</Text>}
           </dd>
           <dt>Kierownik</dt>
           <dd>{t.allow_manager ? (t.sensitive ? "Może wygenerować – bez PESEL i daty urodzenia" : "Może wygenerować") : "Nie widzi szablonu"}</dd>
@@ -205,6 +208,28 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
             Wgraj nową wersję
           </Button>
         </div>
+        <section className="ui-dsec" style={{ marginTop: "var(--s-7)" }}>
+          <SectionHead title="Ostatnio wygenerowane" extra={usage?.count ? <Text c="dimmed">{usage.count}</Text> : undefined} />
+          {recent.isLoading ? (
+            <Skeleton height={44} radius="md" />
+          ) : !recent.data?.length ? (
+            <Text size="sm" c="dimmed">
+              Z tego szablonu nie powstał jeszcze żaden dokument.
+            </Text>
+          ) : (
+            <div className="ui-cases ui-tpl-recent">
+              {recent.data.map((r, i) => (
+                <div key={i} className="ui-cnt-row ui-tpl-recent-row">
+                  <Link to={`/pracownicy/${r.employee_id}`} className="ui-case-link">
+                    {r.employee}
+                  </Link>
+                  <span className="ui-cnt-dim">{r.created_by_name ?? ""}</span>
+                  <span className="ui-cnt-dim">{formatDateTime(r.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
       </div>
     </div>

@@ -1316,8 +1316,8 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-pesel{flex:none;font-size:13px;line-height:18px;font-weight:600;border-radius:6px;padding:0 var(--s-2);background:var(--mantine-color-yellow-light);color:var(--mantine-color-yellow-8)}
 [data-mantine-color-scheme="dark"] .ui-tpl-pesel{color:var(--mantine-color-yellow-5)}
 .ui-tpl-detail{container:tpl/inline-size;padding:var(--s-6);overflow:auto;height:100%;flex:1;min-width:0}
-.ui-tpl-grid{display:grid;grid-template-columns:240px minmax(0,1fr);gap:var(--s-6);align-items:start}
-.ui-tpl-page{width:240px;align-self:start;border:1px solid var(--apt-line);border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.ui-tpl-grid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s-6);align-items:start}
+.ui-tpl-page{width:200px;align-self:start;border:1px solid var(--apt-line);border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.08)}
 .ui-tpl-noprev{aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);color:var(--mantine-color-gray-6);font-size:13px;line-height:18px}
 .ui-tpl-dhead{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3)}
 .ui-tpl-kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--s-3) var(--s-4);margin:0;font-size:14px;line-height:20px}
@@ -1326,5 +1326,8 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-chips{display:flex;flex-wrap:wrap;gap:var(--s-1)}
 .ui-tpl-actions{display:flex;gap:var(--s-2);margin-top:var(--s-6)}
 /* mało miejsca na szczegóły: podgląd nad opisem, etykiety nad wartościami */
-@container tpl (max-width:720px){.ui-tpl-grid{grid-template-columns:minmax(0,1fr)}.ui-tpl-page{width:180px}}
+@container tpl (max-width:620px){.ui-tpl-grid{grid-template-columns:minmax(0,1fr)}.ui-tpl-page{width:180px}}
 @container tpl (max-width:520px){.ui-tpl-kv{grid-template-columns:minmax(0,1fr);gap:var(--s-1)}.ui-tpl-kv dd{margin-bottom:var(--s-2)}.ui-tpl-actions{flex-wrap:wrap}}
+.ui-tpl-recent{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
+.ui-tpl-recent-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+@container tpl (max-width:520px){.ui-tpl-recent-row{grid-template-columns:minmax(0,1fr) auto}.ui-tpl-recent-row > :nth-child(2){display:none}}

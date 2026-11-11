@@ -382,6 +382,32 @@ def templates_usage(ctx: AdminAuth, db: DbSession) -> list[TemplateUsageOut]:
     return [TemplateUsageOut(template_id=t, count=n, last_used_at=last) for t, n, last in rows]
 
 
+class TemplateRecentOut(BaseModel):
+    employee_id: int
+    employee: str
+    created_at: datetime
+    created_by_name: str | None
+
+
+@router.get("/templates/{template_id}/recent", response_model=list[TemplateRecentOut])
+def template_recent(template_id: int, ctx: AdminAuth, db: DbSession, limit: int = 6) -> list[TemplateRecentOut]:
+    """Ostatnio wygenerowane dokumenty z szablonu (szczegóły szablonu u administratora)."""
+    from app.models import Employee
+
+    _get_template(db, template_id)
+    rows = db.execute(
+        select(GeneratedDocument, Employee)
+        .join(Employee, Employee.id == GeneratedDocument.employee_id)
+        .where(GeneratedDocument.template_id == template_id)
+        .order_by(GeneratedDocument.created_at.desc())
+        .limit(max(1, min(limit, 20)))
+    ).all()
+    return [
+        TemplateRecentOut(employee_id=e.id, employee=f"{e.last_name} {e.first_name}", created_at=d.created_at, created_by_name=d.created_by_name)
+        for d, e in rows
+    ]
+
+
 _THUMBS: dict[tuple[int, int], bytes] = {}  # (id szablonu, wersja) → PNG pierwszej strony
 
 

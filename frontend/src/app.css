@@ -1324,7 +1324,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-kv dt{color:var(--mantine-color-dimmed)}
 .ui-tpl-kv dd{margin:0}
 .ui-tpl-chips{display:flex;flex-wrap:wrap;gap:var(--s-1)}
-.ui-tpl-actions{display:flex;gap:var(--s-2);margin-top:var(--s-6)}
+.ui-tpl-actions{display:flex;justify-content:flex-end;align-items:center;gap:var(--s-2);margin-top:var(--s-6)}
 /* mało miejsca na szczegóły: podgląd nad opisem, etykiety nad wartościami */
 @container tpl (max-width:620px){.ui-tpl-grid{grid-template-columns:minmax(0,1fr)}.ui-tpl-page{width:180px}}
 @container tpl (max-width:520px){.ui-tpl-kv{grid-template-columns:minmax(0,1fr);gap:var(--s-1)}.ui-tpl-kv dd{margin-bottom:var(--s-2)}.ui-tpl-actions{flex-wrap:wrap}}

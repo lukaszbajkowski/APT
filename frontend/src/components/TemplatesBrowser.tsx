@@ -210,13 +210,6 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
       <div style={{ minWidth: 0 }}>
         <div className="ui-tpl-dhead">
           <h2 className="ui-dsec-title">{t.name}</h2>
-          <RowMenu
-            label={t.name}
-            items={[
-              { label: "Pobierz plik .docx", onClick: () => window.open(withAcct(`/api/templates/${t.id}/file`), "_blank") },
-              { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
-            ]}
-          />
         </div>
         <Text size="sm" c="dimmed" mb="md">
           Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))} · plik {t.original_filename}
@@ -249,6 +242,13 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
           <Button variant="default" onClick={() => navigate(`/szablony/${t.id}#plik`)}>
             Wgraj nową wersję
           </Button>
+          <RowMenu
+            label={t.name}
+            items={[
+              { label: "Pobierz plik .docx", onClick: () => window.open(withAcct(`/api/templates/${t.id}/file`), "_blank") },
+              { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
+            ]}
+          />
         </div>
         <section className="ui-dsec" style={{ marginTop: "var(--s-7)" }}>
           <SectionHead title="Ostatnio wygenerowane" extra={usage?.count ? <Text c="dimmed">{usage.count}</Text> : undefined} />

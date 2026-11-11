@@ -1331,3 +1331,9 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-recent{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-tpl-recent-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
 @container tpl (max-width:520px){.ui-tpl-recent-row{grid-template-columns:minmax(0,1fr) auto}.ui-tpl-recent-row > :nth-child(2){display:none}}
+.ui-tpl-more{display:none;border:0;cursor:pointer;font:inherit;font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-text)}
+.ui-tpl-more:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
+@container tpl (max-width:620px){
+  .ui-tpl-chips:not([data-all]) [data-extra]{display:none}
+  .ui-tpl-more{display:inline-block}
+}

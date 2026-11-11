@@ -134,6 +134,30 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
   );
 }
 
+/**
+ * Znaczniki pól: na szerokich szczegółach wszystkie, na wąskich (jedna kolumna) pierwsze 4 i „+ n”,
+ * które rozwija resztę – mniej przewijania.
+ */
+function Chips({ items }: { items: { key: string; text: string; warn?: boolean }[] }) {
+  const [all, setAll] = useState(false);
+  // jeden schowany znacznik nie ma sensu – wtedy pokazujemy wszystkie
+  const LIMIT = items.length <= 5 ? items.length : 4;
+  return (
+    <span className="ui-tpl-chips" data-all={all || undefined}>
+      {items.map((it, i) => (
+        <span key={it.key} className="ui-case-chip" data-warn={it.warn || undefined} data-extra={i >= LIMIT || undefined}>
+          {it.text}
+        </span>
+      ))}
+      {items.length > LIMIT && (
+        <button type="button" className="ui-case-chip ui-tpl-more" onClick={() => setAll((a) => !a)} aria-expanded={all}>
+          {all ? "Pokaż mniej" : `+ ${items.length - LIMIT}`}
+        </button>
+      )}
+    </span>
+  );
+}
+
 function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -187,14 +211,15 @@ function TemplateDetail({ t, usage }: { t: DocTemplate; usage?: Usage }) {
           <dt>Pobieranie</dt>
           <dd>{DOWNLOAD_FORMAT_LABELS[t.download_formats]}</dd>
           <dt>Dane z kartoteki</dt>
-          <dd className="ui-tpl-chips">
-            {t.builtins.length ? t.builtins.map((b) => <span key={b} className="ui-case-chip" data-warn={SENS.has(b) || undefined}>{label(b)}</span>) : <Text span c="dimmed">Żadne</Text>}
+          <dd>
+            {t.builtins.length ? (
+              <Chips items={t.builtins.map((b) => ({ key: b, text: label(b), warn: SENS.has(b) }))} />
+            ) : (
+              <Text span c="dimmed">Żadne</Text>
+            )}
           </dd>
           <dt>Pyta przy generowaniu</dt>
-          <dd className="ui-tpl-chips">
-            {/* wszystkie pola – miejsca jest dość, nie chowamy pod „+ n” */}
-            {t.fields.length ? t.fields.map((f) => <span key={f.key} className="ui-case-chip">{f.label}</span>) : <Text span c="dimmed">O nic</Text>}
-          </dd>
+          <dd>{t.fields.length ? <Chips items={t.fields.map((f) => ({ key: f.key, text: f.label }))} /> : <Text span c="dimmed">O nic</Text>}</dd>
           <dt>Kierownik</dt>
           <dd>{t.allow_manager ? (t.sensitive ? "Może wygenerować – bez PESEL i daty urodzenia" : "Może wygenerować") : "Nie widzi szablonu"}</dd>
           <dt>Użycie</dt>

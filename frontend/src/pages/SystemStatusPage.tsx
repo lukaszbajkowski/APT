@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Card, Group, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Paper, Progress, Stack, Text } from "@mantine/core";
+import { Link } from "react-router-dom";
 
 import { api, errorText, formatDateTime } from "../api";
-import { EmptyState } from "../components/States";
 import { useMediaQuery } from "@mantine/hooks";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
-import { useState } from "react";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
+import { useState, type ReactNode } from "react";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 
 function runState(run: Run | null | undefined, staleHours: number) {
@@ -45,27 +45,6 @@ interface Status {
   retention_due: number;
   unusual: string[];
   mail_enabled: boolean;
-}
-
-function RunLine({ label, run, staleHours }: { label: string; run: Run | null | undefined; staleHours: number }) {
-  const stale = run ? Date.now() - new Date(run.at).getTime() > staleHours * 3600_000 : false;
-  const color = !run ? "gray" : !run.ok ? "red" : stale ? "orange" : "teal";
-  return (
-    <Group justify="space-between" wrap="nowrap" align="flex-start">
-      <Text size="sm">{label}</Text>
-      <div style={{ textAlign: "right" }}>
-        <Badge variant="light" color={color}>
-          {!run ? "brak danych" : !run.ok ? "błąd" : stale ? "dawno" : "OK"}
-        </Badge>
-        {run && (
-          <Text size="xs" c="dimmed">
-            {formatDateTime(run.at)}
-            {run.info ? ` · ${run.info}` : ""}
-          </Text>
-        )}
-      </div>
-    </Group>
-  );
 }
 
 export function SystemStatusPage() {
@@ -138,87 +117,90 @@ export function SystemStatusPage() {
       </Stack>
     );
   }
+  // na górze jedno zdanie: co jest nie tak (albo że wszystko działa)
+  const runs = [
+    { label: "Kopia na serwerze", run: s.backup?.local, h: 36 },
+    { label: "Kopia poza serwerem", run: s.backup?.offsite, h: 36 },
+    { label: "Test odtwarzania (co tydzień)", run: s.restore_test, h: 15 * 24 },
+  ];
+  const issues = [
+    ...runs.flatMap((r) => {
+      const st = runState(r.run, r.h);
+      return st.tone === "ok" ? [] : [r.label.replace(/ \(.*\)$/, "").toLowerCase()];
+    }),
+    ...(s.disk && s.disk.used_percent > 85 ? [`dysk (${s.disk.used_percent}%)`] : []),
+    ...(s.mail_enabled ? [] : ["wysyłka e-mail"]),
+    ...(s.retention_due ? ["dane po okresie przechowywania"] : []),
+    ...(s.unusual.length ? ["nietypowa aktywność"] : []),
+  ];
+  const row = (label: string, detail: ReactNode, badge: ReactNode, to?: string) => (
+    <div className="ui-st-row" key={label}>
+      <span>{to ? <Link to={to} className="ui-case-link">{label}</Link> : label}</span>
+      <span className="ui-cnt-dim">{detail}</span>
+      <span>{badge}</span>
+    </div>
+  );
+  const diskTone = s.disk ? (s.disk.used_percent > 85 ? "error" : s.disk.used_percent > 70 ? "warn" : "ok") : "neutral";
   return (
-    <Stack>
-      <PageTitle
-        title="Stan systemu"
-        description={
-          <>
-            Wersja {s.version}, migracja {s.migration ?? "?"}. Odświeża się co minutę.
-          </>
-        }
-      />
+    <Stack gap="xl" className="ui-page-narrow">
+      <PageTitle title="Stan systemu" meta={`wersja ${s.version} · migracja ${s.migration ?? "?"} · odświeża się co minutę`} />
+      <Text className={issues.length ? "ui-facts ui-warn" : "ui-facts ui-ok-text"}>
+        {issues.length ? `Wymaga uwagi: ${issues.join(", ")} – szczegóły niżej.` : "Wszystko działa: kopie zapasowe, dysk i wysyłka są w porządku."}
+      </Text>
       {s.unusual.length > 0 && (
-        <Alert color="red" title="Nietypowa aktywność (ostatnie 24 godz.)">
-          {s.unusual.map((x) => (
-            <div key={x}>{x}</div>
-          ))}
-        </Alert>
+        <section className="ui-dsec">
+          <SectionHead title="Nietypowa aktywność (24 godz.)" />
+          <Paper withBorder radius="md" className="ui-cases">
+            {s.unusual.map((x) => row(x, "", <StatusBadge tone="error">Sprawdź</StatusBadge>))}
+          </Paper>
+        </section>
       )}
-      <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <Card withBorder padding="lg">
-          <Title order={5} mb="sm">
-            Kopie zapasowe
-          </Title>
-          <Stack gap="sm">
-            <RunLine label="Kopia lokalna" run={s.backup?.local} staleHours={36} />
-            <RunLine label="Kopia poza serwerem" run={s.backup?.offsite} staleHours={36} />
-            <RunLine label="Test odtwarzania (co tydzień)" run={s.restore_test} staleHours={15 * 24} />
-          </Stack>
-        </Card>
-        <Card withBorder padding="lg">
-          <Title order={5} mb="sm">
-            Dysk
-          </Title>
+      <section className="ui-dsec">
+        <SectionHead title="Kopie zapasowe" />
+        <Paper withBorder radius="md" className="ui-cases">
+          {runs.map((r) => {
+            const st = runState(r.run, r.h);
+            return row(r.label, r.run ? `${when(r.run.at)}${r.run.info ? ` · ${r.run.info}` : ""}` : "Jeszcze się nie wykonała", <StatusBadge tone={st.tone}>{st.label}</StatusBadge>);
+          })}
+        </Paper>
+      </section>
+      <div className="ui-two">
+        <section className="ui-dsec">
+          <SectionHead title="Dysk" />
           {s.disk ? (
-            <>
-              <Progress value={s.disk.used_percent} color={s.disk.used_percent > 85 ? "red" : s.disk.used_percent > 70 ? "orange" : "teal"} />
-              <Text size="sm" mt="xs">
-                Zajęte {s.disk.used_percent}% · wolne {s.disk.free_gb} GB z {s.disk.total_gb} GB
-              </Text>
-            </>
-          ) : (
-            <EmptyState compact title="Brak danych"
-          text="Informacje pojawią się po pierwszym uruchomieniu zadań cyklicznych." />
-          )}
-        </Card>
-        <Card withBorder padding="lg">
-          <Title order={5} mb="sm">
-            Tłumaczenia (limit miesięczny)
-          </Title>
-          {s.translation.enabled ? (
-            <>
-              <Progress value={tPct} color={tPct > 90 ? "red" : tPct > 70 ? "orange" : "teal"} />
-              <Text size="sm" mt="xs">
-                {s.translation.used.toLocaleString("pl-PL")} z {s.translation.limit.toLocaleString("pl-PL")} znaków ({tPct}%)
-              </Text>
-            </>
+            <Paper withBorder radius="md" className="ui-cases">
+              <div className="ui-cnt-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                <Progress value={s.disk.used_percent} color={diskTone === "error" ? "red" : diskTone === "warn" ? "yellow" : "teal"} />
+                <StatusBadge tone={diskTone}>{`${s.disk.used_percent}% zajęte`}</StatusBadge>
+              </div>
+              <div className="ui-cnt-row ui-cnt-dim" style={{ gridTemplateColumns: "1fr" }}>
+                Wolne {String(s.disk.free_gb).replace(".", ",")} GB z {String(s.disk.total_gb).replace(".", ",")} GB
+              </div>
+            </Paper>
           ) : (
             <Text size="sm" c="dimmed">
-              Tłumaczenia są wyłączone (brak klucza).
+              Brak danych – pojawią się po pierwszym uruchomieniu zadań cyklicznych.
             </Text>
           )}
-        </Card>
-        <Card withBorder padding="lg">
-          <Title order={5} mb="sm">
-            Pozostałe
-          </Title>
-          <Stack gap={6}>
-            <Group justify="space-between">
-              <Text size="sm">Wysyłka e-mail</Text>
-              <Badge variant="light" color={s.mail_enabled ? "teal" : "orange"}>
-                {s.mail_enabled ? "włączona" : "wyłączona"}
-              </Badge>
-            </Group>
-            <Group justify="space-between">
-              <Text size="sm">Dane po okresie przechowywania</Text>
-              <Badge variant="light" color={s.retention_due ? "orange" : "teal"}>
-                {s.retention_due}
-              </Badge>
-            </Group>
-          </Stack>
-        </Card>
-      </SimpleGrid>
+        </section>
+        <section className="ui-dsec">
+          <SectionHead title="Usługi" />
+          <Paper withBorder radius="md" className="ui-cases">
+            {row("Wysyłka e-mail", "", <StatusBadge tone={s.mail_enabled ? "ok" : "warn"}>{s.mail_enabled ? "Włączona" : "Wyłączona"}</StatusBadge>)}
+            {row(
+              "Tłumaczenia",
+              s.translation.enabled ? `${s.translation.used.toLocaleString("pl-PL")} z ${s.translation.limit.toLocaleString("pl-PL")} znaków w tym miesiącu` : "Brak klucza – pracownik widzi teksty po polsku",
+              s.translation.enabled ? <StatusBadge tone={tPct > 90 ? "error" : tPct > 70 ? "warn" : "ok"}>{`${tPct}%`}</StatusBadge> : <StatusBadge tone="neutral">Wyłączone</StatusBadge>,
+            )}
+            {row(
+              "Dane po okresie przechowywania",
+              "",
+              s.retention_due ? <StatusBadge tone="warn">{String(s.retention_due)}</StatusBadge> : <StatusBadge tone="ok">Brak</StatusBadge>,
+              s.retention_due ? "/retencja" : undefined,
+            )}
+          </Paper>
+        </section>
+      </div>
     </Stack>
   );
 }

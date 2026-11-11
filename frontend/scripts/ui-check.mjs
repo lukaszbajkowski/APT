@@ -58,13 +58,23 @@ function watch(page, where) {
   };
 }
 
+// jedno logowanie na rolę (serwer ogranicza liczbę prób), potem ta sama sesja w każdym kontekście
+const sessions = {};
 async function login(ctx, user) {
+  if (sessions[user]) {
+    await ctx.addCookies(sessions[user]);
+    const page = await ctx.newPage();
+    await page.goto(`${base}/`);
+    if (!page.url().includes("/login")) return page;
+    await page.close();
+  }
   const page = await ctx.newPage();
   await page.goto(`${base}/login`);
   await page.getByLabel("Login").fill(user);
   await page.getByLabel("Hasło").fill(password);
   await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 10000 });
+  sessions[user] = await ctx.cookies();
   return page;
 }
 

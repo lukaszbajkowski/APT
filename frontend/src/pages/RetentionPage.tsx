@@ -5,9 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Anchor,
-  Badge,
   Button,
-  Card,
   Checkbox,
   Group,
   Modal,
@@ -16,7 +14,7 @@ import {
   Text,
   TextInput,
   Textarea,
-  Title,
+  Paper,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-react";
@@ -25,7 +23,7 @@ import { api, errorText, formatDate, type RetentionItem, type RetentionOverview 
 import { DateField } from "../components/DateField";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, StatusBadge, FormDialog, PageTitle, PageLoading } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, SectionHead, StatusBadge, FormDialog, PageTitle, PageLoading } from "../components/Mobile";
 
 const CONFIRM = "USUŃ";
 
@@ -43,36 +41,36 @@ function PersonCell({ item }: { item: RetentionItem }) {
   );
 }
 
+/** Sekcja na tle: nagłówek z licznikiem, opis; pusta – jedno szare zdanie, z danymi – tabela w ramce. */
 function Section({
   title,
   description,
   items,
+  warn,
   children,
 }: {
   title: string;
   description: string;
   items: RetentionItem[];
+  warn?: boolean;
   children: ReactNode;
 }) {
   return (
-    <Card withBorder padding="lg">
-      <Group justify="space-between" mb={4}>
-        <Title order={4}>{title}</Title>
-        <Badge variant="light" color={items.length ? undefined : "gray"}>
-          {items.length}
-        </Badge>
-      </Group>
-      <Text size="sm" c="dimmed" mb="sm">
+    <section className="ui-dsec">
+      <SectionHead title={title} extra={<Text className={items.length && warn ? "ui-warn" : undefined} c={items.length && warn ? undefined : "dimmed"}>{items.length}</Text>} />
+      <Text size="sm" c="dimmed" className="ui-page-desc" mt={-8}>
         {description}
       </Text>
       {items.length === 0 ? (
         <Text size="sm" c="dimmed">
-          Brak.
+          Nic.
         </Text>
       ) : (
-        <Table.ScrollContainer minWidth={640}>{children}</Table.ScrollContainer>
+        <Paper withBorder radius="md" className="ui-cases">
+          <Table.ScrollContainer minWidth={560}>{children}</Table.ScrollContainer>
+        </Paper>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -278,9 +276,10 @@ export function RetentionPage() {
   }
 
   return (
-    <Stack maw={1100}>
+    <Stack gap="xl" className="ui-page-narrow">
       <PageTitle
         title="Retencja danych"
+        meta={`${d.years} lat od końca roku zwolnienia`}
         description={
           <>
             Dane zwolnionych pracowników są przechowywane {d.years} lat, licząc od końca roku kalendarzowego, w którym
@@ -294,8 +293,9 @@ export function RetentionPage() {
         title="Do usunięcia"
         description="Okres przechowywania minął. Usunięcia nie da się cofnąć (dane znikną też z kopii zapasowych po 14 dniach)."
         items={d.due}
+        warn
       >
-        <Table verticalSpacing="xs">
+        <Table verticalSpacing="xs" horizontalSpacing="md">
           <Table.Thead>
             <Table.Tr>
               <Table.Th w={40}>
@@ -350,7 +350,7 @@ export function RetentionPage() {
       </Section>
 
       <Section title="Wkrótce" description="Okres przechowywania kończy się w ciągu najbliższych 12 miesięcy." items={d.upcoming}>
-        <Table verticalSpacing="xs">
+        <Table verticalSpacing="xs" horizontalSpacing="md">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Pracownik</Table.Th>
@@ -377,7 +377,7 @@ export function RetentionPage() {
         description="Okres minął, ale usunięcie wstrzymano (np. postępowanie sądowe lub kontrola)."
         items={d.held}
       >
-        <Table verticalSpacing="xs">
+        <Table verticalSpacing="xs" horizontalSpacing="md">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Pracownik</Table.Th>
@@ -412,13 +412,19 @@ export function RetentionPage() {
           title="Archiwum bez daty zwolnienia"
           description="Bez daty zwolnienia nie da się policzyć okresu przechowywania. Uzupełnij datę w profilu (przywróć i ponownie przenieś do archiwum)."
           items={d.missing_date}
+          warn
         >
-          <Table verticalSpacing="xs">
+          <Table verticalSpacing="xs" horizontalSpacing="md">
             <Table.Tbody>
               {d.missing_date.map((i) => (
                 <Table.Tr key={i.id}>
                   <Table.Td>
                     <PersonCell item={i} />
+                  </Table.Td>
+                  <Table.Td align="right">
+                    <Button size="xs" variant="default" onClick={() => navigate(`/pracownicy/${i.id}`)}>
+                      Uzupełnij datę
+                    </Button>
                   </Table.Td>
                 </Table.Tr>
               ))}

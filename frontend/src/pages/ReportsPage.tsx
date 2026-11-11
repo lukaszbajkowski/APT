@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Paper, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
+import { useElementSize, useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
@@ -15,6 +15,106 @@ function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { va
     <Box h={8} style={{ background: "var(--apt-subtle)", borderRadius: 4, overflow: "hidden" }}>
       <Box h="100%" w={`${value ? pct : 0}%`} style={{ background: color, borderRadius: 4 }} />
     </Box>
+  );
+}
+
+type Month = ReportSummary["months"][number];
+
+/**
+ * Zatrudnienia i zwolnienia: pasek 12 miesięcy; po kliknięciu w miesiąc albo „Pokaż wykres” rozwija się
+ * wykres słupkowy (zatrudnieni – orzech, zwolnieni – szary), wybrany miesiąc podświetlony, wartości po najechaniu.
+ */
+function MonthsSection({ months }: { months: Month[] }) {
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const max = Math.max(1, ...months.flatMap((m) => [m.hired, m.terminated]));
+  const step = max <= 4 ? 1 : max <= 10 ? 2 : Math.ceil(max / 5);
+  const top = Math.ceil(max / step) * step;
+  // wykres rysowany w rzeczywistej szerokości (tekst zawsze 13 px, także w wąskim oknie)
+  const { ref: box, width: boxW } = useElementSize();
+  const W = Math.max(320, Math.round(boxW) || 960), H = 220, L = 32, B = 28, T = 12;
+  const cw = (W - L) / months.length;
+  const bw = Math.min(18, cw / 3.2);
+  const y = (v: number) => H - B - ((H - B - T) * v) / top;
+  const active = hover ?? pick;
+  const toggle = (k?: string) => {
+    if (k) {
+      setPick((p) => (p === k && open ? null : k));
+      setOpen(true);
+    } else setOpen((o) => !o);
+  };
+  return (
+    <section className="ui-dsec">
+      <SectionHead
+        title="Zatrudnienia i zwolnienia – 12 miesięcy"
+        extra={<Text size="sm" c="dimmed">zatrudnieni / zwolnieni</Text>}
+        action={{ label: open ? "Ukryj wykres" : "Pokaż wykres", onClick: () => toggle() }}
+      />
+      <Paper withBorder radius="md" className="ui-months-wrap">
+        <div className="ui-months">
+          {months.map((m) => (
+            <button
+              key={m.month}
+              type="button"
+              className="ui-month"
+              data-active={(open && active === m.month) || undefined}
+              aria-pressed={open && pick === m.month}
+              aria-label={`${m.label}: zatrudnieni ${m.hired}, zwolnieni ${m.terminated}`}
+              onClick={() => toggle(m.month)}
+              onMouseEnter={() => setHover(m.month)}
+              onMouseLeave={() => setHover(null)}
+            >
+              <span className="ui-month-label">{m.label}</span>
+              <span>
+                <b>{m.hired}</b>
+                <span className="ui-month-sep">/</span>
+                <span className={m.terminated ? undefined : "ui-month-zero"}>{m.terminated}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="ui-chart-wrap" data-open={open || undefined}>
+          <div className="ui-chart-inner">
+            <div className="ui-chart-legend" aria-hidden>
+              <span><i className="ui-sw ui-sw-hired" /> Zatrudnieni</span>
+              <span><i className="ui-sw ui-sw-term" /> Zwolnieni</span>
+            </div>
+            <div ref={box}>
+            <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="ui-chart" role="img" aria-label="Wykres zatrudnień i zwolnień w ostatnich 12 miesiącach">
+              {Array.from({ length: top / step + 1 }, (_, i) => i * step).map((v) => (
+                <g key={v}>
+                  <line x1={L} x2={W} y1={y(v)} y2={y(v)} className="ui-chart-grid" />
+                  <text x={L - 8} y={y(v) + 4} textAnchor="end" className="ui-chart-axis">
+                    {v}
+                  </text>
+                </g>
+              ))}
+              {months.map((m, i) => {
+                const cx = L + cw * i + cw / 2;
+                const on = active === m.month;
+                return (
+                  <g key={m.month} onMouseEnter={() => setHover(m.month)} onMouseLeave={() => setHover(null)} onClick={() => setPick(m.month)}>
+                    <rect x={L + cw * i} y={T} width={cw} height={H - B - T} className="ui-chart-hit" data-active={on || undefined} />
+                    <rect x={cx - bw - 1} y={y(m.hired)} width={bw} height={H - B - y(m.hired)} rx={3} className="ui-chart-bar ui-bar-hired" />
+                    <rect x={cx + 1} y={y(m.terminated)} width={bw} height={H - B - y(m.terminated)} rx={3} className="ui-chart-bar ui-bar-term" />
+                    {on && (
+                      <text x={cx} y={Math.min(y(m.hired), y(m.terminated)) - 6} textAnchor="middle" className="ui-chart-val">
+                        {m.hired} / {m.terminated}
+                      </text>
+                    )}
+                    <text x={cx} y={H - 8} textAnchor="middle" className="ui-chart-axis" data-active={on || undefined}>
+                      {m.label.split(" ")[0]}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+            </div>
+          </div>
+        </div>
+      </Paper>
+    </section>
   );
 }
 
@@ -187,19 +287,7 @@ export function ReportsPage() {
         <CountList title="Obywatelstwo" rows={s.by_country} />
       </div>
       <section className="ui-dsec">
-        <SectionHead title="Zatrudnienia i zwolnienia – 12 miesięcy" extra={<Text size="sm" c="dimmed">zatrudnieni / zwolnieni</Text>} />
-        <Paper withBorder radius="md" className="ui-months">
-          {s.months.map((m) => (
-            <div key={m.month} className="ui-month">
-              <span className="ui-month-label">{m.label}</span>
-              <span>
-                <b>{m.hired}</b>
-                <span className="ui-month-sep">/</span>
-                <span className={m.terminated ? undefined : "ui-month-zero"}>{m.terminated}</span>
-              </span>
-            </div>
-          ))}
-        </Paper>
+        <MonthsSection months={s.months} />
       </section>
         <section className="ui-dsec">
           <SectionHead title="APT × wydział" />

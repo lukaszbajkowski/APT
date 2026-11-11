@@ -147,13 +147,11 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
 }
 
 /**
- * Znaczniki pól: na szerokich szczegółach wszystkie, na wąskich (jedna kolumna) pierwsze 4 i „+ n”,
- * które rozwija resztę – mniej przewijania.
+ * Znaczniki pól: pierwsze 4 i „Pokaż więcej (n)”, które rozwija resztę („Pokaż mniej” zwija) – mniej przewijania.
  */
 function Chips({ items }: { items: { key: string; text: string; warn?: boolean }[] }) {
   const [all, setAll] = useState(false);
-  // jeden schowany znacznik nie ma sensu – wtedy pokazujemy wszystkie
-  const LIMIT = items.length <= 5 ? items.length : 4;
+  const LIMIT = 4;
   return (
     <span className="ui-tpl-chips" data-all={all || undefined}>
       {items.map((it, i) => (
@@ -163,7 +161,7 @@ function Chips({ items }: { items: { key: string; text: string; warn?: boolean }
       ))}
       {items.length > LIMIT && (
         <button type="button" className="ui-case-chip ui-tpl-more" onClick={() => setAll((a) => !a)} aria-expanded={all}>
-          {all ? "Pokaż mniej" : `+ ${items.length - LIMIT}`}
+          {all ? "Pokaż mniej" : `Pokaż więcej (${items.length - LIMIT})`}
         </button>
       )}
     </span>
@@ -265,6 +263,8 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
           <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
             Edytuj ustawienia i pola
           </Button>
+          {/* „⋯” trzyma się ostatniego przycisku – nie zostaje samo w nowej linii */}
+          <span className="ui-tpl-actions-end">
           <Button variant="default" onClick={() => navigate(`/szablony/${t.id}#plik`)}>
             Wgraj nową wersję
           </Button>
@@ -275,6 +275,7 @@ function TemplateDetail({ t, usage, onBack }: { t: DocTemplate; usage?: Usage; o
               { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
             ]}
           />
+          </span>
         </div>
       </div>
       </div>

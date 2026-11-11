@@ -1334,13 +1334,11 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-recent-row{display:flex;flex-direction:column;padding:var(--s-2) var(--s-3);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
 .ui-tpl-recent-row:first-child{border-top:0}
 .ui-tpl-recent-sec .ui-dsec-title{font-size:15px;line-height:22px}
-.ui-tpl-more{display:none;border:0;cursor:pointer;font:inherit;font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-text)}
+.ui-tpl-chips:not([data-all]) [data-extra]{display:none}
+.ui-tpl-more{display:inline-block;border:0;cursor:pointer;font:inherit;font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-text)}
 .ui-tpl-more:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
-@container tpl (max-width:620px){
-  .ui-tpl-chips:not([data-all]) [data-extra]{display:none}
-  .ui-tpl-more{display:inline-block}
-}
 .ui-tpl-single .ui-inbox-list{width:100%;border-right:0}
 .ui-tpl-left .ui-tpl-page{align-self:stretch}
 /* jedna kolumna: „Ostatnio wygenerowane” na końcu, pod opisem */
 @container tpl (max-width:620px){.ui-tpl-left{display:contents}.ui-tpl-left .ui-tpl-page{align-self:start}.ui-tpl-recent-sec{order:3}}
+.ui-tpl-actions-end{display:inline-flex;align-items:center;gap:var(--s-2)}

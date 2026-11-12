@@ -17,6 +17,7 @@ import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "
 import { MasterDetail } from "./MasterDetail";
 import { EmployeeAside } from "./EmployeeAside";
 import { Link, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 
@@ -831,6 +832,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [view, setView] = useUrlTab("widok", ["active", "archive"] as const, "active");
+  const [, setUrl] = useSearchParams();
   const list = useQuery({
     queryKey: ["threads", base, q, status, view],
     queryFn: () => {
@@ -1003,9 +1005,18 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
               fullWidth
               value={deskSeg === "all" && staff ? "" : deskSeg}
               onChange={(v) => {
-                setView(v === "archive" ? "archive" : "active");
+                // jedna zmiana adresu: widok i zamknięcie rozmowy razem (dwie osobne nadpisywały się – Archiwum nie dało się otworzyć)
+                setUrl(
+                  (p) => {
+                    const n = new URLSearchParams(p);
+                    if (v === "archive") n.set("widok", "archive");
+                    else n.delete("widok");
+                    n.delete("id");
+                    return n;
+                  },
+                  { replace: true },
+                );
                 setStatus(v === "archive" || v === "all" ? "" : v);
-                setOpenId(null);
                 setComposing(false);
               }}
               data={deskItems}
@@ -1013,7 +1024,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
           </div>
           <ScrollArea style={{ flex: 1 }}>
             {rows.length === 0 &&
-              (q.trim() || status ? (
+              (q.trim() || (status && view !== "archive") ? (
                 <EmptyState
                   search
                   title={q.trim() ? `Brak wyników dla „${q.trim()}”` : "Brak rozmów w tym filtrze"}

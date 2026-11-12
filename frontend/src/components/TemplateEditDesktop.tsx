@@ -65,13 +65,17 @@ export function TemplateEditDesktop({
   const fields = draft.fields;
   const cur = fields[Math.min(sel, fields.length - 1)];
   const setField = (i: number, f: TemplateField) => set({ fields: fields.map((x, j) => (j === i ? f : x)) });
+  // odłożenie w to samo miejsce (ta sama pozycja i grupa) niczego nie zmienia: bez zaznaczenia, mignięcia i „niezapisanych zmian”
+  const isNoop = (from: number, to: number, group?: string | null) =>
+    from === to && (group === undefined || (group ?? null) === (fields[from]?.group ?? null));
   const move = (from: number, to: number, group?: string | null) => {
-    if (to < 0 || to >= fields.length || (from === to && group === undefined)) return;
+    if (to < 0 || to >= fields.length || isNoop(from, to, group)) return false;
     const next = [...fields];
     const [x] = next.splice(from, 1);
     next.splice(to, 0, group === undefined ? x : { ...x, group });
     set({ fields: next });
     setSel(to);
+    return true;
   };
   // przewijanie strony, gdy przeciągane pole zbliża się do górnej lub dolnej krawędzi okna
   useEffect(() => {
@@ -106,14 +110,20 @@ export function TemplateEditDesktop({
   const gTargetGroup = gNeighbour && gNeighbour !== gdrag ? gNeighbour : null;
   const joining = joiningField ?? gTargetGroup;
   // upuszczenie w szczelinie (podglądzie) – ta sama logika co przy wierszach, nagłówkach i stopkach
+  // po przeciąganiu fokus nie zostaje na chwyconym wierszu (przeglądarka ustawia go przy wciśnięciu myszy)
+  const dropFocus = () => {
+    const a = document.activeElement as HTMLElement | null;
+    if (a && listRef.current?.contains(a) && a.tagName !== "INPUT") a.blur();
+  };
   const commitDrop = () => {
     if (drag !== null && over) {
       let to = over.hdr === "in" || over.hdr === "out" || over.hdr === "end" ? over.i : over.i + (over.after ? 1 : 0);
       const g = over.hdr === "in" ? (fields[over.i]?.group ?? null) : over.hdr ? null : (fields[over.i]?.group ?? null);
       if (drag < to) to -= 1;
-      move(drag, to, g);
-      setMoved(fields[drag].key);
-      window.setTimeout(() => setMoved(null), 900);
+      if (move(drag, to, g)) {
+        setMoved(fields[drag].key);
+        window.setTimeout(() => setMoved(null), 900);
+      }
     }
     setDrag(null);
     setOver(null);
@@ -297,6 +307,7 @@ export function TemplateEditDesktop({
                         e.dataTransfer.setData("text/plain", f.group!);
                       }}
                       onDragEnd={() => {
+                        dropFocus();
                         setGdrag(null);
                         setGover(null);
                       }}
@@ -312,9 +323,10 @@ export function TemplateEditDesktop({
                         if (drag !== null && over) {
                           let to = over.i;
                           if (drag < to) to -= 1;
-                          move(drag, to, over.hdr === "in" ? f.group! : null);
-                          setMoved(fields[drag].key);
-                          window.setTimeout(() => setMoved(null), 900);
+                          if (move(drag, to, over.hdr === "in" ? f.group! : null)) {
+                            setMoved(fields[drag].key);
+                            window.setTimeout(() => setMoved(null), 900);
+                          }
                         }
                         setDrag(null);
                         setOver(null);
@@ -403,14 +415,16 @@ export function TemplateEditDesktop({
                         let to = over.i + (over.after ? 1 : 0);
                         if (drag < to) to -= 1;
                         // pole przejmuje grupę wiersza, przy którym je upuszczono
-                        move(drag, to, f.group ?? null);
-                        setMoved(fields[drag].key);
-                        window.setTimeout(() => setMoved(null), 900);
+                        if (move(drag, to, f.group ?? null)) {
+                          setMoved(fields[drag].key);
+                          window.setTimeout(() => setMoved(null), 900);
+                        }
                       }
                       setDrag(null);
                       setOver(null);
                     }}
                     onDragEnd={() => {
+                      dropFocus();
                       setDrag(null);
                       setOver(null);
                     }}
@@ -448,9 +462,10 @@ export function TemplateEditDesktop({
                       onDrop={(e: DragEvent) => {
                         if (gdrag) return gDrop(e);
                         if (drag !== null) {
-                          move(drag, drag < i + 1 ? i : i + 1, null);
-                          setMoved(fields[drag].key);
-                          window.setTimeout(() => setMoved(null), 900);
+                          if (move(drag, drag < i + 1 ? i : i + 1, null)) {
+                            setMoved(fields[drag].key);
+                            window.setTimeout(() => setMoved(null), 900);
+                          }
                         }
                         setDrag(null);
                         setOver(null);
@@ -883,6 +898,8 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(gAuto);
   };
   const gEnd = () => {
+    // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
+    if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
     if (raf.current) cancelAnimationFrame(raf.current);
     if (frame.current.id !== null) {
       cancelAnimationFrame(frame.current.id);
@@ -963,6 +980,8 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(autoscroll);
   };
   const end = () => {
+    // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
+    if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
     if (raf.current) cancelAnimationFrame(raf.current);
     if (frame.current.id !== null) {
       cancelAnimationFrame(frame.current.id);

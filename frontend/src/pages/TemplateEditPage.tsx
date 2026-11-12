@@ -30,7 +30,6 @@ function blocksOf(fields: TemplateField[]): TemplateField[][] {
 export function TemplateEditPage() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<string | null>(null);
-  const [blockMode, setBlockMode] = useState(false);
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   // dotknięcie, które otwiera pole nazwy, potrafi od razu zabrać mu fokus – przez chwilę nie traktujemy tego jako „zapisz”
   const renameAt = useRef(0);
@@ -178,11 +177,18 @@ export function TemplateEditPage() {
                     Nowa grupa
                   </Button>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
-                  {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g) => (
-                    <div key={g} className="ui-mgroup">
-                      {renaming?.from === g && !blockMode ? (
+                  <TouchSortList
+                    fields={fields}
+                    onOpen={(i) => setEditIdx(i)}
+                    onMove={(from, to, group) => {
+                      const next = [...fields];
+                      const [x] = next.splice(from, 1);
+                      next.splice(to, 0, { ...x, group });
+                      setFields(next);
+                    }}
+                    groupName={(g) =>
+                      renaming?.from === g ? (
                         <TextInput
-                          className="ui-mgroup-name"
                           size="md"
                           autoFocus
                           aria-label="Nazwa grupy"
@@ -196,93 +202,39 @@ export function TemplateEditPage() {
                         />
                       ) : (
                         <UnstyledButton
-                          className="ui-mgroup-name"
+                          className="ui-tsl-ghead-btn"
                           aria-label={`Grupa ${g}: dotknij dwukrotnie, aby zmienić nazwę`}
                           onClick={() => {
                             // podwójne dotknięcie (dwa w ciągu 350 ms) – zmiana nazwy w miejscu
                             const now = Date.now();
                             if (lastTap.current.g === g && now - lastTap.current.t < 350) {
                               setRenaming({ from: g, value: g });
-                          renameAt.current = Date.now();
+                              renameAt.current = Date.now();
                               lastTap.current = { g: "", t: 0 };
                             } else lastTap.current = { g, t: now };
                           }}
                         >
                           <span className="ui-tpl-name">{g}</span>
-                          <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)} · dotknij dwukrotnie, aby zmienić nazwę</span>
+                          <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)}</span>
                         </UnstyledButton>
-                      )}
+                      )
+                    }
+                    groupActions={(g) => (
                       <Button variant="subtle" size="sm" onClick={() => setEditGroup(g)}>
                         Zmień pola
                       </Button>
-                    </div>
-                  ))}
-                  {fields.some((f) => f.group) && (
-                    <Button variant={blockMode ? "filled" : "default"} fullWidth mb="sm" onClick={() => setBlockMode((v) => !v)}>
-                      {blockMode ? "Gotowe – wróć do pól" : "Przestaw całe grupy"}
-                    </Button>
-                  )}
-                  {blockMode ? (
-                    <TouchSortList
-                      blocks
-                      fields={blocksOf(fields).map((b) => (b[0].group ? { ...b[0], key: `g:${b[0].group}`, label: b[0].group, group: null } : b[0]))}
-                      onOpen={(i) => {
-                        const b = blocksOf(fields)[i];
-                        const g = b[0].group;
-                        if (!g) return setEditIdx(fields.indexOf(b[0]));
-                        // grupa: podwójne dotknięcie – zmiana nazwy w miejscu (skład grupy: „Zmień pola” wyżej)
-                        const now = Date.now();
-                        if (lastTap.current.g === g && now - lastTap.current.t < 350) {
-                          setRenaming({ from: g, value: g });
-                          renameAt.current = Date.now();
-                          lastTap.current = { g: "", t: 0 };
-                        } else lastTap.current = { g, t: now };
-                      }}
-                      replaceBody={(f) =>
-                        f.key.startsWith("g:") && renaming?.from === f.label ? (
-                          <TextInput
-                            className="ui-tsl-body"
-                            size="md"
-                            autoFocus
-                            aria-label="Nazwa grupy"
-                            value={renaming.value}
-                            onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
-                            onBlur={() => Date.now() - renameAt.current > 400 && renameGroup()}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") renameGroup();
-                              if (e.key === "Escape") setRenaming(null);
-                            }}
-                          />
-                        ) : null
-                      }
-                      onMove={(from, to) => {
-                        const bs = blocksOf(fields);
-                        const [x] = bs.splice(from, 1);
-                        bs.splice(to, 0, x);
-                        setFields(bs.flat());
-                      }}
-                      describe={(f) => {
-                        if (!f.key.startsWith("g:")) return "Pole bez grupy";
-                        const items = fields.filter((x) => x.group === f.label);
-                        return `Grupa · ${items.map((x) => x.label).join(", ")} · dotknij dwukrotnie, aby zmienić nazwę`;
-                      }}
-                    />
-                  ) : (
-                  <TouchSortList
-                    fields={fields}
-                    onOpen={(i) => setEditIdx(i)}
-                    onMove={(from, to, group) => {
-                      const next = [...fields];
-                      const [x] = next.splice(from, 1);
-                      next.splice(to, 0, { ...x, group });
-                      setFields(next);
+                    )}
+                    onMoveGroup={(from, to) => {
+                      const bs = blocksOf(fields);
+                      const [x] = bs.splice(from, 1);
+                      bs.splice(to, 0, x);
+                      setFields(bs.flat());
                     }}
-                    describe={(f) => `${f.group ? f.group + " · " : ""}${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
+                    describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
                   />
-                  )}
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Przeciągnij za ⋮⋮, aby zmienić kolejność. „Przestaw całe grupy” przesuwa grupę razem z jej polami. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
+                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Nagłówek grupy (⋮⋮) przesuwa całą grupę razem z jej polami, a dwukrotne dotknięcie jego nazwy ją zmienia. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
                 </Text>
               </>
             )}

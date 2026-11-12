@@ -738,6 +738,9 @@ export function TouchSortList({
   describe,
   blocks,
   replaceBody,
+  groupName,
+  groupActions,
+  onMoveGroup,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -747,6 +750,10 @@ export function TouchSortList({
   blocks?: boolean;
   /** zamiast wiersza z nazwą – własny element (np. pole do zmiany nazwy grupy) */
   replaceBody?: (f: TemplateField, i: number) => ReactNode | null;
+  /** nagłówki grup w liście: nazwa (np. z podwójnym dotknięciem), akcje po prawej; przeciągnięcie przenosi całą grupę */
+  groupName?: (g: string) => ReactNode;
+  groupActions?: (g: string) => ReactNode;
+  onMoveGroup?: (fromBlock: number, toBlock: number) => void;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -758,6 +765,105 @@ export function TouchSortList({
   const inner = useRef<number[]>([]);
   const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
   const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
+
+  // —— przeciąganie całej grupy za nagłówek ——
+  const heads = useRef<Record<string, HTMLDivElement | null>>({});
+  const withHeads = !!groupName && !blocks;
+  // bloki listy: grupa (nagłówek + jej pola) albo pojedyncze pole bez grupy
+  const blockList = (() => {
+    const out: { g: string | null; start: number; end: number }[] = [];
+    fields.forEach((f, i) => {
+      const last = out[out.length - 1];
+      if (f.group && last && last.g === f.group) last.end = i;
+      else out.push({ g: f.group ?? null, start: i, end: i });
+    });
+    return out;
+  })();
+  const blockOf = (i: number) => blockList.findIndex((b) => i >= b.start && i <= b.end);
+  const gst = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
+  const [gd, setGd] = useState<{ from: number; to: number; dy: number } | null>(null);
+  const gTarget = (dy: number) => {
+    const s = gst.current!;
+    const center = s.tops[s.from] + s.hs[s.from] / 2 + dy;
+    return s.tops.filter((top, i) => i !== s.from && top + s.hs[i] / 2 < center).length;
+  };
+  const gUpdate = (y: number) => {
+    const s = gst.current;
+    if (!s) return;
+    s.y = y;
+    const dy = y + scrollTop() - (s.startY + s.scroll0);
+    setGd({ from: s.from, to: gTarget(dy), dy });
+  };
+  const gAuto = () => {
+    const s = gst.current;
+    if (!s) return;
+    const edge = 72;
+    const moved = s.y - s.startY;
+    const bottom = window.innerHeight - edge - 140;
+    const v =
+      s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;
+    if (v) {
+      scrollBy(v);
+      gUpdate(s.y);
+    }
+    raf.current = requestAnimationFrame(gAuto);
+  };
+  const gStart = (g: string, e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    let el = (e.currentTarget as HTMLElement).parentElement;
+    while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
+    scroller.current = el;
+    rows.current.length = fields.length;
+    // blok od górnego marginesu pierwszego elementu do dolnego marginesu ostatniego (lista jest kolumną flex – marginesy się nie nakładają)
+    const tops: number[] = [];
+    const hs: number[] = [];
+    blockList.forEach((b) => {
+      const first = (b.g ? heads.current[b.g] : rows.current[b.start]) ?? rows.current[b.start];
+      const last = rows.current[b.end];
+      if (!first || !last) {
+        tops.push(0);
+        hs.push(64);
+        return;
+      }
+      const top = first.getBoundingClientRect().top - parseFloat(getComputedStyle(first).marginTop) + scrollTop();
+      const bottom = last.getBoundingClientRect().bottom + parseFloat(getComputedStyle(last).marginBottom) + scrollTop();
+      tops.push(top);
+      hs.push(bottom - top);
+    });
+    const from = blockList.findIndex((b) => b.g === g);
+    gst.current = { from, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
+    setGd({ from, to: from, dy: 0 });
+    navigator.vibrate?.(10);
+    raf.current = requestAnimationFrame(gAuto);
+  };
+  const gEnd = () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    const d = gd;
+    gst.current = null;
+    setGd(null);
+    if (d && d.to !== d.from) onMoveGroup?.(d.from, d.to);
+  };
+  // przesunięcie bloku b w trakcie przeciągania grupy (przeciągana grupa stoi w szczelinie)
+  const gShift = (b: number) => {
+    const s = gst.current;
+    if (!gd || !s) return 0;
+    const { from, to } = gd;
+    if (b === from) return (to > from ? s.tops[to] + s.hs[to] - s.hs[from] : s.tops[to]) - s.tops[from];
+    if (from < to && b > from && b <= to) return -s.hs[from];
+    if (from > to && b < from && b >= to) return s.hs[from];
+    return 0;
+  };
+  // grupa, przed którą (na końcu – za którą) stanie przeciągana grupa
+  const gNeighbour = gd && gd.to !== gd.from ? blockList[gd.to < gd.from ? gd.to : gd.to + 1] ?? blockList[blockList.length - 1] : null;
+  const gSpot = () => {
+    if (!gd) return "";
+    const rest = blockList.filter((_, j) => j !== gd.from);
+    const nm = (b?: { g: string | null; start: number }) => (b ? (b.g ? `grupą „${b.g}”` : `„${fields[b.start].label}”`) : null);
+    const b = nm(rest[gd.to]);
+    const a = nm(rest[gd.to - 1]);
+    return b ? `Trafi przed ${b}` : a ? `Trafi na koniec, za ${a}` : "";
+  };
 
   // nowe miejsce = liczba pozostałych wierszy, których środek leży nad środkiem przeciąganego (wiersze mają różne wysokości)
   const targetFor = (dy: number) => {
@@ -875,8 +981,44 @@ export function TouchSortList({
   };
 
   return (
-    <div className="ui-group ui-tsl" data-dragging={drag ? true : undefined}>
+    <div className="ui-group ui-tsl" data-dragging={drag || gd ? true : undefined}>
       {fields.map((f, i) => (
+        <Fragment key={f.key}>
+        {withHeads && f.group && fields[i - 1]?.group !== f.group && (
+          <div
+            ref={(el) => {
+              heads.current[f.group!] = el;
+            }}
+            className="ui-tsl-ghead"
+            data-lifted={(gd && blockList[gd.from]?.g === f.group) || undefined}
+            data-target={(gNeighbour?.g === f.group && blockList[gd!.from]?.g !== f.group) || (joining === f.group) || undefined}
+            style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined }}
+          >
+            <span
+              className="ui-tsl-handle"
+              role="button"
+              tabIndex={0}
+              aria-label={`Przeciągnij całą grupę ${f.group}`}
+              onPointerDown={(e) => gStart(f.group!, e)}
+              onPointerMove={(e) => gst.current && gUpdate(e.clientY)}
+              onPointerUp={gEnd}
+              onPointerCancel={gEnd}
+            >
+              <IconGripVertical size={20} aria-hidden />
+            </span>
+            <div className="ui-tsl-ghead-name">
+              {gd && blockList[gd.from]?.g === f.group ? (
+                <>
+                  <span className="ui-tpl-name">{f.group}</span>
+                  <span className="ui-tpl-meta ui-tsl-target">{gSpot()}</span>
+                </>
+              ) : (
+                groupName!(f.group)
+              )}
+            </div>
+            {groupActions?.(f.group)}
+          </div>
+        )}
         <div
           key={f.key}
           ref={(el) => {
@@ -885,13 +1027,15 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
-          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (fieldAtEnd && i === fields.length - 1 && !f.group) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (fieldAtEnd && i === fields.length - 1 && !f.group) || (!!gNeighbour && blockOf(i) === blockList.indexOf(gNeighbour) && gd!.from !== blockOf(i)) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
+          data-glifted={(gd && gd.from === blockOf(i) && !!f.group) || undefined}
+          data-headed={(withHeads && !!f.group) || undefined}
           style={{
-            transform: drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
+            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
             // przeciągany wiersz zachowuje swoją wysokość (inny opis nie może go skurczyć ani wydłużyć – szczelina pasuje)
             height: drag?.from === i && st.current ? inner.current[i] : undefined,
           }}
@@ -923,6 +1067,7 @@ export function TouchSortList({
           )}
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
         </div>
+        </Fragment>
       ))}
       {drag && !blocks && fields[fields.length - 1]?.group && (
         <div ref={endRef} className="ui-tpe-endzone" data-drop={drag.out ? "out" : undefined}>

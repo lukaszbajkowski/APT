@@ -1508,3 +1508,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-row[data-block][data-target]{border-width:2px;border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
 /* cel na końcu listy, gdy ostatni jest pole bez grupy */
 .ui-tsl-row[data-target]:not([data-ingroup]):not([data-block]),.ui-tpe-row[data-target]:not([data-ingroup]){outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-surface))}
+/* telefon: nagłówek grupy w liście pól – górna część ramki grupy, chwyta się go za ⋮⋮ */
+.ui-tsl-ghead{display:flex;align-items:center;gap:var(--s-1);margin:var(--s-2) var(--s-2) 0;padding-right:var(--s-2);border:1px solid var(--apt-line);border-bottom:0;border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0;background:var(--apt-subtle);position:relative;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.ui-tsl-ghead-name{flex:1;min-width:0;padding:var(--s-2) 0}
+.ui-tsl-ghead-btn{display:flex;flex-direction:column;width:100%;text-align:left}
+.ui-tsl-row[data-headed][data-gfirst]{margin-top:0;border-top:1px solid var(--apt-line);border-radius:0}
+.ui-tsl-row[data-headed][data-gfirst][data-glast]{border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-tsl-ghead[data-lifted],.ui-tsl-row[data-glifted]{z-index:3;border-color:var(--mantine-primary-color-filled);border-left-width:2px;border-right-width:2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 16%,var(--apt-surface));box-shadow:0 8px 16px rgba(0,0,0,.14)}
+.ui-tsl-ghead[data-lifted]{border-top-width:2px}
+.ui-tsl-row[data-glifted][data-glast]{border-bottom-width:2px}
+.ui-tsl-ghead[data-lifted] .ui-tsl-handle{color:var(--mantine-primary-color-filled);cursor:grabbing}
+.ui-tsl-ghead[data-target]{border-color:var(--mantine-primary-color-filled);border-width:2px 2px 0;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}

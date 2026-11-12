@@ -1590,3 +1590,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-fsheet-body{overflow-y:auto;min-height:0;flex:1;padding:var(--s-1) var(--s-2) 0}
 @media (max-width:48em){.ui-tpe-paper{padding:var(--s-3) 0 var(--s-2);border-radius:var(--mantine-radius-md)}.ui-tpe-paper .ui-tsl-cbody{padding:var(--s-3)}}
 .ui-noselect,.ui-noselect *{-webkit-user-select:none !important;user-select:none !important}
+.ui-tsl-ghead[data-gone]{opacity:0}
+.ui-tsl-row[data-sglast]{box-shadow:0 1px 0 var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}

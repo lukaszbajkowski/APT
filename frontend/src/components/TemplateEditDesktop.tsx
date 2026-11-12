@@ -605,7 +605,17 @@ export function TouchSortList({
     if (on) window.getSelection()?.removeAllRanges();
   };
   useEffect(() => () => noSelect(false), []);
-  const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
+  const st = useRef<{
+    from: number;
+    startY: number;
+    scroll0: number;
+    tops: number[];
+    hs: number[];
+    y: number;
+    /** górne krawędzie wierszy razem z marginesem i nagłówki grup (pozycja + wysokość) – do układu „jak po upuszczeniu” */
+    btops?: number[];
+    heads?: Record<string, { top: number; h: number }>;
+  } | null>(null);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean; side?: -1 | 0 | 1 } | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const raf = useRef<number | null>(null);
@@ -802,8 +812,20 @@ export function TouchSortList({
     // położenie pola w szczelinie: dolna połowa = należy do pola poniżej, górna = do pola powyżej
     // (na granicy grupy pozwala wejść do niej jako pierwsze albo ostatnie pole – z obu kierunków)
     const slotTop = to < s.from ? s.tops[to] : to > s.from ? s.tops[to] + s.hs[to] - s.hs[s.from] : s.tops[s.from];
-    const diff = s.tops[s.from] + dy - slotTop;
-    const side = diff > 10 ? 1 : diff < -10 ? -1 : 0;
+    let diff = s.tops[s.from] + dy - slotTop;
+    // trzy strefy na granicy grup (około ⅓ wysokości pola każda): górna – grupa wyżej, środek – poza grupami, dolna – grupa niżej
+    const T = Math.max(16, s.hs[s.from] * 0.3);
+    if (to === s.from) {
+      // pole na swoim miejscu: w spoczynku zostaje w swojej grupie – strefy przesunięte tak, by start wypadał w „jego” strefie
+      const rest = fields.filter((_, j) => j !== s.from);
+      const own = fields[s.from].group ?? null;
+      const prev = rest[to - 1]?.group ?? null;
+      const nx = rest[to]?.group ?? null;
+      // między dwiema grupami: start w strefie własnej grupy (wyjście po ⅓ wysokości, wejście do sąsiedniej po kolejnych ⅔)
+      if (prev && nx && own === prev && own !== nx) diff -= 2 * T;
+      else if (prev && nx && own === nx && own !== prev) diff += 2 * T;
+    }
+    const side = diff > T ? 1 : diff < -T ? -1 : 0;
     setDrag({ from: s.from, to, dy, out, side });
   };
   const autoscroll = () => {
@@ -851,7 +873,14 @@ export function TouchSortList({
     const hs = rows.current.map(outer);
     inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
-    st.current = { from: i, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY };
+    const btops = rows.current.map((r) => (r ? r.offsetTop - parseFloat(getComputedStyle(r).marginTop) : 0));
+    const hds: Record<string, { top: number; h: number }> = {};
+    for (const [g, el] of Object.entries(heads.current)) {
+      if (!el || !el.isConnected) continue;
+      const cs = getComputedStyle(el);
+      hds[g] = { top: el.offsetTop - parseFloat(cs.marginTop), h: el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom) };
+    }
+    st.current = { from: i, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY, btops, heads: hds };
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(autoscroll);
@@ -963,6 +992,8 @@ export function TouchSortList({
     if (prev === nx) return prev;
     if (side > 0) return nx;
     if (side < 0) return prev;
+    // środek szczeliny między dwiema różnymi grupami – pole poza grupami
+    if (prev && nx) return null;
     if (to === from) return fields[from].group ?? null;
     return to > from ? prev : nx;
   };
@@ -1019,6 +1050,50 @@ export function TouchSortList({
     return sp;
   };
 
+  // płótno: w trakcie przeciągania lista ułożona dokładnie tak, jak będzie po upuszczeniu – razem z nagłówkami grup
+  // (pole wchodzące do grupy jako pierwsze stoi pod jej nagłówkiem, pole poza grupą – nad nim)
+  const sim = (() => {
+    const s = st.current;
+    if (!canvas || !drag || blocks || drag.out || !s?.btops || !s.heads) return null;
+    const { from, to } = drag;
+    const g = groupAt(from, to);
+    const seq: ({ t: "r"; i: number } | { t: "h"; g: string })[] = [];
+    let last: string | null = null;
+    const push = (i: number, grp: string | null) => {
+      if (withHeads && grp && grp !== last && s.heads![grp]) seq.push({ t: "h", g: grp });
+      seq.push({ t: "r", i });
+      last = grp;
+    };
+    const rest = fields.map((_, i) => i).filter((i) => i !== from);
+    for (let k = 0; k <= rest.length; k++) {
+      if (k === to) push(from, g);
+      if (k < rest.length) push(rest[k], fields[rest[k]].group ?? null);
+    }
+    const natural = (e: (typeof seq)[number]) => (e.t === "r" ? s.btops![e.i] : s.heads![e.g].top);
+    let cur = Math.min(...[...s.btops!.filter((_, i) => i < fields.length), ...Object.values(s.heads!).map((h) => h.top)]);
+    const rowY: Record<number, number> = {};
+    const headY: Record<string, number> = {};
+    for (const e of seq) {
+      if (e.t === "r") {
+        rowY[e.i] = cur - natural(e);
+        cur += s.hs[e.i] + (e.i === from && spreading ? 2 * SPREAD : 0);
+      } else {
+        headY[e.g] = cur - natural(e);
+        cur += s.heads![e.g].h;
+      }
+    }
+    // pole, które w trakcie przeciągania staje się ostatnim w swojej grupie – domyka ramkę grupy od dołu
+    const rowsSeq = seq.filter((e): e is { t: "r"; i: number } => e.t === "r").map((e) => e.i);
+    const lastIn = new Set<number>();
+    rowsSeq.forEach((i, k) => {
+      const gi = i === from ? g : fields[i].group ?? null;
+      const nxt = rowsSeq[k + 1];
+      const gn = nxt === undefined ? null : nxt === from ? g : fields[nxt].group ?? null;
+      if (i !== from && gi && gn !== gi) lastIn.add(i);
+    });
+    return { rowY, headY, lastIn };
+  })();
+
   return (
     <div ref={rootRef} className="ui-group ui-tsl" data-canvas={canvas || undefined} data-dragging={drag || gd ? true : undefined}>
       {fields.map((f, i) => (
@@ -1030,8 +1105,9 @@ export function TouchSortList({
             }}
             className="ui-tsl-ghead"
             data-lifted={(gd && blockList[gd.from]?.g === f.group) || undefined}
+            data-gone={(sim && sim.headY[f.group!] === undefined) || undefined}
             data-target={(gNeighbour?.g === f.group && blockList[gd!.from]?.g !== f.group) || (joining === f.group) || undefined}
-            style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined }}
+            style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.headY[f.group!] ?? 0}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined }}
             data-grab={canvas || undefined}
             onPointerDown={canvas ? (e) => cDown(i, e, f.group!) : undefined}
             onPointerMove={canvas ? cMove : undefined}
@@ -1101,12 +1177,13 @@ export function TouchSortList({
           data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
+          data-sglast={(sim && sim.lastIn.has(i) && !(f.group && fields[i + 1]?.group !== f.group)) || undefined}
           data-lifted={drag?.from === i || undefined}
           data-selected={(selected === i && !drag && !gd) || undefined}
           data-glifted={(gd && gd.from === blockOf(i) && !!f.group) || undefined}
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
-            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
+            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
             // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
             height:
               drag?.from === i && st.current

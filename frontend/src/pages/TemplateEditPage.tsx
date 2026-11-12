@@ -188,18 +188,24 @@ export function TemplateEditPage() {
                     }}
                     groupName={(g) =>
                       renaming?.from === g ? (
-                        <TextInput
-                          size="md"
-                          autoFocus
-                          aria-label="Nazwa grupy"
-                          value={renaming.value}
-                          onChange={(e) => setRenaming({ from: g, value: e.currentTarget.value })}
-                          onBlur={() => Date.now() - renameAt.current > 400 && renameGroup()}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") renameGroup();
-                            if (e.key === "Escape") setRenaming(null);
-                          }}
-                        />
+                        // pole w miejscu nazwy (ta sama wysokość), liczba pól zostaje pod spodem – nagłówek nie skacze
+                        <div className="ui-tsl-ghead-btn">
+                          <input
+                            className="ui-tpe-gname-input ui-tsl-gname"
+                            autoFocus
+                            onFocus={(e) => e.currentTarget.select()}
+                            enterKeyHint="done"
+                            aria-label="Nazwa grupy"
+                            value={renaming.value}
+                            onChange={(e) => setRenaming({ from: g, value: e.currentTarget.value })}
+                            onBlur={() => Date.now() - renameAt.current > 400 && renameGroup()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") renameGroup();
+                              if (e.key === "Escape") setRenaming(null);
+                            }}
+                          />
+                          <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)}</span>
+                        </div>
                       ) : (
                         <UnstyledButton
                           className="ui-tsl-ghead-btn"

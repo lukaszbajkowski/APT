@@ -1,13 +1,13 @@
 import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
-import { ActionIcon, Autocomplete, Button, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
-import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical } from "@tabler/icons-react";
+import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
+import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical, IconPlus } from "@tabler/icons-react";
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { Select } from "./AptSelect";
 import { FieldInput, grouped, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
-import { PageTitle, RowMenu, SectionHead } from "./Mobile";
+import { FormDialog, PageTitle, RowMenu, SectionHead } from "./Mobile";
 import { LANGUAGE_OPTIONS } from "../pages/TemplatesPage";
 
 export interface TemplateDraft {
@@ -52,18 +52,19 @@ export function TemplateEditDesktop({
   const [sel, setSel] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
   const [side, setSide] = useState("edit");
-  const [over, setOver] = useState<{ i: number; after: boolean } | null>(null);
+  const [over, setOver] = useState<{ i: number; after: boolean; hdr?: "in" | "out" } | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
+  const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formats = useFieldFormats();
   const fields = draft.fields;
   const cur = fields[Math.min(sel, fields.length - 1)];
   const setField = (i: number, f: TemplateField) => set({ fields: fields.map((x, j) => (j === i ? f : x)) });
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= fields.length || from === to) return;
+  const move = (from: number, to: number, group?: string | null) => {
+    if (to < 0 || to >= fields.length || (from === to && group === undefined)) return;
     const next = [...fields];
     const [x] = next.splice(from, 1);
-    next.splice(to, 0, x);
+    next.splice(to, 0, group === undefined ? x : { ...x, group });
     set({ fields: next });
     setSel(to);
   };
@@ -112,11 +113,51 @@ export function TemplateEditDesktop({
                 </Button>
               </div>
             )}
+            <div className="ui-tpe-tools">
+              <Button size="xs" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setGroupDlg({})}>
+                Nowa grupa
+              </Button>
+            </div>
+            <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             <div className="ui-tpe-grid">
               <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || undefined}>
                 {fields.map((f, i) => (
+                  <Fragment key={f.key}>
+                  {f.group && f.group !== fields[i - 1]?.group && (
+                    // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
+                    <div
+                      className="ui-tpe-ghead"
+                      data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : undefined}
+                      onDragOver={(e: DragEvent) => {
+                        e.preventDefault();
+                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const hdr = e.clientY > r.top + r.height / 2 ? "in" : "out";
+                        if (!over || over.i !== i || over.hdr !== hdr) setOver({ i, after: false, hdr });
+                      }}
+                      onDrop={() => {
+                        if (drag !== null && over) {
+                          let to = over.i;
+                          if (drag < to) to -= 1;
+                          move(drag, to, over.hdr === "in" ? f.group! : null);
+                          setMoved(fields[drag].key);
+                          window.setTimeout(() => setMoved(null), 900);
+                        }
+                        setDrag(null);
+                        setOver(null);
+                      }}
+                    >
+                      <span>{f.group}</span>
+                      <span className="ui-tpe-ghead-end">
+                        {fields.filter((x) => x.group === f.group).length}
+                        <RowMenu
+                          label={`Grupa ${f.group}`}
+                          items={[{ label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: f.group! }) }]}
+                          danger={{ label: "Rozgrupuj", onClick: () => set({ fields: fields.map((x) => (x.group === f.group ? { ...x, group: null } : x)) }) }}
+                        />
+                      </span>
+                    </div>
+                  )}
                   <UnstyledButton
-                    key={f.key}
                     className="ui-tpe-row"
                     role="option"
                     aria-selected={i === sel}
@@ -124,7 +165,8 @@ export function TemplateEditDesktop({
                     data-drag={drag === i || undefined}
                     data-moved={moved === f.key || undefined}
                     // linia pokazuje, gdzie pole wyląduje po upuszczeniu
-                    data-drop={over && over.i === i && drag !== null && drag !== i ? (over.after ? "after" : "before") : undefined}
+                    data-ingroup={!!f.group || undefined}
+                    data-drop={over && !over.hdr && over.i === i && drag !== null && drag !== i ? (over.after ? "after" : "before") : undefined}
                     draggable
                     onDragStart={(e: DragEvent) => {
                       setDrag(i);
@@ -135,13 +177,14 @@ export function TemplateEditDesktop({
                       e.preventDefault();
                       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                       const after = e.clientY > r.top + r.height / 2;
-                      if (!over || over.i !== i || over.after !== after) setOver({ i, after });
+                      if (!over || over.i !== i || over.after !== after || over.hdr) setOver({ i, after });
                     }}
                     onDrop={() => {
-                      if (drag !== null && over) {
+                      if (drag !== null && over && !over.hdr) {
                         let to = over.i + (over.after ? 1 : 0);
                         if (drag < to) to -= 1;
-                        move(drag, to);
+                        // pole przejmuje grupę wiersza, przy którym je upuszczono
+                        move(drag, to, f.group ?? null);
                         setMoved(fields[drag].key);
                         window.setTimeout(() => setMoved(null), 900);
                       }
@@ -158,7 +201,6 @@ export function TemplateEditDesktop({
                     <span style={{ minWidth: 0 }}>
                       <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
                       <span className="ui-tpl-meta">
-                        {f.group && <span className="ui-tpe-group">{f.group}</span>}
                         <span className="ui-mono">{f.key}</span>
                       </span>
                     </span>
@@ -170,6 +212,7 @@ export function TemplateEditDesktop({
                     <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
                     <IconChevronRight size={16} className="ui-tpe-grip" aria-hidden />
                   </UnstyledButton>
+                  </Fragment>
                 ))}
               </Paper>
 
@@ -474,7 +517,7 @@ export function TouchSortList({
   describe,
 }: {
   fields: TemplateField[];
-  onMove: (from: number, to: number) => void;
+  onMove: (from: number, to: number, group: string | null) => void;
   onOpen: (i: number) => void;
   describe: (f: TemplateField) => string;
 }) {
@@ -522,7 +565,19 @@ export function TouchSortList({
     const d = drag;
     st.current = null;
     setDrag(null);
-    if (d && d.to !== d.from) onMove(d.from, d.to);
+    if (d) {
+      const g = groupAt(d.from, d.to);
+      if (d.to !== d.from || g !== (fields[d.from].group ?? null)) onMove(d.from, d.to, g);
+    }
+  };
+  // grupa po upuszczeniu: jeśli sąsiedzi są w tej samej grupie – ta grupa; na granicy – grupa, w którą się wjeżdża
+  const groupAt = (from: number, to: number) => {
+    const rest = fields.filter((_, j) => j !== from);
+    const prev = rest[to - 1]?.group ?? null;
+    const nx = rest[to]?.group ?? null;
+    if (prev === nx) return prev;
+    if (to === from) return fields[from].group ?? null;
+    return to > from ? prev : nx;
   };
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
@@ -541,6 +596,7 @@ export function TouchSortList({
             rows.current[i] = el;
           }}
           className="ui-tsl-row"
+          data-ingroup={!!f.group || undefined}
           data-lifted={drag?.from === i || undefined}
           style={{ transform: drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined }}
         >
@@ -559,10 +615,76 @@ export function TouchSortList({
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
             <span className="ui-tpl-meta">{describe(f)}</span>
+            {drag?.from === i && <span className="ui-tpe-group ui-tsl-target">{groupAt(drag.from, drag.to) ?? "Bez grupy"}</span>}
           </UnstyledButton>
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
         </div>
       ))}
     </div>
+  );
+}
+
+/** Przypisuje polom `keys` grupę `name` (pola, które były w grupie `old`, a nie są zaznaczone – bez grupy) i ustawia członków grupy kolejno, w miejscu pierwszego z nich. */
+export function applyGroup(fields: TemplateField[], name: string, keys: string[], old?: string | null): TemplateField[] {
+  const set = new Set(keys);
+  const next = fields.map((f) => (set.has(f.key) ? { ...f, group: name } : old && f.group === old ? { ...f, group: null } : f));
+  const first = next.findIndex((f) => set.has(f.key));
+  if (first < 0) return next;
+  const members = next.filter((f) => set.has(f.key));
+  const rest = next.filter((f) => !set.has(f.key));
+  const at = next.slice(0, first).filter((f) => !set.has(f.key)).length;
+  return [...rest.slice(0, at), ...members, ...rest.slice(at)];
+}
+
+/** Okienko „Nowa grupa” / „Edytuj grupę”: nazwa + zaznaczenie pól, które do niej należą. */
+export function GroupDialog({
+  opened,
+  onClose,
+  fields,
+  editing,
+  initialKeys,
+  onApply,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  fields: TemplateField[];
+  editing?: string | null;
+  initialKeys?: string[];
+  onApply: (fields: TemplateField[]) => void;
+}) {
+  const [name, setName] = useState("");
+  const [keys, setKeys] = useState<string[]>([]);
+  useEffect(() => {
+    if (!opened) return;
+    setName(editing ?? "");
+    setKeys(editing ? fields.filter((f) => f.group === editing).map((f) => f.key) : (initialKeys ?? []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+  const clash = !!name.trim() && name.trim() !== editing && fields.some((f) => f.group === name.trim());
+  return (
+    <FormDialog
+      opened={opened}
+      onClose={onClose}
+      title={editing ? "Edytuj grupę" : "Nowa grupa"}
+      subtitle="Wspólny nagłówek w formularzu"
+      dirty={false}
+      primary={{
+        label: editing ? "Zapisz grupę" : "Utwórz grupę",
+        disabled: !name.trim() || keys.length === 0 || clash,
+        onClick: () => {
+          onApply(applyGroup(fields, name.trim(), keys, editing));
+          onClose();
+        },
+      }}
+    >
+      <TextInput label="Nazwa grupy" placeholder="np. Adres zamieszkania" value={name} onChange={(e) => setName(e.currentTarget.value)} error={clash ? "Taka grupa już jest – wybierz ją w polu „Grupa” albo użyj innej nazwy." : undefined} data-autofocus />
+      <Checkbox.Group label="Pola w grupie" description="Zaznaczone pola zostaną ustawione kolejno, w miejscu pierwszego z nich." value={keys} onChange={setKeys} mt="md">
+        <div className="ui-group-pick">
+          {fields.map((f) => (
+            <Checkbox key={f.key} value={f.key} label={f.label || f.key} description={f.group && f.group !== editing ? `Teraz: ${f.group}` : undefined} />
+          ))}
+        </div>
+      </Checkbox.Group>
+    </FormDialog>
   );
 }

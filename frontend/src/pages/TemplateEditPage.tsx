@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
@@ -17,6 +17,7 @@ import { UnstyledButton } from "@mantine/core";
 import { FormDialog, FormScreen, ListRow, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
 
 export function TemplateEditPage() {
+  const [groupOpen, setGroupOpen] = useState(false);
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
@@ -145,13 +146,17 @@ export function TemplateEditPage() {
                   </div>
                 )}
                 <Section title="Pola formularza" action={{ label: "Podgląd", onClick: () => setPreviewOpen(true) }} plain>
+                  <Button variant="default" fullWidth mb="sm" onClick={() => setGroupOpen(true)}>
+                    Nowa grupa
+                  </Button>
+                  <GroupDialog opened={groupOpen} onClose={() => setGroupOpen(false)} fields={fields} onApply={setFields} />
                   <TouchSortList
                     fields={fields}
                     onOpen={(i) => setEditIdx(i)}
-                    onMove={(from, to) => {
+                    onMove={(from, to, group) => {
                       const next = [...fields];
                       const [x] = next.splice(from, 1);
-                      next.splice(to, 0, x);
+                      next.splice(to, 0, { ...x, group });
                       setFields(next);
                     }}
                     describe={(f) => `${f.group ? f.group + " · " : ""}${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}

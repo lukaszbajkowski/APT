@@ -1385,3 +1385,4 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-pv-field{border-radius:var(--mantine-radius-sm);outline:2px solid transparent;outline-offset:4px;transition:outline-color .15s;cursor:pointer}
 .ui-pv-field[data-active]{outline-color:var(--mantine-primary-color-filled)}
 @container tpe (max-width:780px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}
+.ui-pv-plain{display:flex;flex-direction:column;gap:var(--s-4);background:transparent}

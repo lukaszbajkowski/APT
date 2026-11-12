@@ -197,43 +197,7 @@ export function TemplateEditDesktop({
                       </Tooltip>
                     </Group>
                   </div>
-                  <TextInput label="Etykieta w formularzu" value={cur.label} onChange={(e) => setField(sel, { ...cur, label: e.currentTarget.value })} />
-                  <Select
-                    label="Typ"
-                    data={FIELD_TYPES}
-                    allowDeselect={false}
-                    value={cur.type}
-                    onChange={(v) => v && setField(sel, { ...cur, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })}
-                  />
-                  {cur.type === "text" && (
-                    <Select
-                      label="Format"
-                      placeholder="Bez formatu"
-                      clearable
-                      data={[...(formats.data ?? []).map((p) => ({ value: p.value, label: p.label })), { value: "custom", label: "Własna maska…" }]}
-                      value={cur.format ?? null}
-                      onChange={(v) => setField(sel, { ...cur, format: v, pattern: v === "custom" ? cur.pattern ?? "" : null })}
-                    />
-                  )}
-                  {cur.type === "text" && cur.format === "custom" && (
-                    <TextInput
-                      label="Maska"
-                      placeholder="np. 99-999"
-                      description="9 = cyfra, A = litera, * = dowolny znak"
-                      value={cur.pattern ?? ""}
-                      onChange={(e) => setField(sel, { ...cur, pattern: e.currentTarget.value })}
-                      className="ui-mono"
-                    />
-                  )}
-                  {cur.type === "select" && <OptionsEditor field={cur} onChange={(nf) => setField(sel, nf)} />}
-                  <Switch label="Wymagane" checked={cur.required} onChange={(e) => setField(sel, { ...cur, required: e.currentTarget.checked })} />
-                  <Switch
-                    label="Zwinięte przy generowaniu"
-                    description="Schowane pod „Więcej pól”. Pola wymagane są zawsze widoczne."
-                    disabled={cur.required}
-                    checked={!!cur.collapsed && !cur.required}
-                    onChange={(e) => setField(sel, { ...cur, collapsed: e.currentTarget.checked })}
-                  />
+                  <FieldForm field={cur} onChange={(nf) => setField(sel, nf)} />
                 </Paper>
               )}
               </div>
@@ -381,7 +345,7 @@ export function TemplateEditSkeleton() {
  * Podgląd na żywo: ten sam formularz, który kadra widzi przy „Nowy dokument” (grupy, „Więcej pól”, typy pól),
  * zbudowany z bieżących, niezapisanych ustawień. Wybrane pole podświetlone; klik w pole je wybiera (także na liście).
  */
-function FormPreview({ title, fields, active, onPick }: { title: string; fields: TemplateField[]; active?: string; onPick: (key: string) => void }) {
+export function FormPreview({ title, fields, active, onPick, plain }: { title: string; fields: TemplateField[]; active?: string; onPick?: (key: string) => void; plain?: boolean }) {
   const [values, setValues] = useState<Values>({});
   const [more, setMore] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -398,13 +362,13 @@ function FormPreview({ title, fields, active, onPick }: { title: string; fields:
     grouped(list).map(({ f, head }) => (
       <Fragment key={f.key}>
         {head && <Text className="ui-field-group">{head}</Text>}
-        <div className="ui-pv-field" data-active={f.key === active || undefined} onClickCapture={() => onPick(f.key)} title="Kliknij, aby wybrać to pole (edycja: „Edycja pola” u góry)">
+        <div className="ui-pv-field" data-active={f.key === active || undefined} onClickCapture={() => onPick?.(f.key)} title="Kliknij, aby wybrać to pole (edycja: „Edycja pola” u góry)">
           <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
         </div>
       </Fragment>
     ));
   return (
-    <Paper withBorder radius="md" className="ui-tpe-panel ui-pv" ref={box}>
+    <Paper withBorder={!plain} radius="md" className={plain ? "ui-pv-plain" : "ui-tpe-panel ui-pv"} ref={box}>
       <div>
         <Text size="sm" c="dimmed">
           Tak zobaczy to kadra przy „Nowy dokument”
@@ -421,5 +385,56 @@ function FormPreview({ title, fields, active, onPick }: { title: string; fields:
         </>
       )}
     </Paper>
+  );
+}
+
+/** Formularz jednego pola (komputer: panel obok listy, telefon: panel od dołu). */
+export function FieldForm({ field, onChange, size }: { field: TemplateField; onChange: (f: TemplateField) => void; size?: "md" }) {
+  const formats = useFieldFormats();
+  return (
+    <>
+      <TextInput size={size} label="Etykieta w formularzu" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
+      <Select
+        size={size}
+        label="Typ"
+        data={FIELD_TYPES}
+        allowDeselect={false}
+        value={field.type}
+        onChange={(v) => v && onChange({ ...field, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })}
+      />
+      {field.type === "text" && (
+        <Select
+          size={size}
+          label="Format"
+          placeholder="Bez formatu"
+          clearable
+          data={[...(formats.data ?? []).map((p) => ({ value: p.value, label: p.label })), { value: "custom", label: "Własna maska…" }]}
+          value={field.format ?? null}
+          onChange={(v) => onChange({ ...field, format: v, pattern: v === "custom" ? field.pattern ?? "" : null })}
+        />
+      )}
+      {field.type === "text" && field.format === "custom" && (
+        <TextInput
+          size={size}
+          label="Maska"
+          placeholder="np. 99-999"
+          description="9 = cyfra, A = litera, * = dowolny znak"
+          value={field.pattern ?? ""}
+          onChange={(e) => onChange({ ...field, pattern: e.currentTarget.value })}
+          className="ui-mono"
+        />
+      )}
+      {field.type === "select" && <OptionsEditor field={field} onChange={(nf) => onChange(nf)} />}
+      <Switch
+ label="Wymagane" checked={field.required} onChange={(e) => onChange({ ...field, required: e.currentTarget.checked })} />
+      <Switch
+        size={size}
+        label="Zwinięte przy generowaniu"
+        description="Schowane pod „Więcej pól”. Pola wymagane są zawsze widoczne."
+        disabled={field.required}
+        checked={!!field.collapsed && !field.required}
+        onChange={(e) => onChange({ ...field, collapsed: e.currentTarget.checked })}
+      />
+    </>
   );
 }

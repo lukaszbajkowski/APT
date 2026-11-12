@@ -1353,7 +1353,9 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-back-link{display:inline-flex;align-items:center;gap:var(--s-1);font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);text-decoration:none;width:fit-content}
 .ui-back-link:hover{color:var(--mantine-color-text)}
 .ui-tpe-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:var(--s-6);align-items:start;margin-top:var(--s-6)}
-@container tpe (max-width:780px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-panel{position:static}}
+/* 560–780 px: lista i edycja pola nadal obok siebie (węższy panel), dopiero poniżej – jedna kolumna */
+@container tpe (max-width:780px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr) minmax(280px,300px);gap:var(--s-5)}}
+@container tpe (max-width:560px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-panel{position:static}}
 .ui-tpe-row{position:relative;display:grid;grid-template-columns:16px minmax(0,3fr) minmax(0,2fr) 104px 16px;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);text-align:left;transition:background-color .15s}
 .ui-tpe-row:first-child{border-top:0}
 .ui-tpe-row:hover{background:var(--mantine-color-default-hover)}
@@ -1385,7 +1387,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe-side:has(.ui-pv){position:static}
 .ui-pv-field{border-radius:var(--mantine-radius-sm);outline:2px solid transparent;outline-offset:4px;transition:outline-color .15s;cursor:pointer}
 .ui-pv-field[data-active]{outline-color:var(--mantine-primary-color-filled)}
-@container tpe (max-width:780px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}
+@container tpe (max-width:560px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}
 .ui-pv-plain{display:flex;flex-direction:column;gap:var(--s-4);background:transparent}
 /* telefon: przeciąganie pól palcem */
 .ui-tsl{overflow:visible}
@@ -1546,3 +1548,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* płynność przeciągania: warstwy kompozytora dla przesuwanych elementów */
 .ui-tsl[data-dragging] .ui-tsl-row,.ui-tsl[data-dragging] .ui-tsl-ghead{will-change:transform}
 .ui-tpe-list[data-dragging] [data-flip]{will-change:transform}
+@container tpe (max-width:780px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) auto 16px}}

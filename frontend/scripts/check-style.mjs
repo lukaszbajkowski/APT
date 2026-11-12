@@ -13,6 +13,8 @@ const FONT = new Set([26, 18, 15, 14, 13]); // tytuł, sekcja, wyróżnienie/tre
 const LINE = { 26: 32, 18: 24, 15: 22, 14: 20, 13: 18 };
 const SPACE = new Set([0, 1, 2, 4, 8, 12, 16, 24, 32, 48]); // 1–2 px: obramowania, drobne przesunięcia
 const ALLOWED_11 = /ui-case-ini|photo-placeholder|initials/; // inicjały w miejscu zdjęcia (jak w EmployeePhoto)
+// wyjątek: pola tekstowe na telefonie – 16 px, inaczej iOS powiększa stronę przy wpisywaniu (klasa z „input”/„gname” w regule)
+const ALLOWED_16 = /input|gname|textarea/i;
 
 const issues = [];
 let file = "";
@@ -30,6 +32,7 @@ for (const raw of diff.split("\n")) {
   for (const m of s.matchAll(/font-size:\s*(\d+)px(?:;\s*line-height:\s*(\d+)px)?/g)) {
     const fs = Number(m[1]);
     if (fs === 11 && ALLOWED_11.test(s)) continue;
+    if (fs === 16 && ALLOWED_16.test(s)) continue;
     if (!FONT.has(fs)) issues.push(`${at}  rozmiar tekstu ${fs}px spoza skali (26/18/15/14/13)`);
     else if (m[2] && Number(m[2]) !== LINE[fs]) issues.push(`${at}  ${fs}px z wysokością linii ${m[2]}px – powinno być ${LINE[fs]}px`);
   }

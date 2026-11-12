@@ -17,6 +17,7 @@ Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduce
 - Krój **Golos Text** (`@fontsource/golos-text`, z naszego serwera); numery kart i PESEL – krój o stałej szerokości.
 - Tekst: 6 stopni – tytuł 26/32, sekcja 18/24, wyróżnienie 15/22 · 600, treść 15/22, tabela 14/20, opis 13/18
   (Mantine: xl / lg / md / sm / xs; nagłówki h1–h2 tytuł, h3–h4 sekcja). Nie dodawaj nowych rozmiarów.
+  Jedyny wyjątek: pola tekstowe na telefonie mogą mieć 16 px (iOS powiększa stronę przy wpisywaniu w mniejsze pole).
 - Odstępy co 4 px: 4 · 8 · 12 · 16 · 24 · 32 · 48 (zmienne `--s-1`…`--s-7`).
 - Szerokość: listy i tabele do 1760 px, tekst do czytania ≤ 72 znaki; margines strony 32 px, ≥ 1600 px – 48.
 - Powierzchnie: sekcje na tle (nagłówek + odstęp), ramka tylko wokół listy / tabeli / „rzeczy”; bez kart w kartach.

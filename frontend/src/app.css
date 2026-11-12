@@ -1465,3 +1465,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-row[data-gdrop="after"]{box-shadow:inset 0 -2px 0 var(--mantine-primary-color-filled)}
 .ui-mgroup{display:flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
 .ui-mgroup-name{flex:1;min-width:0;display:flex;flex-direction:column}
+.ui-tsl-row[data-block]{margin:var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
+/* wcięte pola grupy mieszczą się w ramce grupy (nie wystają za prawą krawędź) */
+.ui-tpe-row[data-ingroup]{width:calc(100% - 2 * var(--s-2))}

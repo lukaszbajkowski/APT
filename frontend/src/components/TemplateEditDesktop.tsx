@@ -652,11 +652,14 @@ export function TouchSortList({
   onMove,
   onOpen,
   describe,
+  blocks,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
   onOpen: (i: number) => void;
   describe: (f: TemplateField) => string;
+  /** układanie całych bloków (grup) – bez przypisywania grup przy upuszczeniu */
+  blocks?: boolean;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -689,7 +692,9 @@ export function TouchSortList({
     const s = st.current;
     if (!s) return;
     const edge = 72;
-    const v = s.y < edge ? -8 : s.y > window.innerHeight - edge - 140 ? 8 : 0; // 140: pasek zapisu i nawigacja
+    // przewijamy dopiero, gdy palec ruszył w stronę krawędzi – samo chwycenie wiersza przy dole ekranu niczego nie przesuwa
+    const moved = s.y - s.startY;
+    const v = s.y < edge && moved < -12 ? -8 : s.y > window.innerHeight - edge - 140 && moved > 12 ? 8 : 0; // 140: pasek zapisu i nawigacja
     if (v) {
       scrollBy(v);
       update(s.y);
@@ -702,6 +707,7 @@ export function TouchSortList({
     let el = (e.currentTarget as HTMLElement).parentElement;
     while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
     scroller.current = el;
+    rows.current.length = fields.length; // po zmianie listy (np. tryb „całe grupy”) zostają odwołania do starych wierszy
     const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + scrollTop() : 0));
     const hs = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
     st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
@@ -715,6 +721,10 @@ export function TouchSortList({
     st.current = null;
     setDrag(null);
     if (d) {
+      if (blocks) {
+        if (d.to !== d.from) onMove(d.from, d.to, null);
+        return;
+      }
       const g = d.out ? null : groupAt(d.from, d.to);
       if (d.to !== d.from || g !== (fields[d.from].group ?? null)) onMove(d.from, d.to, g);
     }
@@ -746,6 +756,7 @@ export function TouchSortList({
           }}
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
+          data-block={(blocks && f.key.startsWith("g:")) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
@@ -766,12 +777,12 @@ export function TouchSortList({
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
             <span className="ui-tpl-meta">{describe(f)}</span>
-            {drag?.from === i && <span className="ui-tpe-group ui-tsl-target">{(drag.out ? null : groupAt(drag.from, drag.to)) ?? "Bez grupy"}</span>}
+            {drag?.from === i && !blocks && <span className="ui-tpe-group ui-tsl-target">{(drag.out ? null : groupAt(drag.from, drag.to)) ?? "Bez grupy"}</span>}
           </UnstyledButton>
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
         </div>
       ))}
-      {drag && fields[fields.length - 1]?.group && (
+      {drag && !blocks && fields[fields.length - 1]?.group && (
         <div ref={endRef} className="ui-tpe-endzone" data-drop={drag.out ? "out" : undefined}>
           Przeciągnij tutaj, aby odłożyć pole na koniec, poza grupą
         </div>

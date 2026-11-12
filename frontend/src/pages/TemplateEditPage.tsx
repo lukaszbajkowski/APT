@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import { Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
@@ -16,9 +16,21 @@ import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
 import { FormDialog, FormScreen, ListRow, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
 
+/** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
+function blocksOf(fields: TemplateField[]): TemplateField[][] {
+  const out: TemplateField[][] = [];
+  for (const f of fields) {
+    const last = out[out.length - 1];
+    if (f.group && last && last[0].group === f.group) last.push(f);
+    else out.push([f]);
+  }
+  return out;
+}
+
 export function TemplateEditPage() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<string | null>(null);
+  const [blockMode, setBlockMode] = useState(false);
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
@@ -151,20 +163,41 @@ export function TemplateEditPage() {
                     Nowa grupa
                   </Button>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
-                  {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g, gi, all) => (
+                  {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g) => (
                     <div key={g} className="ui-mgroup">
                       <UnstyledButton className="ui-mgroup-name" onClick={() => setEditGroup(g)} aria-label={`Grupa ${g}: zmień nazwę lub pola`}>
                         <span className="ui-tpl-name">{g}</span>
                         <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)} · dotknij, aby zmienić nazwę</span>
                       </UnstyledButton>
-                      <ActionIcon variant="default" size={44} aria-label={`Przesuń grupę ${g} wyżej`} disabled={gi === 0 && fields[0]?.group === g} onClick={() => setFields(moveGroupBy(fields, g, -1))}>
-                        <IconArrowUp size={18} />
-                      </ActionIcon>
-                      <ActionIcon variant="default" size={44} aria-label={`Przesuń grupę ${g} niżej`} disabled={gi === all.length - 1 && fields[fields.length - 1]?.group === g} onClick={() => setFields(moveGroupBy(fields, g, 1))}>
-                        <IconArrowDown size={18} />
-                      </ActionIcon>
                     </div>
                   ))}
+                  {fields.some((f) => f.group) && (
+                    <Button variant={blockMode ? "filled" : "default"} fullWidth mb="sm" onClick={() => setBlockMode((v) => !v)}>
+                      {blockMode ? "Gotowe – wróć do pól" : "Przestaw całe grupy"}
+                    </Button>
+                  )}
+                  {blockMode ? (
+                    <TouchSortList
+                      blocks
+                      fields={blocksOf(fields).map((b) => (b[0].group ? { ...b[0], key: `g:${b[0].group}`, label: b[0].group, group: null } : b[0]))}
+                      onOpen={(i) => {
+                        const b = blocksOf(fields)[i];
+                        if (b[0].group) setEditGroup(b[0].group);
+                        else setEditIdx(fields.indexOf(b[0]));
+                      }}
+                      onMove={(from, to) => {
+                        const bs = blocksOf(fields);
+                        const [x] = bs.splice(from, 1);
+                        bs.splice(to, 0, x);
+                        setFields(bs.flat());
+                      }}
+                      describe={(f) => {
+                        if (!f.key.startsWith("g:")) return "Pole bez grupy";
+                        const items = fields.filter((x) => x.group === f.label);
+                        return `Grupa · ${items.map((x) => x.label).join(", ")}`;
+                      }}
+                    />
+                  ) : (
                   <TouchSortList
                     fields={fields}
                     onOpen={(i) => setEditIdx(i)}
@@ -176,9 +209,10 @@ export function TemplateEditPage() {
                     }}
                     describe={(f) => `${f.group ? f.group + " · " : ""}${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
                   />
+                  )}
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
+                  Przeciągnij za ⋮⋮, aby zmienić kolejność. „Przestaw całe grupy” przesuwa grupę razem z jej polami. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
                 </Text>
               </>
             )}

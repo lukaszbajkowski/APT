@@ -1483,3 +1483,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-row[data-target]:not([data-gfirst]){border-top-color:var(--apt-line)}
 /* przeciągane pole nad grupą wchodzi w jej ramkę: te same krawędzie co grupa, bez powiększenia – ramka zostaje ciągła */
 .ui-tsl-row[data-lifted][data-joining]{scale:1;margin:0 var(--s-2);outline:none;border-radius:0;border-left:2px solid var(--mantine-primary-color-filled);border-right:2px solid var(--mantine-primary-color-filled);border-top:1px solid var(--apt-line);background:color-mix(in srgb,var(--mantine-primary-color-filled) 16%,var(--apt-surface));box-shadow:0 8px 16px rgba(0,0,0,.18)}
+@media (prefers-reduced-motion:no-preference){.ui-tsl-row[data-lifted]{transition:transform .12s ease-out,scale .15s}}
+.ui-tsl-target{font-weight:600;color:var(--mantine-color-text)}

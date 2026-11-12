@@ -752,6 +752,14 @@ export function TouchSortList({
   // grupa, do której trafi przeciągane pole (jeśli inna niż jego obecna) – podświetlamy jej wiersze
   const target = drag && !blocks ? (drag.out ? null : groupAt(drag.from, drag.to)) : null;
   const joining = target && target !== (fields[drag?.from ?? -1]?.group ?? null) ? target : null;
+  // przeciągane pole stoi w szczelinie, w którą trafi (nie pod palcem) – nic nie zasłania i nie zostaje pasek tła
+  const slotDy = () => {
+    const st0 = st.current;
+    if (!drag || !st0 || drag.out) return drag?.dy ?? 0;
+    const { from, to } = drag;
+    const top = to > from ? st0.tops[to] + st0.hs[to] - st0.hs[from] : st0.tops[to];
+    return top - st0.tops[from];
+  };
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
@@ -776,7 +784,7 @@ export function TouchSortList({
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
-          style={{ transform: drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined }}
+          style={{ transform: drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined }}
         >
           <span
             className="ui-tsl-handle"
@@ -793,8 +801,12 @@ export function TouchSortList({
           {replaceBody?.(f, i) ?? (
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
-            <span className="ui-tpl-meta">{describe(f)}</span>
-            {drag?.from === i && !blocks && <span className="ui-tpe-group ui-tsl-target">{(drag.out ? null : groupAt(drag.from, drag.to)) ?? "Bez grupy"}</span>}
+            {/* w trakcie przeciągania opis zastępuje grupa docelowa – wysokość wiersza się nie zmienia, więc pasuje do szczeliny */}
+            {drag?.from === i && !blocks ? (
+              <span className="ui-tpl-meta ui-tsl-target">Trafi do: {(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}</span>
+            ) : (
+              <span className="ui-tpl-meta">{describe(f)}</span>
+            )}
           </UnstyledButton>
           )}
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />

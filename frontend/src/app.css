@@ -1499,3 +1499,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* telefon, tryb „całe grupy”: przeciągana grupa w ramce koloru akcji */
 .ui-tsl-row[data-lifted][data-block]{scale:1;outline:none;border:2px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-md);background:color-mix(in srgb,var(--mantine-primary-color-filled) 16%,var(--apt-surface));box-shadow:0 8px 16px rgba(0,0,0,.18)}
 .ui-tsl-row[data-lifted]{overflow:hidden}
+/* lista na telefonie jako kolumna flex: marginesy bloków się nie nakładają, więc przesunięcia przy przeciąganiu są dokładne */
+.ui-tsl{display:flex;flex-direction:column}

@@ -1558,4 +1558,28 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted][data-joining]{outline:2px solid var(--mantine-primary-color-filled);border-left:0;border-right:0;border-top-color:transparent}
 .ui-tsl-cbody .ui-tsl-target{border:1px solid var(--apt-line);padding:0 var(--s-2)}
 /* płótno: kreska oddzielająca pola widoczna też na tle grupy i w trakcie przeciągania (jasny i ciemny motyw) */
-.ui-tsl[data-canvas] .ui-tsl-row:not([data-lifted]):not(:first-child),.ui-tsl[data-canvas] .ui-tsl-row[data-ingroup][data-target]:not([data-lifted]){border-top-color:color-mix(in srgb,var(--mantine-color-text) 14%,transparent)}
+/* kreska tylko pod nagłówkiem grupy; pozostałe pola bez kresek – jak w prawdziwym formularzu */
+.ui-tsl[data-canvas] .ui-tsl-row:not([data-lifted]){border-top-color:transparent}
+.ui-tsl[data-canvas] .ui-tsl-row[data-gfirst]:not([data-lifted]),.ui-tsl[data-canvas] .ui-tsl-row[data-gfirst][data-target]:not([data-lifted]){border-top-color:color-mix(in srgb,var(--mantine-color-text) 14%,transparent)}
+
+/* —— płótno jako „kartka” formularza (krok 2) —— */
+.ui-tpe-paper{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface);padding:var(--s-5) var(--s-4) var(--s-4);box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.ui-tpe-paperhead{display:flex;flex-direction:column;gap:var(--s-1);padding:0 var(--s-4) var(--s-3)}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl{border:0;border-radius:0;background:transparent;overflow:visible}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl-row:not([data-ingroup]):not([data-lifted]){background:transparent}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl-row:hover:not([data-lifted]){background:transparent}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl-row[data-ingroup]:hover:not([data-lifted]){background:var(--apt-subtle)}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl-row[data-selected]{background:transparent;box-shadow:none}
+.ui-tpe-plist.ui-tpe-paper .ui-tsl-row[data-selected][data-ingroup]{background:var(--apt-subtle)}
+.ui-tsl[data-canvas] .ui-tsl-cbody:hover{outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-4px}
+.ui-tsl[data-canvas] .ui-tsl-row[data-selected] .ui-tsl-cbody{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-4px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,transparent)}
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted] .ui-tsl-cbody{outline:none;background:transparent}
+.ui-tpe-cfield[data-editing] label{visibility:hidden}
+.ui-tpe-lbl-input{position:absolute;top:calc(var(--s-3) - 2px);left:calc(var(--s-4) - 6px);width:min(calc(100% - var(--s-6)),480px);height:24px;padding:0 5px;font:inherit;font-size:var(--mantine-font-size-sm);line-height:20px;font-weight:500;color:var(--mantine-color-text);background:var(--apt-surface);border:1px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-sm);outline:none;box-shadow:none}
+.ui-tpe-more-chip{position:absolute;top:var(--s-2);right:var(--s-3)}
+.ui-tpe-pvwrap{max-width:720px;margin-top:var(--s-6)}
+.ui-tpe-tools{justify-content:space-between;align-items:center}
+.ui-tsl-ghead[data-grab]{cursor:grab;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;padding-left:var(--s-4)}
+.ui-tsl-ghead[data-grab][data-lifted]{cursor:grabbing}
+.ui-tsl-ghead[data-grab] .ui-tsl-ghead-btn{cursor:inherit}
+.ui-tsl-ghead-name[tabindex]:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:var(--mantine-radius-sm)}

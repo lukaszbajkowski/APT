@@ -52,6 +52,8 @@ export function TemplateEditDesktop({
   const [tab, setTab] = useState<string>("fields");
   const [sel, setSel] = useState(0);
   const [side, setSide] = useState("edit");
+  // etykieta pola edytowana wprost na formularzu
+  const [editLabel, setEditLabel] = useState<string | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
@@ -129,14 +131,37 @@ export function TemplateEditDesktop({
               </div>
             )}
             <div className="ui-tpe-tools">
+              <SegmentedControl
+                value={side}
+                onChange={setSide}
+                data={[
+                  { value: "edit", label: "Edycja" },
+                  { value: "preview", label: "Podgląd" },
+                ]}
+                aria-label="Tryb formularza"
+              />
               <Button size="xs" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setGroupDlg({})}>
                 Nowa grupa
               </Button>
             </div>
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
+            {side === "preview" ? (
+              <div className="ui-tpe-pvwrap">
+                <FormPreview title={draft.name || t.name} fields={fields} />
+              </div>
+            ) : (
             <div className="ui-tpe-grid">
-              {/* przeciąganie jak na telefonie: chwyt za ⋮⋮, pole/grupa przyciąga się do szczeliny, przewijanie przy krawędzi */}
-              <div ref={listRef} className="ui-tpe-plist" aria-label="Pola formularza">
+              {/* płótno: formularz taki, jak zobaczy go kadra; pole łapie się w całości, przyciąga do szczeliny, przewija przy krawędzi */}
+              <div ref={listRef} className="ui-tpe-plist ui-tpe-paper" aria-label="Pola formularza">
+                <div className="ui-tpe-paperhead">
+                  <Text size="sm" c="dimmed">
+                    Tak zobaczy to kadra przy „Nowy dokument”
+                  </Text>
+                  <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
+                  <Text size="xs" c="dimmed">
+                    Dwuklik na etykiecie zmienia jej treść. Przeciągnij pole, aby zmienić kolejność.
+                  </Text>
+                </div>
                 <TouchSortList
                   fields={fields}
                   selected={sel}
@@ -163,11 +188,42 @@ export function TemplateEditDesktop({
                   }}
                   describe={() => ""}
                   canvas
+                  onLabelEdit={(i) => {
+                    setSel(i);
+                    setEditLabel(fields[i].key);
+                  }}
                   renderBody={(f) => (
                     // prawdziwe pole formularza (jak u kadry), ale nieaktywne – klik wybiera, przeciągnięcie przenosi
-                    <div className="ui-tpe-cfield" data-moved={moved === f.key || undefined} {...({ inert: "" } as object)}>
-                      <FieldInput field={f} value={null} onChange={() => undefined} />
-                    </div>
+                    <>
+                      <div className="ui-tpe-cfield" data-moved={moved === f.key || undefined} data-editing={editLabel === f.key || undefined} {...({ inert: "" } as object)}>
+                        <FieldInput field={f} value={null} onChange={() => undefined} />
+                      </div>
+                      {editLabel === f.key && (
+                        <input
+                          className="ui-tpe-lbl-input"
+                          autoFocus
+                          aria-label="Etykieta pola"
+                          defaultValue={f.label}
+                          onFocus={(e) => e.currentTarget.select()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                          onBlur={(e) => {
+                            const v = e.currentTarget.value.trim();
+                            setEditLabel(null);
+                            if (v && v !== f.label) set({ fields: fields.map((x) => (x.key === f.key ? { ...x, label: v } : x)) });
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") e.currentTarget.blur();
+                            if (e.key === "Escape") {
+                              e.currentTarget.value = f.label;
+                              e.currentTarget.blur();
+                            }
+                          }}
+                        />
+                      )}
+                      {f.collapsed && !f.required && <span className="ui-case-chip ui-tpe-more-chip">W „Więcej pól”</span>}
+                    </>
                   )}
                   groupName={(g) =>
                     renaming?.from === g ? (
@@ -186,7 +242,7 @@ export function TemplateEditDesktop({
                         }}
                       />
                     ) : (
-                      <span className="ui-tsl-ghead-btn" onDoubleClick={() => setRenaming({ from: g, value: g })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij za ⋮⋮, aby przenieść całą grupę.">
+                      <span className="ui-tsl-ghead-btn" onDoubleClick={() => setRenaming({ from: g, value: g })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij nagłówek, aby przenieść całą grupę.">
                         <span className="ui-tpl-name">{g}</span>
                         <span className="ui-tpl-meta">{fields.filter((x) => x.group === g).length} · dwuklik zmienia nazwę</span>
                       </span>
@@ -208,26 +264,9 @@ export function TemplateEditDesktop({
               </div>
 
               {/* panel boczny nie przerysowuje się przy każdym ruchu przeciągania (zależy tylko od tych wartości) */}
-              <Frozen deps={[side, sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
+              <Frozen deps={[sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
               <div className="ui-tpe-side">
-              <SegmentedControl
-                fullWidth
-                value={side}
-                onChange={setSide}
-                data={[
-                  { value: "edit", label: "Edycja pola" },
-                  { value: "preview", label: "Podgląd formularza" },
-                ]}
-              />
-              {side === "preview" && (
-                <FormPreview
-                  title={draft.name || t.name}
-                  fields={fields}
-                  active={cur?.key}
-                  onPick={(k) => setSel(fields.findIndex((f) => f.key === k))}
-                />
-              )}
-              {side === "edit" && cur && (
+              {cur && (
                 <Paper withBorder radius="md" className="ui-tpe-panel" key={cur.key}>
                   <div className="ui-tpe-phead">
                     <div style={{ minWidth: 0 }}>
@@ -253,6 +292,7 @@ export function TemplateEditDesktop({
               </div>
               </Frozen>
             </div>
+            )}
             </>
           )}
         </Tabs.Panel>
@@ -534,6 +574,7 @@ export function TouchSortList({
   renderBody,
   selected,
   canvas,
+  onLabelEdit,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -552,6 +593,8 @@ export function TouchSortList({
   selected?: number;
   /** płótno formularza: bez ikony uchwytu – łapie się całe pole (mysz: po ruszeniu o kilka px, dotyk: przytrzymanie ~0,3 s) */
   canvas?: boolean;
+  /** płótno: edycja etykiety w miejscu (dwuklik na etykiecie, klik na etykiecie wybranego pola, F2) */
+  onLabelEdit?: (i: number) => void;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -663,8 +706,15 @@ export function TouchSortList({
   };
   const gStart = (g: string, e: React.PointerEvent) => {
     e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    let el = (e.currentTarget as HTMLElement).parentElement;
+    gBegin(g, e.clientY, e.currentTarget as HTMLElement, e.pointerId);
+  };
+  const gBegin = (g: string, clientY: number, target: HTMLElement, pointerId: number) => {
+    try {
+      target.setPointerCapture(pointerId);
+    } catch {
+      /* wskaźnik już zwolniony */
+    }
+    let el = target.parentElement;
     while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
     scroller.current = el;
     rows.current.length = fields.length;
@@ -687,7 +737,7 @@ export function TouchSortList({
     inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     const from = blockList.findIndex((b) => b.g === g);
-    gst.current = { from, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
+    gst.current = { from, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY };
     setGd({ from, to: from, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(gAuto);
@@ -817,29 +867,36 @@ export function TouchSortList({
   // —— płótno: chwyt za całe pole ——
   // mysz: przeciąganie zaczyna się po ruszeniu o 5 px (zwykły klik tylko wybiera pole);
   // dotyk: przytrzymanie 300 ms bez ruchu (ruch wcześniej = zwykłe przewijanie ekranu)
-  const pending = useRef<{ i: number; x: number; y: number; id: number; el: HTMLElement; touch: boolean; timer: number | null } | null>(null);
+  const pending = useRef<{ i: number; g?: string; x: number; y: number; id: number; el: HTMLElement; touch: boolean; timer: number | null } | null>(null);
+  const go = (p: { i: number; g?: string; y: number; id: number; el: HTMLElement }) => (p.g ? gBegin(p.g, p.y, p.el, p.id) : begin(p.i, p.y, p.el, p.id));
   const suppressClick = useRef(false);
   const cancelPending = () => {
     if (pending.current?.timer) window.clearTimeout(pending.current.timer);
     pending.current = null;
   };
-  const cDown = (i: number, e: React.PointerEvent) => {
+  const cDown = (i: number, e: React.PointerEvent, g?: string) => {
     if (e.button !== 0 || st.current || gst.current) return;
+    // klik w przycisk albo pole do wpisywania (menu grupy, zmiana nazwy) nie zaczyna przeciągania
+    if ((e.target as HTMLElement).closest("button, input, a, [role=menu]")) return;
     const touch = e.pointerType !== "mouse";
     const el = e.currentTarget as HTMLElement;
-    const p = { i, x: e.clientX, y: e.clientY, id: e.pointerId, el, touch, timer: null as number | null };
+    const p = { i, g, x: e.clientX, y: e.clientY, id: e.pointerId, el, touch, timer: null as number | null };
     if (touch)
       p.timer = window.setTimeout(() => {
         if (pending.current !== p) return;
         pending.current = null;
         suppressClick.current = true;
-        begin(i, p.y, el, p.id);
+        go(p);
       }, 300);
     pending.current = p;
   };
   const cMove = (e: React.PointerEvent) => {
     if (st.current) {
       onFrame(e.clientY, update);
+      return;
+    }
+    if (gst.current) {
+      onFrame(e.clientY, gUpdate);
       return;
     }
     const p = pending.current;
@@ -851,13 +908,21 @@ export function TouchSortList({
     } else if (d > 5) {
       cancelPending();
       suppressClick.current = true;
-      begin(p.i, p.y, p.el, p.id);
-      onFrame(e.clientY, update);
+      go(p);
+      onFrame(e.clientY, p.g ? gUpdate : update);
     }
   };
   const cUp = () => {
     cancelPending();
     if (st.current) end();
+    if (gst.current) gEnd();
+  };
+  // czy kliknięcie trafiło w etykietę pola (pole jest nieaktywne – sprawdzamy położenie)
+  const onLabel = (e: React.MouseEvent) => {
+    const l = (e.currentTarget as HTMLElement).querySelector("label");
+    if (!l) return false;
+    const r = l.getBoundingClientRect();
+    return e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 4 && e.clientY <= r.bottom + 4;
   };
   // po rozpoczęciu przeciągania dotykiem ekran nie może się przewijać pod palcem
   const rootRef = useRef<HTMLDivElement>(null);
@@ -865,7 +930,7 @@ export function TouchSortList({
     const el = rootRef.current;
     if (!el || !canvas) return;
     const stop = (e: TouchEvent) => {
-      if (st.current) e.preventDefault();
+      if (st.current || gst.current) e.preventDefault();
     };
     el.addEventListener("touchmove", stop, { passive: false });
     return () => el.removeEventListener("touchmove", stop);
@@ -945,7 +1010,20 @@ export function TouchSortList({
             data-lifted={(gd && blockList[gd.from]?.g === f.group) || undefined}
             data-target={(gNeighbour?.g === f.group && blockList[gd!.from]?.g !== f.group) || (joining === f.group) || undefined}
             style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined }}
+            data-grab={canvas || undefined}
+            onPointerDown={canvas ? (e) => cDown(i, e, f.group!) : undefined}
+            onPointerMove={canvas ? cMove : undefined}
+            onPointerUp={canvas ? cUp : undefined}
+            onPointerCancel={canvas ? cUp : undefined}
+            onClickCapture={(e) => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                e.stopPropagation();
+              }
+            }}
+            onContextMenu={canvas ? (e) => e.preventDefault() : undefined}
           >
+            {!canvas && (
             <span
               className="ui-tsl-handle"
               role="button"
@@ -965,7 +1043,24 @@ export function TouchSortList({
             >
               <IconGripVertical size={20} aria-hidden />
             </span>
-            <div className="ui-tsl-ghead-name">
+            )}
+            <div
+              className="ui-tsl-ghead-name"
+              {...(canvas
+                ? {
+                    role: "button",
+                    tabIndex: 0,
+                    "aria-roledescription": "Grupa do przenoszenia",
+                    "aria-label": `Grupa ${f.group}. Strzałki w górę i w dół przenoszą całą grupę.`,
+                    "data-handle": `g:${f.group}`,
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.target !== e.currentTarget || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+                      e.preventDefault();
+                      gKeyStep(f.group!, e.key === "ArrowUp" ? -1 : 1);
+                    },
+                  }
+                : {})}
+            >
               {/* w trakcie przeciągania nagłówek się nie zmienia (inny tekst = inna wysokość = grupa wjeżdża na sąsiada); cel pokazuje podświetlenie */}
               {groupName!(f.group)}
             </div>
@@ -1041,14 +1136,23 @@ export function TouchSortList({
                 if (st.current) end();
               }}
               onContextMenu={(e) => e.preventDefault()}
-              onClick={() => {
+              onClick={(e) => {
                 if (suppressClick.current) {
                   suppressClick.current = false;
                   return;
                 }
-                if (!drag) onOpen(i);
+                if (drag) return;
+                if (selected === i && onLabelEdit && onLabel(e)) onLabelEdit(i);
+                else onOpen(i);
               }}
+              onDoubleClick={(e) => onLabelEdit && onLabel(e) && onLabelEdit(i)}
               onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "F2" && onLabelEdit) {
+                  e.preventDefault();
+                  onLabelEdit(i);
+                  return;
+                }
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   onOpen(i);

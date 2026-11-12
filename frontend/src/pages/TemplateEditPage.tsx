@@ -32,6 +32,8 @@ export function TemplateEditPage() {
   const [editGroup, setEditGroup] = useState<string | null>(null);
   const [blockMode, setBlockMode] = useState(false);
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
+  // dotknięcie, które otwiera pole nazwy, potrafi od razu zabrać mu fokus – przez chwilę nie traktujemy tego jako „zapisz”
+  const renameAt = useRef(0);
   const lastTap = useRef<{ g: string; t: number }>({ g: "", t: 0 });
   const { id } = useParams();
   const qc = useQueryClient();
@@ -178,7 +180,7 @@ export function TemplateEditPage() {
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
                   {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g) => (
                     <div key={g} className="ui-mgroup">
-                      {renaming?.from === g ? (
+                      {renaming?.from === g && !blockMode ? (
                         <TextInput
                           className="ui-mgroup-name"
                           size="md"
@@ -186,7 +188,7 @@ export function TemplateEditPage() {
                           aria-label="Nazwa grupy"
                           value={renaming.value}
                           onChange={(e) => setRenaming({ from: g, value: e.currentTarget.value })}
-                          onBlur={renameGroup}
+                          onBlur={() => Date.now() - renameAt.current > 400 && renameGroup()}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") renameGroup();
                             if (e.key === "Escape") setRenaming(null);
@@ -201,6 +203,7 @@ export function TemplateEditPage() {
                             const now = Date.now();
                             if (lastTap.current.g === g && now - lastTap.current.t < 350) {
                               setRenaming({ from: g, value: g });
+                          renameAt.current = Date.now();
                               lastTap.current = { g: "", t: 0 };
                             } else lastTap.current = { g, t: now };
                           }}
@@ -225,9 +228,33 @@ export function TemplateEditPage() {
                       fields={blocksOf(fields).map((b) => (b[0].group ? { ...b[0], key: `g:${b[0].group}`, label: b[0].group, group: null } : b[0]))}
                       onOpen={(i) => {
                         const b = blocksOf(fields)[i];
-                        if (b[0].group) setEditGroup(b[0].group);
-                        else setEditIdx(fields.indexOf(b[0]));
+                        const g = b[0].group;
+                        if (!g) return setEditIdx(fields.indexOf(b[0]));
+                        // grupa: podwójne dotknięcie – zmiana nazwy w miejscu (skład grupy: „Zmień pola” wyżej)
+                        const now = Date.now();
+                        if (lastTap.current.g === g && now - lastTap.current.t < 350) {
+                          setRenaming({ from: g, value: g });
+                          renameAt.current = Date.now();
+                          lastTap.current = { g: "", t: 0 };
+                        } else lastTap.current = { g, t: now };
                       }}
+                      replaceBody={(f) =>
+                        f.key.startsWith("g:") && renaming?.from === f.label ? (
+                          <TextInput
+                            className="ui-tsl-body"
+                            size="md"
+                            autoFocus
+                            aria-label="Nazwa grupy"
+                            value={renaming.value}
+                            onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
+                            onBlur={() => Date.now() - renameAt.current > 400 && renameGroup()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") renameGroup();
+                              if (e.key === "Escape") setRenaming(null);
+                            }}
+                          />
+                        ) : null
+                      }
                       onMove={(from, to) => {
                         const bs = blocksOf(fields);
                         const [x] = bs.splice(from, 1);
@@ -237,7 +264,7 @@ export function TemplateEditPage() {
                       describe={(f) => {
                         if (!f.key.startsWith("g:")) return "Pole bez grupy";
                         const items = fields.filter((x) => x.group === f.label);
-                        return `Grupa · ${items.map((x) => x.label).join(", ")}`;
+                        return `Grupa · ${items.map((x) => x.label).join(", ")} · dotknij dwukrotnie, aby zmienić nazwę`;
                       }}
                     />
                   ) : (

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
 import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
@@ -653,6 +653,7 @@ export function TouchSortList({
   onOpen,
   describe,
   blocks,
+  replaceBody,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -660,6 +661,8 @@ export function TouchSortList({
   describe: (f: TemplateField) => string;
   /** układanie całych bloków (grup) – bez przypisywania grup przy upuszczeniu */
   blocks?: boolean;
+  /** zamiast wiersza z nazwą – własny element (np. pole do zmiany nazwy grupy) */
+  replaceBody?: (f: TemplateField, i: number) => ReactNode | null;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -774,11 +777,13 @@ export function TouchSortList({
           >
             <IconGripVertical size={20} aria-hidden />
           </span>
+          {replaceBody?.(f, i) ?? (
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
             <span className="ui-tpl-meta">{describe(f)}</span>
             {drag?.from === i && !blocks && <span className="ui-tpe-group ui-tsl-target">{(drag.out ? null : groupAt(drag.from, drag.to)) ?? "Bez grupy"}</span>}
           </UnstyledButton>
+          )}
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
         </div>
       ))}

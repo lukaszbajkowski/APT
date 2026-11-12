@@ -1059,8 +1059,9 @@ export function TouchSortList({
               }}
             >
               {renderBody?.(f, i)}
-              {drag?.from === i && (
-                <span className="ui-tpl-meta ui-tsl-target">{fieldAtEnd && !groupAt(drag.from, drag.to) ? `Trafi na koniec, za „${fields[fields.length - 1]?.label}”` : `Trafi do: ${(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}`}</span>
+              {/* podpis tylko przy zmianie grupy – przenoszenie w obrębie tej samej grupy (albo poza grupami) go nie pokazuje */}
+              {drag?.from === i && (drag.out ? null : groupAt(drag.from, drag.to)) !== (f.group ?? null) && (
+                <span className="ui-tpl-meta ui-tsl-target">{`Trafi do: ${(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}`}</span>
               )}
             </div>
           ) : replaceBody?.(f, i) ?? (

@@ -1575,7 +1575,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-canvas] .ui-tsl-row[data-selected] .ui-tsl-cbody{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-4px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,transparent)}
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted] .ui-tsl-cbody{outline:none;background:transparent}
 .ui-tpe-cfield[data-editing] label{visibility:hidden}
-.ui-tpe-lbl-input{position:absolute;top:calc(var(--s-3) - 2px);left:calc(var(--s-4) - 6px);width:min(calc(100% - var(--s-6)),480px);height:24px;padding:0 5px;font:inherit;font-size:var(--mantine-font-size-sm);line-height:20px;font-weight:500;color:var(--mantine-color-text);background:var(--apt-surface);border:1px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-sm);outline:none;box-shadow:none}
+.ui-tpe-lbl-input{position:absolute;top:calc(var(--s-3) - 2px);left:calc(var(--s-4) - 5px);width:min(calc(100% - var(--s-6)),480px);height:24px;padding:0 var(--s-1);font:inherit;font-size:var(--mantine-font-size-sm);line-height:20px;font-weight:500;color:var(--mantine-color-text);background:var(--apt-surface);border:1px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-sm);outline:none;box-shadow:none}
 .ui-tpe-more-chip{position:absolute;top:var(--s-2);right:var(--s-3)}
 .ui-tpe-pvwrap{max-width:720px;margin-top:var(--s-6)}
 .ui-tpe-tools{justify-content:space-between;align-items:center}

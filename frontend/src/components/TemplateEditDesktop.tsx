@@ -766,6 +766,7 @@ export function TouchSortList({
   // ekran edycji na telefonie przewija własny kontener, nie okno – szukamy najbliższego przewijanego przodka
   const scroller = useRef<HTMLElement | null>(null);
   const inner = useRef<number[]>([]);
+  const mbs = useRef<number[]>([]); // dolne marginesy wierszy w chwili chwycenia
   const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
   const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
 
@@ -835,6 +836,7 @@ export function TouchSortList({
       hs.push(bottom - top);
     });
     inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     const from = blockList.findIndex((b) => b.g === g);
     gst.current = { from, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setGd({ from, to: from, dy: 0 });
@@ -911,6 +913,7 @@ export function TouchSortList({
     };
     const hs = rows.current.map(outer);
     inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
@@ -1047,7 +1050,8 @@ export function TouchSortList({
                   ? inner.current[i] + 2 * SPREAD
                   : undefined,
             // powiększenie nie może przesuwać reszty listy w układzie strony (przesunięcia liczymy sami)
-            marginBottom: (drag?.from === i && st.current && spreading) || gGrow(i) ? -2 * SPREAD : undefined,
+            // powiększenie o 2×SPREAD nie przesuwa reszty listy: od pierwotnego dolnego marginesu odejmujemy tyle samo
+            marginBottom: (drag?.from === i && st.current && spreading) || gGrow(i) ? (mbs.current[i] ?? 0) - 2 * SPREAD : undefined,
           }}
         >
           <span

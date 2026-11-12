@@ -853,9 +853,10 @@ export function TouchSortList({
     if (!gd || !s) return 0;
     const { from, to } = gd;
     if (b === from) return (to > from ? s.tops[to] + s.hs[to] - s.hs[from] : s.tops[to]) - s.tops[from];
-    if (from < to && b > from && b <= to) return -s.hs[from];
-    if (from > to && b < from && b >= to) return s.hs[from];
-    return 0;
+    const sp = to !== from ? spread(b, from, to) : 0;
+    if (from < to && b > from && b <= to) return -s.hs[from] + sp;
+    if (from > to && b < from && b >= to) return s.hs[from] + sp;
+    return sp;
   };
   // grupa, przed którą (na końcu – za którą) stanie przeciągana grupa
   const gNeighbour = gd && gd.to !== gd.from ? blockList[gd.to < gd.from ? gd.to : gd.to + 1] ?? blockList[blockList.length - 1] : null;
@@ -953,6 +954,10 @@ export function TouchSortList({
     const st0 = st.current;
     if (!drag || !st0 || drag.out) return drag?.dy ?? 0;
     const { from, to } = drag;
+    // dokładnie nad górną krawędzią wiersza pod szczeliną (po jego przesunięciu) – szczelina ma wysokość pola + 2×SPREAD
+    const after = to < from ? to : to + 1;
+    if (to !== from && after < fields.length && after !== from)
+      return st0.tops[after] + shift(after) - (inner.current[from] + 2 * SPREAD) - st0.tops[from];
     const top = to > from ? st0.tops[to] + st0.hs[to] - st0.hs[from] : st0.tops[to];
     return top - st0.tops[from];
   };
@@ -975,12 +980,18 @@ export function TouchSortList({
   // pole przeciągane na sam koniec listy (za ostatnie pole bez grupy)
   const fieldAtEnd = !!drag && !blocks && !drag.out && drag.to !== drag.from && drag.to === fields.length - 1;
   const blockAtEnd = !!drag && !!blocks && drag.to !== drag.from && drag.to === fields.length - 1;
+  // sąsiedzi szczeliny odsuwają się dodatkowo o 4 px – pole wchodzi w lekko rozszerzoną przestrzeń
+  const SPREAD = 4;
+  // wszystko pod szczeliną zsuwa się o 2×SPREAD (szczelina rośnie w dół, nic nie nachodzi na sąsiadów)
+  const spread = (i: number, from: number, to: number) => ((i < from ? i : i - 1) >= to ? 2 * SPREAD : 0);
+  const spreading = !!drag && drag.to !== drag.from && !drag.out;
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
-    if (drag.from < drag.to && i > drag.from && i <= drag.to) return -h;
-    if (drag.from > drag.to && i < drag.from && i >= drag.to) return h;
-    return 0;
+    const sp = drag.to !== drag.from && !drag.out ? spread(i, drag.from, drag.to) : 0;
+    if (drag.from < drag.to && i > drag.from && i <= drag.to) return -h + sp;
+    if (drag.from > drag.to && i < drag.from && i >= drag.to) return h + sp;
+    return sp;
   };
 
   return (
@@ -1039,8 +1050,10 @@ export function TouchSortList({
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
             transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
-            // przeciągany wiersz zachowuje swoją wysokość (inny opis nie może go skurczyć ani wydłużyć – szczelina pasuje)
-            height: drag?.from === i && st.current ? inner.current[i] : undefined,
+            // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
+            height: drag?.from === i && st.current ? inner.current[i] + (spreading ? 2 * SPREAD : 0) : undefined,
+            // powiększenie nie może przesuwać reszty listy w układzie strony (przesunięcia liczymy sami)
+            marginBottom: drag?.from === i && st.current && spreading ? -2 * SPREAD : undefined,
           }}
         >
           <span

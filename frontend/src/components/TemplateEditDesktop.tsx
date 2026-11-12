@@ -834,6 +834,7 @@ export function TouchSortList({
       tops.push(top);
       hs.push(bottom - top);
     });
+    inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
     const from = blockList.findIndex((b) => b.g === g);
     gst.current = { from, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setGd({ from, to: from, dy: 0 });
@@ -860,14 +861,6 @@ export function TouchSortList({
   };
   // grupa, przed którą (na końcu – za którą) stanie przeciągana grupa
   const gNeighbour = gd && gd.to !== gd.from ? blockList[gd.to < gd.from ? gd.to : gd.to + 1] ?? blockList[blockList.length - 1] : null;
-  const gSpot = () => {
-    if (!gd) return "";
-    const rest = blockList.filter((_, j) => j !== gd.from);
-    const nm = (b?: { g: string | null; start: number }) => (b ? (b.g ? `grupą „${b.g}”` : `„${fields[b.start].label}”`) : null);
-    const b = nm(rest[gd.to]);
-    const a = nm(rest[gd.to - 1]);
-    return b ? `Trafi przed ${b}` : a ? `Trafi na koniec, za ${a}` : "";
-  };
 
   // nowe miejsce = liczba pozostałych wierszy, których środek leży nad środkiem przeciąganego (wiersze mają różne wysokości)
   const targetFor = (dy: number) => {
@@ -984,6 +977,8 @@ export function TouchSortList({
   const SPREAD = 4;
   // wszystko pod szczeliną zsuwa się o 2×SPREAD (szczelina rośnie w dół, nic nie nachodzi na sąsiadów)
   const spread = (i: number, from: number, to: number) => ((i < from ? i : i - 1) >= to ? 2 * SPREAD : 0);
+  // przeciągana grupa: jej ostatnie pole rośnie o 2×SPREAD i wypełnia poszerzoną szczelinę
+  const gGrow = (i: number) => !!gd && !!gst.current && gd.to !== gd.from && blockList[gd.from]?.end === i && !!fields[i].group;
   const spreading = !!drag && drag.to !== drag.from && !drag.out;
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
@@ -1021,14 +1016,8 @@ export function TouchSortList({
               <IconGripVertical size={20} aria-hidden />
             </span>
             <div className="ui-tsl-ghead-name">
-              {gd && blockList[gd.from]?.g === f.group ? (
-                <>
-                  <span className="ui-tpl-name">{f.group}</span>
-                  <span className="ui-tpl-meta ui-tsl-target">{gSpot()}</span>
-                </>
-              ) : (
-                groupName!(f.group)
-              )}
+              {/* w trakcie przeciągania nagłówek się nie zmienia (inny tekst = inna wysokość = grupa wjeżdża na sąsiada); cel pokazuje podświetlenie */}
+              {groupName!(f.group)}
             </div>
             {groupActions?.(f.group)}
           </div>
@@ -1051,9 +1040,14 @@ export function TouchSortList({
           style={{
             transform: gd ? `translateY(${gShift(blockOf(i))}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
             // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
-            height: drag?.from === i && st.current ? inner.current[i] + (spreading ? 2 * SPREAD : 0) : undefined,
+            height:
+              drag?.from === i && st.current
+                ? inner.current[i] + (spreading ? 2 * SPREAD : 0)
+                : gGrow(i)
+                  ? inner.current[i] + 2 * SPREAD
+                  : undefined,
             // powiększenie nie może przesuwać reszty listy w układzie strony (przesunięcia liczymy sami)
-            marginBottom: drag?.from === i && st.current && spreading ? -2 * SPREAD : undefined,
+            marginBottom: (drag?.from === i && st.current && spreading) || gGrow(i) ? -2 * SPREAD : undefined,
           }}
         >
           <span

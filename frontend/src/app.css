@@ -1557,3 +1557,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{scale:1;margin-left:var(--s-2);margin-right:var(--s-2);border-radius:var(--mantine-radius-md);outline-offset:-2px;border-top-color:transparent}
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted][data-joining]{outline:2px solid var(--mantine-primary-color-filled);border-left:0;border-right:0;border-top-color:transparent}
 .ui-tsl-cbody .ui-tsl-target{border:1px solid var(--apt-line);padding:0 var(--s-2)}
+/* płótno: kreska oddzielająca pola widoczna też na tle grupy i w trakcie przeciągania (jasny i ciemny motyw) */
+.ui-tsl[data-canvas] .ui-tsl-row:not([data-lifted]):not(:first-child),.ui-tsl[data-canvas] .ui-tsl-row[data-ingroup][data-target]:not([data-lifted]){border-top-color:color-mix(in srgb,var(--mantine-color-text) 14%,transparent)}

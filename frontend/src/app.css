@@ -25,7 +25,7 @@
 }
 
 /* obszary bezpieczne iPhone'a (aplikacja z ekranu początkowego): w przeglądarce 0 */
-:root { --apt-safe-top: env(safe-area-inset-top, 0px); --apt-safe-bottom: env(safe-area-inset-bottom, 0px); }
+:root { --apt-safe-top: env(safe-area-inset-top, 0px); --apt-safe-bottom: env(safe-area-inset-bottom, 0px); --apt-safe-left: env(safe-area-inset-left, 0px); --apt-safe-right: env(safe-area-inset-right, 0px); }
 html, body { background: var(--apt-ground); }
 .mantine-AppShell-main { background: var(--apt-ground); }
 .mantine-AppShell-navbar, .mantine-AppShell-header, .mantine-AppShell-footer {
@@ -1396,3 +1396,32 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tsl-row[data-lifted] .ui-tsl-handle{color:var(--mantine-primary-color-filled);cursor:grabbing}
 .ui-tsl-body{flex:1;min-width:0;padding:var(--s-3) 0;text-align:left}
 @media (prefers-reduced-motion:reduce){.ui-tsl-row{transition:none}}
+
+/* ——— bezpieczne obszary po bokach (telefon w poziomie: wcięcie i zaokrąglone rogi z lewej / prawej) ———
+   Góra i dół są obsłużone wyżej; tu lewa i prawa krawędź każdego elementu dochodzącego do brzegu ekranu. */
+.mantine-AppShell-main {
+  /* offset paska bocznego zawiera już wcięcie (niżej); bez paska (telefon w pionie) – samo wcięcie */
+  padding-inline-start: calc(var(--app-shell-navbar-offset, 0rem) + var(--app-shell-padding, 0rem)) !important;
+  padding-inline-end: calc(var(--app-shell-aside-offset, 0rem) + var(--app-shell-padding, 0rem) + var(--apt-safe-right)) !important;
+}
+/* pasek boczny (komputer i telefon w poziomie): szerszy o wcięcie, treść paska nie wchodzi pod nie */
+.mantine-AppShell-navbar { padding-left: var(--apt-safe-left); width: calc(var(--app-shell-navbar-width) + var(--apt-safe-left)) !important; }
+.mantine-AppShell-main { --app-shell-navbar-offset: calc(var(--app-shell-navbar-width) + var(--apt-safe-left)); }
+@media (max-width: 48em) { .mantine-AppShell-main { --app-shell-navbar-offset: var(--apt-safe-left); } }
+.mantine-AppShell-header { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
+.tabbar { padding-left: calc(4px + var(--apt-safe-left)); padding-right: calc(4px + var(--apt-safe-right)); }
+.ui-chat, .ui-inpage, .ui-scan-live { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
+.ui-scan-live { padding-left: calc(16px + var(--apt-safe-left)); padding-right: calc(16px + var(--apt-safe-right)); }
+.ui-selbar { padding-left: calc(16px + var(--apt-safe-left)); padding-right: calc(16px + var(--apt-safe-right)); }
+.ui-sheet { padding-left: calc(12px + var(--apt-safe-left)); padding-right: calc(12px + var(--apt-safe-right)); }
+.ui-outage { padding-left: calc(16px + var(--apt-safe-left)); padding-right: calc(16px + var(--apt-safe-right)); }
+body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
+@media (max-width: 48em) {
+  .mantine-Notifications-root[data-position="bottom-center"] { left: calc(16px + var(--apt-safe-left)) !important; right: calc(16px + var(--apt-safe-right)) !important; }
+}
+/* okna na pełnym ekranie (Mantine fullScreen) i szuflady przy krawędzi */
+.mantine-Modal-content[data-full-screen], .mantine-Drawer-content { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
+/* dół w układzie komputerowym (telefon w poziomie): pasek gestów nie zasłania przypiętych pasków ani dołu menu */
+.mantine-AppShell-navbar { padding-bottom: var(--apt-safe-bottom); }
+.ui-tpe-save { bottom: calc(var(--s-4) + var(--apt-safe-bottom)); }
+@media (min-width: 48.01em) { .mantine-AppShell-main { padding-bottom: calc(var(--app-shell-padding, 0rem) + var(--apt-safe-bottom)) !important; } }

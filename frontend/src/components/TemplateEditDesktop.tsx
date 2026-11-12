@@ -7,6 +7,7 @@ import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight,
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { Select } from "./AptSelect";
+import { GridCanvas } from "./GridCanvas";
 import { FieldInput, GroupedFields, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
 import { FormDialog, PageTitle, RowMenu, SectionHead } from "./Mobile";
@@ -137,10 +138,11 @@ export function TemplateEditDesktop({
             <div className="ui-tpe-grid">
               {/* przeciąganie jak na telefonie: chwyt za ⋮⋮, pole/grupa przyciąga się do szczeliny, przewijanie przy krawędzi */}
               <div ref={listRef} className="ui-tpe-plist" aria-label="Pola formularza">
-                <TouchSortList
+                <GridCanvas
                   fields={fields}
                   selected={sel}
-                  onOpen={(i) => setSel(i)}
+                  onSelect={(i) => setSel(i)}
+                  moved={moved}
                   onMove={(from, to, group) => {
                     const next = [...fields];
                     const [x] = next.splice(from, 1);
@@ -161,10 +163,7 @@ export function TemplateEditDesktop({
                     bs.splice(to, 0, x);
                     set({ fields: bs.flat() });
                   }}
-                  describe={() => ""}
-                  renderBody={(f) => (
-                    <CanvasField f={f} moved={moved === f.key} formatLabel={f.format ? (formats.data?.find((x) => x.value === f.format)?.label ?? "własna maska") : undefined} />
-                  )}
+                  formatLabel={(f) => (f.format ? (formats.data?.find((x) => x.value === f.format)?.label ?? "Własna maska") : undefined)}
                   groupName={(g) =>
                     renaming?.from === g ? (
                       <input

@@ -782,7 +782,10 @@ export function TouchSortList({
     const edge = 72;
     // przewijamy dopiero, gdy palec ruszył w stronę krawędzi – samo chwycenie wiersza przy dole ekranu niczego nie przesuwa
     const moved = s.y - s.startY;
-    const v = s.y < edge && moved < -12 ? -8 : s.y > window.innerHeight - edge - 140 && moved > 12 ? 8 : 0; // 140: pasek zapisu i nawigacja
+    const bottom = window.innerHeight - edge - 140; // 140: pasek zapisu i nawigacja
+    // im bliżej krawędzi, tym szybciej (4–20 px na klatkę)
+    const v =
+      s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;
     if (v) {
       scrollBy(v);
       update(s.y);

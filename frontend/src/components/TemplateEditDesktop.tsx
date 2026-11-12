@@ -52,7 +52,7 @@ export function TemplateEditDesktop({
   const [sel, setSel] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
   const [side, setSide] = useState("edit");
-  const [over, setOver] = useState<{ i: number; after: boolean; hdr?: "in" | "out" } | null>(null);
+  const [over, setOver] = useState<{ i: number; after: boolean; hdr?: "in" | "out" | "end" } | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -190,6 +190,8 @@ export function TemplateEditDesktop({
                     data-moved={moved === f.key || undefined}
                     // linia pokazuje, gdzie pole wyląduje po upuszczeniu
                     data-ingroup={!!f.group || undefined}
+          data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
+          data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
                     data-drop={over && !over.hdr && over.i === i && drag !== null && drag !== i ? (over.after ? "after" : "before") : undefined}
                     draggable
                     onDragStart={(e: DragEvent) => {
@@ -236,30 +238,30 @@ export function TemplateEditDesktop({
                     <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
                     <IconChevronRight size={16} className="ui-tpe-grip" aria-hidden />
                   </UnstyledButton>
+                  {f.group && fields[i + 1]?.group !== f.group && (
+                    // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
+                    <div
+                      className="ui-tpe-gfoot"
+                      data-drop={over?.hdr === "end" && over.i === i + 1 && drag !== null ? "end" : undefined}
+                      onDragOver={(e: DragEvent) => {
+                        e.preventDefault();
+                        if (!over || over.i !== i + 1 || over.hdr !== "end") setOver({ i: i + 1, after: false, hdr: "end" });
+                      }}
+                      onDrop={() => {
+                        if (drag !== null) {
+                          move(drag, drag < i + 1 ? i : i + 1, null);
+                          setMoved(fields[drag].key);
+                          window.setTimeout(() => setMoved(null), 900);
+                        }
+                        setDrag(null);
+                        setOver(null);
+                      }}
+                    >
+                      {drag !== null ? "Upuść tutaj, aby odłożyć pole za grupą" : `Koniec grupy „${f.group}”`}
+                    </div>
+                  )}
                   </Fragment>
                 ))}
-                {drag !== null && fields[fields.length - 1]?.group && (
-                  // ostatnia na liście jest grupa – tu można odłożyć pole za nią, bez grupy
-                  <div
-                    className="ui-tpe-endzone"
-                    data-drop={over?.hdr === "out" && over.i === fields.length ? "out" : undefined}
-                    onDragOver={(e: DragEvent) => {
-                      e.preventDefault();
-                      if (!over || over.i !== fields.length || over.hdr !== "out") setOver({ i: fields.length, after: false, hdr: "out" });
-                    }}
-                    onDrop={() => {
-                      if (drag !== null) {
-                        move(drag, fields.length - 1, null);
-                        setMoved(fields[drag].key);
-                        window.setTimeout(() => setMoved(null), 900);
-                      }
-                      setDrag(null);
-                      setOver(null);
-                    }}
-                  >
-                    Upuść tutaj, aby odłożyć pole na koniec, poza grupą
-                  </div>
-                )}
               </Paper>
 
               <div className="ui-tpe-side">
@@ -655,6 +657,8 @@ export function TouchSortList({
           }}
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
+          data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
+          data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
           style={{ transform: drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined }}
         >

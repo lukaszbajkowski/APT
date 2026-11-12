@@ -1445,3 +1445,13 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-group-pick{display:grid;gap:var(--s-3);margin-top:var(--s-2)}
 .ui-tpe-endzone{margin:var(--s-2);padding:var(--s-4);border:1px dashed var(--apt-line);border-radius:var(--mantine-radius-md);text-align:center;font-size:var(--mantine-font-size-sm);color:var(--mantine-color-dimmed)}
 .ui-tpe-endzone[data-drop]{border-color:var(--mantine-primary-color-filled);color:var(--mantine-color-text);background:var(--apt-subtle)}
+/* grupa jako zamknięty blok: nagłówek, wcięte pola na tle, stopka „Koniec grupy” */
+.ui-tpe-ghead{margin:var(--s-2) var(--s-2) 0;border:1px solid var(--apt-line);border-bottom:0;border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
+.ui-tpe-row[data-ingroup]{margin:0 var(--s-2);border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line);box-shadow:none;background:var(--apt-subtle)}
+.ui-tpe-gfoot{margin:0 var(--s-2) var(--s-2);padding:var(--s-1) var(--s-4);border:1px solid var(--apt-line);border-top:1px dashed var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md);background:var(--apt-subtle);font-size:var(--mantine-font-size-xs);color:var(--mantine-color-dimmed)}
+.ui-tpe-list[data-dragging] .ui-tpe-gfoot{padding:var(--s-3) var(--s-4)}
+.ui-tpe-gfoot[data-drop]{border-color:var(--mantine-primary-color-filled);color:var(--mantine-color-text)}
+.ui-tsl-row[data-ingroup]{margin:0 var(--s-2);border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line);box-shadow:none;background:var(--apt-subtle)}
+.ui-tsl-row[data-gfirst]{margin-top:var(--s-2);border-top:1px solid var(--apt-line);border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
+.ui-tsl-row[data-glast]{margin-bottom:var(--s-2);border-bottom:1px solid var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-tsl-row[data-gfirst][data-glast]{border-radius:var(--mantine-radius-md)}

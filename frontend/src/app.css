@@ -1549,3 +1549,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-dragging] .ui-tsl-row,.ui-tsl[data-dragging] .ui-tsl-ghead{will-change:transform}
 .ui-tpe-list[data-dragging] [data-flip]{will-change:transform}
 @container tpe (max-width:780px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) auto 16px}}
+/* niski ekran (telefon w poziomie): więcej miejsca na listę pól */
+@media (orientation:landscape) and (max-height:500px){
+  body:has(.ui-inpage) .mantine-AppShell-footer{display:none}
+  .ui-inpage .ui-chat-compose{padding-top:var(--s-1);padding-bottom:var(--s-1)}
+  .ui-tpe-save{position:static}
+}

@@ -814,6 +814,15 @@ export function TouchSortList({
   const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
   const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
 
+  // strefy przewijania przy krawędziach: od góry obszaru listy i od góry paska przycisków (działa też w poziomie, na niskim ekranie)
+  const edges = () => {
+    const h = window.innerHeight;
+    const edge = Math.min(72, Math.round(h * 0.15));
+    const top = scroller.current ? scroller.current.getBoundingClientRect().top : 0;
+    const bar = document.querySelector<HTMLElement>(".ui-inpage .ui-chat-compose");
+    const limit = bar ? bar.getBoundingClientRect().top : h;
+    return { edge: top + edge, bottom: limit - edge };
+  };
   // ruch palca: najwyżej jedno przeliczenie na klatkę ekranu (zdarzeń bywa 2–4× więcej niż klatek)
   const frame = useRef<{ y: number; id: number | null }>({ y: 0, id: null });
   const onFrame = (y: number, fn: (y: number) => void) => {
@@ -855,9 +864,8 @@ export function TouchSortList({
   const gAuto = () => {
     const s = gst.current;
     if (!s) return;
-    const edge = 72;
+    const { edge, bottom } = edges();
     const moved = s.y - s.startY;
-    const bottom = window.innerHeight - edge - 140;
     const v =
       s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;
     if (v) {
@@ -944,10 +952,9 @@ export function TouchSortList({
   const autoscroll = () => {
     const s = st.current;
     if (!s) return;
-    const edge = 72;
+    const { edge, bottom } = edges();
     // przewijamy dopiero, gdy palec ruszył w stronę krawędzi – samo chwycenie wiersza przy dole ekranu niczego nie przesuwa
     const moved = s.y - s.startY;
-    const bottom = window.innerHeight - edge - 140; // 140: pasek zapisu i nawigacja
     // im bliżej krawędzi, tym szybciej (4–20 px na klatkę)
     const v =
       s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;

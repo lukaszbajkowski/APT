@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { flushSync } from "react-dom";
 import { notifications } from "@mantine/notifications";
@@ -52,13 +52,8 @@ export function TemplateEditDesktop({
 }) {
   const [tab, setTab] = useState<string>("fields");
   const [sel, setSel] = useState(0);
-  const [drag, setDrag] = useState<number | null>(null);
   const [side, setSide] = useState("edit");
-  const [over, setOver] = useState<{ i: number; after: boolean; hdr?: "in" | "out" | "end" } | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
-  // przeciąganie całej grupy: nazwa grupy + miejsce wstawienia (indeks w liście pól) i element, przy którym pokazać linię
-  const [gdrag, setGdrag] = useState<string | null>(null);
-  const [gover, setGover] = useState<{ ins: number; at: string; pos: "before" | "after" } | null>(null);
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,150 +73,7 @@ export function TemplateEditDesktop({
     setSel(to);
     return true;
   };
-  // przewijanie strony, gdy przeciągane pole zbliża się do górnej lub dolnej krawędzi okna
-  useEffect(() => {
-    if (drag === null && !gdrag) return; // pole albo cała grupa
-    let y = -1;
-    let raf = 0;
-    const onOver = (e: globalThis.DragEvent) => {
-      y = e.clientY;
-    };
-    const tick = () => {
-      if (y >= 0) {
-        const top = 96;
-        const bottom = window.innerHeight - 160; // pasek „Zapisz szablon”
-        const v = y < top ? -Math.ceil((top - y) / 6) : y > bottom ? Math.ceil((y - bottom) / 6) : 0;
-        if (v) window.scrollBy(0, Math.max(-24, Math.min(24, v)));
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    document.addEventListener("dragover", onOver);
-    raf = requestAnimationFrame(tick);
-    return () => {
-      document.removeEventListener("dragover", onOver);
-      cancelAnimationFrame(raf);
-    };
-  }, [drag, gdrag]);
-  // grupa, do której trafi przeciągane pole – podświetlamy całą jej ramkę
-  const dropGroup: string | null | undefined =
-    drag === null || !over ? undefined : over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : (fields[over.i]?.group ?? null);
-  const joiningField = dropGroup && dropGroup !== fields[drag ?? -1]?.group ? dropGroup : null;
-  // przestawianie grup: grupa, przed którą (na końcu – za którą) stanie przeciągana grupa
-  const gNeighbour = gdrag && gover ? (fields[gover.ins]?.group ?? (gover.ins >= fields.length ? fields[fields.length - 1]?.group : null)) : null;
-  const gTargetGroup = gNeighbour && gNeighbour !== gdrag ? gNeighbour : null;
-  const joining = joiningField ?? gTargetGroup;
-  // upuszczenie w szczelinie (podglądzie) – ta sama logika co przy wierszach, nagłówkach i stopkach
-  // po przeciąganiu fokus nie zostaje na chwyconym wierszu (przeglądarka ustawia go przy wciśnięciu myszy)
-  const dropFocus = () => {
-    const a = document.activeElement as HTMLElement | null;
-    if (a && listRef.current?.contains(a) && a.tagName !== "INPUT") a.blur();
-  };
-  const commitDrop = () => {
-    if (drag !== null && over) {
-      let to = over.hdr === "in" || over.hdr === "out" || over.hdr === "end" ? over.i : over.i + (over.after ? 1 : 0);
-      const g = over.hdr === "in" ? (fields[over.i]?.group ?? null) : over.hdr ? null : (fields[over.i]?.group ?? null);
-      if (drag < to) to -= 1;
-      if (move(drag, to, g)) {
-        setMoved(fields[drag].key);
-        window.setTimeout(() => setMoved(null), 900);
-      }
-    }
-    setDrag(null);
-    setOver(null);
-  };
-  const ghost = (inGroup: boolean) => {
-    const d = drag !== null ? fields[drag] : null;
-    if (!d || !over || (!over.hdr && over.i === drag)) return null;
-    return (
-      <div
-        className="ui-tpe-row ui-tpe-ghost"
-        data-ingroup={inGroup || undefined}
-        aria-hidden
-        onDragOver={(e: DragEvent) => e.preventDefault()}
-        onDrop={(e: DragEvent) => {
-          e.preventDefault();
-          commitDrop();
-        }}
-      >
-        <IconGripVertical size={16} className="ui-tpe-grip" aria-hidden />
-        <span style={{ minWidth: 0 }}>
-          <span className="ui-tpl-name">{d.label || "Bez etykiety"}</span>
-          <span className="ui-tpl-meta">Trafi do: {(over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : fields[over.i]?.group) ?? "bez grupy"}</span>
-        </span>
-        <span />
-        <span />
-        <span />
-      </div>
-    );
-  };
-  // przeciągana grupa – podgląd w szczelinie, w którą trafi
-  const gGhost = (at: string, pos: "before" | "after") => {
-    if (!gdrag || !gover || gover.at !== at || gover.pos !== pos) return null;
-    const n = fields.filter((x) => x.group === gdrag).length;
-    return (
-      <div
-        className="ui-tpe-gghost"
-        aria-hidden
-        onDragOver={(e: DragEvent) => e.preventDefault()}
-        onDrop={(e: DragEvent) => {
-          e.preventDefault();
-          gDrop(e);
-        }}
-      >
-        <IconGripVertical size={14} className="ui-tpe-grip" aria-hidden />
-        <span className="ui-tpl-name">{gdrag}</span>
-        <span className="ui-tpl-meta">{n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`} · tu trafi grupa</span>
-      </div>
-    );
-  };
-  // płynność: gdy szczelina zmienia miejsce, pola przesuwają się animacją (FLIP), zamiast przeskakiwać
   const listRef = useRef<HTMLDivElement>(null);
-  const flipTops = useRef(new Map<string, number>());
-  useLayoutEffect(() => {
-    const box = listRef.current;
-    if (!box) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const next = new Map<string, number>();
-    box.querySelectorAll<HTMLElement>("[data-flip]").forEach((el) => {
-      const key = el.dataset.flip!;
-      const top = el.offsetTop; // bez wpływu transformacji – stabilne w trakcie animacji
-      next.set(key, top);
-      const prev = flipTops.current.get(key);
-      if (reduce || prev === undefined || prev === top || (drag === null && !gdrag)) return;
-      el.style.transition = "none";
-      el.style.transform = `translateY(${prev - top}px)`;
-      requestAnimationFrame(() => {
-        el.style.transition = "transform .16s cubic-bezier(.2,.8,.2,1), background-color .15s";
-        el.style.transform = "";
-      });
-    });
-    flipTops.current = next;
-  });
-  const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
-  const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
-  const moveGroup = (g: string, ins: number) => {
-    const members = fields.filter((x) => x.group === g);
-    const before = fields.slice(0, ins).filter((x) => x.group === g).length;
-    const rest = fields.filter((x) => x.group !== g);
-    const at = ins - before;
-    set({ fields: [...rest.slice(0, at), ...members, ...rest.slice(at)] });
-    setSel(at);
-  };
-  const gTarget = (e: DragEvent, ins: number, at: string, pos: "before" | "after") => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!gover || gover.ins !== ins || gover.at !== at || gover.pos !== pos) setGover({ ins, at, pos });
-  };
-  const gDrop = (e: DragEvent) => {
-    e.stopPropagation();
-    if (gdrag && gover) moveGroup(gdrag, gover.ins);
-    setGdrag(null);
-    setGover(null);
-  };
-  const half = (e: DragEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    return e.clientY > r.top + r.height / 2;
-  };
   const rename = () => {
     if (!renaming) return;
     const to = renaming.value.trim();
@@ -285,201 +137,82 @@ export function TemplateEditDesktop({
             </div>
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             <div className="ui-tpe-grid">
-              <Paper ref={listRef} withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || !!gdrag || undefined}>
-                {fields.map((f, i) => (
-                  <Fragment key={f.key}>
-                  {over?.hdr === "out" && over.i === i && ghost(false)}
-                  {gGhost(`h${i}`, "before")}{gGhost(`r${i}`, "before")}
-                  {f.group && f.group !== fields[i - 1]?.group && (
-                    // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
-                    <div
-                      data-flip={`h:${f.group}`}
-                      className="ui-tpe-ghead"
-                      data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : gover?.at === `h${i}` ? "out" : undefined}
-                      data-gdrag={gdrag === f.group || undefined}
-                      data-target={joining === f.group || undefined}
-                      draggable={!renaming}
-                      onDragStart={(e: DragEvent) => {
-                        setGdrag(f.group!);
-                        const blank = new Image();
-                        blank.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-                        e.dataTransfer.setDragImage(blank, 0, 0);
-                        e.dataTransfer.effectAllowed = "move";
-                        e.dataTransfer.setData("text/plain", f.group!);
-                      }}
-                      onDragEnd={() => {
-                        dropFocus();
-                        setGdrag(null);
-                        setGover(null);
-                      }}
-                      onDragOver={(e: DragEvent) => {
-                        if (gdrag) return gdrag === f.group ? undefined : gTarget(e, i, `h${i}`, "before");
-                        e.preventDefault();
-                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        const hdr = e.clientY > r.top + r.height / 2 ? "in" : "out";
-                        if (!over || over.i !== i || over.hdr !== hdr) setOver({ i, after: false, hdr });
-                      }}
-                      onDrop={(e: DragEvent) => {
-                        if (gdrag) return gDrop(e);
-                        if (drag !== null && over) {
-                          let to = over.i;
-                          if (drag < to) to -= 1;
-                          if (move(drag, to, over.hdr === "in" ? f.group! : null)) {
-                            setMoved(fields[drag].key);
-                            window.setTimeout(() => setMoved(null), 900);
-                          }
-                        }
-                        setDrag(null);
-                        setOver(null);
-                      }}
-                    >
-                      <span className="ui-tpe-ghead-name">
-                        <IconGripVertical size={14} className="ui-tpe-grip" aria-hidden />
-                        {renaming?.from === f.group ? (
-                          // zwykłe pole w rozmiarze tekstu – nagłówek grupy nie zmienia wysokości
-                          <input
-                            className="ui-tpe-gname-input"
-                            autoFocus
-                            onFocus={(e) => e.currentTarget.select()}
-                            size={Math.max(8, renaming.value.length + 1)}
-                            aria-label="Nazwa grupy"
-                            value={renaming.value}
-                            onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
-                            onBlur={rename}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") rename();
-                              if (e.key === "Escape") setRenaming(null);
-                            }}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setRenaming({ from: f.group!, value: f.group! })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij, aby przenieść całą grupę.">
-                            {f.group}
-                          </span>
-                        )}
+              {/* przeciąganie jak na telefonie: chwyt za ⋮⋮, pole/grupa przyciąga się do szczeliny, przewijanie przy krawędzi */}
+              <div ref={listRef} className="ui-tpe-plist" aria-label="Pola formularza">
+                <TouchSortList
+                  fields={fields}
+                  selected={sel}
+                  onOpen={(i) => setSel(i)}
+                  onMove={(from, to, group) => {
+                    const next = [...fields];
+                    const [x] = next.splice(from, 1);
+                    next.splice(to, 0, { ...x, group });
+                    set({ fields: next });
+                    setSel(to);
+                    setMoved(x.key);
+                    window.setTimeout(() => setMoved(null), 900);
+                  }}
+                  onMoveGroup={(from, to) => {
+                    const bs: TemplateField[][] = [];
+                    for (const f of fields) {
+                      const last = bs[bs.length - 1];
+                      if (f.group && last && last[0].group === f.group) last.push(f);
+                      else bs.push([f]);
+                    }
+                    const [x] = bs.splice(from, 1);
+                    bs.splice(to, 0, x);
+                    set({ fields: bs.flat() });
+                  }}
+                  describe={() => ""}
+                  renderBody={(f) => (
+                    <span className="ui-tpe-pbody" data-moved={moved === f.key || undefined}>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
+                        <span className="ui-tpl-meta ui-mono">{f.key}</span>
                       </span>
-                      {joiningField === f.group && <span className="ui-tpe-joinhint">Upuść, aby dodać do tej grupy</span>}
-                      <span className="ui-tpe-ghead-end">
-                        {fields.filter((x) => x.group === f.group).length}
-                        <RowMenu
-                          label={`Grupa ${f.group}`}
-                          items={[
-                            { label: "Zmień nazwę", onClick: () => setRenaming({ from: f.group!, value: f.group! }) },
-                            { label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: f.group! }) },
-                          ]}
-                          danger={{ label: "Rozgrupuj", onClick: () => set({ fields: fields.map((x) => (x.group === f.group ? { ...x, group: null } : x)) }) }}
-                        />
-                      </span>
-                    </div>
-                  )}
-                  {((over?.hdr === "in" && over.i === i) || (over && !over.hdr && over.i === i && !over.after)) && ghost(!!f.group)}
-                  <UnstyledButton
-                    data-flip={f.key}
-                    className="ui-tpe-row"
-                    role="option"
-                    aria-selected={i === sel}
-                    data-selected={i === sel || undefined}
-                    data-drag={drag === i || undefined}
-                    data-moved={moved === f.key || undefined}
-                    // linia pokazuje, gdzie pole wyląduje po upuszczeniu
-                    data-ingroup={!!f.group || undefined}
-          data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
-          data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
-                    data-drop={over && !over.hdr && over.i === i && drag !== null && drag !== i ? (over.after ? "after" : "before") : undefined}
-                    draggable
-                    onDragStart={(e: DragEvent) => {
-                      setDrag(i);
-                      // bez obrazka przeglądarki pod kursorem – pole pokazuje się od razu w szczelinie, w którą trafi
-                      const blank = new Image();
-                      blank.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-                      e.dataTransfer.setDragImage(blank, 0, 0);
-                      e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData("text/plain", f.key);
-                    }}
-                    data-gdrop={gover?.at === `r${i}` ? gover.pos : undefined}
-                    data-target={(f.group && joining === f.group) || (!f.group && !!gdrag && !!gover && gover.ins >= fields.length && i === fields.length - 1) || undefined}
-                    onDragOver={(e: DragEvent) => {
-                      if (gdrag) {
-                        if (f.group === gdrag) return;
-                        const after = half(e);
-                        // grupy nie wkłada się w inną grupę: przed lub za całą grupą tego pola
-                        if (f.group) return after ? gTarget(e, groupEnd(f.group) + 1, `f${groupEnd(f.group)}`, "after") : gTarget(e, groupStart(f.group), `h${groupStart(f.group)}`, "before");
-                        return gTarget(e, after ? i + 1 : i, `r${i}`, after ? "after" : "before");
-                      }
-                      e.preventDefault();
-                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      const after = e.clientY > r.top + r.height / 2;
-                      if (!over || over.i !== i || over.after !== after || over.hdr) setOver({ i, after });
-                    }}
-                    onDrop={(e: DragEvent) => {
-                      if (gdrag) return gDrop(e);
-                      if (drag !== null && over && !over.hdr) {
-                        let to = over.i + (over.after ? 1 : 0);
-                        if (drag < to) to -= 1;
-                        // pole przejmuje grupę wiersza, przy którym je upuszczono
-                        if (move(drag, to, f.group ?? null)) {
-                          setMoved(fields[drag].key);
-                          window.setTimeout(() => setMoved(null), 900);
-                        }
-                      }
-                      setDrag(null);
-                      setOver(null);
-                    }}
-                    onDragEnd={() => {
-                      dropFocus();
-                      setDrag(null);
-                      setOver(null);
-                    }}
-                    onClick={() => setSel(i)}
-                  >
-                    <IconGripVertical size={16} className="ui-tpe-grip" aria-hidden />
-                    <span style={{ minWidth: 0 }}>
-                      <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
                       <span className="ui-tpl-meta">
-                        <span className="ui-mono">{f.key}</span>
+                        {typeLabel(f.type)}
+                        {f.type === "select" ? ` · ${f.options.length} opcje` : ""}
+                        {f.format ? ` · ${formats.data?.find((x) => x.value === f.format)?.label ?? "własna maska"}` : ""}
                       </span>
+                      <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
                     </span>
-                    <span className="ui-tpl-meta">
-                      {typeLabel(f.type)}
-                      {f.type === "select" ? ` · ${f.options.length} opcje` : ""}
-                      {f.format ? ` · ${formats.data?.find((p) => p.value === f.format)?.label ?? "własna maska"}` : ""}
-                    </span>
-                    <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
-                    <IconChevronRight size={16} className="ui-tpe-grip" aria-hidden />
-                  </UnstyledButton>
-                  {over && !over.hdr && over.i === i && over.after && ghost(!!f.group)}
-                  {gGhost(`r${i}`, "after")}
-                  {f.group && fields[i + 1]?.group !== f.group && (
-                    // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
-                    <div
-                      data-flip={`f:${f.group}`}
-                      className="ui-tpe-gfoot"
-                      data-target={joining === f.group || undefined}
-                      data-drop={(over?.hdr === "end" && over.i === i + 1 && drag !== null) || gover?.at === `f${i}` ? "end" : undefined}
-                      onDragOver={(e: DragEvent) => {
-                        if (gdrag) return gdrag === f.group ? undefined : gTarget(e, i + 1, `f${i}`, "after");
-                        e.preventDefault();
-                        if (!over || over.i !== i + 1 || over.hdr !== "end") setOver({ i: i + 1, after: false, hdr: "end" });
-                      }}
-                      onDrop={(e: DragEvent) => {
-                        if (gdrag) return gDrop(e);
-                        if (drag !== null) {
-                          if (move(drag, drag < i + 1 ? i : i + 1, null)) {
-                            setMoved(fields[drag].key);
-                            window.setTimeout(() => setMoved(null), 900);
-                          }
-                        }
-                        setDrag(null);
-                        setOver(null);
-                      }}
-                    >
-                      {gdrag && gdrag !== f.group ? "Upuść tutaj, aby przenieść grupę za tę grupę" : drag !== null ? "Upuść tutaj, aby odłożyć pole za grupą" : `Koniec grupy „${f.group}”`}
-                    </div>
                   )}
-                  {over?.hdr === "end" && over.i === i + 1 && ghost(false)}
-                  {gGhost(`f${i}`, "after")}
-                  </Fragment>
-                ))}
-              </Paper>
+                  groupName={(g) =>
+                    renaming?.from === g ? (
+                      <input
+                        className="ui-tpe-gname-input"
+                        autoFocus
+                        onFocus={(e) => e.currentTarget.select()}
+                        size={Math.max(8, renaming.value.length + 1)}
+                        aria-label="Nazwa grupy"
+                        value={renaming.value}
+                        onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
+                        onBlur={rename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") rename();
+                          if (e.key === "Escape") setRenaming(null);
+                        }}
+                      />
+                    ) : (
+                      <span className="ui-tsl-ghead-btn" onDoubleClick={() => setRenaming({ from: g, value: g })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij za ⋮⋮, aby przenieść całą grupę.">
+                        <span className="ui-tpl-name">{g}</span>
+                        <span className="ui-tpl-meta">{fields.filter((x) => x.group === g).length} · dwuklik zmienia nazwę</span>
+                      </span>
+                    )
+                  }
+                  groupActions={(g) => (
+                    <RowMenu
+                      label={`Grupa ${g}`}
+                      items={[
+                        { label: "Zmień nazwę", onClick: () => setRenaming({ from: g, value: g }) },
+                        { label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: g }) },
+                      ]}
+                      danger={{ label: "Rozgrupuj", onClick: () => set({ fields: fields.map((x) => (x.group === g ? { ...x, group: null } : x)) }) }}
+                    />
+                  )}
+                />
+              </div>
 
               {/* panel boczny nie przerysowuje się przy każdym ruchu przeciągania (zależy tylko od tych wartości) */}
               <Frozen deps={[side, sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
@@ -789,6 +522,8 @@ export function TouchSortList({
   groupName,
   groupActions,
   onMoveGroup,
+  renderBody,
+  selected,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -802,6 +537,9 @@ export function TouchSortList({
   groupName?: (g: string) => ReactNode;
   groupActions?: (g: string) => ReactNode;
   onMoveGroup?: (fromBlock: number, toBlock: number) => void;
+  /** komputer: własna treść wiersza (kolumny), zaznaczony wiersz */
+  renderBody?: (f: TemplateField, i: number) => ReactNode;
+  selected?: number;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -820,7 +558,7 @@ export function TouchSortList({
     const h = window.innerHeight;
     const edge = Math.min(72, Math.round(h * 0.15));
     const top = scroller.current ? scroller.current.getBoundingClientRect().top : 0;
-    const bar = document.querySelector<HTMLElement>(".ui-inpage .ui-chat-compose");
+    const bar = document.querySelector<HTMLElement>(".ui-inpage .ui-chat-compose") ?? document.querySelector<HTMLElement>(".ui-tpe-save");
     const limit = bar ? bar.getBoundingClientRect().top : h;
     return { edge: top + edge, bottom: limit - edge };
   };
@@ -1126,6 +864,7 @@ export function TouchSortList({
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
+          data-selected={(selected === i && !drag && !gd) || undefined}
           data-glifted={(gd && gd.from === blockOf(i) && !!f.group) || undefined}
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
@@ -1155,14 +894,14 @@ export function TouchSortList({
             <IconGripVertical size={20} aria-hidden />
           </span>
           {replaceBody?.(f, i) ?? (
-          <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
-            <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
+          <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)} aria-current={selected === i || undefined}>
+            {renderBody && drag?.from !== i ? renderBody(f, i) : <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>}
             {/* w trakcie przeciągania opis zastępuje grupa docelowa – wysokość wiersza się nie zmienia, więc pasuje do szczeliny */}
             {drag?.from === i && blocks ? (
               <span className="ui-tpl-meta ui-tsl-target">{blockSpot(drag.from, drag.to)}</span>
             ) : drag?.from === i && !blocks ? (
               <span className="ui-tpl-meta ui-tsl-target">{fieldAtEnd && !groupAt(drag.from, drag.to) ? `Trafi na koniec, za „${fields[fields.length - 1]?.label}”` : `Trafi do: ${(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}`}</span>
-            ) : (
+            ) : renderBody ? null : (
               <span className="ui-tpl-meta">{describe(f)}</span>
             )}
           </UnstyledButton>

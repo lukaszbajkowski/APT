@@ -1557,3 +1557,17 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 }
 /* przewijanie w trakcie przeciągania: wiersze i przeciągane pole idą od razu za szczeliną */
 .ui-tsl[data-scrolling] .ui-tsl-row,.ui-tsl[data-scrolling] .ui-tsl-ghead{transition:none}
+/* komputer: lista pól z przeciąganiem jak na telefonie */
+.ui-tpe-plist{min-width:0}
+.ui-tpe-plist .ui-tsl{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);overflow:clip}
+.ui-tpe-plist .ui-tsl-row{padding-right:var(--s-4)}
+.ui-tpe-plist .ui-tsl-handle{width:40px;cursor:grab}
+.ui-tpe-pbody{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr) 104px;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) 0}
+@container tpe (max-width:960px){.ui-tpe-pbody{grid-template-columns:minmax(0,1fr) auto}.ui-tpe-pbody>:nth-child(2){display:none}}
+.ui-tpe-plist .ui-tsl-row:hover:not([data-lifted]){background:color-mix(in srgb,var(--mantine-color-text) 4%,var(--apt-surface))}
+.ui-tpe-plist .ui-tsl-row[data-ingroup]:hover:not([data-lifted]){background:color-mix(in srgb,var(--mantine-color-text) 6%,var(--apt-subtle))}
+.ui-tpe-plist .ui-tsl-row[data-selected]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-surface));box-shadow:inset 3px 0 var(--mantine-primary-color-filled)}
+.ui-tpe-plist .ui-tsl-row[data-selected][data-ingroup]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 18%,var(--apt-surface))}
+.ui-tpe-pbody[data-moved]{animation:ui-tpe-flash .9s ease-out}
+.ui-tpe-plist .ui-tsl-ghead .ui-tsl-ghead-btn{cursor:default}
+.ui-tpe-plist .ui-tpe-pbody{padding:0}

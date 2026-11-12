@@ -139,6 +139,26 @@ export function TemplateEditDesktop({
       </div>
     );
   };
+  // przeciągana grupa – podgląd w szczelinie, w którą trafi
+  const gGhost = (at: string, pos: "before" | "after") => {
+    if (!gdrag || !gover || gover.at !== at || gover.pos !== pos) return null;
+    const n = fields.filter((x) => x.group === gdrag).length;
+    return (
+      <div
+        className="ui-tpe-gghost"
+        aria-hidden
+        onDragOver={(e: DragEvent) => e.preventDefault()}
+        onDrop={(e: DragEvent) => {
+          e.preventDefault();
+          gDrop(e);
+        }}
+      >
+        <IconGripVertical size={14} className="ui-tpe-grip" aria-hidden />
+        <span className="ui-tpl-name">{gdrag}</span>
+        <span className="ui-tpl-meta">{n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`} · tu trafi grupa</span>
+      </div>
+    );
+  };
   const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
   const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
   const moveGroup = (g: string, ins: number) => {
@@ -231,6 +251,7 @@ export function TemplateEditDesktop({
                 {fields.map((f, i) => (
                   <Fragment key={f.key}>
                   {over?.hdr === "out" && over.i === i && ghost(false)}
+                  {gGhost(`h${i}`, "before")}{gGhost(`r${i}`, "before")}
                   {f.group && f.group !== fields[i - 1]?.group && (
                     // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
                     <div
@@ -241,6 +262,9 @@ export function TemplateEditDesktop({
                       draggable={!renaming}
                       onDragStart={(e: DragEvent) => {
                         setGdrag(f.group!);
+                        const blank = new Image();
+                        blank.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                        e.dataTransfer.setDragImage(blank, 0, 0);
                         e.dataTransfer.effectAllowed = "move";
                         e.dataTransfer.setData("text/plain", f.group!);
                       }}
@@ -376,6 +400,7 @@ export function TemplateEditDesktop({
                     <IconChevronRight size={16} className="ui-tpe-grip" aria-hidden />
                   </UnstyledButton>
                   {over && !over.hdr && over.i === i && over.after && ghost(!!f.group)}
+                  {gGhost(`r${i}`, "after")}
                   {f.group && fields[i + 1]?.group !== f.group && (
                     // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
                     <div
@@ -402,6 +427,7 @@ export function TemplateEditDesktop({
                     </div>
                   )}
                   {over?.hdr === "end" && over.i === i + 1 && ghost(false)}
+                  {gGhost(`f${i}`, "after")}
                   </Fragment>
                 ))}
               </Paper>

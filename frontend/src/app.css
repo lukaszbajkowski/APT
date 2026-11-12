@@ -1490,3 +1490,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-ghost{background:color-mix(in srgb,var(--mantine-primary-color-filled) 12%,var(--apt-surface));outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;box-shadow:0 6px 16px rgba(0,0,0,.14);z-index:2}
 @media (prefers-reduced-motion:no-preference){.ui-tpe-ghost{animation:ui-ghost-in .12s ease-out}}
 @keyframes ui-ghost-in{from{opacity:.4;transform:scaleY(.6)}to{opacity:1;transform:none}}
+/* komputer: przeciągana grupa stoi w szczelinie */
+.ui-tpe-list[data-dragging] .ui-tpe-row[data-gdrop]{box-shadow:none}
+.ui-tpe-list[data-dragging] .ui-tpe-ghead[data-drop="out"]:not([data-target]){box-shadow:none}
+.ui-tpe-gghost{display:flex;align-items:center;gap:var(--s-2);margin:var(--s-2);padding:var(--s-4);border:2px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-md);background:color-mix(in srgb,var(--mantine-primary-color-filled) 12%,var(--apt-surface));box-shadow:0 6px 16px rgba(0,0,0,.14)}
+.ui-tpe-gghost .ui-tpl-meta{margin-left:auto}
+@media (prefers-reduced-motion:no-preference){.ui-tpe-gghost{animation:ui-ghost-in .12s ease-out}}

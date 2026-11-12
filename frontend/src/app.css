@@ -1476,3 +1476,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-joinhint{flex:1;font-weight:600;color:var(--mantine-color-text)}
 @media (prefers-reduced-motion:no-preference){.ui-tpe-ghead,.ui-tpe-row[data-ingroup],.ui-tpe-gfoot{transition:background-color .15s,border-color .15s}}
 .ui-tpe-row[data-target]{border-top-color:var(--apt-line)}
+/* telefon: wiersze grupy, do której trafi przeciągane pole */
+.ui-tsl-row[data-target]{border-color:var(--mantine-primary-color-filled);border-left-width:2px;border-right-width:2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
+.ui-tsl-row[data-target][data-gfirst]{border-top-width:2px}
+.ui-tsl-row[data-target][data-glast]{border-bottom-width:2px}
+.ui-tsl-row[data-target]:not([data-gfirst]){border-top-color:var(--apt-line)}

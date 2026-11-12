@@ -749,6 +749,9 @@ export function TouchSortList({
     if (to === from) return fields[from].group ?? null;
     return to > from ? prev : nx;
   };
+  // grupa, do której trafi przeciągane pole (jeśli inna niż jego obecna) – podświetlamy jej wiersze
+  const target = drag && !blocks ? (drag.out ? null : groupAt(drag.from, drag.to)) : null;
+  const joining = target && target !== (fields[drag?.from ?? -1]?.group ?? null) ? target : null;
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
@@ -768,6 +771,7 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}

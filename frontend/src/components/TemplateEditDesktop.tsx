@@ -5,7 +5,7 @@ import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight,
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { Select } from "./AptSelect";
-import { FieldInput, grouped, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
+import { FieldInput, GroupedFields, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
 import { FormDialog, PageTitle, RowMenu, SectionHead } from "./Mobile";
 import { LANGUAGE_OPTIONS } from "../pages/TemplatesPage";
@@ -465,14 +465,15 @@ export function FormPreview({ title, fields, active, onPick, plain }: { title: s
   const hidden = fields.filter((f) => f.collapsed && !f.required);
   const hiddenHas = (k: string) => hidden.some((f) => f.key === k);
   const render = (list: TemplateField[]) =>
-    grouped(list).map(({ f, head }) => (
-      <Fragment key={f.key}>
-        {head && <Text className="ui-field-group">{head}</Text>}
+    <GroupedFields
+      fields={list}
+      cols={1}
+      render={(f) => (
         <div className="ui-pv-field" data-active={f.key === active || undefined} onClickCapture={() => onPick?.(f.key)} title="Kliknij, aby wybrać to pole (edycja: „Edycja pola” u góry)">
           <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
         </div>
-      </Fragment>
-    ));
+      )}
+    />;
   return (
     <Paper withBorder={!plain} radius="md" className={plain ? "ui-pv-plain" : "ui-tpe-panel ui-pv"} ref={box}>
       <div>

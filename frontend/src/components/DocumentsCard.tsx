@@ -1,6 +1,6 @@
 import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog, RowMenu } from "./Mobile";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -298,7 +298,7 @@ function TrashList({ employee }: { employee: Employee }) {
  * Pola „Adres zamieszkania – miasto”, „Adres zamieszkania – ulica”… pod wspólnym nagłówkiem „Adres zamieszkania”,
  * a w polu sama końcówka („Miasto”). Grupa liczy się od 2 kolejnych pól z tym samym początkiem.
  */
-export function grouped(fields: TemplateField[]): { f: TemplateField; head?: string }[] {
+export function grouped(fields: TemplateField[]): { f: TemplateField; head?: string; g?: string }[] {
   // grupa ustawiona w szablonie; stare szablony: wspólny początek etykiety „Grupa – pole” (od 2 kolejnych pól)
   const legacy = (f: TemplateField) => (!f.group && f.label.includes(" – ") ? f.label.split(" – ")[0] : null);
   const groupOf = (f: TemplateField | undefined) => (f ? f.group || legacy(f) : null);
@@ -311,8 +311,42 @@ export function grouped(fields: TemplateField[]): { f: TemplateField; head?: str
     }
     const first = i === 0 || groupOf(fields[i - 1]) !== g;
     const label = f.group ? f.label : f.label.slice(g.length + 3);
-    return { f: { ...f, label: label.charAt(0).toUpperCase() + label.slice(1) }, head: first ? g : undefined };
+    return { f: { ...f, label: label.charAt(0).toUpperCase() + label.slice(1) }, head: first ? g : undefined, g };
   });
+}
+
+/**
+ * Pola formularza z grupami jako zamkniętymi blokami: grupa = ramka z nazwą u góry (fieldset/legend),
+ * pola bez grupy stoją poza ramkami – od razu widać, co należy do grupy, a co nie.
+ */
+export function GroupedFields({ fields, render, cols = 2 }: { fields: TemplateField[]; render: (f: TemplateField) => ReactNode; cols?: 1 | 2 }) {
+  const segs: { head: string | null; items: TemplateField[] }[] = [];
+  for (const { f, head, g } of grouped(fields)) {
+    const last = segs[segs.length - 1];
+    if (head || !last || (last.head ?? null) !== (g ?? null)) segs.push({ head: g ?? null, items: [f] });
+    else last.items.push(f);
+  }
+  const grid = (items: TemplateField[]) => (
+    <SimpleGrid cols={{ base: 1, sm: cols }}>
+      {items.map((f) => (
+        <Fragment key={f.key}>{render(f)}</Fragment>
+      ))}
+    </SimpleGrid>
+  );
+  return (
+    <Stack gap="md">
+      {segs.map((s, i) =>
+        s.head ? (
+          <fieldset key={i} className="ui-fgroup">
+            <legend>{s.head}</legend>
+            {grid(s.items)}
+          </fieldset>
+        ) : (
+          <Fragment key={i}>{grid(s.items)}</Fragment>
+        ),
+      )}
+    </Stack>
+  );
 }
 
 /** Stare etykiety „Adres zamieszkania – Miasto” → grupa „Adres zamieszkania” + etykieta „Miasto”. */
@@ -481,14 +515,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               />
             )}
             {template && template.fields.some((f) => !f.collapsed || f.required) && (
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                {grouped(template.fields.filter((f) => !f.collapsed || f.required)).map(({ f, head }) => (
-                  <Fragment key={f.key}>
-                    {head && <Text className="ui-field-group">{head}</Text>}
-                    <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-                  </Fragment>
-                ))}
-              </SimpleGrid>
+              <GroupedFields fields={template.fields.filter((f) => !f.collapsed || f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
             )}
             {template && template.fields.some((f) => f.collapsed && !f.required) && (
               <>
@@ -504,14 +531,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   {moreFields ? "Ukryj dodatkowe pola" : `Więcej pól (${template.fields.filter((f) => f.collapsed && !f.required).length})`}
                 </Button>
                 <Collapse in={moreFields}>
-                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                    {grouped(template.fields.filter((f) => f.collapsed && !f.required)).map(({ f, head }) => (
-                      <Fragment key={f.key}>
-                        {head && <Text className="ui-field-group">{head}</Text>}
-                        <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-                      </Fragment>
-                    ))}
-                  </SimpleGrid>
+                  <GroupedFields fields={template.fields.filter((f) => f.collapsed && !f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
                 </Collapse>
               </>
             )}

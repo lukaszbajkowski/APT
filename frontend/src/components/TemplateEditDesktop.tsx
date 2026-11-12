@@ -849,6 +849,13 @@ export function TouchSortList({
     // krótko – opis musi zmieścić się w wysokości wiersza
     return b ? `Trafi przed ${b}` : a ? "Trafi na koniec listy" : "";
   };
+  // tryb „całe grupy”: grupa, przed którą (albo na końcu – za którą) stanie przeciągany blok
+  const blockTarget = (() => {
+    if (!drag || !blocks || drag.to === drag.from) return -1;
+    const { from, to } = drag;
+    const next = to < from ? to : to + 1; // indeks w pierwotnej liście
+    return next < fields.length ? next : to < from ? to - 1 : fields.length - 1 === from ? -1 : fields.length - 1;
+  })();
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
@@ -868,7 +875,7 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
-          data-target={(joining && f.group === joining && drag?.from !== i) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && f.key.startsWith("g:")) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}

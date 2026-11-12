@@ -813,17 +813,20 @@ export function TouchSortList({
     // (na granicy grupy pozwala wejść do niej jako pierwsze albo ostatnie pole – z obu kierunków)
     const slotTop = to < s.from ? s.tops[to] : to > s.from ? s.tops[to] + s.hs[to] - s.hs[s.from] : s.tops[s.from];
     let diff = s.tops[s.from] + dy - slotTop;
-    // trzy strefy na granicy grup (około ⅓ wysokości pola każda): górna – grupa wyżej, środek – poza grupami, dolna – grupa niżej
-    const T = Math.max(16, s.hs[s.from] * 0.3);
+    // strefy szczeliny na granicy grupy (cały zakres ruchu między kolejnymi miejscami, ok. wysokości pola):
+    // jedna grupa – górna połowa: pole powyżej, dolna: pole poniżej; dwie różne grupy – trzy części
+    // (koniec grupy wyżej · poza grupami · początek grupy niżej)
+    const rest = fields.filter((_, j) => j !== s.from);
+    const prevG = rest[to - 1]?.group ?? null;
+    const nxG = rest[to]?.group ?? null;
+    const own = fields[s.from].group ?? null;
+    const two = !!prevG && !!nxG && prevG !== nxG;
+    let T = two ? s.hs[s.from] / 6 : 0;
     if (to === s.from) {
-      // pole na swoim miejscu: w spoczynku zostaje w swojej grupie – strefy przesunięte tak, by start wypadał w „jego” strefie
-      const rest = fields.filter((_, j) => j !== s.from);
-      const own = fields[s.from].group ?? null;
-      const prev = rest[to - 1]?.group ?? null;
-      const nx = rest[to]?.group ?? null;
-      // między dwiema grupami: start w strefie własnej grupy (wyjście po ⅓ wysokości, wejście do sąsiedniej po kolejnych ⅔)
-      if (prev && nx && own === prev && own !== nx) diff -= 2 * T;
-      else if (prev && nx && own === nx && own !== prev) diff += 2 * T;
+      // pole na swoim miejscu: w spoczynku zostaje w swojej grupie, zmienia ją dopiero po ruchu o 24 px
+      if (two && own === prevG) diff -= 2 * T + 24;
+      else if (two && own === nxG) diff += 2 * T + 24;
+      else T = Math.max(T, 24);
     }
     const side = diff > T ? 1 : diff < -T ? -1 : 0;
     setDrag({ from: s.from, to, dy, out, side });
@@ -1070,27 +1073,28 @@ export function TouchSortList({
       if (k < rest.length) push(rest[k], fields[rest[k]].group ?? null);
     }
     const natural = (e: (typeof seq)[number]) => (e.t === "r" ? s.btops![e.i] : s.heads![e.g].top);
+    // ostatnie pole każdej grupy w nowym układzie (także przeciągane) – po nim przerwa jak pod ramką grupy
+    const rowsSeq = seq.filter((e): e is { t: "r"; i: number } => e.t === "r").map((e) => e.i);
+    const grpOf = (i: number | undefined) => (i === undefined ? null : i === from ? g : fields[i].group ?? null);
+    const lastIn = new Set<number>();
+    rowsSeq.forEach((i, k) => {
+      const gi = grpOf(i);
+      if (gi && grpOf(rowsSeq[k + 1]) !== gi) lastIn.add(i);
+    });
+    const GAP = 8; // --s-2: dolny margines ramki grupy
     let cur = Math.min(...[...s.btops!.filter((_, i) => i < fields.length), ...Object.values(s.heads!).map((h) => h.top)]);
     const rowY: Record<number, number> = {};
     const headY: Record<string, number> = {};
     for (const e of seq) {
       if (e.t === "r") {
         rowY[e.i] = cur - natural(e);
-        cur += s.hs[e.i] + (e.i === from && spreading ? 2 * SPREAD : 0);
+        cur += s.hs[e.i] - (mbs.current[e.i] ?? 0) + (lastIn.has(e.i) ? GAP : 0) + (e.i === from && spreading ? 2 * SPREAD : 0);
       } else {
         headY[e.g] = cur - natural(e);
         cur += s.heads![e.g].h;
       }
     }
-    // pole, które w trakcie przeciągania staje się ostatnim w swojej grupie – domyka ramkę grupy od dołu
-    const rowsSeq = seq.filter((e): e is { t: "r"; i: number } => e.t === "r").map((e) => e.i);
-    const lastIn = new Set<number>();
-    rowsSeq.forEach((i, k) => {
-      const gi = i === from ? g : fields[i].group ?? null;
-      const nxt = rowsSeq[k + 1];
-      const gn = nxt === undefined ? null : nxt === from ? g : fields[nxt].group ?? null;
-      if (i !== from && gi && gn !== gi) lastIn.add(i);
-    });
+    lastIn.delete(from);
     return { rowY, headY, lastIn };
   })();
 

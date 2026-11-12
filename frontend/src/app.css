@@ -1348,3 +1348,24 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-page:has(.ui-tpl-thumb-skel) .ui-tpl-thumb{position:absolute;inset:0}
 .ui-tpl-page{position:relative}
 @media (prefers-reduced-motion:reduce){.ui-tpl-thumb{transition:none}}
+/* Edycja szablonu (komputer) */
+.ui-tpe{container:tpe/inline-size;display:flex;flex-direction:column;gap:var(--s-4);max-width:1760px;padding-bottom:var(--s-7)}
+.ui-back-link{display:inline-flex;align-items:center;gap:var(--s-1);font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);text-decoration:none;width:fit-content}
+.ui-back-link:hover{color:var(--mantine-color-text)}
+.ui-tpe-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:var(--s-6);align-items:start;margin-top:var(--s-6)}
+@container tpe (max-width:780px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-panel{position:static}}
+.ui-tpe-row{display:grid;grid-template-columns:16px minmax(0,3fr) minmax(0,2fr) auto 16px;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);text-align:left;transition:background-color .15s}
+.ui-tpe-row:first-child{border-top:0}
+.ui-tpe-row:hover{background:var(--mantine-color-default-hover)}
+.ui-tpe-row[data-selected]{background:var(--apt-subtle);box-shadow:inset 3px 0 var(--mantine-primary-color-filled)}
+.ui-tpe-row[data-drag]{opacity:.5}
+.ui-tpe-grip{color:var(--mantine-color-dimmed);cursor:grab}
+.ui-tpe-panel{display:flex;flex-direction:column;gap:var(--s-4);padding:var(--s-6);position:sticky;top:var(--s-4)}
+.ui-tpe-phead{display:flex;justify-content:space-between;gap:var(--s-3);align-items:flex-start}
+.ui-tpe-settings{display:flex;flex-direction:column;gap:var(--s-7);max-width:760px;margin-top:var(--s-6)}
+.ui-tpe-settings .ui-dsec{gap:var(--s-4)}
+.ui-tpe-copy{width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 16px;text-align:left}
+.ui-tpe-copy:hover{background:var(--mantine-color-default-hover)}
+.ui-tpe-cheat{max-height:560px;overflow:auto}
+.ui-tpe-save{position:sticky;bottom:var(--s-4);display:flex;justify-content:space-between;align-items:center;gap:var(--s-4);padding:var(--s-3) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);box-shadow:0 -4px 24px rgba(0,0,0,.08);margin-top:var(--s-4);z-index:5}
+@container tpe (max-width:960px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) auto 16px}.ui-tpe-row > :nth-child(3){display:none}}

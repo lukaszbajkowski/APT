@@ -48,7 +48,7 @@ function OptionsMobile({ field, onChange }: { field: TemplateField; onChange: (f
   );
 }
 
-const TYPES: { value: FieldType; label: string }[] = [
+export const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: "text", label: "Tekst" },
   { value: "textarea", label: "Tekst wielowierszowy" },
   { value: "date", label: "Data" },
@@ -175,7 +175,7 @@ export function FieldsEditor({
                 <Select
                   size="md"
                   label="Typ"
-                  data={TYPES}
+                  data={FIELD_TYPES}
                   allowDeselect={false}
                   value={f.type}
                   onChange={(v) => v && update(i, { ...f, type: v as FieldType, ...(v !== "text" ? { format: null, pattern: null } : {}) })}
@@ -303,7 +303,7 @@ export function FieldsEditor({
               <Select
                 size="xs"
                 label="Typ"
-                data={TYPES}
+                data={FIELD_TYPES}
                 allowDeselect={false}
                 value={f.type}
                 onChange={(v) =>

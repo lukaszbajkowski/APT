@@ -7,14 +7,14 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
 function blocksOf(fields: TemplateField[]): TemplateField[][] {
@@ -226,9 +226,19 @@ export function TemplateEditPage() {
                       )
                     }
                     groupActions={(g) => (
-                      <Button variant="subtle" size="sm" onClick={() => setEditGroup(g)}>
-                        Zmień pola
-                      </Button>
+                      <>
+                        {/* przesunięcie grupy bez przeciągania (WCAG 2.5.7); „Zmień pola” też w menu – nazwa grupy ma miejsce */}
+                        <RowMenu
+                          label={`Grupa ${g}`}
+                          items={[
+                            { label: "Przesuń grupę wyżej", icon: <IconArrowUp size={16} />, onClick: () => { setFields(moveGroupBy(fields, g, -1)); announce(`Grupa ${g} przeniesiona wyżej`); } },
+                            { label: "Przesuń grupę niżej", icon: <IconArrowDown size={16} />, onClick: () => { setFields(moveGroupBy(fields, g, 1)); announce(`Grupa ${g} przeniesiona niżej`); } },
+                            { label: "Zmień nazwę", onClick: () => { setRenaming({ from: g, value: g }); renameAt.current = Date.now(); } },
+                            { label: "Zmień pola", onClick: () => setEditGroup(g) },
+                          ]}
+                          danger={{ label: "Rozgrupuj", onClick: () => setFields(fields.map((x) => (x.group === g ? { ...x, group: null } : x))) }}
+                        />
+                      </>
                     )}
                     onMoveGroup={(from, to) => {
                       const bs = blocksOf(fields);

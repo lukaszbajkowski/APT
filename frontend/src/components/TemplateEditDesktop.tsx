@@ -205,6 +205,8 @@ export function TemplateEditDesktop({
                     <RowMenu
                       label={`Grupa ${g}`}
                       items={[
+                        { label: "Przesuń grupę wyżej", icon: <IconArrowUp size={16} />, onClick: () => { set({ fields: moveGroupBy(fields, g, -1) }); announce(`Grupa ${g} przeniesiona wyżej`); } },
+                        { label: "Przesuń grupę niżej", icon: <IconArrowDown size={16} />, onClick: () => { set({ fields: moveGroupBy(fields, g, 1) }); announce(`Grupa ${g} przeniesiona niżej`); } },
                         { label: "Zmień nazwę", onClick: () => setRenaming({ from: g, value: g }) },
                         { label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: g }) },
                       ]}
@@ -508,6 +510,22 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
   );
 }
 
+/** Jeden wspólny komunikat statusu dla czytnika ekranu (aria-live), np. po zmianie kolejności pól. */
+export function announce(msg: string) {
+  let el = document.getElementById("apt-live");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "apt-live";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.className = "ui-sr-only";
+    document.body.appendChild(el);
+  }
+  el.textContent = "";
+  const node = el;
+  requestAnimationFrame(() => (node.textContent = msg));
+}
+
 /**
  * Lista pól na telefonie z przeciąganiem palcem za uchwyt ⋮⋮ (zdarzenia wskaźnika – działa na dotyk i myszą).
  * Przeciągany wiersz unosi się, pozostałe płynnie się rozsuwają; przy krawędzi ekranu lista sama się przewija.
@@ -571,6 +589,38 @@ export function TouchSortList({
       frame.current.id = null;
       fn(frame.current.y);
     });
+  };
+  // —— klawiatura na uchwycie: ↑/↓ o jedno miejsce; na granicy grupy pole do niej wchodzi albo z niej wychodzi ——
+  const refocus = (key: string) =>
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-handle="${CSS.escape(key)}"]`)?.focus());
+  const keyStep = (i: number, dir: -1 | 1) => {
+    const f = fields[i];
+    const nb = fields[i + dir];
+    if (!f) return;
+    const g = f.group ?? null;
+    const ng = nb?.group ?? null;
+    let to = i;
+    let group: string | null = g;
+    if (g && ng !== g) group = null; // wyjście z grupy (pole jest na jej brzegu)
+    else if (!nb) return;
+    else if (!g && ng) group = ng; // wejście do grupy obok
+    else to = i + dir;
+    onMove(i, to, group);
+    refocus(f.key);
+    announce(`${f.label || "Pole"}: pozycja ${to + 1} z ${fields.length}, ${group ? `grupa ${group}` : "bez grupy"}`);
+  };
+  const gKeyStep = (g: string, dir: -1 | 1) => {
+    const blocks: { g: string | null }[] = [];
+    fields.forEach((f) => {
+      const last = blocks[blocks.length - 1];
+      if (!(f.group && last && last.g === f.group)) blocks.push({ g: f.group ?? null });
+    });
+    const from = blocks.findIndex((b) => b.g === g);
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= blocks.length) return;
+    onMoveGroup?.(from, to);
+    refocus(`g:${g}`);
+    announce(`Grupa ${g} przeniesiona ${dir < 0 ? "wyżej" : "niżej"}`);
   };
   // —— przeciąganie całej grupy za nagłówek ——
   const heads = useRef<Record<string, HTMLDivElement | null>>({});
@@ -660,7 +710,11 @@ export function TouchSortList({
     const d = gd;
     gst.current = null;
     setGd(null);
-    if (d && d.to !== d.from) onMoveGroup?.(d.from, d.to);
+    if (d && d.to !== d.from) {
+      onMoveGroup?.(d.from, d.to);
+      const g = blockList[d.from]?.g;
+      if (g) announce(`Grupa ${g} przeniesiona`);
+    }
   };
   // przesunięcie bloku b w trakcie przeciągania grupy (przeciągana grupa stoi w szczelinie)
   const gShift = (b: number) => {
@@ -753,7 +807,10 @@ export function TouchSortList({
         return;
       }
       const g = d.out ? null : groupAt(d.from, d.to);
-      if (d.to !== d.from || g !== (fields[d.from].group ?? null)) onMove(d.from, d.to, g);
+      if (d.to !== d.from || g !== (fields[d.from].group ?? null)) {
+        onMove(d.from, d.to, g);
+        announce(`${fields[d.from].label || "Pole"}: pozycja ${d.to + 1} z ${fields.length}, ${g ? `grupa ${g}` : "bez grupy"}`);
+      }
     }
   };
   // grupa po upuszczeniu: jeśli sąsiedzi są w tej samej grupie – ta grupa; na granicy – grupa, w którą się wjeżdża
@@ -836,7 +893,14 @@ export function TouchSortList({
               className="ui-tsl-handle"
               role="button"
               tabIndex={0}
-              aria-label={`Przeciągnij całą grupę ${f.group}`}
+              aria-label={`Grupa ${f.group}: przeciągnij albo użyj strzałek w górę i w dół`}
+              title="Przeciągnij albo użyj strzałek ↑ ↓"
+              data-handle={`g:${f.group}`}
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                e.preventDefault();
+                gKeyStep(f.group!, e.key === "ArrowUp" ? -1 : 1);
+              }}
               onPointerDown={(e) => gStart(f.group!, e)}
               onPointerMove={(e) => gst.current && onFrame(e.clientY, gUpdate)}
               onPointerUp={gEnd}
@@ -885,7 +949,14 @@ export function TouchSortList({
             className="ui-tsl-handle"
             role="button"
             tabIndex={0}
-            aria-label={`Przeciągnij, aby zmienić kolejność: ${f.label}`}
+            aria-label={`${f.label || "Pole"}: przeciągnij albo użyj strzałek w górę i w dół`}
+            title="Przeciągnij albo użyj strzałek ↑ ↓"
+            data-handle={f.key}
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+              e.preventDefault();
+              keyStep(i, e.key === "ArrowUp" ? -1 : 1);
+            }}
             onPointerDown={(e) => start(i, e)}
             onPointerMove={(e) => st.current && onFrame(e.clientY, update)}
             onPointerUp={end}

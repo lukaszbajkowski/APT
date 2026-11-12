@@ -1362,7 +1362,6 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe-row[data-selected]{background:var(--apt-subtle);box-shadow:inset 3px 0 var(--mantine-primary-color-filled)}
 /* przeciąganie: wyraźnie „uniesiony” wiersz, linia w miejscu upuszczenia, błysk po przeniesieniu */
 .ui-tpe-row[data-drag]{opacity:.45;background:var(--apt-subtle);outline:2px dashed var(--mantine-primary-color-filled);outline-offset:-2px}
-.ui-tpe-list[data-dragging] .ui-tpe-row{cursor:grabbing}
 .ui-tpe-row[data-drop]::after{content:"";position:absolute;left:var(--s-2);right:var(--s-2);height:4px;border-radius:2px;background:var(--mantine-primary-color-filled);box-shadow:0 0 0 3px var(--apt-surface);z-index:2;pointer-events:none}
 .ui-tpe-row[data-drop="before"]::after{top:-2px}
 .ui-tpe-row[data-drop="after"]::after{bottom:-2px}
@@ -1433,26 +1432,16 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 *:has(> .mantine-Button-root:not([data-size="xs"])) > .ui-rowmenu,
 *:has(> * > .mantine-Button-root:not([data-size="xs"])) > .ui-rowmenu,
 .ui-inbox-head .ui-rowmenu { --ai-size: 36px !important; width: 36px; height: 36px; }
-.ui-tpe-group{display:inline-block;margin-right:var(--s-2);padding:0 var(--s-2);border-radius:6px;background:var(--apt-subtle);color:var(--mantine-color-text);font-weight:600}
 .ui-tpe-hint{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3);flex-wrap:wrap;margin-top:var(--s-6);padding:var(--s-3) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
-.ui-tpe-ghead{display:flex;justify-content:space-between;gap:var(--s-3);padding:var(--s-3) var(--s-4) var(--s-2);font-size:var(--mantine-font-size-xs);font-weight:600;color:var(--mantine-color-dimmed);background:var(--apt-subtle);border-top:1px solid var(--apt-line);position:relative}
-.ui-tpe-ghead[data-drop="in"]{box-shadow:inset 0 -2px 0 var(--mantine-primary-color-filled)}
-.ui-tpe-ghead[data-drop="out"]{box-shadow:inset 0 2px 0 var(--mantine-primary-color-filled)}
 .ui-tpe-row[data-ingroup],.ui-tsl-row[data-ingroup]{box-shadow:inset 3px 0 0 var(--apt-line-strong,var(--apt-line))}
 .ui-tpe-row[data-ingroup]{padding-left:var(--s-6)}
 .ui-tsl-target{display:inline-block;margin-top:var(--s-1);width:fit-content}
 .ui-tpe-tools{display:flex;justify-content:flex-end;margin:var(--s-5) 0 calc(-1 * var(--s-3))}
-.ui-tpe-ghead-end{display:inline-flex;align-items:center;gap:var(--s-2)}
-.ui-tpe-ghead .ui-rowmenu{--ai-size:24px;width:24px;height:24px;min-height:24px}
 .ui-group-pick{display:grid;gap:var(--s-3);margin-top:var(--s-2)}
 .ui-tpe-endzone{margin:var(--s-2);padding:var(--s-4);border:1px dashed var(--apt-line);border-radius:var(--mantine-radius-md);text-align:center;font-size:var(--mantine-font-size-sm);color:var(--mantine-color-dimmed)}
 .ui-tpe-endzone[data-drop]{border-color:var(--mantine-primary-color-filled);color:var(--mantine-color-text);background:var(--apt-subtle)}
 /* grupa jako zamknięty blok: nagłówek, wcięte pola na tle, stopka „Koniec grupy” */
-.ui-tpe-ghead{margin:var(--s-2) var(--s-2) 0;border:1px solid var(--apt-line);border-bottom:0;border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
 .ui-tpe-row[data-ingroup]{margin:0 var(--s-2);border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line);box-shadow:none;background:var(--apt-subtle)}
-.ui-tpe-gfoot{margin:0 var(--s-2) var(--s-2);padding:var(--s-1) var(--s-4);border:1px solid var(--apt-line);border-top:1px dashed var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md);background:var(--apt-subtle);font-size:var(--mantine-font-size-xs);color:var(--mantine-color-dimmed)}
-.ui-tpe-list[data-dragging] .ui-tpe-gfoot{padding:var(--s-3) var(--s-4)}
-.ui-tpe-gfoot[data-drop]{border-color:var(--mantine-primary-color-filled);color:var(--mantine-color-text)}
 .ui-tsl-row[data-ingroup]{margin:0 var(--s-2);border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line);box-shadow:none;background:var(--apt-subtle)}
 .ui-tsl-row[data-gfirst]{margin-top:var(--s-2);border-top:1px solid var(--apt-line);border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
 .ui-tsl-row[data-glast]{margin-bottom:var(--s-2);border-bottom:1px solid var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
@@ -1460,9 +1449,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* grupa pól w formularzu: zamknięta ramka z nazwą na krawędzi */
 .ui-fgroup{margin:0;min-width:0;padding:var(--s-3) var(--s-4) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-fgroup>legend{padding:0 var(--s-2);margin-left:calc(-1 * var(--s-2));font-size:var(--mantine-font-size-sm);font-weight:600;color:var(--mantine-color-text)}
-.ui-tpe-ghead[draggable="true"]{cursor:grab}
-.ui-tpe-ghead-name{display:inline-flex;align-items:center;gap:var(--s-2);min-width:0}
-.ui-tpe-ghead[data-gdrag]{opacity:.5}
 .ui-tpe-row[data-gdrop="before"]{box-shadow:inset 0 2px 0 var(--mantine-primary-color-filled)}
 .ui-tpe-row[data-gdrop="after"]{box-shadow:inset 0 -2px 0 var(--mantine-primary-color-filled)}
 .ui-mgroup{display:flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
@@ -1471,12 +1457,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* wcięte pola grupy mieszczą się w ramce grupy (nie wystają za prawą krawędź) */
 .ui-tpe-row[data-ingroup]{width:calc(100% - 2 * var(--s-2))}
 /* pole przeciągane nad grupą: cała ramka grupy w kolorze akcji – widać, do której grupy trafi */
-.ui-tpe-ghead[data-target],.ui-tpe-row[data-target],.ui-tpe-gfoot[data-target]{border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
-.ui-tpe-ghead[data-target]{border-width:2px 2px 0}
+.ui-tpe-row[data-target]{border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
 .ui-tpe-row[data-target]{border-left-width:2px;border-right-width:2px}
-.ui-tpe-gfoot[data-target]{border-width:0 2px 2px}
-.ui-tpe-joinhint{flex:1;font-weight:600;color:var(--mantine-color-text)}
-@media (prefers-reduced-motion:no-preference){.ui-tpe-ghead,.ui-tpe-row[data-ingroup],.ui-tpe-gfoot{transition:background-color .15s,border-color .15s}}
+@media (prefers-reduced-motion:no-preference){.ui-tpe-row[data-ingroup]{transition:background-color .15s,border-color .15s}}
 .ui-tpe-row[data-target]{border-top-color:var(--apt-line)}
 /* telefon: wiersze grupy, do której trafi przeciągane pole */
 .ui-tsl-row[data-target]{border-color:var(--mantine-primary-color-filled);border-left-width:2px;border-right-width:2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
@@ -1488,25 +1471,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (prefers-reduced-motion:no-preference){.ui-tsl-row[data-lifted]{transition:transform .12s ease-out,scale .15s}}
 .ui-tsl-target{font-weight:600;color:var(--mantine-color-text)}
 /* komputer: przeciągane pole stoi w szczelinie (zamiast linii) */
-.ui-tpe-list[data-dragging] .ui-tpe-row[data-drop]::after{display:none}
-.ui-tpe-ghost{background:color-mix(in srgb,var(--mantine-primary-color-filled) 12%,var(--apt-surface));outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;box-shadow:0 6px 16px rgba(0,0,0,.14);z-index:2}
-@media (prefers-reduced-motion:no-preference){.ui-tpe-ghost{animation:ui-ghost-in .12s ease-out}}
 @keyframes ui-ghost-in{from{opacity:.4;transform:scaleY(.6)}to{opacity:1;transform:none}}
 /* komputer: przeciągana grupa stoi w szczelinie */
-.ui-tpe-list[data-dragging] .ui-tpe-row[data-gdrop]{box-shadow:none}
-.ui-tpe-list[data-dragging] .ui-tpe-ghead[data-drop="out"]:not([data-target]){box-shadow:none}
-.ui-tpe-gghost{display:flex;align-items:center;gap:var(--s-2);margin:var(--s-2);padding:var(--s-4);border:2px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-md);background:color-mix(in srgb,var(--mantine-primary-color-filled) 12%,var(--apt-surface));box-shadow:0 6px 16px rgba(0,0,0,.14)}
-.ui-tpe-gghost .ui-tpl-meta{margin-left:auto}
-@media (prefers-reduced-motion:no-preference){.ui-tpe-gghost{animation:ui-ghost-in .12s ease-out}}
 /* telefon, tryb „całe grupy”: przeciągana grupa w ramce koloru akcji */
 .ui-tsl-row[data-lifted][data-block]{scale:1;outline:none;border:2px solid var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-md);background:color-mix(in srgb,var(--mantine-primary-color-filled) 16%,var(--apt-surface));box-shadow:0 8px 16px rgba(0,0,0,.18)}
 .ui-tsl-row[data-lifted]{overflow:hidden}
 /* lista na telefonie jako kolumna flex: marginesy bloków się nie nakładają, więc przesunięcia przy przeciąganiu są dokładne */
 .ui-tsl{display:flex;flex-direction:column}
 /* komputer: lista pól jako kolumna flex – odstępy wokół grup (i szczeliny przeciąganej grupy) się nie nakładają, tak jak na telefonie */
-.ui-tpe-list{display:flex;flex-direction:column}
-.ui-tpe-list>.ui-tpe-row:not([data-ingroup]){width:100%}
-.ui-tpe-gghost{margin:var(--s-3) var(--s-2)}
 .ui-tsl-row[data-block][data-target]{border-width:2px;border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
 /* cel na końcu listy, gdy ostatni jest pole bez grupy */
 .ui-tsl-row[data-target]:not([data-ingroup]):not([data-block]),.ui-tpe-row[data-target]:not([data-ingroup]){outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-surface))}
@@ -1531,8 +1503,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-gname{display:block;width:100%;font-size:16px;line-height:22px;font-weight:600}
 .ui-tpe-gname-input{margin-left:calc(-1 * var(--s-1))}
 /* komputer: szczelina przeciąganego pola trochę większa niż samo pole */
-.ui-tpe-ghost{margin-top:var(--s-1);margin-bottom:var(--s-1)}
-.ui-tpe-gghost{margin-top:var(--s-4);margin-bottom:var(--s-4)}
 /* podświetlenia w trakcie przeciągania nie zmieniają wysokości (grubsza krawędź góra/dół – cieniem, nie obramowaniem) */
 .ui-tsl-row[data-target][data-gfirst]{border-top-width:1px}
 .ui-tsl-row[data-target][data-glast]{border-bottom-width:1px;box-shadow:inset 0 -1px 0 var(--mantine-primary-color-filled)}
@@ -1540,14 +1510,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-ghead[data-lifted]{border-top-width:1px}
 .ui-tsl-row[data-glifted][data-glast]{border-bottom-width:1px}
 /* komputer: zamiast odstępów wokół szczeliny pole w szczelinie jest o 8 px wyższe (jak na telefonie) */
-.ui-tpe-ghost{margin-top:0;margin-bottom:0;padding-top:calc(var(--s-3) + var(--s-1));padding-bottom:calc(var(--s-3) + var(--s-1))}
 /* komputer: blok przeciąganej grupy wyższy w szczelinie zamiast dodatkowych odstępów */
-.ui-tpe-gghost{margin-top:var(--s-2);margin-bottom:var(--s-2);padding-top:calc(var(--s-4) + var(--s-1));padding-bottom:calc(var(--s-4) + var(--s-1))}
 /* komputer: między grupami (i szczeliną przeciąganej grupy a grupą) 8 px, jak między polem a grupą – marginesy się nie sumują */
-.ui-tpe-gfoot+.ui-tpe-ghead,.ui-tpe-gfoot+.ui-tpe-gghost,.ui-tpe-gghost+.ui-tpe-ghead{margin-top:0}
 /* płynność przeciągania: warstwy kompozytora dla przesuwanych elementów */
 .ui-tsl[data-dragging] .ui-tsl-row,.ui-tsl[data-dragging] .ui-tsl-ghead{will-change:transform}
-.ui-tpe-list[data-dragging] [data-flip]{will-change:transform}
 @container tpe (max-width:780px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) auto 16px}}
 /* niski ekran (telefon w poziomie): więcej miejsca na listę pól */
 @media (orientation:landscape) and (max-height:500px){
@@ -1571,3 +1537,13 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-pbody[data-moved]{animation:ui-tpe-flash .9s ease-out}
 .ui-tpe-plist .ui-tsl-ghead .ui-tsl-ghead-btn{cursor:default}
 .ui-tpe-plist .ui-tpe-pbody{padding:0}
+
+/* tekst tylko dla czytnika ekranu */
+.ui-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* ograniczone animacje: nagłówek grupy i mignięcie po przeniesieniu też bez ruchu */
+@media (prefers-reduced-motion:reduce){.ui-tsl-ghead{transition:none}.ui-tpe-pbody[data-moved]{animation:none}}
+/* iPhone: podwójne dotknięcie nazwy grupy nie powiększa strony */
+.ui-tsl-ghead-btn{touch-action:manipulation}
+/* telefon: „⋯” w nagłówku grupy – cel 44×44 */
+.ui-tsl:not(.ui-tpe-plist .ui-tsl) .ui-tsl-ghead .ui-rowmenu{--ai-size:44px !important;width:44px;height:44px}
+.ui-tsl-ghead{gap:var(--s-1)}

@@ -97,6 +97,10 @@ export function TemplateEditDesktop({
       cancelAnimationFrame(raf);
     };
   }, [drag]);
+  // grupa, do której trafi przeciągane pole – podświetlamy całą jej ramkę
+  const dropGroup: string | null | undefined =
+    drag === null || !over ? undefined : over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : (fields[over.i]?.group ?? null);
+  const joining = dropGroup && dropGroup !== fields[drag ?? -1]?.group ? dropGroup : null;
   const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
   const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
   const moveGroup = (g: string, ins: number) => {
@@ -194,6 +198,7 @@ export function TemplateEditDesktop({
                       className="ui-tpe-ghead"
                       data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : gover?.at === `h${i}` ? "out" : undefined}
                       data-gdrag={gdrag === f.group || undefined}
+                      data-target={joining === f.group || undefined}
                       draggable={!renaming}
                       onDragStart={(e: DragEvent) => {
                         setGdrag(f.group!);
@@ -245,6 +250,7 @@ export function TemplateEditDesktop({
                           </span>
                         )}
                       </span>
+                      {joining === f.group && <span className="ui-tpe-joinhint">Upuść, aby dodać do tej grupy</span>}
                       <span className="ui-tpe-ghead-end">
                         {fields.filter((x) => x.group === f.group).length}
                         <RowMenu
@@ -277,6 +283,7 @@ export function TemplateEditDesktop({
                       e.dataTransfer.setData("text/plain", f.key);
                     }}
                     data-gdrop={gover?.at === `r${i}` ? gover.pos : undefined}
+                    data-target={(f.group && joining === f.group) || undefined}
                     onDragOver={(e: DragEvent) => {
                       if (gdrag) {
                         if (f.group === gdrag) return;
@@ -328,6 +335,7 @@ export function TemplateEditDesktop({
                     // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
                     <div
                       className="ui-tpe-gfoot"
+                      data-target={joining === f.group || undefined}
                       data-drop={(over?.hdr === "end" && over.i === i + 1 && drag !== null) || gover?.at === `f${i}` ? "end" : undefined}
                       onDragOver={(e: DragEvent) => {
                         if (gdrag) return gdrag === f.group ? undefined : gTarget(e, i + 1, `f${i}`, "after");

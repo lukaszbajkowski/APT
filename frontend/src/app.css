@@ -1468,3 +1468,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-row[data-block]{margin:var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
 /* wcięte pola grupy mieszczą się w ramce grupy (nie wystają za prawą krawędź) */
 .ui-tpe-row[data-ingroup]{width:calc(100% - 2 * var(--s-2))}
+/* pole przeciągane nad grupą: cała ramka grupy w kolorze akcji – widać, do której grupy trafi */
+.ui-tpe-ghead[data-target],.ui-tpe-row[data-target],.ui-tpe-gfoot[data-target]{border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
+.ui-tpe-ghead[data-target]{border-width:2px 2px 0}
+.ui-tpe-row[data-target]{border-left-width:2px;border-right-width:2px}
+.ui-tpe-gfoot[data-target]{border-width:0 2px 2px}
+.ui-tpe-joinhint{flex:1;font-weight:600;color:var(--mantine-color-text)}
+@media (prefers-reduced-motion:no-preference){.ui-tpe-ghead,.ui-tpe-row[data-ingroup],.ui-tpe-gfoot{transition:background-color .15s,border-color .15s}}
+.ui-tpe-row[data-target]{border-top-color:var(--apt-line)}

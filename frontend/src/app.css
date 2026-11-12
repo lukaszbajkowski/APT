@@ -1501,3 +1501,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-row[data-lifted]{overflow:hidden}
 /* lista na telefonie jako kolumna flex: marginesy bloków się nie nakładają, więc przesunięcia przy przeciąganiu są dokładne */
 .ui-tsl{display:flex;flex-direction:column}
+/* komputer: lista pól jako kolumna flex – odstępy wokół grup (i szczeliny przeciąganej grupy) się nie nakładają, tak jak na telefonie */
+.ui-tpe-list{display:flex;flex-direction:column}
+.ui-tpe-list>.ui-tpe-row:not([data-ingroup]){width:100%}
+.ui-tpe-gghost{margin:var(--s-3) var(--s-2)}

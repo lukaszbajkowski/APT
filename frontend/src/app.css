@@ -1525,6 +1525,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-row[data-selected]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-surface))}
 .ui-tpe-row[data-ingroup]:hover:not([data-selected]){background:color-mix(in srgb,var(--mantine-color-text) 6%,var(--apt-subtle))}
 .ui-tpe-row[data-ingroup][data-selected]{box-shadow:inset 3px 0 var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 18%,var(--apt-surface))}
-/* telefon: 16 px, żeby iOS nie powiększał strony przy wpisywaniu; wysokość wiersza jak w nazwie (22 px) */
-.ui-tsl-gname{display:block;width:100%;font-size:16px;line-height:22px;font-weight:600}
+/* telefon: rozmiar i wysokość wiersza jak w nazwie (15/22) – nagłówek nie zmienia wysokości */
+.ui-tsl-gname{display:block;width:100%;font-size:15px;line-height:22px;font-weight:600}
 .ui-tpe-gname-input{margin-left:calc(-1 * var(--s-1))}

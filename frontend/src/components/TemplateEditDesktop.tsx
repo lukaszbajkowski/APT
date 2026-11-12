@@ -1,5 +1,6 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { flushSync } from "react-dom";
 import { notifications } from "@mantine/notifications";
 import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical, IconPlus } from "@tabler/icons-react";
@@ -868,9 +869,13 @@ export function TouchSortList({
     const moved = s.y - s.startY;
     const v =
       s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;
+    // w trakcie przewijania bez animacji przesuwania – inaczej przeciągane pole goni szczelinę i zostaje w tyle
+    const list = scroller.current?.querySelector<HTMLElement>(".ui-tsl") ?? document.querySelector<HTMLElement>(".ui-tsl");
+    if (list) list.toggleAttribute("data-scrolling", !!v);
     if (v) {
       scrollBy(v);
-      gUpdate(s.y);
+      // przeliczenie w tej samej klatce co przewinięcie – szczelina nie zostaje o klatkę w tyle za listą
+      flushSync(() => gUpdate(s.y));
     }
     raf.current = requestAnimationFrame(gAuto);
   };
@@ -892,12 +897,12 @@ export function TouchSortList({
         hs.push(64);
         return;
       }
-      const top = first.getBoundingClientRect().top - parseFloat(getComputedStyle(first).marginTop) + scrollTop();
-      const bottom = last.getBoundingClientRect().bottom + parseFloat(getComputedStyle(last).marginBottom) + scrollTop();
+      const top = first.offsetTop - parseFloat(getComputedStyle(first).marginTop);
+      const bottom = last.offsetTop + last.offsetHeight + parseFloat(getComputedStyle(last).marginBottom);
       tops.push(top);
       hs.push(bottom - top);
     });
-    inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     const from = blockList.findIndex((b) => b.g === g);
     gst.current = { from, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
@@ -906,6 +911,7 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(gAuto);
   };
   const gEnd = () => {
+    document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
     if (raf.current) cancelAnimationFrame(raf.current);
@@ -958,9 +964,13 @@ export function TouchSortList({
     // im bliżej krawędzi, tym szybciej (4–20 px na klatkę)
     const v =
       s.y < edge && moved < -12 ? -Math.min(20, 4 + Math.round((edge - s.y) / 4)) : s.y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((s.y - bottom) / 4)) : 0;
+    // w trakcie przewijania bez animacji przesuwania – inaczej przeciągane pole goni szczelinę i zostaje w tyle
+    const list = scroller.current?.querySelector<HTMLElement>(".ui-tsl") ?? document.querySelector<HTMLElement>(".ui-tsl");
+    if (list) list.toggleAttribute("data-scrolling", !!v);
     if (v) {
       scrollBy(v);
-      update(s.y);
+      // przeliczenie w tej samej klatce co przewinięcie – szczelina nie zostaje o klatkę w tyle za listą
+      flushSync(() => update(s.y));
     }
     raf.current = requestAnimationFrame(autoscroll);
   };
@@ -971,7 +981,8 @@ export function TouchSortList({
     while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
     scroller.current = el;
     rows.current.length = fields.length; // po zmianie listy (np. tryb „całe grupy”) zostają odwołania do starych wierszy
-    const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + scrollTop() : 0));
+    // pozycja w liście (offsetTop) – bez wpływu przewijania i transformacji; ruch palca liczymy osobno (z poprawką na przewinięcie)
+    const tops = rows.current.map((r) => (r ? r.offsetTop : 0));
     // wysokość razem z marginesami (bloki grup mają odstępy) – inaczej po przesunięciu zostaje pasek tła
     const outer = (r: HTMLDivElement | null) => {
       if (!r) return 64;
@@ -979,7 +990,7 @@ export function TouchSortList({
       return r.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
     };
     const hs = rows.current.map(outer);
-    inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setDrag({ from: i, to: i, dy: 0 });
@@ -987,6 +998,7 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(autoscroll);
   };
   const end = () => {
+    document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
     if (raf.current) cancelAnimationFrame(raf.current);
@@ -1027,6 +1039,9 @@ export function TouchSortList({
     const after = to < from ? to : to + 1;
     if (to !== from && after < fields.length && after !== from)
       return st0.tops[after] + shift(after) - (inner.current[from] + 2 * SPREAD) - st0.tops[from];
+    // koniec listy (nie ma wiersza pod szczeliną): tuż pod ostatnim wierszem, po jego przesunięciu
+    const last = to > from && after >= fields.length ? fields.length - 1 : -1;
+    if (last >= 0 && last !== from) return st0.tops[last] + shift(last) + inner.current[last] + (mbs.current[last] ?? 0) - st0.tops[from];
     const top = to > from ? st0.tops[to] + st0.hs[to] - st0.hs[from] : st0.tops[to];
     return top - st0.tops[from];
   };

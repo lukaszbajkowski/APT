@@ -1555,3 +1555,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   .ui-inpage .ui-chat-compose{padding-top:var(--s-1);padding-bottom:var(--s-1)}
   .ui-tpe-save{position:static}
 }
+/* przewijanie w trakcie przeciągania: wiersze i przeciągane pole idą od razu za szczeliną */
+.ui-tsl[data-scrolling] .ui-tsl-row,.ui-tsl[data-scrolling] .ui-tsl-ghead{transition:none}

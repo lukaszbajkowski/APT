@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import { Alert, Button, Drawer, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
+import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
 import { GroupDialog, CanvasField, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
@@ -14,7 +14,7 @@ import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, StatusBadge, PageLoading } from "../components/Mobile";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
 function blocksOf(fields: TemplateField[]): TemplateField[][] {
@@ -146,15 +146,12 @@ export function TemplateEditPage() {
             {error}
           </Alert>
         )}
-        <Segments
-          value={mtab}
-          onChange={setMtab}
-          items={[
-            { value: "fields", label: `Formularz ${fields.length}` },
-            { value: "settings", label: "Ustawienia" },
-            { value: "tags", label: "Znaczniki" },
-          ]}
-        />
+        {/* Ustawienia i Znaczniki są rzadko używane – trafiają do „⋯” obok „Nowa grupa”; tu tylko powrót */}
+        {mtab !== "fields" && (
+          <UnstyledButton className="ui-text-action ui-back-link" onClick={() => setMtab("fields")}>
+            <IconArrowLeft size={16} aria-hidden /> Formularz
+          </UnstyledButton>
+        )}
 
         {mtab === "fields" && (
           <>
@@ -173,9 +170,18 @@ export function TemplateEditPage() {
                   </div>
                 )}
                 <Section title="Formularz" plain>
-                  <Button variant="default" fullWidth mb="sm" onClick={() => setGroupOpen(true)}>
-                    Nowa grupa
-                  </Button>
+                  <Group gap="xs" mb="sm" wrap="nowrap">
+                    <Button variant="default" style={{ flex: 1 }} onClick={() => setGroupOpen(true)}>
+                      Nowa grupa
+                    </Button>
+                    <RowMenu
+                      label="Więcej: ustawienia szablonu i znaczniki"
+                      items={[
+                        { label: "Ustawienia szablonu", onClick: () => setMtab("settings") },
+                        { label: "Znaczniki w pliku", onClick: () => setMtab("tags") },
+                      ]}
+                    />
+                  </Group>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
                   <TouchSortList
                     fields={fields}
@@ -317,14 +323,20 @@ export function TemplateEditPage() {
         )}
 
         {/* edycja jednego pola: panel od dołu; kolejność przyciskami (przeciąganie palcem na liście bywa zawodne) */}
-        <FormDialog
+        {/* edycja pola: arkusz od dołu – formularz zostaje widoczny nad nim */}
+        <Drawer
           opened={editIdx !== null}
           onClose={() => setEditIdx(null)}
-          title={ef?.label || "Pole"}
-          subtitle={ef ? `{{ ${ef.key} }}` : undefined}
-          primary={{ label: "Gotowe", onClick: () => setEditIdx(null) }}
-          cancel={false}
-          dirty={false}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          classNames={{ content: "ui-sheet-content", body: "ui-sheet-body" }}
+          title={
+            <span>
+              <span className="ui-tpl-name">{ef?.label || "Pole"}</span>
+              {ef && <span className="ui-mono ui-tpl-meta">{`{{ ${ef.key} }}`}</span>}
+            </span>
+          }
         >
           {ef && editIdx !== null && (
             <Stack gap="md">
@@ -342,7 +354,10 @@ export function TemplateEditPage() {
               </Text>
             </Stack>
           )}
-        </FormDialog>
+          <Button fullWidth size="md" mt="md" onClick={() => setEditIdx(null)}>
+            Gotowe
+          </Button>
+        </Drawer>
 
         <FormDialog opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Podgląd formularza" primary={{ label: "Zamknij", onClick: () => setPreviewOpen(false) }} cancel={false} dirty={false}>
           <FormPreview plain title={name || t.name} fields={fields} />

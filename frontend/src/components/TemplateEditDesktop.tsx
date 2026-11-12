@@ -52,6 +52,8 @@ export function TemplateEditDesktop({
   const [sel, setSel] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
   const [side, setSide] = useState("edit");
+  const [over, setOver] = useState<{ i: number; after: boolean } | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formats = useFieldFormats();
   const fields = draft.fields;
@@ -100,7 +102,7 @@ export function TemplateEditDesktop({
             </Text>
           ) : (
             <div className="ui-tpe-grid">
-              <Paper withBorder radius="md" className="ui-cases" role="listbox" aria-label="Pola formularza">
+              <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || undefined}>
                 {fields.map((f, i) => (
                   <UnstyledButton
                     key={f.key}
@@ -109,17 +111,36 @@ export function TemplateEditDesktop({
                     aria-selected={i === sel}
                     data-selected={i === sel || undefined}
                     data-drag={drag === i || undefined}
+                    data-moved={moved === f.key || undefined}
+                    // linia pokazuje, gdzie pole wyląduje po upuszczeniu
+                    data-drop={over && over.i === i && drag !== null && drag !== i ? (over.after ? "after" : "before") : undefined}
                     draggable
                     onDragStart={(e: DragEvent) => {
                       setDrag(i);
                       e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", f.key);
                     }}
-                    onDragOver={(e: DragEvent) => e.preventDefault()}
+                    onDragOver={(e: DragEvent) => {
+                      e.preventDefault();
+                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const after = e.clientY > r.top + r.height / 2;
+                      if (!over || over.i !== i || over.after !== after) setOver({ i, after });
+                    }}
                     onDrop={() => {
-                      if (drag !== null) move(drag, i);
+                      if (drag !== null && over) {
+                        let to = over.i + (over.after ? 1 : 0);
+                        if (drag < to) to -= 1;
+                        move(drag, to);
+                        setMoved(fields[drag].key);
+                        window.setTimeout(() => setMoved(null), 900);
+                      }
                       setDrag(null);
+                      setOver(null);
                     }}
-                    onDragEnd={() => setDrag(null)}
+                    onDragEnd={() => {
+                      setDrag(null);
+                      setOver(null);
+                    }}
                     onClick={() => setSel(i)}
                   >
                     <IconGripVertical size={16} className="ui-tpe-grip" aria-hidden />

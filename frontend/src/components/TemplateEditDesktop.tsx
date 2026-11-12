@@ -101,6 +101,44 @@ export function TemplateEditDesktop({
   const dropGroup: string | null | undefined =
     drag === null || !over ? undefined : over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : (fields[over.i]?.group ?? null);
   const joining = dropGroup && dropGroup !== fields[drag ?? -1]?.group ? dropGroup : null;
+  // upuszczenie w szczelinie (podglądzie) – ta sama logika co przy wierszach, nagłówkach i stopkach
+  const commitDrop = () => {
+    if (drag !== null && over) {
+      let to = over.hdr === "in" || over.hdr === "out" || over.hdr === "end" ? over.i : over.i + (over.after ? 1 : 0);
+      const g = over.hdr === "in" ? (fields[over.i]?.group ?? null) : over.hdr ? null : (fields[over.i]?.group ?? null);
+      if (drag < to) to -= 1;
+      move(drag, to, g);
+      setMoved(fields[drag].key);
+      window.setTimeout(() => setMoved(null), 900);
+    }
+    setDrag(null);
+    setOver(null);
+  };
+  const ghost = (inGroup: boolean) => {
+    const d = drag !== null ? fields[drag] : null;
+    if (!d || !over || (!over.hdr && over.i === drag)) return null;
+    return (
+      <div
+        className="ui-tpe-row ui-tpe-ghost"
+        data-ingroup={inGroup || undefined}
+        aria-hidden
+        onDragOver={(e: DragEvent) => e.preventDefault()}
+        onDrop={(e: DragEvent) => {
+          e.preventDefault();
+          commitDrop();
+        }}
+      >
+        <IconGripVertical size={16} className="ui-tpe-grip" aria-hidden />
+        <span style={{ minWidth: 0 }}>
+          <span className="ui-tpl-name">{d.label || "Bez etykiety"}</span>
+          <span className="ui-tpl-meta">Trafi do: {(over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : fields[over.i]?.group) ?? "bez grupy"}</span>
+        </span>
+        <span />
+        <span />
+        <span />
+      </div>
+    );
+  };
   const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
   const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
   const moveGroup = (g: string, ins: number) => {
@@ -192,6 +230,7 @@ export function TemplateEditDesktop({
               <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || !!gdrag || undefined}>
                 {fields.map((f, i) => (
                   <Fragment key={f.key}>
+                  {over?.hdr === "out" && over.i === i && ghost(false)}
                   {f.group && f.group !== fields[i - 1]?.group && (
                     // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
                     <div
@@ -264,6 +303,7 @@ export function TemplateEditDesktop({
                       </span>
                     </div>
                   )}
+                  {((over?.hdr === "in" && over.i === i) || (over && !over.hdr && over.i === i && !over.after)) && ghost(!!f.group)}
                   <UnstyledButton
                     className="ui-tpe-row"
                     role="option"
@@ -279,6 +319,10 @@ export function TemplateEditDesktop({
                     draggable
                     onDragStart={(e: DragEvent) => {
                       setDrag(i);
+                      // bez obrazka przeglądarki pod kursorem – pole pokazuje się od razu w szczelinie, w którą trafi
+                      const blank = new Image();
+                      blank.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                      e.dataTransfer.setDragImage(blank, 0, 0);
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", f.key);
                     }}
@@ -331,6 +375,7 @@ export function TemplateEditDesktop({
                     <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
                     <IconChevronRight size={16} className="ui-tpe-grip" aria-hidden />
                   </UnstyledButton>
+                  {over && !over.hdr && over.i === i && over.after && ghost(!!f.group)}
                   {f.group && fields[i + 1]?.group !== f.group && (
                     // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
                     <div
@@ -356,6 +401,7 @@ export function TemplateEditDesktop({
                       {gdrag && gdrag !== f.group ? "Upuść tutaj, aby przenieść grupę za tę grupę" : drag !== null ? "Upuść tutaj, aby odłożyć pole za grupą" : `Koniec grupy „${f.group}”`}
                     </div>
                   )}
+                  {over?.hdr === "end" && over.i === i + 1 && ghost(false)}
                   </Fragment>
                 ))}
               </Paper>

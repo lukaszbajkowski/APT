@@ -1598,3 +1598,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-gc-cell[data-moved]{animation:ui-tpe-flash .9s ease-out}
 @media (prefers-reduced-motion:reduce){.ui-gc-cell[data-moved]{animation:none}}
 .ui-gc-group .ui-cv-chip{background:var(--apt-surface)}
+.ui-gc-gname .ui-tpl-name{overflow-wrap:normal}
+/* telefon: płótno w jednej kolumnie, uchwyt 44 px */
+@media (max-width:48em){.ui-gc{padding:var(--s-2)}.ui-gc-grid{grid-template-columns:minmax(0,1fr)}.ui-gc-handle{width:44px}.ui-gc-group{padding:0 var(--s-2) var(--s-2)}}

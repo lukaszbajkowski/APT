@@ -58,9 +58,10 @@ export function GridCanvas({
     if (!root) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const next = new Map<string, { x: number; y: number }>();
+    const rb = root.getBoundingClientRect(); // względem płótna – przewijanie (okna albo kontenera) nie udaje ruchu
     root.querySelectorAll<HTMLElement>("[data-flip]").forEach((el) => {
       const r = el.getBoundingClientRect();
-      const pos = { x: r.left + window.scrollX, y: r.top + window.scrollY };
+      const pos = { x: r.left - rb.left, y: r.top - rb.top };
       const k = el.dataset.flip!;
       next.set(k, pos);
       const prev = lastPos.current.get(k);
@@ -129,20 +130,29 @@ export function GridCanvas({
     const d = dragRef.current;
     if (!d) return;
     const { y, startY } = pointer.current;
-    const bar = document.querySelector<HTMLElement>(".ui-tpe-save");
-    const bottom = (bar ? bar.getBoundingClientRect().top : window.innerHeight) - 72;
-    const top = 72;
+    // telefon: przewija się kontener ekranu edycji, dolną krawędzią jest pasek przycisków; komputer: okno i pasek „Zapisz”
+    const sc = scroller.current;
+    const bar = document.querySelector<HTMLElement>(".ui-inpage .ui-chat-compose") ?? document.querySelector<HTMLElement>(".ui-tpe-save");
+    const edge = Math.min(72, Math.round(window.innerHeight * 0.15));
+    const bottom = (bar ? bar.getBoundingClientRect().top : window.innerHeight) - edge;
+    const top = (sc ? sc.getBoundingClientRect().top : 0) + edge;
     const moved = y - startY;
     const v = y < top && moved < -12 ? -Math.min(20, 4 + Math.round((top - y) / 4)) : y > bottom && moved > 12 ? Math.min(20, 4 + Math.round((y - bottom) / 4)) : 0;
     if (v) {
-      window.scrollBy(0, v);
+      if (sc) sc.scrollBy(0, v);
+      else window.scrollBy(0, v);
       recompute();
     }
     raf.current = requestAnimationFrame(loop);
   };
 
+  const scroller = useRef<HTMLElement | null>(null);
   const begin = (e: React.PointerEvent, d: Drag) => {
     e.preventDefault();
+    let el = box.current?.parentElement ?? null;
+    while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
+    scroller.current = el;
+    navigator.vibrate?.(10);
     pointer.current = { x: e.clientX, y: e.clientY, startY: e.clientY };
     setDrag(d);
     raf.current = requestAnimationFrame(loop);

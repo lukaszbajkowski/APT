@@ -7,8 +7,8 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, CanvasField, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
-import { FIELD_TYPES } from "../components/FieldsEditor";
+import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GridCanvas } from "../components/GridCanvas";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
@@ -183,9 +183,10 @@ export function TemplateEditPage() {
                     />
                   </Group>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
-                  <TouchSortList
+                  <GridCanvas
                     fields={fields}
-                    onOpen={(i) => setEditIdx(i)}
+                    selected={-1}
+                    onSelect={(i) => setEditIdx(i)}
                     onMove={(from, to, group) => {
                       const next = [...fields];
                       const [x] = next.splice(from, 1);
@@ -252,8 +253,7 @@ export function TemplateEditPage() {
                       bs.splice(to, 0, x);
                       setFields(bs.flat());
                     }}
-                    renderBody={(f) => <CanvasField f={f} formatLabel={f.format ? "Format" : undefined} />}
-                    describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
+                    formatLabel={(f) => (f.format ? "Format" : undefined)}
                   />
                 </Section>
                 <Text size="sm" c="dimmed">

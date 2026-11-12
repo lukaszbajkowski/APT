@@ -183,7 +183,7 @@ export function TemplateEditDesktop({
                     ) : (
                       <span className="ui-tsl-ghead-btn" onDoubleClick={() => setRenaming({ from: g, value: g })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij za ⋮⋮, aby przenieść całą grupę.">
                         <span className="ui-tpl-name">{g}</span>
-                        <span className="ui-tpl-meta">{fields.filter((x) => x.group === g).length} · dwuklik zmienia nazwę</span>
+                        <span className="ui-tpl-meta">{fields.filter((x) => x.group === g).length}</span>
                       </span>
                     )
                   }
@@ -862,7 +862,7 @@ export function TouchSortList({
   };
 
   return (
-    <div className="ui-group ui-tsl" data-dragging={drag || gd ? true : undefined}>
+    <div className="ui-group ui-tsl" data-dragging={drag || gd ? true : undefined} data-dbg={drag ? `${drag.from}>${drag.to}${drag.out ? "!" : ""}` : undefined}>
       {fields.map((f, i) => (
         <Fragment key={f.key}>
         {withHeads && f.group && fields[i - 1]?.group !== f.group && (

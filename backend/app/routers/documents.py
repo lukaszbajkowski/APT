@@ -295,7 +295,7 @@ def update_template(
         for f in body.fields:
             if f.type == "select" and not f.options:
                 raise HTTPException(
-                    status.HTTP_400_BAD_REQUEST, detail=f"Pole „{f.label}” (lista) nie ma opcji do wyboru."
+                    status.HTTP_400_BAD_REQUEST, detail=f"Pole „{f.full_label()}” (lista) nie ma opcji do wyboru."
                 )
         t.fields = [f.model_dump() for f in body.fields]
         changes.append("fields")

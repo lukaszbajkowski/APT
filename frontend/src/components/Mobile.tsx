@@ -1042,7 +1042,7 @@ export function RowMenu({
   return (
     <Menu position="bottom-end" withinPortal>
       <Menu.Target>
-        <ActionIcon variant="default" size={30} aria-label={`Więcej: ${label}`} style={{ flex: "none" }}>
+        <ActionIcon variant="default" size={30} className="ui-rowmenu" aria-label={`Więcej: ${label}`} style={{ flex: "none" }}>
           <IconDots size={16} />
         </ActionIcon>
       </Menu.Target>

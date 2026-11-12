@@ -299,14 +299,29 @@ function TrashList({ employee }: { employee: Employee }) {
  * a w polu sama końcówka („Miasto”). Grupa liczy się od 2 kolejnych pól z tym samym początkiem.
  */
 export function grouped(fields: TemplateField[]): { f: TemplateField; head?: string }[] {
-  const pre = (f: TemplateField) => (f.label.includes(" – ") ? f.label.split(" – ")[0] : null);
+  // grupa ustawiona w szablonie; stare szablony: wspólny początek etykiety „Grupa – pole” (od 2 kolejnych pól)
+  const legacy = (f: TemplateField) => (!f.group && f.label.includes(" – ") ? f.label.split(" – ")[0] : null);
+  const groupOf = (f: TemplateField | undefined) => (f ? f.group || legacy(f) : null);
   return fields.map((f, i) => {
-    const p = pre(f);
-    const inGroup = p !== null && ((i > 0 && pre(fields[i - 1]) === p) || (i + 1 < fields.length && pre(fields[i + 1]) === p));
-    if (!inGroup) return { f };
-    const rest = f.label.slice(p!.length + 3);
-    const first = i === 0 || pre(fields[i - 1]) !== p;
-    return { f: { ...f, label: rest.charAt(0).toUpperCase() + rest.slice(1) }, head: first ? p! : undefined };
+    const g = groupOf(f);
+    if (!g) return { f };
+    if (!f.group) {
+      const inGroup = groupOf(fields[i - 1]) === g || groupOf(fields[i + 1]) === g;
+      if (!inGroup) return { f };
+    }
+    const first = i === 0 || groupOf(fields[i - 1]) !== g;
+    const label = f.group ? f.label : f.label.slice(g.length + 3);
+    return { f: { ...f, label: label.charAt(0).toUpperCase() + label.slice(1) }, head: first ? g : undefined };
+  });
+}
+
+/** Stare etykiety „Adres zamieszkania – Miasto” → grupa „Adres zamieszkania” + etykieta „Miasto”. */
+export function legacyToGroups(fields: TemplateField[]): TemplateField[] {
+  return fields.map((f) => {
+    if (f.group || !f.label.includes(" – ")) return f;
+    const [g, ...rest] = f.label.split(" – ");
+    const label = rest.join(" – ");
+    return { ...f, group: g, label: label.charAt(0).toUpperCase() + label.slice(1) };
   });
 }
 

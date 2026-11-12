@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
-import { ActionIcon, Button, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical } from "@tabler/icons-react";
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { Select } from "./AptSelect";
-import { FieldInput, grouped, useFieldFormats, type Values } from "./DocumentsCard";
+import { FieldInput, grouped, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
 import { PageTitle, RowMenu, SectionHead } from "./Mobile";
 import { LANGUAGE_OPTIONS } from "../pages/TemplatesPage";
@@ -68,6 +68,8 @@ export function TemplateEditDesktop({
     setSel(to);
   };
   const builtinLabel = (k: string) => builtins.find((b) => b.key === k)?.label ?? k;
+  const groupNames = [...new Set(fields.map((f) => f.group).filter(Boolean) as string[])];
+  const legacy = fields.some((f) => !f.group && f.label.includes(" – "));
 
   return (
     <div className="ui-tpe">
@@ -101,6 +103,15 @@ export function TemplateEditDesktop({
               Ten szablon używa tylko danych z kartoteki – aplikacja o nic nie zapyta przy generowaniu.
             </Text>
           ) : (
+            <>
+            {legacy && (
+              <div className="ui-tpe-hint">
+                <Text size="sm">Część etykiet ma grupę w nazwie („Adres zamieszkania – Miasto”). Zamienić na grupy pól?</Text>
+                <Button size="xs" variant="default" onClick={() => set({ fields: legacyToGroups(fields) })}>
+                  Zamień na grupy
+                </Button>
+              </div>
+            )}
             <div className="ui-tpe-grid">
               <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || undefined}>
                 {fields.map((f, i) => (
@@ -146,7 +157,10 @@ export function TemplateEditDesktop({
                     <IconGripVertical size={16} className="ui-tpe-grip" aria-hidden />
                     <span style={{ minWidth: 0 }}>
                       <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
-                      <span className="ui-tpl-meta ui-mono">{f.key}</span>
+                      <span className="ui-tpl-meta">
+                        {f.group && <span className="ui-tpe-group">{f.group}</span>}
+                        <span className="ui-mono">{f.key}</span>
+                      </span>
                     </span>
                     <span className="ui-tpl-meta">
                       {typeLabel(f.type)}
@@ -197,11 +211,12 @@ export function TemplateEditDesktop({
                       </Tooltip>
                     </Group>
                   </div>
-                  <FieldForm field={cur} onChange={(nf) => setField(sel, nf)} />
+                  <FieldForm field={cur} onChange={(nf) => setField(sel, nf)} groups={groupNames} />
                 </Paper>
               )}
               </div>
             </div>
+            </>
           )}
         </Tabs.Panel>
 
@@ -389,11 +404,20 @@ export function FormPreview({ title, fields, active, onPick, plain }: { title: s
 }
 
 /** Formularz jednego pola (komputer: panel obok listy, telefon: panel od dołu). */
-export function FieldForm({ field, onChange, size }: { field: TemplateField; onChange: (f: TemplateField) => void; size?: "md" }) {
+export function FieldForm({ field, onChange, size, groups = [] }: { field: TemplateField; onChange: (f: TemplateField) => void; size?: "md"; groups?: string[] }) {
   const formats = useFieldFormats();
   return (
     <>
       <TextInput size={size} label="Etykieta w formularzu" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
+      <Autocomplete
+        size={size}
+        label="Grupa"
+        description="Pola z tą samą grupą pokażą się pod wspólnym nagłówkiem (np. „Adres zamieszkania”). Ustaw je kolejno po sobie."
+        placeholder="Bez grupy"
+        data={groups}
+        value={field.group ?? ""}
+        onChange={(v) => onChange({ ...field, group: v || null })}
+      />
       <Select
         size={size}
         label="Typ"

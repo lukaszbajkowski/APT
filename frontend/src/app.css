@@ -1381,7 +1381,8 @@ a.ui-case-link:hover{text-decoration:underline}
 @container tpe (max-width:960px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) 104px 16px}.ui-tpe-row > :nth-child(3){display:none}}
 .ui-tpe-side{display:flex;flex-direction:column;gap:var(--s-3);position:sticky;top:var(--s-4)}
 .ui-tpe-side .ui-tpe-panel{position:static}
-.ui-pv{max-height:calc(100dvh - 220px);overflow:auto}
+/* podgląd rośnie ze stroną (bez wewnętrznego przewijania, które chowało „Więcej pól”) */
+.ui-tpe-side:has(.ui-pv){position:static}
 .ui-pv-field{border-radius:var(--mantine-radius-sm);outline:2px solid transparent;outline-offset:4px;transition:outline-color .15s;cursor:pointer}
 .ui-pv-field[data-active]{outline-color:var(--mantine-primary-color-filled)}
 @container tpe (max-width:780px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}
@@ -1425,3 +1426,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .mantine-AppShell-navbar { padding-bottom: var(--apt-safe-bottom); }
 .ui-tpe-save { bottom: calc(var(--s-4) + var(--apt-safe-bottom)); }
 @media (min-width: 48.01em) { .mantine-AppShell-main { padding-bottom: calc(var(--app-shell-padding, 0rem) + var(--apt-safe-bottom)) !important; } }
+/* „⋯” obok zwykłego przycisku – ta sama wysokość co przycisk (w wierszach tabel i list zostaje mniejsze) */
+/* (wysokość „⋯” jest wpisana w element, stąd !important; przyciski obok w rozmiarze xs – bez zmian) */
+*:has(> .mantine-Button-root:not([data-size="xs"])) > .ui-rowmenu,
+*:has(> * > .mantine-Button-root:not([data-size="xs"])) > .ui-rowmenu,
+.ui-inbox-head .ui-rowmenu { --ai-size: 36px !important; width: 36px; height: 36px; }
+.ui-tpe-group{display:inline-block;margin-right:var(--s-2);padding:0 var(--s-2);border-radius:6px;background:var(--apt-subtle);color:var(--mantine-color-text);font-weight:600}
+.ui-tpe-hint{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3);flex-wrap:wrap;margin-top:var(--s-6);padding:var(--s-3) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}

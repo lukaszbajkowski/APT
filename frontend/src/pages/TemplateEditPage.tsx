@@ -6,6 +6,7 @@ import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
+import { legacyToGroups } from "../components/DocumentsCard";
 import { FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
@@ -135,6 +136,14 @@ export function TemplateEditPage() {
               </Text>
             ) : (
               <>
+                {fields.some((f) => !f.group && f.label.includes(" – ")) && (
+                  <div className="ui-tpe-hint">
+                    <Text size="sm">Część etykiet ma grupę w nazwie. Zamienić na grupy pól?</Text>
+                    <Button size="xs" variant="default" onClick={() => setFields(legacyToGroups(fields))}>
+                      Zamień na grupy
+                    </Button>
+                  </div>
+                )}
                 <Section title="Pola formularza" action={{ label: "Podgląd", onClick: () => setPreviewOpen(true) }} plain>
                   <TouchSortList
                     fields={fields}
@@ -145,7 +154,7 @@ export function TemplateEditPage() {
                       next.splice(to, 0, x);
                       setFields(next);
                     }}
-                    describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
+                    describe={(f) => `${f.group ? f.group + " · " : ""}${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
                   />
                 </Section>
                 <Text size="sm" c="dimmed">
@@ -226,7 +235,7 @@ export function TemplateEditPage() {
         >
           {ef && editIdx !== null && (
             <Stack gap="md">
-              <FieldForm size="md" field={ef} onChange={(nf) => setFields(fields.map((x, j) => (j === editIdx ? nf : x)))} />
+              <FieldForm size="md" groups={[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])]} field={ef} onChange={(nf) => setFields(fields.map((x, j) => (j === editIdx ? nf : x)))} />
               <Group grow>
                 <Button variant="default" size="md" leftSection={<IconArrowUp size={18} />} disabled={editIdx === 0} onClick={() => moveField(editIdx, editIdx - 1)}>
                   Wyżej

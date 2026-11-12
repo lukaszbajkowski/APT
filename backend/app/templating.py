@@ -184,6 +184,19 @@ class FieldDef(BaseModel):
     pattern: str | None = Field(default=None, max_length=60)
     # pole schowane przy generowaniu pod „Więcej pól” (rzadko wypełniane); wymagane pola zawsze widoczne
     collapsed: bool = False
+    # grupa w formularzu (np. „Adres zamieszkania”): pola z tą samą grupą pod wspólnym nagłówkiem;
+    # etykieta pola zostaje krótka („Miasto”)
+    group: str | None = Field(default=None, max_length=80)
+
+    @field_validator("group")
+    @classmethod
+    def _group(cls, v: str | None) -> str | None:
+        v = (v or "").strip()
+        return v or None
+
+    def full_label(self) -> str:
+        """Etykieta z grupą – do komunikatów o błędach („Adres zamieszkania – Miasto”)."""
+        return f"{self.group} – {self.label}" if self.group else self.label
 
     @field_validator("format")
     @classmethod
@@ -380,7 +393,7 @@ def form_values(fields: list[FieldDef], raw: dict[str, Any]) -> dict[str, Any]:
         empty = v is None or v == "" or (f.type == "checkbox" and v is False)
         if empty:
             if f.required:
-                errors.append(f"Pole „{f.label}” jest wymagane.")
+                errors.append(f"Pole „{f.full_label()}” jest wymagane.")
             out[f.key] = False if f.type == "checkbox" else ""
             continue
         if f.type == "checkbox":
@@ -388,24 +401,24 @@ def form_values(fields: list[FieldDef], raw: dict[str, Any]) -> dict[str, Any]:
         elif f.type == "select":
             allowed = {o.value for o in f.options}
             if str(v) not in allowed:
-                errors.append(f"Pole „{f.label}”: niedozwolona wartość.")
+                errors.append(f"Pole „{f.full_label()}”: niedozwolona wartość.")
             out[f.key] = str(v)
         elif f.type == "date":
             try:
                 out[f.key] = date.fromisoformat(str(v)).strftime("%d.%m.%Y")
             except ValueError:
-                errors.append(f"Pole „{f.label}”: nieprawidłowa data.")
+                errors.append(f"Pole „{f.full_label()}”: nieprawidłowa data.")
         elif f.type == "number":
             try:
                 n = float(str(v).replace(",", "."))
                 out[f.key] = int(n) if n.is_integer() else n
             except ValueError:
-                errors.append(f"Pole „{f.label}”: to nie jest liczba.")
+                errors.append(f"Pole „{f.full_label()}”: to nie jest liczba.")
         elif f.type == "text" and f.format:
             try:
                 out[f.key] = format_value(str(v), f.format, f.pattern)
             except MaskError as exc:
-                errors.append(f"Pole „{f.label}”: {exc}.")
+                errors.append(f"Pole „{f.full_label()}”: {exc}.")
         else:
             out[f.key] = str(v)[:2000]
     if errors:

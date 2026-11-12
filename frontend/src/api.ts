@@ -115,6 +115,8 @@ export type FieldType = "text" | "textarea" | "date" | "select" | "checkbox" | "
 export interface TemplateField {
   key: string;
   label: string;
+  /** grupa w formularzu („Adres zamieszkania”) – wspólny nagłówek dla kolejnych pól */
+  group?: string | null;
   type: FieldType;
   required: boolean;
   options: { value: string; label: string }[];

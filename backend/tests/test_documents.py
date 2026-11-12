@@ -449,3 +449,16 @@ def test_templates_usage_and_thumbnail(admin_client):
 
 def test_template_recent(admin_client):
     assert admin_client.get("/api/templates/999999/recent").status_code == 404
+
+
+def test_field_group_and_full_label():
+    from app.templating import FieldDef, form_values
+
+    f = FieldDef(key="zam_miasto", label="Miasto", group="  Adres zamieszkania ", required=True)
+    assert f.group == "Adres zamieszkania"
+    assert FieldDef(key="x", label="X", group="  ").group is None
+    import pytest
+
+    with pytest.raises(Exception) as e:
+        form_values([f], {})
+    assert "Adres zamieszkania – Miasto" in str(e.value)

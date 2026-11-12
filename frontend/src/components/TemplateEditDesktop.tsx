@@ -355,7 +355,7 @@ export function TemplateEditDesktop({
                       e.dataTransfer.setData("text/plain", f.key);
                     }}
                     data-gdrop={gover?.at === `r${i}` ? gover.pos : undefined}
-                    data-target={(f.group && joining === f.group) || undefined}
+                    data-target={(f.group && joining === f.group) || (!f.group && !!gdrag && !!gover && gover.ins >= fields.length && i === fields.length - 1) || undefined}
                     onDragOver={(e: DragEvent) => {
                       if (gdrag) {
                         if (f.group === gdrag) return;
@@ -851,7 +851,7 @@ export function TouchSortList({
     const a = name(rest[to - 1]);
     const b = name(rest[to]);
     // krótko – opis musi zmieścić się w wysokości wiersza
-    return b ? `Trafi przed ${b}` : a ? "Trafi na koniec listy" : "";
+    return b ? `Trafi przed ${b}` : a ? `Trafi na koniec, za ${a}` : "";
   };
   // tryb „całe grupy”: grupa, przed którą (albo na końcu – za którą) stanie przeciągany blok
   const blockTarget = (() => {
@@ -860,6 +860,7 @@ export function TouchSortList({
     const next = to < from ? to : to + 1; // indeks w pierwotnej liście
     return next < fields.length ? next : to < from ? to - 1 : fields.length - 1 === from ? -1 : fields.length - 1;
   })();
+  const blockAtEnd = !!drag && !!blocks && drag.to !== drag.from && drag.to === fields.length - 1;
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
@@ -879,7 +880,7 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
-          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && f.key.startsWith("g:")) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}

@@ -1506,3 +1506,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-list>.ui-tpe-row:not([data-ingroup]){width:100%}
 .ui-tpe-gghost{margin:var(--s-3) var(--s-2)}
 .ui-tsl-row[data-block][data-target]{border-width:2px;border-color:var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
+/* cel na końcu listy, gdy ostatni jest pole bez grupy */
+.ui-tsl-row[data-target]:not([data-ingroup]):not([data-block]),.ui-tpe-row[data-target]:not([data-ingroup]){outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-surface))}

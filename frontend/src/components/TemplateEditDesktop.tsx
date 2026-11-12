@@ -860,6 +860,8 @@ export function TouchSortList({
     const next = to < from ? to : to + 1; // indeks w pierwotnej liście
     return next < fields.length ? next : to < from ? to - 1 : fields.length - 1 === from ? -1 : fields.length - 1;
   })();
+  // pole przeciągane na sam koniec listy (za ostatnie pole bez grupy)
+  const fieldAtEnd = !!drag && !blocks && !drag.out && drag.to !== drag.from && drag.to === fields.length - 1;
   const blockAtEnd = !!drag && !!blocks && drag.to !== drag.from && drag.to === fields.length - 1;
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
@@ -880,7 +882,7 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
-          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (fieldAtEnd && i === fields.length - 1 && !f.group) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
@@ -910,7 +912,7 @@ export function TouchSortList({
             {drag?.from === i && blocks ? (
               <span className="ui-tpl-meta ui-tsl-target">{blockSpot(drag.from, drag.to)}</span>
             ) : drag?.from === i && !blocks ? (
-              <span className="ui-tpl-meta ui-tsl-target">Trafi do: {(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}</span>
+              <span className="ui-tpl-meta ui-tsl-target">{fieldAtEnd && !groupAt(drag.from, drag.to) ? `Trafi na koniec, za „${fields[fields.length - 1]?.label}”` : `Trafi do: ${(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}`}</span>
             ) : (
               <span className="ui-tpl-meta">{describe(f)}</span>
             )}

@@ -12,6 +12,11 @@ Zasady Vercela są pisane pod interfejs angielski. W APT obowiązują wyjątki �
 
 Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduced-motion`, stany hover, motyw ciemny) stosuj w całości.
 
+## Skill ui-ux-pro-max
+
+Przy każdej zmianie wyglądu lub zachowania interfejsu korzystaj ze skilla `ui-ux-pro-max` (`.claude/skills/ui-ux-pro-max`) –
+bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły z tego pliku (skala, kolory, polski) mają pierwszeństwo.
+
 ## Fundamenty wyglądu (etap 1 przeprojektowania na komputer)
 
 - Krój **Golos Text** (`@fontsource/golos-text`, z naszego serwera); numery kart i PESEL – krój o stałej szerokości.

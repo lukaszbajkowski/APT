@@ -299,9 +299,12 @@ export function TemplateEditDesktop({
                       <span className="ui-tpe-ghead-name">
                         <IconGripVertical size={14} className="ui-tpe-grip" aria-hidden />
                         {renaming?.from === f.group ? (
-                          <TextInput
-                            size="xs"
+                          // zwykłe pole w rozmiarze tekstu – nagłówek grupy nie zmienia wysokości
+                          <input
+                            className="ui-tpe-gname-input"
                             autoFocus
+                            onFocus={(e) => e.currentTarget.select()}
+                            size={Math.max(8, renaming.value.length + 1)}
                             aria-label="Nazwa grupy"
                             value={renaming.value}
                             onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}

@@ -1519,3 +1519,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-row[data-glifted][data-glast]{border-bottom-width:2px}
 .ui-tsl-ghead[data-lifted] .ui-tsl-handle{color:var(--mantine-primary-color-filled);cursor:grabbing}
 .ui-tsl-ghead[data-target]{border-color:var(--mantine-primary-color-filled);border-width:2px 2px 0;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
+/* zmiana nazwy grupy w miejscu: ta sama wysokość co tekst nazwy */
+.ui-tpe-gname-input{font:inherit;line-height:inherit;color:var(--mantine-color-text);height:auto;margin:0;padding:0 var(--s-1);border:0;border-radius:4px;background:var(--apt-surface);outline:2px solid var(--mantine-primary-color-filled);outline-offset:0;min-width:0;max-width:100%}
+/* wybrane i najechane pole odróżnia się od tła grupy */
+.ui-tpe-row[data-selected]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-surface))}
+.ui-tpe-row[data-ingroup]:hover:not([data-selected]){background:color-mix(in srgb,var(--mantine-color-text) 6%,var(--apt-subtle))}
+.ui-tpe-row[data-ingroup][data-selected]{box-shadow:inset 3px 0 var(--mantine-primary-color-filled);background:color-mix(in srgb,var(--mantine-primary-color-filled) 18%,var(--apt-surface))}

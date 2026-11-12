@@ -75,7 +75,7 @@ export function TemplateEditDesktop({
   };
   // przewijanie strony, gdy przeciągane pole zbliża się do górnej lub dolnej krawędzi okna
   useEffect(() => {
-    if (drag === null) return;
+    if (drag === null && !gdrag) return; // pole albo cała grupa
     let y = -1;
     let raf = 0;
     const onOver = (e: globalThis.DragEvent) => {
@@ -96,7 +96,7 @@ export function TemplateEditDesktop({
       document.removeEventListener("dragover", onOver);
       cancelAnimationFrame(raf);
     };
-  }, [drag]);
+  }, [drag, gdrag]);
   // grupa, do której trafi przeciągane pole – podświetlamy całą jej ramkę
   const dropGroup: string | null | undefined =
     drag === null || !over ? undefined : over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : (fields[over.i]?.group ?? null);

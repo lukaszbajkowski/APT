@@ -100,7 +100,11 @@ export function TemplateEditDesktop({
   // grupa, do której trafi przeciągane pole – podświetlamy całą jej ramkę
   const dropGroup: string | null | undefined =
     drag === null || !over ? undefined : over.hdr === "in" ? fields[over.i]?.group : over.hdr ? null : (fields[over.i]?.group ?? null);
-  const joining = dropGroup && dropGroup !== fields[drag ?? -1]?.group ? dropGroup : null;
+  const joiningField = dropGroup && dropGroup !== fields[drag ?? -1]?.group ? dropGroup : null;
+  // przestawianie grup: grupa, przed którą (na końcu – za którą) stanie przeciągana grupa
+  const gNeighbour = gdrag && gover ? (fields[gover.ins]?.group ?? (gover.ins >= fields.length ? fields[fields.length - 1]?.group : null)) : null;
+  const gTargetGroup = gNeighbour && gNeighbour !== gdrag ? gNeighbour : null;
+  const joining = joiningField ?? gTargetGroup;
   // upuszczenie w szczelinie (podglądzie) – ta sama logika co przy wierszach, nagłówkach i stopkach
   const commitDrop = () => {
     if (drag !== null && over) {
@@ -313,7 +317,7 @@ export function TemplateEditDesktop({
                           </span>
                         )}
                       </span>
-                      {joining === f.group && <span className="ui-tpe-joinhint">Upuść, aby dodać do tej grupy</span>}
+                      {joiningField === f.group && <span className="ui-tpe-joinhint">Upuść, aby dodać do tej grupy</span>}
                       <span className="ui-tpe-ghead-end">
                         {fields.filter((x) => x.group === f.group).length}
                         <RowMenu

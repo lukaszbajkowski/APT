@@ -1443,3 +1443,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-ghead-end{display:inline-flex;align-items:center;gap:var(--s-2)}
 .ui-tpe-ghead .ui-rowmenu{--ai-size:24px;width:24px;height:24px;min-height:24px}
 .ui-group-pick{display:grid;gap:var(--s-3);margin-top:var(--s-2)}
+.ui-tpe-endzone{margin:var(--s-2);padding:var(--s-4);border:1px dashed var(--apt-line);border-radius:var(--mantine-radius-md);text-align:center;font-size:var(--mantine-font-size-sm);color:var(--mantine-color-dimmed)}
+.ui-tpe-endzone[data-drop]{border-color:var(--mantine-primary-color-filled);color:var(--mantine-color-text);background:var(--apt-subtle)}

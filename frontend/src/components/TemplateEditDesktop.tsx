@@ -68,6 +68,30 @@ export function TemplateEditDesktop({
     set({ fields: next });
     setSel(to);
   };
+  // przewijanie strony, gdy przeciągane pole zbliża się do górnej lub dolnej krawędzi okna
+  useEffect(() => {
+    if (drag === null) return;
+    let y = -1;
+    let raf = 0;
+    const onOver = (e: globalThis.DragEvent) => {
+      y = e.clientY;
+    };
+    const tick = () => {
+      if (y >= 0) {
+        const top = 96;
+        const bottom = window.innerHeight - 160; // pasek „Zapisz szablon”
+        const v = y < top ? -Math.ceil((top - y) / 6) : y > bottom ? Math.ceil((y - bottom) / 6) : 0;
+        if (v) window.scrollBy(0, Math.max(-24, Math.min(24, v)));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    document.addEventListener("dragover", onOver);
+    raf = requestAnimationFrame(tick);
+    return () => {
+      document.removeEventListener("dragover", onOver);
+      cancelAnimationFrame(raf);
+    };
+  }, [drag]);
   const builtinLabel = (k: string) => builtins.find((b) => b.key === k)?.label ?? k;
   const groupNames = [...new Set(fields.map((f) => f.group).filter(Boolean) as string[])];
   const legacy = fields.some((f) => !f.group && f.label.includes(" – "));
@@ -214,6 +238,28 @@ export function TemplateEditDesktop({
                   </UnstyledButton>
                   </Fragment>
                 ))}
+                {drag !== null && fields[fields.length - 1]?.group && (
+                  // ostatnia na liście jest grupa – tu można odłożyć pole za nią, bez grupy
+                  <div
+                    className="ui-tpe-endzone"
+                    data-drop={over?.hdr === "out" && over.i === fields.length ? "out" : undefined}
+                    onDragOver={(e: DragEvent) => {
+                      e.preventDefault();
+                      if (!over || over.i !== fields.length || over.hdr !== "out") setOver({ i: fields.length, after: false, hdr: "out" });
+                    }}
+                    onDrop={() => {
+                      if (drag !== null) {
+                        move(drag, fields.length - 1, null);
+                        setMoved(fields[drag].key);
+                        window.setTimeout(() => setMoved(null), 900);
+                      }
+                      setDrag(null);
+                      setOver(null);
+                    }}
+                  >
+                    Upuść tutaj, aby odłożyć pole na koniec, poza grupą
+                  </div>
+                )}
               </Paper>
 
               <div className="ui-tpe-side">
@@ -523,8 +569,13 @@ export function TouchSortList({
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
-  const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean } | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
   const raf = useRef<number | null>(null);
+  // ekran edycji na telefonie przewija własny kontener, nie okno – szukamy najbliższego przewijanego przodka
+  const scroller = useRef<HTMLElement | null>(null);
+  const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
+  const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
 
   // nowe miejsce = liczba pozostałych wierszy, których środek leży nad środkiem przeciąganego (wiersze mają różne wysokości)
   const targetFor = (dy: number) => {
@@ -536,8 +587,12 @@ export function TouchSortList({
     const s = st.current;
     if (!s) return;
     s.y = y;
-    const dy = y + window.scrollY - (s.startY + s.scroll0);
-    setDrag({ from: s.from, to: targetFor(dy), dy });
+    const dy = y + scrollTop() - (s.startY + s.scroll0);
+    const to = targetFor(dy);
+    // palec poniżej ostatniego wiersza, nad polem „poza grupą”
+    const endTop = endRef.current ? endRef.current.getBoundingClientRect().top : Infinity;
+    const out = to === fields.length - 1 && y > endTop;
+    setDrag({ from: s.from, to, dy, out });
   };
   const autoscroll = () => {
     const s = st.current;
@@ -545,7 +600,7 @@ export function TouchSortList({
     const edge = 72;
     const v = s.y < edge ? -8 : s.y > window.innerHeight - edge - 140 ? 8 : 0; // 140: pasek zapisu i nawigacja
     if (v) {
-      window.scrollBy(0, v);
+      scrollBy(v);
       update(s.y);
     }
     raf.current = requestAnimationFrame(autoscroll);
@@ -553,9 +608,12 @@ export function TouchSortList({
   const start = (i: number, e: React.PointerEvent) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + window.scrollY : 0));
+    let el = (e.currentTarget as HTMLElement).parentElement;
+    while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
+    scroller.current = el;
+    const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + scrollTop() : 0));
     const hs = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
-    st.current = { from: i, startY: e.clientY, scroll0: window.scrollY, tops, hs, y: e.clientY };
+    st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(autoscroll);
@@ -566,7 +624,7 @@ export function TouchSortList({
     st.current = null;
     setDrag(null);
     if (d) {
-      const g = groupAt(d.from, d.to);
+      const g = d.out ? null : groupAt(d.from, d.to);
       if (d.to !== d.from || g !== (fields[d.from].group ?? null)) onMove(d.from, d.to, g);
     }
   };
@@ -615,11 +673,16 @@ export function TouchSortList({
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
             <span className="ui-tpl-meta">{describe(f)}</span>
-            {drag?.from === i && <span className="ui-tpe-group ui-tsl-target">{groupAt(drag.from, drag.to) ?? "Bez grupy"}</span>}
+            {drag?.from === i && <span className="ui-tpe-group ui-tsl-target">{(drag.out ? null : groupAt(drag.from, drag.to)) ?? "Bez grupy"}</span>}
           </UnstyledButton>
           <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
         </div>
       ))}
+      {drag && fields[fields.length - 1]?.group && (
+        <div ref={endRef} className="ui-tpe-endzone" data-drop={drag.out ? "out" : undefined}>
+          Przeciągnij tutaj, aby odłożyć pole na koniec, poza grupą
+        </div>
+      )}
     </div>
   );
 }

@@ -140,9 +140,11 @@ export function TemplateEditDesktop({
                 ]}
                 aria-label="Tryb formularza"
               />
-              <Button size="xs" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setGroupDlg({})}>
-                Nowa grupa
-              </Button>
+              {side === "edit" && (
+                <Button size="xs" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setGroupDlg({})}>
+                  Nowa grupa
+                </Button>
+              )}
             </div>
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             {side === "preview" ? (

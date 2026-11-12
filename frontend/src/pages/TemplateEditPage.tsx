@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import { ActionIcon, Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
@@ -18,6 +18,7 @@ import { FormDialog, FormScreen, ListRow, Section, Segments, StatusBadge, PageLo
 
 export function TemplateEditPage() {
   const [groupOpen, setGroupOpen] = useState(false);
+  const [editGroup, setEditGroup] = useState<string | null>(null);
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
@@ -149,7 +150,21 @@ export function TemplateEditPage() {
                   <Button variant="default" fullWidth mb="sm" onClick={() => setGroupOpen(true)}>
                     Nowa grupa
                   </Button>
-                  <GroupDialog opened={groupOpen} onClose={() => setGroupOpen(false)} fields={fields} onApply={setFields} />
+                  <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
+                  {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g, gi, all) => (
+                    <div key={g} className="ui-mgroup">
+                      <UnstyledButton className="ui-mgroup-name" onClick={() => setEditGroup(g)} aria-label={`Grupa ${g}: zmień nazwę lub pola`}>
+                        <span className="ui-tpl-name">{g}</span>
+                        <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)} · dotknij, aby zmienić nazwę</span>
+                      </UnstyledButton>
+                      <ActionIcon variant="default" size={44} aria-label={`Przesuń grupę ${g} wyżej`} disabled={gi === 0 && fields[0]?.group === g} onClick={() => setFields(moveGroupBy(fields, g, -1))}>
+                        <IconArrowUp size={18} />
+                      </ActionIcon>
+                      <ActionIcon variant="default" size={44} aria-label={`Przesuń grupę ${g} niżej`} disabled={gi === all.length - 1 && fields[fields.length - 1]?.group === g} onClick={() => setFields(moveGroupBy(fields, g, 1))}>
+                        <IconArrowDown size={18} />
+                      </ActionIcon>
+                    </div>
+                  ))}
                   <TouchSortList
                     fields={fields}
                     onOpen={(i) => setEditIdx(i)}

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
+import { notifications } from "@mantine/notifications";
 import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical, IconPlus } from "@tabler/icons-react";
 
@@ -54,6 +55,10 @@ export function TemplateEditDesktop({
   const [side, setSide] = useState("edit");
   const [over, setOver] = useState<{ i: number; after: boolean; hdr?: "in" | "out" | "end" } | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
+  // przeciąganie całej grupy: nazwa grupy + miejsce wstawienia (indeks w liście pól) i element, przy którym pokazać linię
+  const [gdrag, setGdrag] = useState<string | null>(null);
+  const [gover, setGover] = useState<{ ins: number; at: string; pos: "before" | "after" } | null>(null);
+  const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formats = useFieldFormats();
@@ -92,6 +97,42 @@ export function TemplateEditDesktop({
       cancelAnimationFrame(raf);
     };
   }, [drag]);
+  const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
+  const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
+  const moveGroup = (g: string, ins: number) => {
+    const members = fields.filter((x) => x.group === g);
+    const before = fields.slice(0, ins).filter((x) => x.group === g).length;
+    const rest = fields.filter((x) => x.group !== g);
+    const at = ins - before;
+    set({ fields: [...rest.slice(0, at), ...members, ...rest.slice(at)] });
+    setSel(at);
+  };
+  const gTarget = (e: DragEvent, ins: number, at: string, pos: "before" | "after") => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!gover || gover.ins !== ins || gover.at !== at || gover.pos !== pos) setGover({ ins, at, pos });
+  };
+  const gDrop = (e: DragEvent) => {
+    e.stopPropagation();
+    if (gdrag && gover) moveGroup(gdrag, gover.ins);
+    setGdrag(null);
+    setGover(null);
+  };
+  const half = (e: DragEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return e.clientY > r.top + r.height / 2;
+  };
+  const rename = () => {
+    if (!renaming) return;
+    const to = renaming.value.trim();
+    setRenaming(null);
+    if (!to || to === renaming.from) return;
+    if (fields.some((x) => x.group === to)) {
+      notifications.show({ color: "red", message: `Grupa „${to}” już jest – wybierz inną nazwę.` });
+      return;
+    }
+    set({ fields: fields.map((x) => (x.group === renaming.from ? { ...x, group: to } : x)) });
+  };
   const builtinLabel = (k: string) => builtins.find((b) => b.key === k)?.label ?? k;
   const groupNames = [...new Set(fields.map((f) => f.group).filter(Boolean) as string[])];
   const legacy = fields.some((f) => !f.group && f.label.includes(" – "));
@@ -144,21 +185,34 @@ export function TemplateEditDesktop({
             </div>
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             <div className="ui-tpe-grid">
-              <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || undefined}>
+              <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || !!gdrag || undefined}>
                 {fields.map((f, i) => (
                   <Fragment key={f.key}>
                   {f.group && f.group !== fields[i - 1]?.group && (
                     // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
                     <div
                       className="ui-tpe-ghead"
-                      data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : undefined}
+                      data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : gover?.at === `h${i}` ? "out" : undefined}
+                      data-gdrag={gdrag === f.group || undefined}
+                      draggable={!renaming}
+                      onDragStart={(e: DragEvent) => {
+                        setGdrag(f.group!);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", f.group!);
+                      }}
+                      onDragEnd={() => {
+                        setGdrag(null);
+                        setGover(null);
+                      }}
                       onDragOver={(e: DragEvent) => {
+                        if (gdrag) return gdrag === f.group ? undefined : gTarget(e, i, `h${i}`, "before");
                         e.preventDefault();
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         const hdr = e.clientY > r.top + r.height / 2 ? "in" : "out";
                         if (!over || over.i !== i || over.hdr !== hdr) setOver({ i, after: false, hdr });
                       }}
-                      onDrop={() => {
+                      onDrop={(e: DragEvent) => {
+                        if (gdrag) return gDrop(e);
                         if (drag !== null && over) {
                           let to = over.i;
                           if (drag < to) to -= 1;
@@ -170,12 +224,35 @@ export function TemplateEditDesktop({
                         setOver(null);
                       }}
                     >
-                      <span>{f.group}</span>
+                      <span className="ui-tpe-ghead-name">
+                        <IconGripVertical size={14} className="ui-tpe-grip" aria-hidden />
+                        {renaming?.from === f.group ? (
+                          <TextInput
+                            size="xs"
+                            autoFocus
+                            aria-label="Nazwa grupy"
+                            value={renaming.value}
+                            onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
+                            onBlur={rename}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") rename();
+                              if (e.key === "Escape") setRenaming(null);
+                            }}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setRenaming({ from: f.group!, value: f.group! })} title="Kliknij dwukrotnie, aby zmienić nazwę. Przeciągnij, aby przenieść całą grupę.">
+                            {f.group}
+                          </span>
+                        )}
+                      </span>
                       <span className="ui-tpe-ghead-end">
                         {fields.filter((x) => x.group === f.group).length}
                         <RowMenu
                           label={`Grupa ${f.group}`}
-                          items={[{ label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: f.group! }) }]}
+                          items={[
+                            { label: "Zmień nazwę", onClick: () => setRenaming({ from: f.group!, value: f.group! }) },
+                            { label: "Edytuj grupę", onClick: () => setGroupDlg({ editing: f.group! }) },
+                          ]}
                           danger={{ label: "Rozgrupuj", onClick: () => set({ fields: fields.map((x) => (x.group === f.group ? { ...x, group: null } : x)) }) }}
                         />
                       </span>
@@ -199,13 +276,22 @@ export function TemplateEditDesktop({
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", f.key);
                     }}
+                    data-gdrop={gover?.at === `r${i}` ? gover.pos : undefined}
                     onDragOver={(e: DragEvent) => {
+                      if (gdrag) {
+                        if (f.group === gdrag) return;
+                        const after = half(e);
+                        // grupy nie wkłada się w inną grupę: przed lub za całą grupą tego pola
+                        if (f.group) return after ? gTarget(e, groupEnd(f.group) + 1, `f${groupEnd(f.group)}`, "after") : gTarget(e, groupStart(f.group), `h${groupStart(f.group)}`, "before");
+                        return gTarget(e, after ? i + 1 : i, `r${i}`, after ? "after" : "before");
+                      }
                       e.preventDefault();
                       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                       const after = e.clientY > r.top + r.height / 2;
                       if (!over || over.i !== i || over.after !== after || over.hdr) setOver({ i, after });
                     }}
-                    onDrop={() => {
+                    onDrop={(e: DragEvent) => {
+                      if (gdrag) return gDrop(e);
                       if (drag !== null && over && !over.hdr) {
                         let to = over.i + (over.after ? 1 : 0);
                         if (drag < to) to -= 1;
@@ -242,12 +328,14 @@ export function TemplateEditDesktop({
                     // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
                     <div
                       className="ui-tpe-gfoot"
-                      data-drop={over?.hdr === "end" && over.i === i + 1 && drag !== null ? "end" : undefined}
+                      data-drop={(over?.hdr === "end" && over.i === i + 1 && drag !== null) || gover?.at === `f${i}` ? "end" : undefined}
                       onDragOver={(e: DragEvent) => {
+                        if (gdrag) return gdrag === f.group ? undefined : gTarget(e, i + 1, `f${i}`, "after");
                         e.preventDefault();
                         if (!over || over.i !== i + 1 || over.hdr !== "end") setOver({ i: i + 1, after: false, hdr: "end" });
                       }}
-                      onDrop={() => {
+                      onDrop={(e: DragEvent) => {
+                        if (gdrag) return gDrop(e);
                         if (drag !== null) {
                           move(drag, drag < i + 1 ? i : i + 1, null);
                           setMoved(fields[drag].key);
@@ -257,7 +345,7 @@ export function TemplateEditDesktop({
                         setOver(null);
                       }}
                     >
-                      {drag !== null ? "Upuść tutaj, aby odłożyć pole za grupą" : `Koniec grupy „${f.group}”`}
+                      {gdrag && gdrag !== f.group ? "Upuść tutaj, aby przenieść grupę za tę grupę" : drag !== null ? "Upuść tutaj, aby odłożyć pole za grupą" : `Koniec grupy „${f.group}”`}
                     </div>
                   )}
                   </Fragment>
@@ -755,4 +843,19 @@ export function GroupDialog({
       </Checkbox.Group>
     </FormDialog>
   );
+}
+
+/** Przesuwa całą grupę o jeden blok w górę lub w dół (blok = inna grupa albo pojedyncze pole bez grupy). */
+export function moveGroupBy(fields: TemplateField[], g: string, dir: -1 | 1): TemplateField[] {
+  const blocks: TemplateField[][] = [];
+  for (const f of fields) {
+    const last = blocks[blocks.length - 1];
+    if (f.group && last && last[0].group === f.group) last.push(f);
+    else blocks.push([f]);
+  }
+  const i = blocks.findIndex((b) => b[0].group === g);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= blocks.length) return fields;
+  [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+  return blocks.flat();
 }

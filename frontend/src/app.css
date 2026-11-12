@@ -1528,22 +1528,28 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-plist .ui-tsl{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);overflow:clip}
 .ui-tpe-plist .ui-tsl-row{padding-right:var(--s-4)}
 .ui-tpe-plist .ui-tsl-handle{width:40px;cursor:grab}
-.ui-tpe-pbody{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr) 104px;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) 0}
-@container tpe (max-width:960px){.ui-tpe-pbody{grid-template-columns:minmax(0,1fr) auto}.ui-tpe-pbody>:nth-child(2){display:none}}
 .ui-tpe-plist .ui-tsl-row:hover:not([data-lifted]){background:color-mix(in srgb,var(--mantine-color-text) 4%,var(--apt-surface))}
 .ui-tpe-plist .ui-tsl-row[data-ingroup]:hover:not([data-lifted]){background:color-mix(in srgb,var(--mantine-color-text) 6%,var(--apt-subtle))}
 .ui-tpe-plist .ui-tsl-row[data-selected]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-surface));box-shadow:inset 3px 0 var(--mantine-primary-color-filled)}
 .ui-tpe-plist .ui-tsl-row[data-selected][data-ingroup]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 18%,var(--apt-surface))}
-.ui-tpe-pbody[data-moved]{animation:ui-tpe-flash .9s ease-out}
 .ui-tpe-plist .ui-tsl-ghead .ui-tsl-ghead-btn{cursor:default}
-.ui-tpe-plist .ui-tpe-pbody{padding:0}
 
 /* tekst tylko dla czytnika ekranu */
 .ui-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* ograniczone animacje: nagłówek grupy i mignięcie po przeniesieniu też bez ruchu */
-@media (prefers-reduced-motion:reduce){.ui-tsl-ghead{transition:none}.ui-tpe-pbody[data-moved]{animation:none}}
+@media (prefers-reduced-motion:reduce){.ui-tsl-ghead{transition:none}}
 /* iPhone: podwójne dotknięcie nazwy grupy nie powiększa strony */
 .ui-tsl-ghead-btn{touch-action:manipulation}
 /* telefon: „⋯” w nagłówku grupy – cel 44×44 */
 .ui-tsl:not(.ui-tpe-plist .ui-tsl) .ui-tsl-ghead .ui-rowmenu{--ai-size:44px !important;width:44px;height:44px}
 .ui-tsl-ghead{gap:var(--s-1)}
+
+/* —— płótno formularza (edycja szablonu): pole łapie się w całości, bez ikony uchwytu —— */
+.ui-tsl[data-canvas] .ui-tsl-row{padding:0}
+.ui-tsl-cbody{position:relative;padding:var(--s-3) var(--s-4);cursor:grab;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;border-radius:var(--mantine-radius-sm)}
+.ui-tsl-cbody:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-4px}
+.ui-tsl-row[data-lifted] .ui-tsl-cbody{cursor:grabbing}
+.ui-tsl-cbody .ui-tsl-target{position:absolute;top:var(--s-2);right:var(--s-3);margin:0;background:var(--apt-surface);border-radius:var(--mantine-radius-sm);padding:0 var(--s-1)}
+.ui-tpe-cfield{pointer-events:none}
+.ui-tpe-cfield[data-moved]{animation:ui-tpe-flash .9s ease-out}
+@media (prefers-reduced-motion:reduce){.ui-tpe-cfield[data-moved]{animation:none}}

@@ -23,7 +23,6 @@ export interface TemplateDraft {
   fields: TemplateField[];
 }
 
-const typeLabel = (t: FieldType) => FIELD_TYPES.find((x) => x.value === t)?.label ?? t;
 
 /**
  * Edycja szablonu na komputerze (wariant A): zakładki Pola / Ustawienia / Znaczniki; pola jako krótka lista
@@ -57,7 +56,6 @@ export function TemplateEditDesktop({
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const formats = useFieldFormats();
   const fields = draft.fields;
   const cur = fields[Math.min(sel, fields.length - 1)];
   const setField = (i: number, f: TemplateField) => set({ fields: fields.map((x, j) => (j === i ? f : x)) });
@@ -164,19 +162,12 @@ export function TemplateEditDesktop({
                     set({ fields: bs.flat() });
                   }}
                   describe={() => ""}
+                  canvas
                   renderBody={(f) => (
-                    <span className="ui-tpe-pbody" data-moved={moved === f.key || undefined}>
-                      <span style={{ minWidth: 0 }}>
-                        <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
-                        <span className="ui-tpl-meta ui-mono">{f.key}</span>
-                      </span>
-                      <span className="ui-tpl-meta">
-                        {typeLabel(f.type)}
-                        {f.type === "select" ? ` · ${f.options.length} opcje` : ""}
-                        {f.format ? ` · ${formats.data?.find((x) => x.value === f.format)?.label ?? "własna maska"}` : ""}
-                      </span>
-                      <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
-                    </span>
+                    // prawdziwe pole formularza (jak u kadry), ale nieaktywne – klik wybiera, przeciągnięcie przenosi
+                    <div className="ui-tpe-cfield" data-moved={moved === f.key || undefined} {...({ inert: "" } as object)}>
+                      <FieldInput field={f} value={null} onChange={() => undefined} />
+                    </div>
                   )}
                   groupName={(g) =>
                     renaming?.from === g ? (
@@ -542,6 +533,7 @@ export function TouchSortList({
   onMoveGroup,
   renderBody,
   selected,
+  canvas,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -558,6 +550,8 @@ export function TouchSortList({
   /** komputer: własna treść wiersza (kolumny), zaznaczony wiersz */
   renderBody?: (f: TemplateField, i: number) => ReactNode;
   selected?: number;
+  /** płótno formularza: bez ikony uchwytu – łapie się całe pole (mysz: po ruszeniu o kilka px, dotyk: przytrzymanie ~0,3 s) */
+  canvas?: boolean;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
@@ -768,8 +762,15 @@ export function TouchSortList({
   };
   const start = (i: number, e: React.PointerEvent) => {
     e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    let el = (e.currentTarget as HTMLElement).parentElement;
+    begin(i, e.clientY, e.currentTarget as HTMLElement, e.pointerId);
+  };
+  const begin = (i: number, clientY: number, target: HTMLElement, pointerId: number) => {
+    try {
+      target.setPointerCapture(pointerId);
+    } catch {
+      /* wskaźnik już zwolniony */
+    }
+    let el = target.parentElement;
     while (el && !(/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight)) el = el.parentElement;
     scroller.current = el;
     rows.current.length = fields.length; // po zmianie listy (np. tryb „całe grupy”) zostają odwołania do starych wierszy
@@ -784,7 +785,7 @@ export function TouchSortList({
     const hs = rows.current.map(outer);
     inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
-    st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
+    st.current = { from: i, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY };
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(autoscroll);
@@ -813,6 +814,62 @@ export function TouchSortList({
       }
     }
   };
+  // —— płótno: chwyt za całe pole ——
+  // mysz: przeciąganie zaczyna się po ruszeniu o 5 px (zwykły klik tylko wybiera pole);
+  // dotyk: przytrzymanie 300 ms bez ruchu (ruch wcześniej = zwykłe przewijanie ekranu)
+  const pending = useRef<{ i: number; x: number; y: number; id: number; el: HTMLElement; touch: boolean; timer: number | null } | null>(null);
+  const suppressClick = useRef(false);
+  const cancelPending = () => {
+    if (pending.current?.timer) window.clearTimeout(pending.current.timer);
+    pending.current = null;
+  };
+  const cDown = (i: number, e: React.PointerEvent) => {
+    if (e.button !== 0 || st.current || gst.current) return;
+    const touch = e.pointerType !== "mouse";
+    const el = e.currentTarget as HTMLElement;
+    const p = { i, x: e.clientX, y: e.clientY, id: e.pointerId, el, touch, timer: null as number | null };
+    if (touch)
+      p.timer = window.setTimeout(() => {
+        if (pending.current !== p) return;
+        pending.current = null;
+        suppressClick.current = true;
+        begin(i, p.y, el, p.id);
+      }, 300);
+    pending.current = p;
+  };
+  const cMove = (e: React.PointerEvent) => {
+    if (st.current) {
+      onFrame(e.clientY, update);
+      return;
+    }
+    const p = pending.current;
+    if (!p) return;
+    const d = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+    if (p.touch) {
+      if (d > 8) cancelPending(); // palec przewija ekran
+      else p.y = e.clientY;
+    } else if (d > 5) {
+      cancelPending();
+      suppressClick.current = true;
+      begin(p.i, p.y, p.el, p.id);
+      onFrame(e.clientY, update);
+    }
+  };
+  const cUp = () => {
+    cancelPending();
+    if (st.current) end();
+  };
+  // po rozpoczęciu przeciągania dotykiem ekran nie może się przewijać pod palcem
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || !canvas) return;
+    const stop = (e: TouchEvent) => {
+      if (st.current) e.preventDefault();
+    };
+    el.addEventListener("touchmove", stop, { passive: false });
+    return () => el.removeEventListener("touchmove", stop);
+  }, [canvas]);
   // grupa po upuszczeniu: jeśli sąsiedzi są w tej samej grupie – ta grupa; na granicy – grupa, w którą się wjeżdża
   const groupAt = (from: number, to: number) => {
     const rest = fields.filter((_, j) => j !== from);
@@ -876,7 +933,7 @@ export function TouchSortList({
   };
 
   return (
-    <div className="ui-group ui-tsl" data-dragging={drag || gd ? true : undefined}>
+    <div ref={rootRef} className="ui-group ui-tsl" data-canvas={canvas || undefined} data-dragging={drag || gd ? true : undefined}>
       {fields.map((f, i) => (
         <Fragment key={f.key}>
         {withHeads && f.group && fields[i - 1]?.group !== f.group && (
@@ -945,6 +1002,7 @@ export function TouchSortList({
             marginBottom: (drag?.from === i && st.current && spreading) || gGrow(i) ? (mbs.current[i] ?? 0) - 2 * SPREAD : undefined,
           }}
         >
+          {!canvas && (
           <span
             className="ui-tsl-handle"
             role="button"
@@ -964,7 +1022,48 @@ export function TouchSortList({
           >
             <IconGripVertical size={20} aria-hidden />
           </span>
-          {replaceBody?.(f, i) ?? (
+          )}
+          {canvas && !replaceBody?.(f, i) ? (
+            <div
+              className="ui-tsl-body ui-tsl-cbody"
+              role="button"
+              tabIndex={0}
+              aria-roledescription="Pole do przenoszenia"
+              aria-label={`${f.label || "Pole"}${selected === i ? ", wybrane" : ""}. Strzałki w górę i w dół przenoszą pole.`}
+              aria-current={selected === i || undefined}
+              title="Kliknij, aby wybrać. Przeciągnij, aby przenieść."
+              data-handle={f.key}
+              onPointerDown={(e) => cDown(i, e)}
+              onPointerMove={cMove}
+              onPointerUp={cUp}
+              onPointerCancel={() => {
+                cancelPending();
+                if (st.current) end();
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false;
+                  return;
+                }
+                if (!drag) onOpen(i);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpen(i);
+                }
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                e.preventDefault();
+                keyStep(i, e.key === "ArrowUp" ? -1 : 1);
+              }}
+            >
+              {renderBody?.(f, i)}
+              {drag?.from === i && (
+                <span className="ui-tpl-meta ui-tsl-target">{fieldAtEnd && !groupAt(drag.from, drag.to) ? `Trafi na koniec, za „${fields[fields.length - 1]?.label}”` : `Trafi do: ${(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}`}</span>
+              )}
+            </div>
+          ) : replaceBody?.(f, i) ?? (
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)} aria-current={selected === i || undefined}>
             {renderBody && drag?.from !== i ? renderBody(f, i) : <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>}
             {/* w trakcie przeciągania opis zastępuje grupa docelowa – wysokość wiersza się nie zmienia, więc pasuje do szczeliny */}
@@ -977,7 +1076,7 @@ export function TouchSortList({
             )}
           </UnstyledButton>
           )}
-          <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
+          {!canvas && <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />}
         </div>
         </Fragment>
       ))}

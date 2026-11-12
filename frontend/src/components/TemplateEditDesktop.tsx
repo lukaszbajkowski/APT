@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
 import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
@@ -163,6 +163,29 @@ export function TemplateEditDesktop({
       </div>
     );
   };
+  // płynność: gdy szczelina zmienia miejsce, pola przesuwają się animacją (FLIP), zamiast przeskakiwać
+  const listRef = useRef<HTMLDivElement>(null);
+  const flipTops = useRef(new Map<string, number>());
+  useLayoutEffect(() => {
+    const box = listRef.current;
+    if (!box) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const next = new Map<string, number>();
+    box.querySelectorAll<HTMLElement>("[data-flip]").forEach((el) => {
+      const key = el.dataset.flip!;
+      const top = el.offsetTop; // bez wpływu transformacji – stabilne w trakcie animacji
+      next.set(key, top);
+      const prev = flipTops.current.get(key);
+      if (reduce || prev === undefined || prev === top || (drag === null && !gdrag)) return;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${prev - top}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform .16s cubic-bezier(.2,.8,.2,1), background-color .15s";
+        el.style.transform = "";
+      });
+    });
+    flipTops.current = next;
+  });
   const groupStart = (g: string) => fields.findIndex((x) => x.group === g);
   const groupEnd = (g: string) => fields.length - 1 - [...fields].reverse().findIndex((x) => x.group === g);
   const moveGroup = (g: string, ins: number) => {
@@ -251,7 +274,7 @@ export function TemplateEditDesktop({
             </div>
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             <div className="ui-tpe-grid">
-              <Paper withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || !!gdrag || undefined}>
+              <Paper ref={listRef} withBorder radius="md" className="ui-cases ui-tpe-list" role="listbox" aria-label="Pola formularza" data-dragging={drag !== null || !!gdrag || undefined}>
                 {fields.map((f, i) => (
                   <Fragment key={f.key}>
                   {over?.hdr === "out" && over.i === i && ghost(false)}
@@ -259,6 +282,7 @@ export function TemplateEditDesktop({
                   {f.group && f.group !== fields[i - 1]?.group && (
                     // nagłówek grupy: górna połowa = upuść nad grupą (poza nią), dolna = na początek grupy
                     <div
+                      data-flip={`h:${f.group}`}
                       className="ui-tpe-ghead"
                       data-drop={over && over.hdr && over.i === i && drag !== null ? over.hdr : gover?.at === `h${i}` ? "out" : undefined}
                       data-gdrag={gdrag === f.group || undefined}
@@ -336,6 +360,7 @@ export function TemplateEditDesktop({
                   )}
                   {((over?.hdr === "in" && over.i === i) || (over && !over.hdr && over.i === i && !over.after)) && ghost(!!f.group)}
                   <UnstyledButton
+                    data-flip={f.key}
                     className="ui-tpe-row"
                     role="option"
                     aria-selected={i === sel}
@@ -411,6 +436,7 @@ export function TemplateEditDesktop({
                   {f.group && fields[i + 1]?.group !== f.group && (
                     // zamknięcie grupy: upuszczenie tutaj kładzie pole zaraz za grupą, już poza nią
                     <div
+                      data-flip={`f:${f.group}`}
                       className="ui-tpe-gfoot"
                       data-target={joining === f.group || undefined}
                       data-drop={(over?.hdr === "end" && over.i === i + 1 && drag !== null) || gover?.at === `f${i}` ? "end" : undefined}
@@ -439,6 +465,8 @@ export function TemplateEditDesktop({
                 ))}
               </Paper>
 
+              {/* panel boczny nie przerysowuje się przy każdym ruchu przeciągania (zależy tylko od tych wartości) */}
+              <Frozen deps={[side, sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
               <div className="ui-tpe-side">
               <SegmentedControl
                 fullWidth
@@ -481,6 +509,7 @@ export function TemplateEditDesktop({
                 </Paper>
               )}
               </div>
+              </Frozen>
             </div>
             </>
           )}
@@ -770,6 +799,16 @@ export function TouchSortList({
   const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
   const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
 
+  // ruch palca: najwyżej jedno przeliczenie na klatkę ekranu (zdarzeń bywa 2–4× więcej niż klatek)
+  const frame = useRef<{ y: number; id: number | null }>({ y: 0, id: null });
+  const onFrame = (y: number, fn: (y: number) => void) => {
+    frame.current.y = y;
+    if (frame.current.id !== null) return;
+    frame.current.id = requestAnimationFrame(() => {
+      frame.current.id = null;
+      fn(frame.current.y);
+    });
+  };
   // —— przeciąganie całej grupy za nagłówek ——
   const heads = useRef<Record<string, HTMLDivElement | null>>({});
   const withHeads = !!groupName && !blocks;
@@ -845,6 +884,10 @@ export function TouchSortList({
   };
   const gEnd = () => {
     if (raf.current) cancelAnimationFrame(raf.current);
+    if (frame.current.id !== null) {
+      cancelAnimationFrame(frame.current.id);
+      frame.current.id = null;
+    }
     const d = gd;
     gst.current = null;
     setGd(null);
@@ -921,6 +964,10 @@ export function TouchSortList({
   };
   const end = () => {
     if (raf.current) cancelAnimationFrame(raf.current);
+    if (frame.current.id !== null) {
+      cancelAnimationFrame(frame.current.id);
+      frame.current.id = null;
+    }
     const d = drag;
     st.current = null;
     setDrag(null);
@@ -1012,7 +1059,7 @@ export function TouchSortList({
               tabIndex={0}
               aria-label={`Przeciągnij całą grupę ${f.group}`}
               onPointerDown={(e) => gStart(f.group!, e)}
-              onPointerMove={(e) => gst.current && gUpdate(e.clientY)}
+              onPointerMove={(e) => gst.current && onFrame(e.clientY, gUpdate)}
               onPointerUp={gEnd}
               onPointerCancel={gEnd}
             >
@@ -1060,7 +1107,7 @@ export function TouchSortList({
             tabIndex={0}
             aria-label={`Przeciągnij, aby zmienić kolejność: ${f.label}`}
             onPointerDown={(e) => start(i, e)}
-            onPointerMove={(e) => st.current && update(e.clientY)}
+            onPointerMove={(e) => st.current && onFrame(e.clientY, update)}
             onPointerUp={end}
             onPointerCancel={end}
           >
@@ -1091,6 +1138,12 @@ export function TouchSortList({
     </div>
   );
 }
+
+/** Zwraca dzieci z poprzedniego rysowania, dopóki `deps` się nie zmienią (płynność przeciągania – ciężki panel boczny stoi). */
+const Frozen = memo(
+  ({ children }: { deps: unknown[]; children: ReactNode }) => <>{children}</>,
+  (a, b) => a.deps.length === b.deps.length && a.deps.every((d, i) => Object.is(d, b.deps[i])),
+);
 
 /** Przypisuje polom `keys` grupę `name` (pola, które były w grupie `old`, a nie są zaznaczone – bez grupy) i ustawia członków grupy kolejno, w miejscu pierwszego z nich. */
 export function applyGroup(fields: TemplateField[], name: string, keys: string[], old?: string | null): TemplateField[] {

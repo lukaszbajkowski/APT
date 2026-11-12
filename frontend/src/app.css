@@ -1369,3 +1369,9 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe-cheat{max-height:560px;overflow:auto}
 .ui-tpe-save{position:sticky;bottom:var(--s-4);display:flex;justify-content:space-between;align-items:center;gap:var(--s-4);padding:var(--s-3) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);box-shadow:0 -4px 24px rgba(0,0,0,.08);margin-top:var(--s-4);z-index:5}
 @container tpe (max-width:960px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) auto 16px}.ui-tpe-row > :nth-child(3){display:none}}
+.ui-tpe-side{display:flex;flex-direction:column;gap:var(--s-3);position:sticky;top:var(--s-4)}
+.ui-tpe-side .ui-tpe-panel{position:static}
+.ui-pv{max-height:calc(100dvh - 220px);overflow:auto}
+.ui-pv-field{border-radius:var(--mantine-radius-sm);outline:2px solid transparent;outline-offset:4px;transition:outline-color .15s;cursor:pointer}
+.ui-pv-field[data-active]{outline-color:var(--mantine-primary-color-filled)}
+@container tpe (max-width:780px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}

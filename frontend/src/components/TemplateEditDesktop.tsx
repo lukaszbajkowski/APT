@@ -1,11 +1,11 @@
-import { useRef, useState, type DragEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
 import { ActionIcon, Button, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical } from "@tabler/icons-react";
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
 import { Select } from "./AptSelect";
-import { useFieldFormats } from "./DocumentsCard";
+import { FieldInput, grouped, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
 import { PageTitle, RowMenu, SectionHead } from "./Mobile";
 import { LANGUAGE_OPTIONS } from "../pages/TemplatesPage";
@@ -51,6 +51,7 @@ export function TemplateEditDesktop({
   const [tab, setTab] = useState<string>("fields");
   const [sel, setSel] = useState(0);
   const [drag, setDrag] = useState<number | null>(null);
+  const [side, setSide] = useState("edit");
   const fileRef = useRef<HTMLInputElement>(null);
   const formats = useFieldFormats();
   const fields = draft.fields;
@@ -137,7 +138,25 @@ export function TemplateEditDesktop({
                 ))}
               </Paper>
 
-              {cur && (
+              <div className="ui-tpe-side">
+              <SegmentedControl
+                fullWidth
+                value={side}
+                onChange={setSide}
+                data={[
+                  { value: "edit", label: "Edycja pola" },
+                  { value: "preview", label: "Podgląd formularza" },
+                ]}
+              />
+              {side === "preview" && (
+                <FormPreview
+                  title={draft.name || t.name}
+                  fields={fields}
+                  active={cur?.key}
+                  onPick={(k) => setSel(fields.findIndex((f) => f.key === k))}
+                />
+              )}
+              {side === "edit" && cur && (
                 <Paper withBorder radius="md" className="ui-tpe-panel" key={cur.key}>
                   <div className="ui-tpe-phead">
                     <div style={{ minWidth: 0 }}>
@@ -196,6 +215,7 @@ export function TemplateEditDesktop({
                   />
                 </Paper>
               )}
+              </div>
             </div>
           )}
         </Tabs.Panel>
@@ -333,5 +353,52 @@ export function TemplateEditSkeleton() {
         </Paper>
       </div>
     </div>
+  );
+}
+
+/**
+ * Podgląd na żywo: ten sam formularz, który kadra widzi przy „Nowy dokument” (grupy, „Więcej pól”, typy pól),
+ * zbudowany z bieżących, niezapisanych ustawień. Wybrane pole podświetlone; klik w pole je wybiera (także na liście).
+ */
+function FormPreview({ title, fields, active, onPick }: { title: string; fields: TemplateField[]; active?: string; onPick: (key: string) => void }) {
+  const [values, setValues] = useState<Values>({});
+  const [more, setMore] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // wybrane pole (np. kliknięte na liście) przewija się do widoku w podglądzie
+  useEffect(() => {
+    if (active && hiddenHas(active)) setMore(true);
+    box.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  const shown = fields.filter((f) => !f.collapsed || f.required);
+  const hidden = fields.filter((f) => f.collapsed && !f.required);
+  const hiddenHas = (k: string) => hidden.some((f) => f.key === k);
+  const render = (list: TemplateField[]) =>
+    grouped(list).map(({ f, head }) => (
+      <Fragment key={f.key}>
+        {head && <Text className="ui-field-group">{head}</Text>}
+        <div className="ui-pv-field" data-active={f.key === active || undefined} onClickCapture={() => onPick(f.key)} title="Kliknij, aby wybrać to pole (edycja: „Edycja pola” u góry)">
+          <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+        </div>
+      </Fragment>
+    ));
+  return (
+    <Paper withBorder radius="md" className="ui-tpe-panel ui-pv" ref={box}>
+      <div>
+        <Text size="sm" c="dimmed">
+          Tak zobaczy to kadra przy „Nowy dokument”
+        </Text>
+        <h2 className="ui-dsec-title">{title}</h2>
+      </div>
+      {render(shown)}
+      {hidden.length > 0 && (
+        <>
+          <Button variant="subtle" size="sm" w="fit-content" px={4} onClick={() => setMore((m) => !m)} aria-expanded={more}>
+            {more ? "Ukryj dodatkowe pola" : `Więcej pól (${hidden.length})`}
+          </Button>
+          {more && render(hidden)}
+        </>
+      )}
+    </Paper>
   );
 }

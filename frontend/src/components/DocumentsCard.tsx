@@ -298,7 +298,7 @@ function TrashList({ employee }: { employee: Employee }) {
  * Pola „Adres zamieszkania – miasto”, „Adres zamieszkania – ulica”… pod wspólnym nagłówkiem „Adres zamieszkania”,
  * a w polu sama końcówka („Miasto”). Grupa liczy się od 2 kolejnych pól z tym samym początkiem.
  */
-function grouped(fields: TemplateField[]): { f: TemplateField; head?: string }[] {
+export function grouped(fields: TemplateField[]): { f: TemplateField; head?: string }[] {
   const pre = (f: TemplateField) => (f.label.includes(" – ") ? f.label.split(" – ")[0] : null);
   return fields.map((f, i) => {
     const p = pre(f);

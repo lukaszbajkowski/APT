@@ -1583,3 +1583,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-ghead[data-grab][data-lifted]{cursor:grabbing}
 .ui-tsl-ghead[data-grab] .ui-tsl-ghead-btn{cursor:inherit}
 .ui-tsl-ghead-name[tabindex]:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:var(--mantine-radius-sm)}
+/* telefon: arkusz ustawień pola – formularz nad nim widać i zmienia się na żywo */
+.ui-tpe-fsheet{max-height:62dvh;display:flex;flex-direction:column}
+.ui-tpe-fsheet .mantine-Drawer-body{display:flex;flex-direction:column;min-height:0;flex:1}
+.ui-tpe-fsheet-head{display:flex;align-items:center;gap:var(--s-2)}
+.ui-tpe-fsheet-body{overflow-y:auto;min-height:0;flex:1;padding:var(--s-1) var(--s-2) 0}
+@media (max-width:48em){.ui-tpe-paper{padding:var(--s-3) 0 var(--s-2);border-radius:var(--mantine-radius-md)}.ui-tpe-paper .ui-tsl-cbody{padding:var(--s-3)}}
+.ui-noselect,.ui-noselect *{-webkit-user-select:none !important;user-select:none !important}

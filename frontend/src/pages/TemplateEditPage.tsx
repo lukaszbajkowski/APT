@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import { ActionIcon, Alert, Button, Drawer, FileButton, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
-import { legacyToGroups } from "../components/DocumentsCard";
+import { FieldInput, legacyToGroups } from "../components/DocumentsCard";
 import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
-import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, StatusBadge, PageLoading } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge, PageLoading } from "../components/Mobile";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
 function blocksOf(fields: TemplateField[]): TemplateField[][] {
@@ -79,6 +78,14 @@ export function TemplateEditPage() {
       setFormats(t.download_formats);
     }
   }, [template.data]);
+
+  // telefon: wybrane pole przewija się na górę – arkusz z ustawieniami zasłania dolną część ekranu
+  useEffect(() => {
+    if (editIdx === null) return;
+    requestAnimationFrame(() =>
+      document.querySelector(".ui-tsl-row[data-selected]")?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }),
+    );
+  }, [editIdx]);
 
   const refresh = (t: DocTemplate) => {
     qc.setQueryData(["template", id], t);
@@ -177,8 +184,20 @@ export function TemplateEditPage() {
                     Nowa grupa
                   </Button>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
+                  <div className="ui-tpe-plist ui-tpe-paper">
                   <TouchSortList
                     fields={fields}
+                    canvas
+                    selected={editIdx ?? undefined}
+                    renderBody={(f) => (
+                      // prawdziwe pole formularza (jak u kadry), nieaktywne: dotknięcie otwiera ustawienia, przytrzymanie – przenoszenie
+                      <>
+                        <div className="ui-tpe-cfield" {...({ inert: "" } as object)}>
+                          <FieldInput field={f} value={null} onChange={() => undefined} />
+                        </div>
+                        {f.collapsed && !f.required && <span className="ui-case-chip ui-tpe-more-chip">W „Więcej pól”</span>}
+                      </>
+                    )}
                     onOpen={(i) => setEditIdx(i)}
                     onMove={(from, to, group) => {
                       const next = [...fields];
@@ -246,11 +265,12 @@ export function TemplateEditPage() {
                       bs.splice(to, 0, x);
                       setFields(bs.flat());
                     }}
-                    describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
+                    describe={() => ""}
                   />
+                  </div>
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Nagłówek grupy (⋮⋮) przesuwa całą grupę razem z jej polami, a dwukrotne dotknięcie jego nazwy ją zmienia. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
+                  Tak zobaczy formularz kadra. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
                 </Text>
               </>
             )}
@@ -315,33 +335,48 @@ export function TemplateEditPage() {
           </>
         )}
 
-        {/* edycja jednego pola: panel od dołu; kolejność przyciskami (przeciąganie palcem na liście bywa zawodne) */}
-        <FormDialog
+        {/* edycja jednego pola: arkusz od dołu – formularz nad nim widać i zmienia się na żywo */}
+        <Drawer
           opened={editIdx !== null}
           onClose={() => setEditIdx(null)}
-          title={ef?.label || "Pole"}
-          subtitle={ef ? `{{ ${ef.key} }}` : undefined}
-          primary={{ label: "Gotowe", onClick: () => setEditIdx(null) }}
-          cancel={false}
-          dirty={false}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          overlayProps={{ backgroundOpacity: 0.08 }}
+          classNames={{ content: "ui-sheet ui-tpe-fsheet" }}
+          aria-label={ef?.label || "Pole"}
         >
           {ef && editIdx !== null && (
-            <Stack gap="md">
-              <FieldForm size="md" groups={[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])]} field={ef} onChange={(nf) => setFields(fields.map((x, j) => (j === editIdx ? nf : x)))} />
-              <Group grow>
-                <Button variant="default" size="md" leftSection={<IconArrowUp size={18} />} disabled={editIdx === 0} onClick={() => moveField(editIdx, editIdx - 1)}>
-                  Wyżej
-                </Button>
-                <Button variant="default" size="md" leftSection={<IconArrowDown size={18} />} disabled={editIdx === fields.length - 1} onClick={() => moveField(editIdx, editIdx + 1)}>
-                  Niżej
-                </Button>
-              </Group>
-              <Text size="sm" c="dimmed">
-                Miejsce na formularzu: {editIdx + 1} z {fields.length}
-              </Text>
-            </Stack>
+            <>
+              <SheetHandle onClose={() => setEditIdx(null)}>
+                <div className="ui-sheet-head ui-tpe-fsheet-head">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="ui-sheet-title">{ef.label || "Pole"}</div>
+                    <div className="ui-row-desc ui-mono">{`{{ ${ef.key} }}`}</div>
+                  </div>
+                  <ActionIcon variant="default" size={44} aria-label="Przesuń wyżej" disabled={editIdx === 0} onClick={() => moveField(editIdx, editIdx - 1)}>
+                    <IconArrowUp size={18} />
+                  </ActionIcon>
+                  <ActionIcon variant="default" size={44} aria-label="Przesuń niżej" disabled={editIdx === fields.length - 1} onClick={() => moveField(editIdx, editIdx + 1)}>
+                    <IconArrowDown size={18} />
+                  </ActionIcon>
+                </div>
+              </SheetHandle>
+              <div className="ui-tpe-fsheet-body">
+                <Stack gap="md">
+                  <FieldForm size="md" groups={[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])]} field={ef} onChange={(nf) => setFields(fields.map((x, j) => (j === editIdx ? nf : x)))} />
+                  <Text size="sm" c="dimmed">
+                    Miejsce na formularzu: {editIdx + 1} z {fields.length}
+                  </Text>
+                </Stack>
+              </div>
+              <Button size="md" fullWidth mt="sm" onClick={() => setEditIdx(null)}>
+                Gotowe
+              </Button>
+            </>
           )}
-        </FormDialog>
+        </Drawer>
 
         <FormDialog opened={previewOpen} onClose={() => setPreviewOpen(false)} title="Podgląd formularza" primary={{ label: "Zamknij", onClick: () => setPreviewOpen(false) }} cancel={false} dirty={false}>
           <FormPreview plain title={name || t.name} fields={fields} />

@@ -599,8 +599,14 @@ export function TouchSortList({
   onLabelEdit?: (i: number) => void;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
+  // w trakcie przeciągania nic na stronie się nie zaznacza (ani tekst, ani obrazy)
+  const noSelect = (on: boolean) => {
+    document.documentElement.classList.toggle("ui-noselect", on);
+    if (on) window.getSelection()?.removeAllRanges();
+  };
+  useEffect(() => () => noSelect(false), []);
   const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
-  const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean } | null>(null);
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean; side?: -1 | 0 | 1 } | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const raf = useRef<number | null>(null);
   // ekran edycji na telefonie przewija własny kontener, nie okno – szukamy najbliższego przewijanego przodka
@@ -711,6 +717,7 @@ export function TouchSortList({
     gBegin(g, e.clientY, e.currentTarget as HTMLElement, e.pointerId);
   };
   const gBegin = (g: string, clientY: number, target: HTMLElement, pointerId: number) => {
+    noSelect(true);
     try {
       target.setPointerCapture(pointerId);
     } catch {
@@ -745,6 +752,7 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(gAuto);
   };
   const gEnd = () => {
+    noSelect(false);
     document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
@@ -791,7 +799,12 @@ export function TouchSortList({
     // palec poniżej ostatniego wiersza, nad polem „poza grupą”
     const endTop = endRef.current ? endRef.current.getBoundingClientRect().top : Infinity;
     const out = to === fields.length - 1 && y > endTop;
-    setDrag({ from: s.from, to, dy, out });
+    // położenie pola w szczelinie: dolna połowa = należy do pola poniżej, górna = do pola powyżej
+    // (na granicy grupy pozwala wejść do niej jako pierwsze albo ostatnie pole – z obu kierunków)
+    const slotTop = to < s.from ? s.tops[to] : to > s.from ? s.tops[to] + s.hs[to] - s.hs[s.from] : s.tops[s.from];
+    const diff = s.tops[s.from] + dy - slotTop;
+    const side = diff > 10 ? 1 : diff < -10 ? -1 : 0;
+    setDrag({ from: s.from, to, dy, out, side });
   };
   const autoscroll = () => {
     const s = st.current;
@@ -817,6 +830,7 @@ export function TouchSortList({
     begin(i, e.clientY, e.currentTarget as HTMLElement, e.pointerId);
   };
   const begin = (i: number, clientY: number, target: HTMLElement, pointerId: number) => {
+    noSelect(true);
     try {
       target.setPointerCapture(pointerId);
     } catch {
@@ -843,6 +857,7 @@ export function TouchSortList({
     raf.current = requestAnimationFrame(autoscroll);
   };
   const end = () => {
+    noSelect(false);
     document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
@@ -879,8 +894,11 @@ export function TouchSortList({
   const cDown = (i: number, e: React.PointerEvent, g?: string) => {
     if (e.button !== 0 || st.current || gst.current) return;
     // klik w przycisk albo pole do wpisywania (menu grupy, zmiana nazwy) nie zaczyna przeciągania
-    if ((e.target as HTMLElement).closest("button, input, a, [role=menu]")) return;
+    if ((e.target as HTMLElement).closest("button:not(.ui-tsl-ghead-btn), input, a, [role=menu]")) return;
     const touch = e.pointerType !== "mouse";
+    suppressClick.current = false;
+    // mysz: bez zaznaczania tekstu na stronie przy przeciąganiu
+    if (!touch) e.preventDefault();
     const el = e.currentTarget as HTMLElement;
     const p = { i, g, x: e.clientX, y: e.clientY, id: e.pointerId, el, touch, timer: null as number | null };
     if (touch)
@@ -938,11 +956,13 @@ export function TouchSortList({
     return () => el.removeEventListener("touchmove", stop);
   }, [canvas]);
   // grupa po upuszczeniu: jeśli sąsiedzi są w tej samej grupie – ta grupa; na granicy – grupa, w którą się wjeżdża
-  const groupAt = (from: number, to: number) => {
+  const groupAt = (from: number, to: number, side: -1 | 0 | 1 = drag?.side ?? 0) => {
     const rest = fields.filter((_, j) => j !== from);
     const prev = rest[to - 1]?.group ?? null;
     const nx = rest[to]?.group ?? null;
     if (prev === nx) return prev;
+    if (side > 0) return nx;
+    if (side < 0) return prev;
     if (to === from) return fields[from].group ?? null;
     return to > from ? prev : nx;
   };

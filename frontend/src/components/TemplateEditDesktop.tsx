@@ -751,6 +751,7 @@ export function TouchSortList({
   const raf = useRef<number | null>(null);
   // ekran edycji na telefonie przewija własny kontener, nie okno – szukamy najbliższego przewijanego przodka
   const scroller = useRef<HTMLElement | null>(null);
+  const inner = useRef<number[]>([]);
   const scrollTop = () => (scroller.current ? scroller.current.scrollTop : window.scrollY);
   const scrollBy = (v: number) => (scroller.current ? scroller.current.scrollBy(0, v) : window.scrollBy(0, v));
 
@@ -792,7 +793,14 @@ export function TouchSortList({
     scroller.current = el;
     rows.current.length = fields.length; // po zmianie listy (np. tryb „całe grupy”) zostają odwołania do starych wierszy
     const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + scrollTop() : 0));
-    const hs = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    // wysokość razem z marginesami (bloki grup mają odstępy) – inaczej po przesunięciu zostaje pasek tła
+    const outer = (r: HTMLDivElement | null) => {
+      if (!r) return 64;
+      const cs = getComputedStyle(r);
+      return r.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    };
+    const hs = rows.current.map(outer);
+    inner.current = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
     st.current = { from: i, startY: e.clientY, scroll0: scrollTop(), tops, hs, y: e.clientY };
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
@@ -832,6 +840,15 @@ export function TouchSortList({
     const top = to > from ? st0.tops[to] + st0.hs[to] - st0.hs[from] : st0.tops[to];
     return top - st0.tops[from];
   };
+  // tryb „całe grupy”: między którymi blokami stanie przeciągana grupa
+  const blockSpot = (from: number, to: number) => {
+    const rest = fields.filter((_, j) => j !== from);
+    const name = (f?: TemplateField) => (f ? (f.key.startsWith("g:") ? `grupą „${f.label}”` : `„${f.label}”`) : null);
+    const a = name(rest[to - 1]);
+    const b = name(rest[to]);
+    // krótko – opis musi zmieścić się w wysokości wiersza
+    return b ? `Trafi przed ${b}` : a ? "Trafi na koniec listy" : "";
+  };
   const shift = (i: number) => {
     if (!drag || i === drag.from) return 0;
     const h = st.current?.hs[drag.from] ?? 64;
@@ -856,7 +873,11 @@ export function TouchSortList({
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}
-          style={{ transform: drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined }}
+          style={{
+            transform: drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
+            // przeciągany wiersz zachowuje swoją wysokość (inny opis nie może go skurczyć ani wydłużyć – szczelina pasuje)
+            height: drag?.from === i && st.current ? inner.current[i] : undefined,
+          }}
         >
           <span
             className="ui-tsl-handle"
@@ -874,7 +895,9 @@ export function TouchSortList({
           <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
             <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
             {/* w trakcie przeciągania opis zastępuje grupa docelowa – wysokość wiersza się nie zmienia, więc pasuje do szczeliny */}
-            {drag?.from === i && !blocks ? (
+            {drag?.from === i && blocks ? (
+              <span className="ui-tpl-meta ui-tsl-target">{blockSpot(drag.from, drag.to)}</span>
+            ) : drag?.from === i && !blocks ? (
               <span className="ui-tpl-meta ui-tsl-target">Trafi do: {(drag.out ? null : groupAt(drag.from, drag.to)) ?? "bez grupy"}</span>
             ) : (
               <span className="ui-tpl-meta">{describe(f)}</span>

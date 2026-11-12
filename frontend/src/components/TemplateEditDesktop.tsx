@@ -23,7 +23,6 @@ export interface TemplateDraft {
   fields: TemplateField[];
 }
 
-const typeLabel = (t: FieldType) => FIELD_TYPES.find((x) => x.value === t)?.label ?? t;
 
 /**
  * Edycja szablonu na komputerze (wariant A): zakładki Pola / Ustawienia / Znaczniki; pola jako krótka lista
@@ -52,7 +51,6 @@ export function TemplateEditDesktop({
 }) {
   const [tab, setTab] = useState<string>("fields");
   const [sel, setSel] = useState(0);
-  const [side, setSide] = useState("edit");
   const [moved, setMoved] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
   const [groupDlg, setGroupDlg] = useState<{ editing?: string; keys?: string[] } | null>(null);
@@ -110,7 +108,7 @@ export function TemplateEditDesktop({
 
       <Tabs value={tab} onChange={(v) => v && setTab(v)} keepMounted={false} className="ui-tpe-tabs">
         <Tabs.List>
-          <Tabs.Tab value="fields">Pola formularza {fields.length}</Tabs.Tab>
+          <Tabs.Tab value="fields">Formularz {fields.length}</Tabs.Tab>
           <Tabs.Tab value="settings">Ustawienia</Tabs.Tab>
           <Tabs.Tab value="tags">Znaczniki w pliku</Tabs.Tab>
         </Tabs.List>
@@ -165,18 +163,7 @@ export function TemplateEditDesktop({
                   }}
                   describe={() => ""}
                   renderBody={(f) => (
-                    <span className="ui-tpe-pbody" data-moved={moved === f.key || undefined}>
-                      <span style={{ minWidth: 0 }}>
-                        <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
-                        <span className="ui-tpl-meta ui-mono">{f.key}</span>
-                      </span>
-                      <span className="ui-tpl-meta">
-                        {typeLabel(f.type)}
-                        {f.type === "select" ? ` · ${f.options.length} opcje` : ""}
-                        {f.format ? ` · ${formats.data?.find((x) => x.value === f.format)?.label ?? "własna maska"}` : ""}
-                      </span>
-                      <span>{f.required && <span className="ui-case-chip">Wymagane</span>}</span>
-                    </span>
+                    <CanvasField f={f} moved={moved === f.key} formatLabel={f.format ? (formats.data?.find((x) => x.value === f.format)?.label ?? "własna maska") : undefined} />
                   )}
                   groupName={(g) =>
                     renaming?.from === g ? (
@@ -217,26 +204,9 @@ export function TemplateEditDesktop({
               </div>
 
               {/* panel boczny nie przerysowuje się przy każdym ruchu przeciągania (zależy tylko od tych wartości) */}
-              <Frozen deps={[side, sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
+              <Frozen deps={[sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
               <div className="ui-tpe-side">
-              <SegmentedControl
-                fullWidth
-                value={side}
-                onChange={setSide}
-                data={[
-                  { value: "edit", label: "Edycja pola" },
-                  { value: "preview", label: "Podgląd formularza" },
-                ]}
-              />
-              {side === "preview" && (
-                <FormPreview
-                  title={draft.name || t.name}
-                  fields={fields}
-                  active={cur?.key}
-                  onPick={(k) => setSel(fields.findIndex((f) => f.key === k))}
-                />
-              )}
-              {side === "edit" && cur && (
+              {cur && (
                 <Paper withBorder radius="md" className="ui-tpe-panel" key={cur.key}>
                   <div className="ui-tpe-phead">
                     <div style={{ minWidth: 0 }}>
@@ -507,6 +477,23 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
         onChange={(e) => onChange({ ...field, collapsed: e.currentTarget.checked })}
       />
     </>
+  );
+}
+
+/** Pole na „płótnie” edycji szablonu: wygląda jak w formularzu „Nowy dokument” (etykieta + pole), z drobnymi znacznikami typu. */
+export function CanvasField({ f, formatLabel, moved }: { f: TemplateField; formatLabel?: string; moved?: boolean }) {
+  const kind = f.type === "select" ? `Lista · ${f.options.length}` : f.type === "date" ? "Data" : f.type === "textarea" ? "Długi tekst" : f.type === "number" ? "Liczba" : f.type === "checkbox" ? "Tak / nie" : null;
+  return (
+    <span className="ui-cv-field" data-moved={moved || undefined}>
+      <span className="ui-cv-label">
+        <span className="ui-cv-name">{f.label || "Bez etykiety"}</span>
+        {f.required && <span className="ui-cv-req" aria-label="Wymagane">*</span>}
+        {kind && <span className="ui-cv-chip">{kind}</span>}
+        {formatLabel && <span className="ui-cv-chip">{formatLabel}</span>}
+        {f.collapsed && !f.required && <span className="ui-cv-chip">W „Więcej pól”</span>}
+      </span>
+      <span className="ui-cv-input" data-type={f.type} data-tall={f.type === "textarea" || undefined} aria-hidden />
+    </span>
   );
 }
 

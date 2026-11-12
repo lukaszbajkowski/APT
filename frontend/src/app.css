@@ -1547,3 +1547,22 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* telefon: „⋯” w nagłówku grupy – cel 44×44 */
 .ui-tsl:not(.ui-tpe-plist .ui-tsl) .ui-tsl-ghead .ui-rowmenu{--ai-size:44px !important;width:44px;height:44px}
 .ui-tsl-ghead{gap:var(--s-1)}
+/* ——— edycja szablonu, wariant A: formularz jako płótno ——— */
+.ui-cv-field{display:flex;flex-direction:column;gap:var(--s-1);width:100%;min-width:0;padding:var(--s-2) 0}
+.ui-cv-label{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-1) var(--s-2);font-size:14px;line-height:20px;font-weight:600}
+.ui-cv-name{overflow-wrap:anywhere}
+.ui-cv-req{color:var(--apt-amber,var(--mantine-color-orange-text));font-weight:700}
+.ui-cv-chip{font-size:13px;line-height:18px;font-weight:600;padding:0 var(--s-2);border-radius:6px;background:var(--apt-subtle);color:var(--mantine-color-dimmed)}
+.ui-cv-input{display:block;height:36px;border:1px solid var(--apt-line);border-radius:var(--mantine-radius-sm);background:var(--mantine-color-body);position:relative}
+.ui-cv-input[data-tall]{height:64px}
+.ui-cv-input[data-type="select"]::after{content:"";position:absolute;right:var(--s-3);top:50%;width:8px;height:8px;border-right:2px solid var(--mantine-color-dimmed);border-bottom:2px solid var(--mantine-color-dimmed);transform:translateY(-70%) rotate(45deg)}
+.ui-cv-field[data-moved]{animation:ui-tpe-flash .9s ease-out}
+@media (prefers-reduced-motion:reduce){.ui-cv-field[data-moved]{animation:none}}
+/* płótno: bez linii między polami, karta formularza */
+.ui-tsl:has(.ui-cv-field) .ui-tsl-row{border-top-color:transparent}
+.ui-tsl:has(.ui-cv-field) .ui-tsl-row .ui-tpe-grip{display:none}
+.ui-tpe-plist .ui-tsl{padding:var(--s-3) var(--s-2)}
+.ui-tpe-plist .ui-tsl-row{border-radius:var(--mantine-radius-md)}
+.ui-tpe-plist .ui-tsl-row[data-selected]{box-shadow:inset 0 0 0 2px var(--mantine-primary-color-filled)}
+.ui-tpe-plist .ui-tsl-row[data-selected][data-ingroup]{box-shadow:inset 0 0 0 2px var(--mantine-primary-color-filled)}
+.ui-tsl-body:has(.ui-cv-field){padding:var(--s-2) 0}.ui-tsl-body .ui-cv-field{padding:0}

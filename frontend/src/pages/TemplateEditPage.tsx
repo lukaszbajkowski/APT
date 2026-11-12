@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, CanvasField, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
@@ -150,7 +150,7 @@ export function TemplateEditPage() {
           value={mtab}
           onChange={setMtab}
           items={[
-            { value: "fields", label: `Pola ${fields.length}` },
+            { value: "fields", label: `Formularz ${fields.length}` },
             { value: "settings", label: "Ustawienia" },
             { value: "tags", label: "Znaczniki" },
           ]}
@@ -172,7 +172,7 @@ export function TemplateEditPage() {
                     </Button>
                   </div>
                 )}
-                <Section title="Pola formularza" action={{ label: "Podgląd", onClick: () => setPreviewOpen(true) }} plain>
+                <Section title="Formularz" plain>
                   <Button variant="default" fullWidth mb="sm" onClick={() => setGroupOpen(true)}>
                     Nowa grupa
                   </Button>
@@ -246,11 +246,12 @@ export function TemplateEditPage() {
                       bs.splice(to, 0, x);
                       setFields(bs.flat());
                     }}
+                    renderBody={(f) => <CanvasField f={f} formatLabel={f.format ? "Format" : undefined} />}
                     describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
                   />
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Nagłówek grupy (⋮⋮) przesuwa całą grupę razem z jej polami, a dwukrotne dotknięcie jego nazwy ją zmienia. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
+                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Nagłówek grupy (⋮⋮) przesuwa całą grupę razem z jej polami, a dwukrotne dotknięcie jego nazwy ją zmienia. Dotknij pole, aby je zmienić. Lista wygląda tak, jak formularz, który zobaczy kadra.
                 </Text>
               </>
             )}

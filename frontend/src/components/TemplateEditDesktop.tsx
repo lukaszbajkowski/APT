@@ -438,3 +438,107 @@ export function FieldForm({ field, onChange, size }: { field: TemplateField; onC
     </>
   );
 }
+
+/**
+ * Lista pól na telefonie z przeciąganiem palcem za uchwyt ⋮⋮ (zdarzenia wskaźnika – działa na dotyk i myszą).
+ * Przeciągany wiersz unosi się, pozostałe płynnie się rozsuwają; przy krawędzi ekranu lista sama się przewija.
+ */
+export function TouchSortList({
+  fields,
+  onMove,
+  onOpen,
+  describe,
+}: {
+  fields: TemplateField[];
+  onMove: (from: number, to: number) => void;
+  onOpen: (i: number) => void;
+  describe: (f: TemplateField) => string;
+}) {
+  const rows = useRef<(HTMLDivElement | null)[]>([]);
+  const st = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
+  const raf = useRef<number | null>(null);
+
+  // nowe miejsce = liczba pozostałych wierszy, których środek leży nad środkiem przeciąganego (wiersze mają różne wysokości)
+  const targetFor = (dy: number) => {
+    const s = st.current!;
+    const center = s.tops[s.from] + s.hs[s.from] / 2 + dy;
+    return s.tops.filter((top, i) => i !== s.from && top + s.hs[i] / 2 < center).length;
+  };
+  const update = (y: number) => {
+    const s = st.current;
+    if (!s) return;
+    s.y = y;
+    const dy = y + window.scrollY - (s.startY + s.scroll0);
+    setDrag({ from: s.from, to: targetFor(dy), dy });
+  };
+  const autoscroll = () => {
+    const s = st.current;
+    if (!s) return;
+    const edge = 72;
+    const v = s.y < edge ? -8 : s.y > window.innerHeight - edge - 140 ? 8 : 0; // 140: pasek zapisu i nawigacja
+    if (v) {
+      window.scrollBy(0, v);
+      update(s.y);
+    }
+    raf.current = requestAnimationFrame(autoscroll);
+  };
+  const start = (i: number, e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const tops = rows.current.map((r) => (r ? r.getBoundingClientRect().top + window.scrollY : 0));
+    const hs = rows.current.map((r) => r?.getBoundingClientRect().height ?? 64);
+    st.current = { from: i, startY: e.clientY, scroll0: window.scrollY, tops, hs, y: e.clientY };
+    setDrag({ from: i, to: i, dy: 0 });
+    navigator.vibrate?.(10);
+    raf.current = requestAnimationFrame(autoscroll);
+  };
+  const end = () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    const d = drag;
+    st.current = null;
+    setDrag(null);
+    if (d && d.to !== d.from) onMove(d.from, d.to);
+  };
+  const shift = (i: number) => {
+    if (!drag || i === drag.from) return 0;
+    const h = st.current?.hs[drag.from] ?? 64;
+    if (drag.from < drag.to && i > drag.from && i <= drag.to) return -h;
+    if (drag.from > drag.to && i < drag.from && i >= drag.to) return h;
+    return 0;
+  };
+
+  return (
+    <div className="ui-group ui-tsl" data-dragging={drag ? true : undefined}>
+      {fields.map((f, i) => (
+        <div
+          key={f.key}
+          ref={(el) => {
+            rows.current[i] = el;
+          }}
+          className="ui-tsl-row"
+          data-lifted={drag?.from === i || undefined}
+          style={{ transform: drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined }}
+        >
+          <span
+            className="ui-tsl-handle"
+            role="button"
+            tabIndex={0}
+            aria-label={`Przeciągnij, aby zmienić kolejność: ${f.label}`}
+            onPointerDown={(e) => start(i, e)}
+            onPointerMove={(e) => st.current && update(e.clientY)}
+            onPointerUp={end}
+            onPointerCancel={end}
+          >
+            <IconGripVertical size={20} aria-hidden />
+          </span>
+          <UnstyledButton className="ui-tsl-body" onClick={() => !drag && onOpen(i)}>
+            <span className="ui-tpl-name">{f.label || "Bez etykiety"}</span>
+            <span className="ui-tpl-meta">{describe(f)}</span>
+          </UnstyledButton>
+          <IconChevronRight size={18} className="ui-tpe-grip" aria-hidden />
+        </div>
+      ))}
+    </div>
+  );
+}

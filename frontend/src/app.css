@@ -1386,3 +1386,13 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-pv-field[data-active]{outline-color:var(--mantine-primary-color-filled)}
 @container tpe (max-width:780px){.ui-tpe-side{position:static}.ui-pv{max-height:none}}
 .ui-pv-plain{display:flex;flex-direction:column;gap:var(--s-4);background:transparent}
+/* telefon: przeciąganie pól palcem */
+.ui-tsl{overflow:visible}
+.ui-tsl-row{display:flex;align-items:center;gap:var(--s-1);padding-right:var(--s-4);background:var(--apt-surface);border-top:1px solid var(--apt-line);position:relative;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.ui-tsl-row:first-child{border-top:0}
+.ui-tsl-row[data-lifted]{transition:scale .15s;scale:1.03;outline:2px solid var(--mantine-primary-color-filled);z-index:3;box-shadow:0 12px 32px rgba(0,0,0,.28);border-radius:var(--mantine-radius-md);border-top-color:transparent;background:var(--apt-surface)}
+.ui-tsl[data-dragging]{user-select:none;-webkit-user-select:none}
+.ui-tsl-handle{display:grid;place-items:center;width:44px;align-self:stretch;flex:none;touch-action:none;color:var(--mantine-color-dimmed);cursor:grab}
+.ui-tsl-row[data-lifted] .ui-tsl-handle{color:var(--mantine-primary-color-filled);cursor:grabbing}
+.ui-tsl-body{flex:1;min-width:0;padding:var(--s-3) 0;text-align:left}
+@media (prefers-reduced-motion:reduce){.ui-tsl-row{transition:none}}

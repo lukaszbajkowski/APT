@@ -6,7 +6,7 @@ import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
-import { FieldForm, FormPreview, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { FIELD_TYPES } from "../components/FieldsEditor";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
@@ -135,18 +135,21 @@ export function TemplateEditPage() {
               </Text>
             ) : (
               <>
-                <Section title="Pola formularza" action={{ label: "Podgląd", onClick: () => setPreviewOpen(true) }}>
-                  {fields.map((f, i) => (
-                    <ListRow
-                      key={f.key}
-                      title={f.label || "Bez etykiety"}
-                      description={`${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
-                      onClick={() => setEditIdx(i)}
-                    />
-                  ))}
+                <Section title="Pola formularza" action={{ label: "Podgląd", onClick: () => setPreviewOpen(true) }} plain>
+                  <TouchSortList
+                    fields={fields}
+                    onOpen={(i) => setEditIdx(i)}
+                    onMove={(from, to) => {
+                      const next = [...fields];
+                      const [x] = next.splice(from, 1);
+                      next.splice(to, 0, x);
+                      setFields(next);
+                    }}
+                    describe={(f) => `${FIELD_TYPES.find((x) => x.value === f.type)?.label ?? f.type}${f.required ? " · wymagane" : ""}${f.collapsed && !f.required ? " · zwinięte" : ""}`}
+                  />
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Dotknij pole, aby je zmienić albo przesunąć. „Podgląd” pokazuje formularz, który zobaczy kadra.
+                  Przeciągnij za ⋮⋮, aby zmienić kolejność. Dotknij pole, aby je zmienić. „Podgląd” pokazuje formularz, który zobaczy kadra.
                 </Text>
               </>
             )}

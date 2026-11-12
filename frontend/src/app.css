@@ -1553,3 +1553,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-cfield{pointer-events:none}
 .ui-tpe-cfield[data-moved]{animation:ui-tpe-flash .9s ease-out}
 @media (prefers-reduced-motion:reduce){.ui-tpe-cfield[data-moved]{animation:none}}
+/* płótno: przeciągane pole mieści się w ramce listy (bez powiększania, obwódka do środka, lekkie wcięcie) */
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{scale:1;margin-left:var(--s-2);margin-right:var(--s-2);border-radius:var(--mantine-radius-md);outline-offset:-2px;border-top-color:transparent}
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted][data-joining]{outline:2px solid var(--mantine-primary-color-filled);border-left:0;border-right:0;border-top-color:transparent}
+.ui-tsl-cbody .ui-tsl-target{border:1px solid var(--apt-line);padding:0 var(--s-2)}

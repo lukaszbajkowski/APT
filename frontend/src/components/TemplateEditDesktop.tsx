@@ -772,6 +772,7 @@ export function TouchSortList({
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
           data-target={(joining && f.group === joining && drag?.from !== i) || undefined}
+          data-joining={(joining && drag?.from === i) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-lifted={drag?.from === i || undefined}

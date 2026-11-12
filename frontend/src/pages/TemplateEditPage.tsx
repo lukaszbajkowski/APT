@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, FileButton, Group, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
@@ -31,12 +31,25 @@ export function TemplateEditPage() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<string | null>(null);
   const [blockMode, setBlockMode] = useState(false);
+  const [renaming, setRenaming] = useState<{ from: string; value: string } | null>(null);
+  const lastTap = useRef<{ g: string; t: number }>({ g: "", t: 0 });
   const { id } = useParams();
   const qc = useQueryClient();
   const template = useQuery({ queryKey: ["template", id], queryFn: () => api<DocTemplate>(`/templates/${id}`) });
   const builtins = useQuery({ queryKey: ["template-builtins"], queryFn: () => api<{ key: string; label: string }[]>("/templates/builtins") });
 
   const [fields, setFields] = useState<TemplateField[]>([]);
+  const renameGroup = () => {
+    if (!renaming) return;
+    const to = renaming.value.trim();
+    setRenaming(null);
+    if (!to || to === renaming.from) return;
+    if (fields.some((x) => x.group === to)) {
+      notifications.show({ color: "red", message: `Grupa „${to}” już jest – wybierz inną nazwę.` });
+      return;
+    }
+    setFields(fields.map((x) => (x.group === renaming.from ? { ...x, group: to } : x)));
+  };
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [language, setLanguage] = useState("pl");
@@ -165,10 +178,40 @@ export function TemplateEditPage() {
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
                   {[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])].map((g) => (
                     <div key={g} className="ui-mgroup">
-                      <UnstyledButton className="ui-mgroup-name" onClick={() => setEditGroup(g)} aria-label={`Grupa ${g}: zmień nazwę lub pola`}>
-                        <span className="ui-tpl-name">{g}</span>
-                        <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)} · dotknij, aby zmienić nazwę</span>
-                      </UnstyledButton>
+                      {renaming?.from === g ? (
+                        <TextInput
+                          className="ui-mgroup-name"
+                          size="md"
+                          autoFocus
+                          aria-label="Nazwa grupy"
+                          value={renaming.value}
+                          onChange={(e) => setRenaming({ from: g, value: e.currentTarget.value })}
+                          onBlur={renameGroup}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") renameGroup();
+                            if (e.key === "Escape") setRenaming(null);
+                          }}
+                        />
+                      ) : (
+                        <UnstyledButton
+                          className="ui-mgroup-name"
+                          aria-label={`Grupa ${g}: dotknij dwukrotnie, aby zmienić nazwę`}
+                          onClick={() => {
+                            // podwójne dotknięcie (dwa w ciągu 350 ms) – zmiana nazwy w miejscu
+                            const now = Date.now();
+                            if (lastTap.current.g === g && now - lastTap.current.t < 350) {
+                              setRenaming({ from: g, value: g });
+                              lastTap.current = { g: "", t: 0 };
+                            } else lastTap.current = { g, t: now };
+                          }}
+                        >
+                          <span className="ui-tpl-name">{g}</span>
+                          <span className="ui-tpl-meta">{((n) => (n === 1 ? "1 pole" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pola` : `${n} pól`))(fields.filter((f) => f.group === g).length)} · dotknij dwukrotnie, aby zmienić nazwę</span>
+                        </UnstyledButton>
+                      )}
+                      <Button variant="subtle" size="sm" onClick={() => setEditGroup(g)}>
+                        Zmień pola
+                      </Button>
                     </div>
                   ))}
                   {fields.some((f) => f.group) && (

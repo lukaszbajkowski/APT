@@ -586,7 +586,9 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
       )}
       {field.type === "select" && <OptionsEditor field={field} onChange={(nf) => onChange(nf)} />}
       <Switch
- label="Wymagane" checked={field.required} onChange={(e) => onChange({ ...field, required: e.currentTarget.checked })} />
+        size={size}
+        label="Wymagane"
+        checked={field.required} onChange={(e) => onChange({ ...field, required: e.currentTarget.checked })} />
       <Switch
         size={size}
         label="Zwinięte przy generowaniu"

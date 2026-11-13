@@ -1352,7 +1352,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe{container:tpe/inline-size;display:flex;flex-direction:column;gap:var(--s-4);max-width:1760px;padding-bottom:var(--s-7)}
 .ui-back-link{display:inline-flex;align-items:center;gap:var(--s-1);font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);text-decoration:none;width:fit-content}
 .ui-back-link:hover{color:var(--mantine-color-text)}
-.ui-tpe-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:var(--s-6);align-items:start;margin-top:var(--s-6)}
+.ui-tpe-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:var(--s-6);align-items:start;margin-top:var(--s-2)}
 /* 560–780 px: lista i edycja pola nadal obok siebie (węższy panel), dopiero poniżej – jedna kolumna */
 @container tpe (max-width:780px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr) minmax(280px,300px);gap:var(--s-5)}}
 @container tpe (max-width:560px){.ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-panel{position:static}}
@@ -1373,7 +1373,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe-grip{color:var(--mantine-color-dimmed);cursor:grab}
 .ui-tpe-panel{display:flex;flex-direction:column;gap:var(--s-4);padding:var(--s-6);position:sticky;top:var(--s-4)}
 .ui-tpe-phead{display:flex;justify-content:space-between;gap:var(--s-3);align-items:flex-start}
-.ui-tpe-settings{display:flex;flex-direction:column;gap:var(--s-7);max-width:760px;margin-top:var(--s-6)}
+.ui-tpe-settings{display:flex;flex-direction:column;gap:var(--s-7);max-width:760px;margin-top:var(--s-2)}
 .ui-tpe-settings .ui-dsec{gap:var(--s-4)}
 .ui-tpe-copy{width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 16px;text-align:left}
 .ui-tpe-copy:hover{background:var(--mantine-color-default-hover)}
@@ -1657,3 +1657,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* napis „Trafi do” na górnej krawędzi przenoszonego pola (jak przypięta etykietka) – nie zasłania długiej etykiety pola */
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{overflow:visible}
 .ui-tsl[data-canvas] .ui-tsl-cbody .ui-tsl-target{top:calc(-1 * var(--s-3));right:var(--s-4);z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ui-tpe-tags{margin-top:var(--s-2)}

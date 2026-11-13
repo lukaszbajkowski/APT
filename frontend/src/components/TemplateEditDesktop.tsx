@@ -412,7 +412,7 @@ export function TemplateEditDesktop({
 
         {tab === "tags" && (
           <>
-          <div className="ui-two" style={{ marginTop: "var(--s-6)" }}>
+          <div className="ui-two ui-tpe-tags">
             <section className="ui-dsec">
               <SectionHead title="Dane z kartoteki w tym szablonie" extra={<Text c="dimmed">{t.builtins.length}</Text>} />
               {t.builtins.length === 0 ? (

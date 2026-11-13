@@ -483,7 +483,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
             {error && <Alert color="red">{error}</Alert>}
             <Select
               label="Szablon"
-              placeholder="Wybierz"
+              placeholder="Wybierz szablon"
               data={(templates.data ?? []).map((t) => ({
                 value: String(t.id),
                 label: `${t.name}${t.language !== "pl" ? ` (${LANGUAGES[t.language] ?? t.language})` : ""}`,
@@ -516,7 +516,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               />
             )}
             {template && template.fields.some((f) => !f.collapsed || f.required) && (
-              <GroupedFields fields={template.fields.filter((f) => !f.collapsed || f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
+              <GroupedFields cols={1} fields={template.fields.filter((f) => !f.collapsed || f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
             )}
             {template && template.fields.some((f) => f.collapsed && !f.required) && (
               <>
@@ -532,7 +532,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   {moreFields ? "Ukryj dodatkowe pola" : `Więcej pól (${template.fields.filter((f) => f.collapsed && !f.required).length})`}
                 </Button>
                 <Collapse in={moreFields}>
-                  <GroupedFields fields={template.fields.filter((f) => f.collapsed && !f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
+                  <GroupedFields cols={1} fields={template.fields.filter((f) => f.collapsed && !f.required)} render={(f) => <FieldInput field={f} value={values[f.key] ?? null} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />} />
                 </Collapse>
               </>
             )}

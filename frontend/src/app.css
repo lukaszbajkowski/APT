@@ -1615,3 +1615,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   .mantine-Menu-dropdown::before { margin-bottom: var(--s-2); }
   .mantine-Menu-item { min-height: 44px; }
 }
+.ui-tsl[data-settling] .ui-tsl-row,.ui-tsl[data-settling] .ui-tsl-ghead{transition:none !important}

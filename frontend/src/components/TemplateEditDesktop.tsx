@@ -821,6 +821,7 @@ export function TouchSortList({
   };
   const gEnd = () => {
     noSelect(false);
+    settle();
     document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();
@@ -952,8 +953,17 @@ export function TouchSortList({
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(autoscroll);
   };
+  // upuszczenie: lista od razu układa się w nowej kolejności – przez dwie klatki bez animacji przesuwania,
+  // inaczej pola ruszają z pozycji liczonych dla starej kolejności i całość „przeskakuje”
+  const settle = () => {
+    const el = rootRef.current;
+    if (!el) return;
+    el.setAttribute("data-settling", "");
+    requestAnimationFrame(() => requestAnimationFrame(() => el.removeAttribute("data-settling")));
+  };
   const end = () => {
     noSelect(false);
+    settle();
     document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
     if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-tsl-handle")) document.activeElement.blur();

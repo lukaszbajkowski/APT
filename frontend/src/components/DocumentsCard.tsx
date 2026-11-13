@@ -58,6 +58,7 @@ export function FieldInput({ field, value, onChange }: { field: TemplateField; v
         <Select
           {...common}
           clearable={!field.required}
+          placeholder="Wybierz z listy"
           data={field.options.map((o) => ({ value: o.value, label: o.label }))}
           value={(value as string) || null}
           onChange={(v) => onChange(v)}

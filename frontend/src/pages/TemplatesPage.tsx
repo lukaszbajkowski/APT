@@ -99,7 +99,7 @@ export function TemplatesPage() {
               }}
               placeholder="Wybierz plik"
             />
-            <TextInput label="Nazwa" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+            <TextInput label="Nazwa" required placeholder="np. Deklaracja Medicover" value={name} onChange={(e) => setName(e.currentTarget.value)} />
             <Select
               label="Język dokumentu"
               data={LANGUAGE_OPTIONS}
@@ -109,6 +109,7 @@ export function TemplatesPage() {
             />
             <Textarea
               label="Opis (opcjonalnie)"
+              placeholder="np. Do zgłoszenia pracownika do prywatnej opieki medycznej"
               autosize
               minRows={2}
               value={description}

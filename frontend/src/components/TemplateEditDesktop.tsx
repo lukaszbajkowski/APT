@@ -235,6 +235,7 @@ export function TemplateEditDesktop({
                           className="ui-tpe-lbl-input"
                           autoFocus
                           aria-label="Etykieta pola"
+                          placeholder="Etykieta pola"
                           defaultValue={f.label}
                           onFocus={(e) => e.currentTarget.select()}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -265,6 +266,7 @@ export function TemplateEditDesktop({
                         onFocus={(e) => e.currentTarget.select()}
                         size={Math.max(8, renaming.value.length + 1)}
                         aria-label="Nazwa grupy"
+                        placeholder="Nazwa grupy"
                         value={renaming.value}
                         onChange={(e) => setRenaming({ from: renaming.from, value: e.currentTarget.value })}
                         onBlur={rename}
@@ -372,10 +374,10 @@ export function TemplateEditDesktop({
             <section className="ui-dsec">
               <SectionHead title="Ogólne" />
               <Group grow align="flex-start">
-                <TextInput label="Nazwa" required value={draft.name} onChange={(e) => set({ name: e.currentTarget.value })} />
+                <TextInput label="Nazwa" required placeholder="np. Deklaracja Medicover" value={draft.name} onChange={(e) => set({ name: e.currentTarget.value })} />
                 <Select label="Język dokumentu" data={LANGUAGE_OPTIONS} allowDeselect={false} value={draft.language} onChange={(v) => v && set({ language: v })} />
               </Group>
-              <Textarea label="Opis" autosize minRows={2} value={draft.description} onChange={(e) => set({ description: e.currentTarget.value })} />
+              <Textarea label="Opis" placeholder="np. Do zgłoszenia pracownika do prywatnej opieki medycznej" autosize minRows={2} value={draft.description} onChange={(e) => set({ description: e.currentTarget.value })} />
               <div>
                 <Text size="sm" fw={500} mb={4}>
                   Pobieranie
@@ -622,7 +624,7 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
   const formats = useFieldFormats();
   return (
     <>
-      <TextInput size={size} label="Etykieta w formularzu" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
+      <TextInput size={size} label="Etykieta w formularzu" placeholder="np. Miasto zamieszkania" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
       <Autocomplete
         size={size}
         label="Grupa"

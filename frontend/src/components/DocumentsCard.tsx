@@ -525,6 +525,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
                   size="sm"
                   w="fit-content"
                   px={4}
+                  style={{ marginInlineStart: "calc(var(--s-1) * -1)" }}
                   leftSection={moreFields ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
                   onClick={() => setMoreFields((v) => !v)}
                   aria-expanded={moreFields}

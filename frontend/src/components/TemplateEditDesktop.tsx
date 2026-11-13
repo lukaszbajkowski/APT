@@ -614,7 +614,7 @@ export function TouchSortList({
     y: number;
     /** górne krawędzie wierszy razem z marginesem i nagłówki grup (pozycja + wysokość) – do układu „jak po upuszczeniu” */
     btops?: number[];
-    heads?: Record<string, { top: number; h: number }>;
+    heads?: Record<string, { top: number; h: number; mt: number }>;
   } | null>(null);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean; side?: -1 | 0 | 1 } | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -883,11 +883,11 @@ export function TouchSortList({
     inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     const btops = rows.current.map((r) => (r ? r.offsetTop - parseFloat(getComputedStyle(r).marginTop) : 0));
-    const hds: Record<string, { top: number; h: number }> = {};
+    const hds: Record<string, { top: number; h: number; mt: number }> = {};
     for (const [g, el] of Object.entries(heads.current)) {
       if (!el || !el.isConnected) continue;
       const cs = getComputedStyle(el);
-      hds[g] = { top: el.offsetTop - parseFloat(cs.marginTop), h: el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom) };
+      hds[g] = { top: el.offsetTop - parseFloat(cs.marginTop), h: el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom), mt: parseFloat(cs.marginTop) };
     }
     st.current = { from: i, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY, btops, heads: hds };
     setDrag({ from: i, to: i, dy: 0 });
@@ -1087,7 +1087,7 @@ export function TouchSortList({
       const gi = grpOf(i);
       if (gi && grpOf(rowsSeq[k + 1]) !== gi) lastIn.add(i);
     });
-    const GAP = 8; // --s-2: dolny margines ramki grupy
+    const GAP = 16; // --s-4: odstęp między grupą a polami (jak w formularzu „Nowy dokument”)
     let cur = Math.min(...[...s.btops!.filter((_, i) => i < fields.length), ...Object.values(s.heads!).map((h) => h.top)]);
     const rowY: Record<number, number> = {};
     const headY: Record<string, number> = {};
@@ -1096,8 +1096,13 @@ export function TouchSortList({
         rowY[e.i] = cur - natural(e);
         cur += s.hs[e.i] - (mbs.current[e.i] ?? 0) + (lastIn.has(e.i) ? GAP : 0) + (e.i === from && spreading ? 2 * SPREAD : 0);
       } else {
-        headY[e.g] = cur - natural(e);
-        cur += s.heads![e.g].h;
+        // odstęp nad grupą: 16 px, chyba że tuż wyżej kończy się inna grupa (jej odstęp już jest) albo to początek listy
+        const k = seq.indexOf(e);
+        const before = seq[k - 1];
+        const mtV = !before || (before.t === "r" && lastIn.has(before.i)) ? 0 : GAP;
+        const hd = s.heads![e.g];
+        headY[e.g] = cur + mtV - (hd.top + hd.mt);
+        cur += mtV + hd.h - hd.mt;
       }
     }
     lastIn.delete(from);

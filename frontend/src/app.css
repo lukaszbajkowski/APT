@@ -1593,3 +1593,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl-ghead[data-gone]{opacity:0}
 .ui-tsl-row[data-sglast]{box-shadow:0 1px 0 var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted][data-leaving]{background:var(--apt-surface)}
+/* płótno: odstęp 16 px między grupą a polami (jak w formularzu „Nowy dokument”); między dwiema grupami też 16 px */
+.ui-tsl[data-canvas] .ui-tsl-ghead{margin-top:var(--s-4)}
+.ui-tsl[data-canvas] .ui-tsl-row[data-glast]{margin-bottom:var(--s-4)}
+.ui-tsl[data-canvas] .ui-tsl-row[data-glast] + .ui-tsl-ghead,.ui-tsl[data-canvas] > .ui-tsl-ghead:first-child{margin-top:0}

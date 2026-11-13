@@ -1597,3 +1597,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-canvas] .ui-tsl-ghead{margin-top:var(--s-4)}
 .ui-tsl[data-canvas] .ui-tsl-row[data-glast]{margin-bottom:var(--s-4)}
 .ui-tsl[data-canvas] .ui-tsl-row[data-glast] + .ui-tsl-ghead,.ui-tsl[data-canvas] > .ui-tsl-ghead:first-child{margin-top:0}
+/* edycja szablonu w wąskim obszarze: formularz na całą szerokość (ustawienia pola – panel z prawej) */
+.ui-tpe-grid[data-narrow]{grid-template-columns:minmax(0,1fr)}
+.ui-tpe-panel-drawer{border:0;padding:0;box-shadow:none;background:transparent}
+@container tpe (max-width:1100px){.ui-tpe-grid:not([data-narrow]){grid-template-columns:minmax(0,1fr) 340px;gap:var(--s-5)}}

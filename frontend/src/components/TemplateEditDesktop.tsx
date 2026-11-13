@@ -2,7 +2,7 @@ import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from "rea
 import { Link } from "react-router-dom";
 import { flushSync } from "react-dom";
 import { notifications } from "@mantine/notifications";
-import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Drawer, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical, IconPlus } from "@tabler/icons-react";
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
@@ -52,6 +52,18 @@ export function TemplateEditDesktop({
   const [tab, setTab] = useState<string>("fields");
   const [sel, setSel] = useState(0);
   const [side, setSide] = useState("edit");
+  // za mało miejsca na formularz i panel obok siebie (zależy od szerokości obszaru, np. rozwiniętego menu) –
+  // formularz na całą szerokość, ustawienia pola w panelu wysuwanym z prawej
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 880));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // etykieta pola edytowana wprost na formularzu
   const [editLabel, setEditLabel] = useState<string | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
@@ -90,7 +102,7 @@ export function TemplateEditDesktop({
   const legacy = fields.some((f) => !f.group && f.label.includes(" – "));
 
   return (
-    <div className="ui-tpe">
+    <div className="ui-tpe" ref={rootRef}>
       <Link to={`/szablony?id=${t.id}`} className="ui-back-link">
         <IconArrowLeft size={14} aria-hidden /> Szablony
       </Link>
@@ -152,7 +164,7 @@ export function TemplateEditDesktop({
                 <FormPreview title={draft.name || t.name} fields={fields} />
               </div>
             ) : (
-            <div className="ui-tpe-grid">
+            <div className="ui-tpe-grid" data-narrow={narrow || undefined}>
               {/* płótno: formularz taki, jak zobaczy go kadra; pole łapie się w całości, przyciąga do szczeliny, przewija przy krawędzi */}
               <div ref={listRef} className="ui-tpe-plist ui-tpe-paper" aria-label="Pola formularza">
                 <div className="ui-tpe-paperhead">
@@ -167,7 +179,10 @@ export function TemplateEditDesktop({
                 <TouchSortList
                   fields={fields}
                   selected={sel}
-                  onOpen={(i) => setSel(i)}
+                  onOpen={(i) => {
+                    setSel(i);
+                    if (narrow) setPanelOpen(true);
+                  }}
                   onMove={(from, to, group) => {
                     const next = [...fields];
                     const [x] = next.splice(from, 1);
@@ -266,6 +281,7 @@ export function TemplateEditDesktop({
               </div>
 
               {/* panel boczny nie przerysowuje się przy każdym ruchu przeciągania (zależy tylko od tych wartości) */}
+              {!narrow && (
               <Frozen deps={[sel, cur, fields, draft.name, groupNames.join("\u0000")]}>
               <div className="ui-tpe-side">
               {cur && (
@@ -293,8 +309,43 @@ export function TemplateEditDesktop({
               )}
               </div>
               </Frozen>
+              )}
             </div>
             )}
+            {/* wąski obszar (np. rozwinięte menu): formularz na całą szerokość, ustawienia pola w panelu z prawej */}
+            <Drawer
+              opened={narrow && panelOpen && !!cur}
+              onClose={() => setPanelOpen(false)}
+              position="right"
+              size={420}
+              title="Ustawienia pola"
+              overlayProps={{ backgroundOpacity: 0.12 }}
+              classNames={{ body: "ui-tpe-drawer" }}
+            >
+              {cur && (
+                <Paper withBorder radius="md" className="ui-tpe-panel ui-tpe-panel-drawer" key={cur.key}>
+                  <div className="ui-tpe-phead">
+                    <div style={{ minWidth: 0 }}>
+                      <h2 className="ui-dsec-title">{cur.label || "Bez etykiety"}</h2>
+                      <Text size="sm" c="dimmed" className="ui-mono">{`{{ ${cur.key} }}`}</Text>
+                    </div>
+                    <Group gap={4} wrap="nowrap">
+                      <Tooltip label="Wyżej na formularzu">
+                        <ActionIcon variant="default" size={36} aria-label="Przesuń wyżej" disabled={sel === 0} onClick={() => move(sel, sel - 1)}>
+                          <IconArrowUp size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Niżej na formularzu">
+                        <ActionIcon variant="default" size={36} aria-label="Przesuń niżej" disabled={sel === fields.length - 1} onClick={() => move(sel, sel + 1)}>
+                          <IconArrowDown size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </div>
+                  <FieldForm field={cur} onChange={(nf) => setField(sel, nf)} groups={groupNames} />
+                </Paper>
+              )}
+            </Drawer>
             </>
           )}
         </Tabs.Panel>

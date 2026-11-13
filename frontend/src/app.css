@@ -1601,3 +1601,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-grid[data-narrow]{grid-template-columns:minmax(0,1fr)}
 .ui-tpe-panel-drawer{border:0;padding:0;box-shadow:none;background:transparent}
 @container tpe (max-width:1100px){.ui-tpe-grid:not([data-narrow]){grid-template-columns:minmax(0,1fr) 340px;gap:var(--s-5)}}
+/* arkusz ustawień pola: „Gotowe” nigdy nie jest ściskane; na niskim ekranie (telefon w poziomie) arkusz może być wyższy */
+.ui-tpe-fsheet-done{flex:none}
+@media (max-height:500px){.ui-tpe-fsheet{max-height:90dvh}}
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted] .ui-tsl-cbody:focus-visible{outline:none}

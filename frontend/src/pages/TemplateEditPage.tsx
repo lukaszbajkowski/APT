@@ -372,7 +372,7 @@ export function TemplateEditPage() {
                   </Text>
                 </Stack>
               </div>
-              <Button size="md" fullWidth mt="sm" onClick={() => setEditIdx(null)}>
+              <Button size="md" fullWidth mt="sm" className="ui-tpe-fsheet-done" onClick={() => setEditIdx(null)}>
                 Gotowe
               </Button>
             </>

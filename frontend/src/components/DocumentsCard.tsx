@@ -463,7 +463,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
               </Alert>
             )}
             <Group justify="space-between">
-              <Button variant="subtle" onClick={() => setDone(null)}>
+              <Button variant="subtle" onClick={() => setDone(null)} style={{ marginInlineStart: "calc(var(--button-padding-x) * -1)" }}>
                 Kolejny dokument
               </Button>
               <Group gap="xs">

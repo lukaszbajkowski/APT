@@ -270,7 +270,7 @@ export function TemplateEditPage() {
                   </div>
                 </Section>
                 <Text size="sm" c="dimmed">
-                  Tak zobaczy formularz kadra. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
+                  Tak zobaczy formularz użytkownik przy „Nowy dokument”. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
                 </Text>
               </>
             )}

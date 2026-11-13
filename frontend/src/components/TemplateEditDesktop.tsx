@@ -157,7 +157,7 @@ export function TemplateEditDesktop({
               <div ref={listRef} className="ui-tpe-plist ui-tpe-paper" aria-label="Pola formularza">
                 <div className="ui-tpe-paperhead">
                   <Text size="sm" c="dimmed">
-                    Tak zobaczy to kadra przy „Nowy dokument”
+                    Tak zobaczy to użytkownik przy „Nowy dokument”
                   </Text>
                   <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
                   <Text size="xs" c="dimmed">
@@ -466,7 +466,7 @@ export function FormPreview({ title, fields, active, onPick, plain }: { title: s
     <Paper withBorder={!plain} radius="md" className={plain ? "ui-pv-plain" : "ui-tpe-panel ui-pv"} ref={box}>
       <div>
         <Text size="sm" c="dimmed">
-          Tak zobaczy to kadra przy „Nowy dokument”
+          Tak zobaczy to użytkownik przy „Nowy dokument”
         </Text>
         <h2 className="ui-dsec-title">{title}</h2>
       </div>

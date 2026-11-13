@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LanguagePicker, useLang, useT } from "../lib/i18n";
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import {
@@ -206,6 +206,44 @@ function MobileTopBar() {
   );
 }
 
+/**
+ * Pasek boczny pamięta, dokąd był przewinięty (osobno wąski z ikonami i szeroki) – po przejściu na inną stronę
+ * albo odświeżeniu wraca w to samo miejsce, zamiast skakać na górę.
+ */
+function useNavScroll() {
+  const refs = useRef<Record<string, HTMLDivElement | null>>({});
+  const location = useLocation();
+  const restore = (k: string) => {
+    const el = refs.current[k];
+    if (!el) return;
+    try {
+      const v = Number(sessionStorage.getItem(`apt-nav-scroll-${k}`) ?? 0);
+      if (v && Math.abs(el.scrollTop - v) > 1) el.scrollTop = v;
+    } catch {
+      /* brak dostępu do pamięci sesji */
+    }
+  };
+  // po zmianie strony (i po pierwszym narysowaniu) – przywrócenie zapamiętanej pozycji
+  useEffect(() => {
+    const id = requestAnimationFrame(() => Object.keys(refs.current).forEach(restore));
+    return () => cancelAnimationFrame(id);
+  }, [location.pathname]);
+  return (k: string) => ({
+    viewportRef: (el: HTMLDivElement | null) => {
+      const fresh = el && refs.current[k] !== el;
+      refs.current[k] = el;
+      if (fresh) requestAnimationFrame(() => restore(k));
+    },
+    onScrollPositionChange: ({ y }: { x: number; y: number }) => {
+      try {
+        sessionStorage.setItem(`apt-nav-scroll-${k}`, String(Math.round(y)));
+      } catch {
+        /* brak dostępu do pamięci sesji */
+      }
+    },
+  });
+}
+
 export function AppLayout() {
   return (
     <MobileHeaderProvider>
@@ -216,6 +254,7 @@ export function AppLayout() {
 }
 
 function AppLayoutInner() {
+  const navScroll = useNavScroll();
   const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
   // wysokość dolnego menu (z paskiem iPhone'a) jako --apt-nav-h – formularze i toasty ustawiają się tuż nad nim
   useNavHeightVar(mobile);
@@ -379,7 +418,7 @@ function AppLayoutInner() {
                 </Link>
               </Tooltip>
             </AppShell.Section>
-            <AppShell.Section grow component={ScrollArea} type="never">
+            <AppShell.Section grow component={ScrollArea} type="never" {...navScroll("rail")}>
               <RailList items={items} path={location.pathname} />
             </AppShell.Section>
             <AppShell.Section pt={6} className="ui-rail-foot">
@@ -408,7 +447,7 @@ function AppLayoutInner() {
             </Group>
           </Link>
         </AppShell.Section>
-        <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize={8}>
+        <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize={8} {...navScroll("full")}>
           {navList()}
         </AppShell.Section>
         <AppShell.Section pt="xs" style={{ borderTop: "1px solid var(--apt-line)" }}>

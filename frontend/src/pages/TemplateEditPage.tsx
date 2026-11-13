@@ -184,6 +184,10 @@ export function TemplateEditPage() {
                     Nowa grupa
                   </Button>
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
+                  {/* instrukcja nad formularzem – widać ją od razu, bez przewijania na koniec listy */}
+                  <Text size="sm" c="dimmed" mb="sm">
+                    Tak zobaczy formularz użytkownik przy „Nowy dokument”. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
+                  </Text>
                   <div className="ui-tpe-plist ui-tpe-paper">
                   <TouchSortList
                     fields={fields}
@@ -269,9 +273,6 @@ export function TemplateEditPage() {
                   />
                   </div>
                 </Section>
-                <Text size="sm" c="dimmed">
-                  Tak zobaczy formularz użytkownik przy „Nowy dokument”. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
-                </Text>
               </>
             )}
           </>

@@ -1643,7 +1643,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @container tpe (max-width: 879px){.ui-tpe-skel .ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-skel .ui-tpe-grid > .ui-tpe-panel{display:none}}
 /* przenoszone pole lekko przechylone – jak kartka podniesiona z blatu; prostuje się przy odłożeniu */
 @media (prefers-reduced-motion: no-preference) {
-  .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{rotate:-1.5deg}
+  .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{rotate:var(--tilt-field,-1.5deg)}
   /* przenoszona grupa: wspólny przechył nagłówka i pól (punkt obrotu – środek grupy, ustawiany w kodzie) */
-  .ui-tsl[data-canvas] .ui-tsl-ghead[data-lifted],.ui-tsl[data-canvas] .ui-tsl-row[data-glifted]{rotate:-1deg}
+  .ui-tsl[data-canvas] .ui-tsl-ghead[data-lifted],.ui-tsl[data-canvas] .ui-tsl-row[data-glifted]{rotate:var(--tilt-group,-1deg)}
 }

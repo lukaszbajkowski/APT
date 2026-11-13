@@ -871,6 +871,7 @@ export function TouchSortList({
   };
   const gBegin = (g: string, clientY: number, target: HTMLElement, pointerId: number) => {
     noSelect(true);
+    setTilt();
     try {
       target.setPointerCapture(pointerId);
     } catch {
@@ -1017,8 +1018,19 @@ export function TouchSortList({
     e.preventDefault();
     begin(i, e.clientY, e.currentTarget as HTMLElement, e.pointerId);
   };
+  // przechył przenoszonego pola / grupy: na wąskim ekranie 1,5° / 1°, na szerszym mniejszy kąt, żeby krawędź
+  // wychylała się zawsze o podobną liczbę pikseli (ok. 9 px pole, 6 px grupa – jak na telefonie w pionie)
+  const setTilt = () => {
+    const el = rootRef.current;
+    if (!el) return;
+    const w = Math.max(1, el.clientWidth);
+    const deg = (max: number, px: number) => -Math.min(max, (Math.atan(px / w) * 180) / Math.PI);
+    el.style.setProperty("--tilt-field", `${deg(1.5, 9).toFixed(2)}deg`);
+    el.style.setProperty("--tilt-group", `${deg(1, 6).toFixed(2)}deg`);
+  };
   const begin = (i: number, clientY: number, target: HTMLElement, pointerId: number) => {
     noSelect(true);
+    setTilt();
     try {
       target.setPointerCapture(pointerId);
     } catch {

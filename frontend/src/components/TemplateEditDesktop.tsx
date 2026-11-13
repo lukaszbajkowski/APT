@@ -1,5 +1,6 @@
 import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { useMediaQuery } from "@mantine/hooks";
 import { flushSync } from "react-dom";
 import { notifications } from "@mantine/notifications";
 import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Drawer, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
@@ -57,6 +58,8 @@ export function TemplateEditDesktop({
   const rootRef = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  // tablet (ekran dotykowy z układem komputerowym): podpowiedź o przytrzymaniu zamiast przeciągania myszą
+  const touch = useMediaQuery("(pointer: coarse)");
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
@@ -173,7 +176,9 @@ export function TemplateEditDesktop({
                   </Text>
                   <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
                   <Text size="xs" c="dimmed">
-                    Dwuklik na etykiecie zmienia jej treść. Przeciągnij pole, aby zmienić kolejność.
+                    {touch
+                      ? "Dotknij dwa razy etykietę, aby zmienić jej treść. Przytrzymaj pole, aby je przenieść."
+                      : "Dwuklik na etykiecie zmienia jej treść. Przeciągnij pole, aby zmienić kolejność."}
                   </Text>
                 </div>
                 <TouchSortList

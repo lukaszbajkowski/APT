@@ -1308,7 +1308,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-scroll{overflow:auto;min-height:0;flex:1}
 .ui-tpl-item{display:flex;align-items:center;gap:var(--s-3);width:100%;padding:var(--s-3) var(--s-4);border-bottom:1px solid var(--apt-line);text-align:left;transition:background-color .15s}
 .ui-tpl-item:hover{background:var(--mantine-color-default-hover)}
-.ui-tpl-item[data-selected]{background:var(--apt-subtle);box-shadow:inset 3px 0 var(--mantine-primary-color-filled)}
+.ui-tpl-item[data-selected]{background:var(--apt-subtle)}
 .ui-tpl-item[data-off]{opacity:.55}
 .ui-tpl-ico{flex:none;color:var(--mantine-color-dimmed)}
 .ui-tpl-name{display:block;font-size:15px;line-height:22px;font-weight:600;overflow-wrap:anywhere}
@@ -1616,3 +1616,19 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   .mantine-Menu-item { min-height: 44px; }
 }
 .ui-tsl[data-settling] .ui-tsl-row,.ui-tsl[data-settling] .ui-tsl-ghead{transition:none !important}
+/* szkielet edycji szablonu – ten sam kształt co formularz */
+.ui-tpe-skhead{display:flex;justify-content:space-between;align-items:center;gap:var(--s-4)}
+.ui-tpe-skpaper{display:flex;flex-direction:column;gap:var(--s-6)}
+.ui-tpe-skpaper .ui-tpe-paperhead{padding-bottom:0}
+.ui-tpe-skf{padding:0 var(--s-4)}
+.ui-tpe-skgroup{display:flex;flex-direction:column;gap:var(--s-3);margin:0 var(--s-2);padding:var(--s-4) 0 var(--s-4) var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
+.ui-tpe-skgroup > .mantine-Skeleton-root{margin-left:var(--s-2)}
+.ui-tpe-skmobile{display:flex;flex-direction:column;gap:var(--s-4)}
+/* płótno: łagodniejsze przesuwanie pól i nagłówków grup w trakcie przeciągania; przenoszone pole dosuwa się do szczeliny */
+@media (prefers-reduced-motion: no-preference) {
+  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row,.ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-ghead{transition:transform .26s cubic-bezier(.22,.9,.3,1)}
+  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted]{transition:transform .18s cubic-bezier(.22,.9,.3,1)}
+}
+/* edycja szablonu: górny wiersz – przełącznik części (jak w Wiadomościach/Komunikatach), po prawej tryb formularza i „Nowa grupa” */
+.ui-tpe-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s-3)}
+.ui-tpe-topbar .ui-tpe-tools{margin:0;gap:var(--s-3);justify-content:flex-end;flex-wrap:wrap}

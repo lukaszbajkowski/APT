@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { flushSync } from "react-dom";
 import { notifications } from "@mantine/notifications";
-import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Drawer, Group, Paper, SegmentedControl, Skeleton, Switch, Tabs, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, Checkbox, CopyButton, Drawer, Group, Paper, SegmentedControl, Skeleton, Switch, Text, TextInput, Textarea, Tooltip, UnstyledButton } from "@mantine/core";
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconCheck, IconChevronRight, IconCopy, IconGripVertical, IconPlus } from "@tabler/icons-react";
 
 import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormats, type FieldType, type TemplateField } from "../api";
@@ -123,29 +123,20 @@ export function TemplateEditDesktop({
         }
       />
 
-      <Tabs value={tab} onChange={(v) => v && setTab(v)} keepMounted={false} className="ui-tpe-tabs">
-        <Tabs.List>
-          <Tabs.Tab value="fields">Pola formularza {fields.length}</Tabs.Tab>
-          <Tabs.Tab value="settings">Ustawienia</Tabs.Tab>
-          <Tabs.Tab value="tags">Znaczniki w pliku</Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="fields">
-          {fields.length === 0 ? (
-            <Text c="dimmed" mt="lg">
-              Ten szablon używa tylko danych z kartoteki – aplikacja o nic nie zapyta przy generowaniu.
-            </Text>
-          ) : (
-            <>
-            {legacy && (
-              <div className="ui-tpe-hint">
-                <Text size="sm">Część etykiet ma grupę w nazwie („Adres zamieszkania – Miasto”). Zamienić na grupy pól?</Text>
-                <Button size="xs" variant="default" onClick={() => set({ fields: legacyToGroups(fields) })}>
-                  Zamień na grupy
-                </Button>
-              </div>
-            )}
-            <div className="ui-tpe-tools">
+      {/* przełącznik części szablonu – jak w Wiadomościach i Komunikatach; tryb formularza i „Nowa grupa” w tym samym wierszu */}
+      <div className="ui-tpe-topbar">
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          aria-label="Część szablonu"
+          data={[
+            { value: "fields", label: `Pola formularza ${fields.length}` },
+            { value: "settings", label: "Ustawienia" },
+            { value: "tags", label: "Znaczniki w pliku" },
+          ]}
+        />
+        {tab === "fields" && fields.length > 0 && (
+          <div className="ui-tpe-tools">
               <SegmentedControl
                 value={side}
                 onChange={setSide}
@@ -160,7 +151,26 @@ export function TemplateEditDesktop({
                   Nowa grupa
                 </Button>
               )}
-            </div>
+          </div>
+        )}
+      </div>
+
+        {tab === "fields" && (
+          <>
+          {fields.length === 0 ? (
+            <Text c="dimmed" mt="lg">
+              Ten szablon używa tylko danych z kartoteki – aplikacja o nic nie zapyta przy generowaniu.
+            </Text>
+          ) : (
+            <>
+            {legacy && (
+              <div className="ui-tpe-hint">
+                <Text size="sm">Część etykiet ma grupę w nazwie („Adres zamieszkania – Miasto”). Zamienić na grupy pól?</Text>
+                <Button size="xs" variant="default" onClick={() => set({ fields: legacyToGroups(fields) })}>
+                  Zamień na grupy
+                </Button>
+              </div>
+            )}
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             {side === "preview" ? (
               <div className="ui-tpe-pvwrap">
@@ -353,9 +363,11 @@ export function TemplateEditDesktop({
             </Drawer>
             </>
           )}
-        </Tabs.Panel>
+          </>
+        )}
 
-        <Tabs.Panel value="settings">
+        {tab === "settings" && (
+          <>
           <div className="ui-tpe-settings">
             <section className="ui-dsec">
               <SectionHead title="Ogólne" />
@@ -395,9 +407,11 @@ export function TemplateEditDesktop({
               />
             </section>
           </div>
-        </Tabs.Panel>
+          </>
+        )}
 
-        <Tabs.Panel value="tags">
+        {tab === "tags" && (
+          <>
           <div className="ui-two" style={{ marginTop: "var(--s-6)" }}>
             <section className="ui-dsec">
               <SectionHead title="Dane z kartoteki w tym szablonie" extra={<Text c="dimmed">{t.builtins.length}</Text>} />
@@ -442,8 +456,8 @@ export function TemplateEditDesktop({
               </Paper>
             </section>
           </div>
-        </Tabs.Panel>
-      </Tabs>
+          </>
+        )}
 
       {/* pasek zapisu zawsze widoczny na dole ekranu */}
       <div className="ui-tpe-save" data-dirty={dirty > 0 || undefined}>
@@ -459,34 +473,90 @@ export function TemplateEditDesktop({
 }
 
 /** Szkielet edycji szablonu: powrót, tytuł, zakładki, lista pól i panel – ten sam układ co treść. */
+/** Szkielet pola formularza: etykieta i okienko (jak na płótnie). */
+function FieldSkel({ w = 40 }: { w?: number }) {
+  return (
+    <div className="ui-tpe-skf">
+      <Skeleton height={12} width={`${w}%`} mb={8} />
+      <Skeleton height={36} radius="sm" />
+    </div>
+  );
+}
+
+/** Szkielet płótna: kartka z nagłówkiem, pola i jedna grupa w ramce – ten sam kształt co formularz. */
+function CanvasSkel({ head = true }: { head?: boolean }) {
+  return (
+    <div className="ui-tpe-paper ui-tpe-skpaper">
+      {head && (
+        <div className="ui-tpe-paperhead">
+          <Skeleton height={12} width={220} />
+          <Skeleton height={18} width={180} mt={4} />
+          <Skeleton height={10} width="70%" mt={4} />
+        </div>
+      )}
+      <FieldSkel w={30} />
+      <FieldSkel w={22} />
+      <FieldSkel w={26} />
+      <div className="ui-tpe-skgroup">
+        <Skeleton height={14} width={160} mb={4} />
+        <Skeleton height={10} width={90} mb={8} />
+        <FieldSkel w={20} />
+        <FieldSkel w={28} />
+      </div>
+      <FieldSkel w={34} />
+    </div>
+  );
+}
+
+/** Szkielet edycji szablonu (komputer): powrót, tytuł z akcjami, zakładki, Edycja/Podgląd, kartka formularza i panel pola. */
 export function TemplateEditSkeleton() {
   return (
     <div className="ui-tpe" aria-busy="true" aria-label="Ładowanie">
       <Skeleton height={12} width={80} />
-      <Skeleton height={28} width={320} />
-      <Skeleton height={32} width={420} radius="sm" />
+      <div className="ui-tpe-skhead">
+        <Skeleton height={28} width={320} />
+        <Group gap="xs" wrap="nowrap">
+          <Skeleton height={36} width={150} radius="sm" />
+          <Skeleton height={36} width={36} radius="sm" />
+        </Group>
+      </div>
+      <div className="ui-tpe-topbar">
+        <Skeleton height={36} width={380} radius="md" />
+        <Group gap="sm" wrap="nowrap">
+          <Skeleton height={36} width={150} radius="md" />
+          <Skeleton height={30} width={120} radius="sm" />
+        </Group>
+      </div>
       <div className="ui-tpe-grid">
-        <Paper withBorder radius="md" className="ui-cases">
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="ui-tpe-row">
-              <Skeleton height={16} width={12} />
-              <span>
-                <Skeleton height={12} width={`${70 - (i % 3) * 15}%`} mb={8} />
-                <Skeleton height={10} width={90} />
-              </span>
-              <Skeleton height={10} width={80} />
-              <span />
-              <span />
-            </div>
-          ))}
-        </Paper>
+        <CanvasSkel />
         <Paper withBorder radius="md" className="ui-tpe-panel">
-          <Skeleton height={20} width="60%" />
-          <Skeleton height={36} />
-          <Skeleton height={36} />
-          <Skeleton height={20} width="40%" />
+          <Skeleton height={20} width="55%" />
+          <Skeleton height={12} width="35%" mt={6} mb="md" />
+          <FieldSkel w={45} />
+          <FieldSkel w={25} />
+          <FieldSkel w={20} />
+          <Skeleton height={20} width="50%" mt="sm" />
         </Paper>
       </div>
+    </div>
+  );
+}
+
+/** Szkielet edycji szablonu (telefon): przełącznik Pola / Ustawienia / Znaczniki, sekcja z przyciskiem, podpowiedź i formularz. */
+export function TemplateEditMobileSkeleton() {
+  return (
+    <div className="ui-tpe-skmobile" aria-busy="true" aria-label="Ładowanie">
+      <Skeleton height={44} radius="md" />
+      <Group justify="space-between">
+        <Skeleton height={18} width={140} />
+        <Skeleton height={14} width={60} />
+      </Group>
+      <Skeleton height={44} radius="md" />
+      <div>
+        <Skeleton height={12} width="95%" mb={8} />
+        <Skeleton height={12} width="80%" />
+      </div>
+      <CanvasSkel head={false} />
     </div>
   );
 }
@@ -859,6 +929,7 @@ export function TouchSortList({
     const center = s.tops[s.from] + s.hs[s.from] / 2 + dy;
     return s.tops.filter((top, i) => i !== s.from && top + s.hs[i] / 2 < center).length;
   };
+  const lastZone = useRef<{ from: number; to: number; side: -1 | 0 | 1 } | null>(null);
   const update = (y: number) => {
     const s = st.current;
     if (!s) return;
@@ -884,16 +955,26 @@ export function TouchSortList({
     const nxG = bIdx !== undefined ? fields[bIdx].group ?? null : null;
     const own = fields[s.from].group ?? null;
     const two = !!prevG && !!nxG && prevG !== nxG;
-    let side: -1 | 0 | 1 = two ? (f < 0.35 ? -1 : f > 0.65 ? 1 : 0) : f < 0.5 ? -1 : f > 0.5 ? 1 : 0;
-    // pole na swoim miejscu: zostaje w swojej grupie, dopóki nie ruszy się o 36 px w stronę granicy
-    if (to === s.from) {
-      const d = dy;
-      const L = 36;
-      const span = (hi - lo) * 0.3;
-      if (own && own === prevG && own !== nxG) side = d < L ? -1 : two ? (d < L + span ? 0 : 1) : 1;
-      else if (own && own === nxG && own !== prevG) side = d > -L ? 1 : two ? (d > -L - span ? 0 : -1) : -1;
-      else if (!own && prevG !== nxG) side = d < -L && prevG ? -1 : d > L && nxG ? 1 : 0;
-    }
+    const zone = (f: number, d: number): -1 | 0 | 1 => {
+      let z: -1 | 0 | 1 = two ? (f < 0.35 ? -1 : f > 0.65 ? 1 : 0) : f < 0.5 ? -1 : f > 0.5 ? 1 : 0;
+      // pole na swoim miejscu: zostaje w swojej grupie, dopóki nie ruszy się o 36 px w stronę granicy
+      if (to === s.from) {
+        const L = 36;
+        const span = (hi - lo) * 0.3;
+        if (own && own === prevG && own !== nxG) z = d < L ? -1 : two ? (d < L + span ? 0 : 1) : 1;
+        else if (own && own === nxG && own !== prevG) z = d > -L ? 1 : two ? (d > -L - span ? 0 : -1) : -1;
+        else if (!own && prevG !== nxG) z = d < -L && prevG ? -1 : d > L && nxG ? 1 : 0;
+      }
+      return z;
+    };
+    // łagodne przejście na granicy grupy: strefa zmienia się dopiero po wyraźnym przekroczeniu granicy (12 px) –
+    // drobny ruch przy granicy nie przerzuca nagłówka grupy tam i z powrotem
+    const H = 12;
+    const m = hi > lo ? H / (hi - lo) : 0;
+    let side = zone(f, dy);
+    const last = lastZone.current;
+    if (last && last.from === s.from && last.to === to && side !== last.side && (zone(f - m, dy - H) === last.side || zone(f + m, dy + H) === last.side)) side = last.side;
+    lastZone.current = { from: s.from, to, side };
     setDrag({ from: s.from, to, dy, out, side });
   };
   const autoscroll = () => {

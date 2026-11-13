@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { FieldInput, legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditMobileSkeleton, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
@@ -119,7 +119,14 @@ export function TemplateEditPage() {
     onError: (e) => setError(errorText(e)),
   });
 
-  if (template.isLoading) return mobile ? <PageLoading title="Szablon" /> : <TemplateEditSkeleton />;
+  if (template.isLoading)
+    return mobile ? (
+      <PageLoading title="Szablon">
+        <TemplateEditMobileSkeleton />
+      </PageLoading>
+    ) : (
+      <TemplateEditSkeleton />
+    );
   if (!template.data) return <Alert color="red">Nie znaleziono szablonu.</Alert>;
   const t = template.data;
   const builtinLabel = (k: string) => builtins.data?.find((b) => b.key === k)?.label ?? k;

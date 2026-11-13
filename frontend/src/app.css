@@ -1640,3 +1640,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-skmobile{padding-top:var(--s-1)}
 .ui-tpe-sksec{display:flex;flex-direction:column;gap:var(--s-2)}
 .ui-tpe-skhint{display:flex;flex-direction:column;gap:var(--s-2);margin:var(--s-1) 0;padding:var(--s-1) 0}
+/* szkielet edycji szablonu w wąskim obszarze (poniżej 880 px) – jak gotowy ekran: formularz na całą szerokość, bez panelu */
+@container tpe (max-width: 879px){.ui-tpe-skel .ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-skel .ui-tpe-grid > .ui-tpe-panel{display:none}}

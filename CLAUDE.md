@@ -42,10 +42,15 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
    polskie cudzysłowy, kolory przez zmienne (bez `yellow.8` / `#…` na sztywno), teksty od wielkiej litery.
 2. **Przegląd ekranu:** `APT_UI_PASSWORD=… node scripts/ui-check.mjs /ścieżka [/inna]` (tylko lokalne demo –
    klika przyciski i zmienia dane). Robi zrzuty dla każdej roli (admin, kierownik, agencja) × jasny/ciemny ×
-   1440/800 px, w trakcie ładowania (opóźnione API) i po nim, klika przyciski i zgłasza błędy JS, odpowiedzi
-   API ≥ 400 i czerwone powiadomienia.
+   **każde urządzenie**: komputer 1440 i 800 px, telefon w pionie i w poziomie, tablet w pionie i w poziomie –
+   w trakcie ładowania (opóźnione API) i po nim, klika przyciski i zgłasza błędy JS, odpowiedzi API ≥ 400
+   i czerwone powiadomienia.
 3. **Obejrzyj zrzuty** – skrypt nie oceni wyglądu: ciemny motyw (kontrast bursztynu), wąskie okno (nic nie
-   ucięte, brak przewijania w bok), szkielet w kształcie treści, jedna pełna akcja główna, brak kart w kartach.
+   ucięte, brak przewijania w bok), szkielet w kształcie treści i bez przeskoku po załadowaniu (treść w tym
+   samym miejscu), jedna pełna akcja główna, brak kart w kartach.
+   **Zawsze na wszystkim** (prośba właściciela): każdą zmianę wyglądu lub zachowania sprawdzaj od razu na
+   wszystkich urządzeniach z punktu 2 i w obu motywach – także gdy prośba wymienia tylko jedno urządzenie lub
+   motyw. Interakcje dotykowe (przytrzymanie, przeciąganie, arkusze od dołu) sprawdzaj na telefonie i tablecie.
 4. **Globalnie:** zmiana na komputerze dotyczy wszystkich ról personelu, nie tylko kadr – sprawdź, co widzi
    każda rola i czy nie widzi akcji, do której serwer jej nie dopuści.
 5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend).

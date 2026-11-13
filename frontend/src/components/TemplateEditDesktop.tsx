@@ -511,7 +511,7 @@ function CanvasSkel({ head = true }: { head?: boolean }) {
 /** Szkielet edycji szablonu (komputer): powrót, tytuł z akcjami, zakładki, Edycja/Podgląd, kartka formularza i panel pola. */
 export function TemplateEditSkeleton() {
   return (
-    <div className="ui-tpe" aria-busy="true" aria-label="Ładowanie">
+    <div className="ui-tpe ui-tpe-skel" aria-busy="true" aria-label="Ładowanie">
       <Skeleton height={12} width={80} />
       <div className="ui-tpe-skhead">
         <Skeleton height={28} width={320} />

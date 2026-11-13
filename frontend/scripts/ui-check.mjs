@@ -1,23 +1,35 @@
 #!/usr/bin/env node
 /**
  * Przegląd ekranu przed oddaniem zmiany (lista z CLAUDE.md, „Sprawdzenie przed oddaniem”).
- * Dla każdej roli × motyw (jasny, ciemny) × szerokość (1440, 800):
+ * Dla każdej roli × motyw (jasny, ciemny) × urządzenie (komputer 1440 i 800, telefon w pionie i w poziomie,
+ * tablet w pionie i w poziomie – zawsze wszystkie, chyba że --devices zawęzi listę):
  *   – zrzut w trakcie ładowania (odpowiedzi API celowo opóźnione) i po załadowaniu,
  *   – błędy JS, błędy w konsoli i odpowiedzi API ≥ 400.
  * Potem (rola po roli, jasny, 1440) klika po kolei przyciski na ekranie i zapisuje, co się zepsuło
  * (błąd JS, odpowiedź ≥ 400, czerwone powiadomienie). Pomija przyciski usuwające / wylogowujące.
  *
  * Tylko na lokalnym środowisku demo – kliknięcia zmieniają dane.
- *   APT_UI_PASSWORD=… node scripts/ui-check.mjs /pracownicy [/inna-strona] [--out katalog] [--users admin,kierownik]
+ *   APT_UI_PASSWORD=… node scripts/ui-check.mjs /pracownicy [/inna-strona] [--out katalog] [--users admin,kierownik] [--devices pc,telefon]
  * Zmienne: APT_UI_BASE (domyślnie http://localhost:5173), APT_UI_USERS (admin,kierownik,agencja).
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 
-const { chromium } = createRequire(import.meta.url)("playwright");
+const { chromium, devices } = createRequire(import.meta.url)("playwright");
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const pages = args.filter((a, i) => a.startsWith("/") && !["--out", "--users"].includes(args[i - 1]));
+const pages = args.filter((a, i) => a.startsWith("/") && !["--out", "--users", "--devices"].includes(args[i - 1]));
+// urządzenia: komputer (szeroki i wąski), telefon i tablet w obu orientacjach (dotyk, prawdziwe proporcje ekranu)
+const DEVICES = [
+  { name: "pc-1440", ctx: { viewport: { width: 1440, height: 900 } } },
+  { name: "pc-800", ctx: { viewport: { width: 800, height: 900 } } },
+  { name: "telefon", ctx: devices["iPhone 13"] },
+  { name: "telefon-poziom", ctx: devices["iPhone 13 landscape"] },
+  { name: "tablet", ctx: devices["iPad Mini"] },
+  { name: "tablet-poziom", ctx: devices["iPad Pro 11 landscape"] },
+];
+const only = opt("--devices", "");
+const devs = only ? DEVICES.filter((d) => only.split(",").some((o) => d.name.startsWith(o))) : DEVICES;
 const out = opt("--out", "ui-check-out");
 const base = process.env.APT_UI_BASE ?? "http://localhost:5173";
 const users = opt("--users", process.env.APT_UI_USERS ?? "admin,kierownik,agencja").split(",");
@@ -81,8 +93,9 @@ async function login(ctx, user) {
 const browser = await chromium.launch();
 for (const user of users) {
   for (const scheme of ["light", "dark"]) {
-    for (const width of [1440, 800]) {
-      const ctx = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme, reducedMotion: "reduce" });
+    for (const dev of devs) {
+      const width = dev.name;
+      const ctx = await browser.newContext({ ...dev.ctx, colorScheme: scheme, reducedMotion: "reduce" });
       let page;
       try {
         page = await login(ctx, user);

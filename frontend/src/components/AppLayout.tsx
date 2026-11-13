@@ -399,7 +399,9 @@ function AppLayoutInner() {
     <AppShell
       header={{ height: 52, collapsed: !mobile }}
       footer={{ height: 58, collapsed: !mobile }}
-      navbar={{ width: rail ? 64 : 256, breakpoint: "sm", collapsed: { mobile: true } }}
+      // menu boczne od 769 px: przy dokładnie 768 px (iPad Mini w pionie) aplikacja jest już w układzie telefonu
+      // (max-width: 48em) – z progiem „sm” (od 48em) pokazywały się naraz menu boczne i dolny pasek
+      navbar={{ width: rail ? 64 : 256, breakpoint: "48.0625em", collapsed: { mobile: true } }}
       padding={mobile ? "sm" : "lg"}
     >
       {mobile && (

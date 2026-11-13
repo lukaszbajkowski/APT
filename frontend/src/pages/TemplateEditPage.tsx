@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconCopy, IconDownload, IconUpload } from "@tabler/icons-react";
 
 import { FieldInput, legacyToGroups } from "../components/DocumentsCard";
-import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, TemplateEditDesktop, TemplateEditMobileSkeleton, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
+import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, MOBILE_HINT, TemplateEditDesktop, TemplateEditMobileSkeleton, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
@@ -120,9 +120,18 @@ export function TemplateEditPage() {
   });
 
   if (template.isLoading)
-    // telefon: bez dużego tytułu – gotowy ekran ma tytuł w górnym pasku, więc treść nie przeskakuje po załadowaniu
+    // telefon: szkielet w tym samym ekranie co gotowa edycja – górny pasek „Szablon” z nazwą (z listy szablonów,
+    // jeśli już wczytana), dolny pasek „Anuluj / Zapisz szablon”, a w poziomie bez dolnej nawigacji; nic nie przeskakuje
     return mobile ? (
-      <TemplateEditMobileSkeleton />
+      <FormScreen
+        title="Szablon"
+        subtitle={qc.getQueryData<DocTemplate[]>(["templates", "all"])?.find((x) => String(x.id) === id)?.name}
+        onClose={() => navigate("/szablony")}
+        primary={{ label: "Zapisz szablon", disabled: true }}
+        dirty={false}
+      >
+        <TemplateEditMobileSkeleton />
+      </FormScreen>
     ) : (
       <TemplateEditSkeleton />
     );
@@ -192,7 +201,7 @@ export function TemplateEditPage() {
                   <GroupDialog opened={groupOpen || !!editGroup} onClose={() => { setGroupOpen(false); setEditGroup(null); }} fields={fields} editing={editGroup} onApply={setFields} />
                   {/* instrukcja nad formularzem – widać ją od razu, bez przewijania na koniec listy */}
                   <Text size="sm" c="dimmed" mb="sm">
-                    Tak zobaczy formularz użytkownik przy „Nowy dokument”. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.
+                    {MOBILE_HINT}
                   </Text>
                   <div className="ui-tpe-plist ui-tpe-paper">
                   <TouchSortList

@@ -512,7 +512,8 @@ function CanvasSkel({ head = true }: { head?: boolean }) {
 export function TemplateEditSkeleton() {
   return (
     <div className="ui-tpe ui-tpe-skel" aria-busy="true" aria-label="Ładowanie">
-      <Skeleton height={12} width={80} />
+      {/* wysokości jak w gotowym ekranie (link 18, przełącznik 39) – kartka nie przeskakuje po załadowaniu */}
+      <Skeleton height={18} width={80} />
       <div className="ui-tpe-skhead">
         <Skeleton height={28} width={320} />
         <Group gap="xs" wrap="nowrap">
@@ -521,10 +522,10 @@ export function TemplateEditSkeleton() {
         </Group>
       </div>
       <div className="ui-tpe-topbar">
-        <Skeleton height={36} width={380} radius="md" />
+        <Skeleton height={39} width={380} radius="md" />
         <Group gap="sm" wrap="nowrap">
-          <Skeleton height={36} width={150} radius="md" />
-          <Skeleton height={30} width={120} radius="sm" />
+          <Skeleton height={39} width={150} radius="md" />
+          <Skeleton height={39} width={120} radius="sm" />
         </Group>
       </div>
       <div className="ui-tpe-grid">
@@ -542,6 +543,10 @@ export function TemplateEditSkeleton() {
   );
 }
 
+/** Podpowiedź nad formularzem na telefonie – wspólna dla gotowego ekranu i szkieletu. */
+export const MOBILE_HINT =
+  "Tak zobaczy formularz użytkownik przy „Nowy dokument”. Dotknij pole, aby zmienić jego ustawienia. Przytrzymaj pole albo nagłówek grupy, aby je przenieść; dwukrotne dotknięcie nazwy grupy ją zmienia.";
+
 /** Szkielet edycji szablonu (telefon): przełącznik Pola / Ustawienia / Znaczniki, sekcja z przyciskiem, podpowiedź i formularz. */
 export function TemplateEditMobileSkeleton() {
   return (
@@ -555,11 +560,10 @@ export function TemplateEditMobileSkeleton() {
         </Group>
         <Skeleton height={44} radius="md" />
       </div>
-      <div className="ui-tpe-skhint">
-        {["92%", "86%", "95%", "88%", "30%"].map((w) => (
-          <Skeleton key={w} height={12} width={w} />
-        ))}
-      </div>
+      {/* podpowiedź to stały tekst – od razu prawdziwy (ta sama wysokość przy każdej szerokości ekranu) */}
+      <Text size="sm" c="dimmed" className="ui-tpe-skhint">
+        {MOBILE_HINT}
+      </Text>
       <CanvasSkel head={false} />
     </div>
   );

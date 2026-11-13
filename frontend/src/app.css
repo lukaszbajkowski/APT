@@ -1627,7 +1627,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* płótno: łagodniejsze przesuwanie pól i nagłówków grup w trakcie przeciągania; przenoszone pole dosuwa się do szczeliny */
 @media (prefers-reduced-motion: no-preference) {
   .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row,.ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-ghead{transition:transform .26s cubic-bezier(.22,.9,.3,1)}
-  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted]{transition:transform .18s cubic-bezier(.22,.9,.3,1)}
+  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted]{transition:transform .18s cubic-bezier(.22,.9,.3,1),rotate .15s ease-out}
 }
 /* edycja szablonu: górny wiersz – przełącznik części (jak w Wiadomościach/Komunikatach), po prawej tryb formularza i „Nowa grupa” */
 .ui-tpe-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s-3)}
@@ -1637,8 +1637,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* górny wiersz edycji szablonu: „Nowa grupa” tej samej wysokości i wielkości tekstu co przełączniki obok */
 .ui-tpe-topbar .ui-tpe-tools .mantine-Button-root{height:var(--tpe-seg-h,36px);font-size:var(--mantine-font-size-sm)}
 .ui-tpe-topbar{--tpe-seg-h:39px}
-.ui-tpe-skmobile{padding-top:var(--s-1)}
 .ui-tpe-sksec{display:flex;flex-direction:column;gap:var(--s-2)}
-.ui-tpe-skhint{display:flex;flex-direction:column;gap:var(--s-2);margin:var(--s-1) 0;padding:var(--s-1) 0}
+.ui-tpe-skhint{margin:var(--s-1) 0}
 /* szkielet edycji szablonu w wąskim obszarze (poniżej 880 px) – jak gotowy ekran: formularz na całą szerokość, bez panelu */
 @container tpe (max-width: 879px){.ui-tpe-skel .ui-tpe-grid{grid-template-columns:minmax(0,1fr)}.ui-tpe-skel .ui-tpe-grid > .ui-tpe-panel{display:none}}
+/* przenoszone pole lekko przechylone – jak kartka podniesiona z blatu; prostuje się przy odłożeniu */
+@media (prefers-reduced-motion: no-preference) {
+  .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{rotate:-1.5deg}
+}

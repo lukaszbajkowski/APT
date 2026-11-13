@@ -1183,7 +1183,7 @@ export function TouchSortList({
           className="ui-tsl-row"
           data-ingroup={!!f.group || undefined}
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
-          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (fieldAtEnd && i === fields.length - 1 && !f.group) || (!!gNeighbour && blockOf(i) === blockList.indexOf(gNeighbour) && gd!.from !== blockOf(i)) || undefined}
+          data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (!canvas && fieldAtEnd && i === fields.length - 1 && !f.group) || (!!gNeighbour && blockOf(i) === blockList.indexOf(gNeighbour) && gd!.from !== blockOf(i)) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
           data-leaving={(drag?.from === i && !!f.group && !target) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
@@ -1295,7 +1295,8 @@ export function TouchSortList({
         </div>
         </Fragment>
       ))}
-      {drag && !blocks && fields[fields.length - 1]?.group && (
+      {/* płótno: koniec listy za grupą obsługują strefy granicy grupy (dolna połowa = poza grupą) */}
+      {drag && !blocks && !canvas && fields[fields.length - 1]?.group && (
         <div ref={endRef} className="ui-tpe-endzone" data-drop={drag.out ? "out" : undefined}>
           Przeciągnij tutaj, aby odłożyć pole na koniec, poza grupą
         </div>

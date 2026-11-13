@@ -809,26 +809,32 @@ export function TouchSortList({
     // palec poniżej ostatniego wiersza, nad polem „poza grupą”
     const endTop = endRef.current ? endRef.current.getBoundingClientRect().top : Infinity;
     const out = to === fields.length - 1 && y > endTop;
-    // położenie pola w szczelinie: dolna połowa = należy do pola poniżej, górna = do pola powyżej
-    // (na granicy grupy pozwala wejść do niej jako pierwsze albo ostatnie pole – z obu kierunków)
-    const slotTop = to < s.from ? s.tops[to] : to > s.from ? s.tops[to] + s.hs[to] - s.hs[s.from] : s.tops[s.from];
-    let diff = s.tops[s.from] + dy - slotTop;
-    // strefy szczeliny na granicy grupy (cały zakres ruchu między kolejnymi miejscami, ok. wysokości pola):
-    // jedna grupa – górna połowa: pole powyżej, dolna: pole poniżej; dwie różne grupy – trzy części
-    // (koniec grupy wyżej · poza grupami · początek grupy niżej)
-    const rest = fields.filter((_, j) => j !== s.from);
-    const prevG = rest[to - 1]?.group ?? null;
-    const nxG = rest[to]?.group ?? null;
+    // strefy na granicy grupy liczone z całego zakresu ruchu, w którym pole stoi w tej szczelinie
+    // (od środka pola powyżej do środka pola poniżej – razem z nagłówkiem grupy między nimi):
+    // jedna grupa – połowy (górna: grupa pola powyżej, dolna: pola poniżej);
+    // dwie różne grupy – trzy części (koniec grupy wyżej · poza grupami · początek grupy niżej)
+    const restIdx = fields.map((_, j) => j).filter((j) => j !== s.from);
+    const a = restIdx[to - 1];
+    const bIdx = restIdx[to];
+    const mid = (j: number) => s.tops[j] + s.hs[j] / 2;
+    const c = s.tops[s.from] + s.hs[s.from] / 2 + dy;
+    const lo = a !== undefined ? mid(a) : c - s.hs[s.from];
+    const hi = bIdx !== undefined ? mid(bIdx) : c + s.hs[s.from];
+    const f = hi > lo ? (c - lo) / (hi - lo) : 0.5;
+    const prevG = a !== undefined ? fields[a].group ?? null : null;
+    const nxG = bIdx !== undefined ? fields[bIdx].group ?? null : null;
     const own = fields[s.from].group ?? null;
     const two = !!prevG && !!nxG && prevG !== nxG;
-    let T = two ? s.hs[s.from] / 6 : 0;
+    let side: -1 | 0 | 1 = two ? (f < 0.35 ? -1 : f > 0.65 ? 1 : 0) : f < 0.5 ? -1 : f > 0.5 ? 1 : 0;
+    // pole na swoim miejscu: zostaje w swojej grupie, dopóki nie ruszy się o 36 px w stronę granicy
     if (to === s.from) {
-      // pole na swoim miejscu: w spoczynku zostaje w swojej grupie, zmienia ją dopiero po ruchu o 24 px
-      if (two && own === prevG) diff -= 2 * T + 24;
-      else if (two && own === nxG) diff += 2 * T + 24;
-      else T = Math.max(T, 24);
+      const d = dy;
+      const L = 36;
+      const span = (hi - lo) * 0.3;
+      if (own && own === prevG && own !== nxG) side = d < L ? -1 : two ? (d < L + span ? 0 : 1) : 1;
+      else if (own && own === nxG && own !== prevG) side = d > -L ? 1 : two ? (d > -L - span ? 0 : -1) : -1;
+      else if (!own && prevG !== nxG) side = d < -L && prevG ? -1 : d > L && nxG ? 1 : 0;
     }
-    const side = diff > T ? 1 : diff < -T ? -1 : 0;
     setDrag({ from: s.from, to, dy, out, side });
   };
   const autoscroll = () => {
@@ -1179,6 +1185,7 @@ export function TouchSortList({
           data-block={(blocks && f.key.startsWith("g:")) || undefined}
           data-target={(joining && f.group === joining && drag?.from !== i) || (blockTarget === i && (f.key.startsWith("g:") || blockAtEnd)) || (fieldAtEnd && i === fields.length - 1 && !f.group) || (!!gNeighbour && blockOf(i) === blockList.indexOf(gNeighbour) && gd!.from !== blockOf(i)) || undefined}
           data-joining={(joining && drag?.from === i) || undefined}
+          data-leaving={(drag?.from === i && !!f.group && !target) || undefined}
           data-gfirst={(f.group && fields[i - 1]?.group !== f.group) || undefined}
           data-glast={(f.group && fields[i + 1]?.group !== f.group) || undefined}
           data-sglast={(sim && sim.lastIn.has(i) && !(f.group && fields[i + 1]?.group !== f.group)) || undefined}

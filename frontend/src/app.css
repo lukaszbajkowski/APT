@@ -1592,3 +1592,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-noselect,.ui-noselect *{-webkit-user-select:none !important;user-select:none !important}
 .ui-tsl-ghead[data-gone]{opacity:0}
 .ui-tsl-row[data-sglast]{box-shadow:0 1px 0 var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted][data-leaving]{background:var(--apt-surface)}

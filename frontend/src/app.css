@@ -1647,3 +1647,13 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   /* przenoszona grupa: wspólny przechył nagłówka i pól (punkt obrotu – środek grupy, ustawiany w kodzie) */
   .ui-tsl[data-canvas] .ui-tsl-ghead[data-lifted],.ui-tsl[data-canvas] .ui-tsl-row[data-glifted]{rotate:var(--tilt-group,-1deg)}
 }
+/* płótno: miejsce przenoszonego pola w grupie wypełnione tłem i bocznymi ramkami grupy – grupa bez przerwy */
+.ui-tsl[data-canvas]{position:relative}
+.ui-tsl-slot{position:absolute;top:0;left:var(--s-2);right:var(--s-2);z-index:0;pointer-events:none;background:var(--apt-subtle);border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line)}
+.ui-tsl-slot[data-target]{border-color:var(--mantine-primary-color-filled);border-left-width:2px;border-right-width:2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 8%,var(--apt-subtle))}
+.ui-tsl-slot[data-last]{border-bottom:1px solid var(--apt-line);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-tsl-slot[data-last][data-target]{border-bottom-color:var(--mantine-primary-color-filled)}
+@media (prefers-reduced-motion: no-preference){.ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-slot{transition:transform .26s cubic-bezier(.22,.9,.3,1)}}
+/* napis „Trafi do” na górnej krawędzi przenoszonego pola (jak przypięta etykietka) – nie zasłania długiej etykiety pola */
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{overflow:visible}
+.ui-tsl[data-canvas] .ui-tsl-cbody .ui-tsl-target{top:calc(-1 * var(--s-3));right:var(--s-4);z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.08)}

@@ -1269,8 +1269,11 @@ export function TouchSortList({
     let cur = Math.min(...[...s.btops!.filter((_, i) => i < fields.length), ...Object.values(s.heads!).map((h) => h.top)]);
     const rowY: Record<number, number> = {};
     const headY: Record<string, number> = {};
+    // miejsce przenoszonego pola w grupie – wypełniamy je tłem i ramką grupy, żeby grupa nie miała przerwy
+    let slot: { top: number; h: number; g: string | null; last: boolean } | null = null;
     for (const e of seq) {
       if (e.t === "r") {
+        if (e.i === from) slot = { top: cur, h: s.hs[from] - (mbs.current[from] ?? 0) + (spreading ? 2 * SPREAD : 0), g, last: lastIn.has(from) };
         rowY[e.i] = cur - natural(e);
         cur += s.hs[e.i] - (mbs.current[e.i] ?? 0) + (lastIn.has(e.i) ? GAP : 0) + (e.i === from && spreading ? 2 * SPREAD : 0);
       } else {
@@ -1284,11 +1287,20 @@ export function TouchSortList({
       }
     }
     lastIn.delete(from);
-    return { rowY, headY, lastIn };
+    return { rowY, headY, lastIn, slot };
   })();
 
   return (
     <div ref={rootRef} className="ui-group ui-tsl" data-canvas={canvas || undefined} data-dragging={drag || gd ? true : undefined}>
+      {sim?.slot?.g && (
+        <div
+          className="ui-tsl-slot"
+          aria-hidden
+          data-target={(drag && sim.slot.g !== (fields[drag.from]?.group ?? null)) || undefined}
+          data-last={sim.slot.last || undefined}
+          style={{ transform: `translateY(${sim.slot.top}px)`, height: sim.slot.h }}
+        />
+      )}
       {fields.map((f, i) => (
         <Fragment key={f.key}>
         {withHeads && f.group && fields[i - 1]?.group !== f.group && (

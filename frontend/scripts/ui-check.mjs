@@ -9,7 +9,8 @@
  * (błąd JS, odpowiedź ≥ 400, czerwone powiadomienie). Pomija przyciski usuwające / wylogowujące.
  *
  * Tylko na lokalnym środowisku demo – kliknięcia zmieniają dane.
- *   APT_UI_PASSWORD=… node scripts/ui-check.mjs /pracownicy [/inna-strona] [--out katalog] [--users admin,kierownik] [--devices pc,telefon]
+ *   APT_UI_PASSWORD=… node scripts/ui-check.mjs /pracownicy [/inna-strona] [--out katalog] [--users admin,kierownik] [--devices pc,telefon] [--schemes light]
+ * --schemes light: zmiana niezależna od kolorystyki (ruch, układ, logika) – tylko jasny motyw.
  * Zmienne: APT_UI_BASE (domyślnie http://localhost:5173), APT_UI_USERS (admin,kierownik,agencja).
  */
 import { createRequire } from "node:module";
@@ -18,7 +19,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 const { chromium, devices } = createRequire(import.meta.url)("playwright");
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const pages = args.filter((a, i) => a.startsWith("/") && !["--out", "--users", "--devices"].includes(args[i - 1]));
+const pages = args.filter((a, i) => a.startsWith("/") && !["--out", "--users", "--devices", "--schemes"].includes(args[i - 1]));
+const schemes = opt("--schemes", "light,dark").split(",");
 // urządzenia: komputer (szeroki i wąski), telefon i tablet w obu orientacjach (dotyk, prawdziwe proporcje ekranu)
 const DEVICES = [
   { name: "pc-1440", ctx: { viewport: { width: 1440, height: 900 } } },
@@ -92,7 +94,7 @@ async function login(ctx, user) {
 
 const browser = await chromium.launch();
 for (const user of users) {
-  for (const scheme of ["light", "dark"]) {
+  for (const scheme of schemes) {
     for (const dev of devs) {
       const width = dev.name;
       const ctx = await browser.newContext({ ...dev.ctx, colorScheme: scheme, reducedMotion: "reduce" });

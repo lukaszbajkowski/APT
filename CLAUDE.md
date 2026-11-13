@@ -49,8 +49,11 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
    ucięte, brak przewijania w bok), szkielet w kształcie treści i bez przeskoku po załadowaniu (treść w tym
    samym miejscu), jedna pełna akcja główna, brak kart w kartach.
    **Zawsze na wszystkim** (prośba właściciela): każdą zmianę wyglądu lub zachowania sprawdzaj od razu na
-   wszystkich urządzeniach z punktu 2 i w obu motywach – także gdy prośba wymienia tylko jedno urządzenie lub
-   motyw. Interakcje dotykowe (przytrzymanie, przeciąganie, arkusze od dołu) sprawdzaj na telefonie i tablecie.
+   wszystkich urządzeniach z punktu 2 – także gdy prośba wymienia tylko jedno urządzenie. Interakcje dotykowe
+   (przytrzymanie, przeciąganie, arkusze od dołu) sprawdzaj na telefonie i tablecie.
+   **Oba motywy tylko przy kolorach**: jasny i ciemny sprawdzaj, gdy zmiana dotyka tego, co zależy od motywu
+   (kolory, tła, obramowania, cienie, kontrast, nowe elementy na ekranie). Zmiany niezależne od kolorystyki
+   (ruch, kąty, odstępy, układ, logika) – jeden motyw (`--schemes light`), wszystkie urządzenia.
 4. **Globalnie:** zmiana na komputerze dotyczy wszystkich ról personelu, nie tylko kadr – sprawdź, co widzi
    każda rola i czy nie widzi akcji, do której serwer jej nie dopuści.
 5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend).

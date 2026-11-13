@@ -1604,4 +1604,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* arkusz ustawień pola: „Gotowe” nigdy nie jest ściskane; na niskim ekranie (telefon w poziomie) arkusz może być wyższy */
 .ui-tpe-fsheet-done{flex:none}
 @media (max-height:500px){.ui-tpe-fsheet{max-height:90dvh}}
-.ui-tsl[data-canvas] .ui-tsl-row[data-lifted] .ui-tsl-cbody:focus-visible{outline:none}
+.ui-tsl[data-canvas] .ui-tsl-row[data-lifted] .ui-tsl-cbody:focus-visible{outline:none !important}

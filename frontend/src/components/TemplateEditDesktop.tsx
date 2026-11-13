@@ -827,7 +827,14 @@ export function TouchSortList({
     return out;
   })();
   const blockOf = (i: number) => blockList.findIndex((b) => i >= b.start && i <= b.end);
-  const gst = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number } | null>(null);
+  const gst = useRef<{ from: number; startY: number; scroll0: number; tops: number[]; hs: number[]; y: number; cx?: number } | null>(null);
+  // przechył przenoszonej grupy: nagłówek i pola obracają się wokół wspólnego środka grupy – jak jedna sztywna kartka
+  const gOrigin = (el: HTMLElement | null) => {
+    const s = gst.current;
+    if (!gd || !s || !el) return undefined;
+    const cy = s.tops[gd.from] + s.hs[gd.from] / 2;
+    return `${(s.cx ?? 0) - el.offsetLeft}px ${cy - el.offsetTop}px`;
+  };
   const [gd, setGd] = useState<{ from: number; to: number; dy: number } | null>(null);
   const gTarget = (dy: number) => {
     const s = gst.current!;
@@ -892,7 +899,9 @@ export function TouchSortList({
     inner.current = rows.current.map((r) => r?.offsetHeight ?? 64);
     mbs.current = rows.current.map((r) => (r ? parseFloat(getComputedStyle(r).marginBottom) : 0));
     const from = blockList.findIndex((b) => b.g === g);
-    gst.current = { from, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY };
+    // środek grupy w poziomie – z nagłówka (pełna szerokość grupy), w tym samym układzie co offsetTop wierszy
+    const hEl = heads.current[g];
+    gst.current = { from, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY, cx: hEl ? hEl.offsetLeft + hEl.offsetWidth / 2 : 0 };
     setGd({ from, to: from, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(gAuto);
@@ -1279,7 +1288,7 @@ export function TouchSortList({
             data-lifted={(gd && blockList[gd.from]?.g === f.group) || undefined}
             data-gone={(sim && sim.headY[f.group!] === undefined) || undefined}
             data-target={(gNeighbour?.g === f.group && blockList[gd!.from]?.g !== f.group) || (joining === f.group) || undefined}
-            style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.headY[f.group!] ?? 0}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined }}
+            style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.headY[f.group!] ?? 0}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined , transformOrigin: gd && blockList[gd.from]?.g === f.group ? gOrigin(heads.current[f.group!]) : undefined }}
             data-grab={canvas || undefined}
             onPointerDown={canvas ? (e) => cDown(i, e, f.group!) : undefined}
             onPointerMove={canvas ? cMove : undefined}
@@ -1357,6 +1366,7 @@ export function TouchSortList({
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
             transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
+            transformOrigin: gd && gd.from === blockOf(i) && f.group ? gOrigin(rows.current[i]) : undefined,
             // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
             height:
               drag?.from === i && st.current

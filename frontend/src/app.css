@@ -1626,7 +1626,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-skmobile{display:flex;flex-direction:column;gap:var(--s-4)}
 /* płótno: łagodniejsze przesuwanie pól i nagłówków grup w trakcie przeciągania; przenoszone pole dosuwa się do szczeliny */
 @media (prefers-reduced-motion: no-preference) {
-  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row,.ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-ghead{transition:transform .26s cubic-bezier(.22,.9,.3,1)}
+  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row,.ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-ghead{transition:transform .26s cubic-bezier(.22,.9,.3,1),rotate .15s ease-out}
   .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted]{transition:transform .18s cubic-bezier(.22,.9,.3,1),rotate .15s ease-out}
 }
 /* edycja szablonu: górny wiersz – przełącznik części (jak w Wiadomościach/Komunikatach), po prawej tryb formularza i „Nowa grupa” */
@@ -1644,4 +1644,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* przenoszone pole lekko przechylone – jak kartka podniesiona z blatu; prostuje się przy odłożeniu */
 @media (prefers-reduced-motion: no-preference) {
   .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{rotate:-1.5deg}
+  /* przenoszona grupa: wspólny przechył nagłówka i pól (punkt obrotu – środek grupy, ustawiany w kodzie) */
+  .ui-tsl[data-canvas] .ui-tsl-ghead[data-lifted],.ui-tsl[data-canvas] .ui-tsl-row[data-glifted]{rotate:-1deg}
 }

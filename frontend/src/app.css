@@ -1612,6 +1612,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* telefon w poziomie (niski ekran): menu „⋯” mieści wszystkie pozycje bez przewijania – pozycje 44 px, arkusz do 92% wysokości */
 @media (max-width: 48em) and (max-height: 500px) {
   .mantine-Menu-dropdown { max-height: 92dvh; padding-top: 8px !important; }
-  .mantine-Menu-dropdown::before { margin-bottom: 6px; }
+  .mantine-Menu-dropdown::before { margin-bottom: var(--s-2); }
   .mantine-Menu-item { min-height: 44px; }
 }

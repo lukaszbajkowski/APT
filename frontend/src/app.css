@@ -1632,3 +1632,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* edycja szablonu: górny wiersz – przełącznik części (jak w Wiadomościach/Komunikatach), po prawej tryb formularza i „Nowa grupa” */
 .ui-tpe-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s-3)}
 .ui-tpe-topbar .ui-tpe-tools{margin:0;gap:var(--s-3);justify-content:flex-end;flex-wrap:wrap}
+/* szkielety w ciemnym motywie: stonowane jak w jasnym (domyślny kolor Mantine dawał ciężkie, jasne bloki) */
+[data-mantine-color-scheme="dark"] .mantine-Skeleton-root[data-visible]::after{background-color:color-mix(in srgb,var(--mantine-color-text) 13%,var(--apt-surface))}
+/* górny wiersz edycji szablonu: „Nowa grupa” tej samej wysokości i wielkości tekstu co przełączniki obok */
+.ui-tpe-topbar .ui-tpe-tools .mantine-Button-root{height:var(--tpe-seg-h,36px);font-size:var(--mantine-font-size-sm)}
+.ui-tpe-topbar{--tpe-seg-h:39px}
+.ui-tpe-skmobile{padding-top:var(--s-1)}
+.ui-tpe-sksec{display:flex;flex-direction:column;gap:var(--s-2)}
+.ui-tpe-skhint{display:flex;flex-direction:column;gap:var(--s-2);margin:var(--s-1) 0;padding:var(--s-1) 0}

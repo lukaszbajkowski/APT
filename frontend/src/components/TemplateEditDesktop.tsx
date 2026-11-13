@@ -546,15 +546,19 @@ export function TemplateEditSkeleton() {
 export function TemplateEditMobileSkeleton() {
   return (
     <div className="ui-tpe-skmobile" aria-busy="true" aria-label="Ładowanie">
-      <Skeleton height={44} radius="md" />
-      <Group justify="space-between">
-        <Skeleton height={18} width={140} />
-        <Skeleton height={14} width={60} />
-      </Group>
-      <Skeleton height={44} radius="md" />
-      <div>
-        <Skeleton height={12} width="95%" mb={8} />
-        <Skeleton height={12} width="80%" />
+      {/* wysokości jak na gotowym ekranie (przełącznik 54, nagłówek sekcji 44, przycisk 44, podpowiedź 100) – nic nie przeskakuje po załadowaniu */}
+      <Skeleton height={54} radius="md" />
+      <div className="ui-tpe-sksec">
+        <Group justify="space-between" h={44}>
+          <Skeleton height={18} width={140} />
+          <Skeleton height={14} width={60} />
+        </Group>
+        <Skeleton height={44} radius="md" />
+      </div>
+      <div className="ui-tpe-skhint">
+        {["92%", "86%", "95%", "88%", "30%"].map((w) => (
+          <Skeleton key={w} height={12} width={w} />
+        ))}
       </div>
       <CanvasSkel head={false} />
     </div>

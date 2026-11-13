@@ -13,7 +13,7 @@ import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge, PageLoading } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge } from "../components/Mobile";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
 function blocksOf(fields: TemplateField[]): TemplateField[][] {
@@ -120,10 +120,9 @@ export function TemplateEditPage() {
   });
 
   if (template.isLoading)
+    // telefon: bez dużego tytułu – gotowy ekran ma tytuł w górnym pasku, więc treść nie przeskakuje po załadowaniu
     return mobile ? (
-      <PageLoading title="Szablon">
-        <TemplateEditMobileSkeleton />
-      </PageLoading>
+      <TemplateEditMobileSkeleton />
     ) : (
       <TemplateEditSkeleton />
     );

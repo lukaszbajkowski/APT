@@ -1645,4 +1645,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 :where(:root[data-device="phone"]) .ui-desktop-only{display:none !important}
 :where(:root:not([data-device="phone"])) .ui-phone-only{display:none !important}
 /* arkusz z wysokością ustawioną uchwytem (SheetHandle z onResize) – wygrywa z height: auto !important arkusza */
-.ui-sheet.ui-sheet-sized{height:var(--sheet-h) !important;max-height:none !important}
+.ui-sheet.ui-sheet-sized{height:min(92dvh, max(220px, var(--sheet-h))) !important;max-height:none !important}
+/* treść arkusza nie przekazuje przewijania stronie pod spodem */
+.ui-tpe-fsheet-body{overscroll-behavior:contain}

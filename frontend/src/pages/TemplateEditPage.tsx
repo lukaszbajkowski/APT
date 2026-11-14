@@ -12,7 +12,7 @@ import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type Download
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SHEET_MAX_VH, SHEET_MIN_VH, SheetHandle, StatusBadge } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SHEET_MAX_VH, SHEET_MIN_VH, SheetHandle, StatusBadge, useSheetResize } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
@@ -79,6 +79,7 @@ export function TemplateEditPage() {
       /* tryb prywatny – wysokość tylko do zamknięcia karty */
     }
   };
+  const sheet = useSheetResize(() => setEditIdx(null), saveSheetH);
   const [previewOpen, setPreviewOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -385,7 +386,7 @@ export function TemplateEditPage() {
         >
           {ef && editIdx !== null && (
             <>
-              <SheetHandle onClose={() => setEditIdx(null)} onResize={saveSheetH} height={sheetH ?? undefined}>
+              <SheetHandle onClose={() => setEditIdx(null)} sheet={sheet}>
                 <div className="ui-sheet-head ui-tpe-fsheet-head">
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="ui-sheet-title">{ef.label || "Pole"}</div>
@@ -399,7 +400,7 @@ export function TemplateEditPage() {
                   </ActionIcon>
                 </div>
               </SheetHandle>
-              <div className="ui-tpe-fsheet-body">
+              <div className="ui-tpe-fsheet-body" ref={sheet.bodyRef}>
                 <Stack gap="md">
                   <FieldForm size="md" groups={[...new Set(fields.map((f) => f.group).filter(Boolean) as string[])]} field={ef} onChange={(nf) => setFields(fields.map((x, j) => (j === editIdx ? nf : x)))} />
                   <Text size="sm" c="dimmed">

@@ -1657,3 +1657,21 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* przytrzymanie: wiersz lekko się „unosi” zanim pokaże się menu (jak w iOS) */
 .ui-swipe-body[data-holding]{scale:.97;transition:scale .35s ease .15s}
 @media (prefers-reduced-motion:reduce){.ui-swipe-body{transition:none}.ui-swipe-body[data-holding]{scale:1}}
+/* paski telefonu jak w iOS: półprzezroczyste z rozmyciem – przewijana treść przebłyskuje pod nimi;
+   bez obsługi rozmycia albo z „Zmniejsz przezroczystość” – pełne tło jak dotąd */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :where(:root[data-device="phone"]) .mantine-AppShell-header,
+  :where(:root[data-device="phone"]) .mantine-AppShell-footer {
+    background: color-mix(in srgb, var(--apt-nav) 85%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :where(:root[data-device="phone"]) .mantine-AppShell-header,
+  :where(:root[data-device="phone"]) .mantine-AppShell-footer {
+    background: var(--apt-nav);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

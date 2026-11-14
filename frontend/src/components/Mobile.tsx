@@ -333,17 +333,19 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
   );
 }
 
-/* ——— arkusz z wysokością ustawianą palcem ———
- * Dwa osobne ruchy, jak w arkuszach iOS:
- *  • zmiana wysokości – w górę rośnie (do SHEET_MAX_VH), w dół maleje i ZATRZYMUJE SIĘ na najmniejszej wysokości
- *    (opór zamiast zamknięcia – jednym ruchem nie da się przez pomyłkę zamknąć),
- *  • zamknięcie – ruch w dół zaczęty, gdy arkusz już jest najniższy: arkusz jedzie za palcem, zamyka się
- *    po przeciągnięciu o ⅓ wysokości albo szybkim machnięciu; inaczej wraca.
- * Gest działa na uchwycie i w treści: w treści przewiniętej do góry ruch w dół zmniejsza / zamyka,
+/* ——— arkusz z wysokościami jak w iOS ———
+ * Trzy wysokości (35 / 60 / 92% ekranu, najniższa co najmniej 220 px). Arkusz idzie za palcem, a po puszczeniu:
+ *  • szybki ruch w dół (≥ 0,5 px/ms, ok. 500 px/s) – zamyka, z dowolnej wysokości,
+ *  • szybki ruch w górę – największa wysokość,
+ *  • powolny ruch – najbliższa z trzech wysokości (z lekkim „rzutem” w kierunku ruchu, jak w iOS);
+ *    powolny ruch nigdy nie zamyka – pod najniższą wysokością arkusz stawia opór i wraca.
+ * Gest działa na uchwycie i w treści: w treści przewiniętej do góry ruch w dół należy do arkusza,
  * a ruch w górę najpierw powiększa arkusz (do maksimum), dopiero potem przewija treść. */
-export const SHEET_MIN_VH = 25;
+export const SHEET_MIN_VH = 35;
 export const SHEET_MAX_VH = 92;
+const SHEET_STOPS_VH = [35, 60, 92];
 const SHEET_MIN_PX = 220; // najniższy arkusz dalej mieści nagłówek i „Gotowe” (niski ekran w poziomie)
+const SHEET_FLICK = 0.5; // px/ms
 
 export interface SheetResize {
   handle: {
@@ -354,24 +356,33 @@ export interface SheetResize {
   };
   bodyRef: (node: HTMLElement | null) => void;
   moved: { current: boolean };
-  step: (deltaVh: number, from: HTMLElement) => void;
+  step: (dir: 1 | -1, from: HTMLElement) => void;
+}
+
+/** Wysokości arkusza w px dla bieżącego ekranu (rosnąco, bez dublowania na niskim ekranie). */
+function sheetStops() {
+  const vh = window.innerHeight / 100;
+  const max = SHEET_MAX_VH * vh;
+  const out: number[] = [];
+  for (const f of SHEET_STOPS_VH) {
+    const px = Math.min(max, Math.max(SHEET_MIN_PX, f * vh));
+    if (!out.length || px - out[out.length - 1] > 24) out.push(px);
+  }
+  return { vh, stops: out, min: out[0], max };
 }
 
 export function useSheetResize(onClose: () => void, onResize: (vh: number) => void): SheetResize {
   const cb = useRef({ onClose, onResize });
   cb.current = { onClose, onResize };
   const moved = useRef(false);
-  const g = useRef<{ mode: "" | "resize" | "close"; y0: number; h0: number; h: number; dy: number; v: number; t: number; y: number; el: HTMLElement | null; stop: boolean }>({
-    mode: "", y0: 0, h0: 0, h: 0, dy: 0, v: 0, t: 0, y: 0, el: null, stop: false,
+  // s: próbki ruchu [czas, y] z ostatnich ~100 ms – z nich prędkość w chwili puszczenia
+  const g = useRef<{ y0: number; h0: number; h: number; s: [number, number][]; el: HTMLElement | null; stop: boolean }>({
+    y0: 0, h0: 0, h: 0, s: [], el: null, stop: false,
   });
-  const bounds = () => {
-    const vh = window.innerHeight / 100;
-    const max = SHEET_MAX_VH * vh;
-    return { vh, max, min: Math.min(max, Math.max(SHEET_MIN_VH * vh, SHEET_MIN_PX)) };
-  };
+  const EASE = "cubic-bezier(.2,.8,.2,1)";
   const begin = (el: HTMLElement, y: number) => {
     const h0 = el.getBoundingClientRect().height;
-    g.current = { mode: "", y0: y, h0, h: h0, dy: 0, v: 0, t: performance.now(), y, el, stop: false };
+    g.current = { y0: y, h0, h: h0, s: [[performance.now(), y]], el, stop: false };
     moved.current = false;
     el.style.transition = "none";
     el.classList.add("ui-sheet-sized");
@@ -381,38 +392,24 @@ export function useSheetResize(onClose: () => void, onResize: (vh: number) => vo
     const s = g.current;
     if (!s.el) return;
     const now = performance.now();
-    // prędkość (px/ms, dodatnia = w dół) wygładzona z ostatnich ~100 ms – pojedyncza klatka bywa przypadkowa
-    if (now > s.t) {
-      const v = (y - s.y) / (now - s.t);
-      const k = Math.min(1, (now - s.t) / 100);
-      s.v = s.v * (1 - k) + v * k;
-    }
-    s.t = now;
-    s.y = y;
-    s.dy = y - s.y0;
-    if (Math.abs(s.dy) > 6) moved.current = true;
-    const { min, max } = bounds();
-    // rodzaj ruchu ustalany raz, na początku: w dół od najniższej wysokości = zamykanie, każdy inny = zmiana wysokości
-    if (!s.mode) {
-      if (Math.abs(s.dy) < 4) return;
-      s.mode = s.dy > 0 && s.h0 <= min + 2 ? "close" : "resize";
-    }
-    if (s.mode === "close") {
-      s.el.style.transform = `translateY(${Math.max(0, s.dy)}px)`;
-      return;
-    }
-    let h = s.h0 - s.dy;
+    s.s.push([now, y]);
+    while (s.s.length > 2 && now - s.s[0][0] > 100) s.s.shift();
+    const dy = y - s.y0;
+    if (Math.abs(dy) > 6) moved.current = true;
+    const { min, max } = sheetStops();
+    // arkusz idzie za palcem; nad maksimum i pod minimum – opór
+    let h = s.h0 - dy;
     let shift = 0;
-    if (h > max) h = max + (h - max) * 0.2; // opór nad maksimum
+    if (h > max) h = max + (h - max) * 0.2;
     if (h < min) {
-      shift = Math.min(24, (min - h) * 0.2); // opór pod minimum – arkusz tylko lekko ustępuje, nie zamyka się
+      shift = (min - h) * 0.5; // pod minimum arkusz zjeżdża wolniej niż palec – widać, że to już „zamykanie”
       h = min;
       if (!s.stop) {
         s.stop = true;
         navigator.vibrate?.(8); // Android: krótkie „stuknięcie” na granicy
       }
     } else s.stop = false;
-    s.h = h;
+    s.h = h - shift;
     s.el.style.setProperty("--sheet-h", `${h}px`);
     s.el.style.transform = shift ? `translateY(${shift}px)` : "";
   };
@@ -421,30 +418,38 @@ export function useSheetResize(onClose: () => void, onResize: (vh: number) => vo
     const el = s.el;
     if (!el) return;
     s.el = null;
-    const { vh, min, max } = bounds();
-    if (s.mode === "close") {
-      const go = s.dy > s.h0 / 3 || (s.v > 0.5 && s.dy > 16); // ⅓ wysokości albo machnięcie (~500 px/s)
-      el.style.transition = "transform 200ms cubic-bezier(.2,.8,.2,1)";
-      if (go) {
-        el.style.transform = "translateY(100%)";
-        window.setTimeout(() => {
-          cb.current.onClose();
-          el.style.transform = "";
-          el.style.transition = "";
-        }, 190);
-      } else el.style.transform = "";
-      return;
-    }
-    if (!s.mode) {
+    if (!moved.current) {
       el.style.transition = "";
+      el.style.transform = "";
       return;
     }
-    const h = Math.min(max, Math.max(min, s.h));
-    const v = Math.round((h / vh) * 10) / 10;
-    el.style.transition = "transform 200ms cubic-bezier(.2,.8,.2,1)";
+    // prędkość (px/ms, dodatnia = w dół) z ostatnich ~100 ms; palec zatrzymany przed puszczeniem = brak prędkości
+    const first = s.s[0];
+    const last = s.s[s.s.length - 1];
+    const v = performance.now() - last[0] > 80 || last[0] <= first[0] ? 0 : (last[1] - first[1]) / (last[0] - first[0]);
+    const { vh, stops, max } = sheetStops();
+    if (v >= SHEET_FLICK) {
+      el.style.transition = `transform 200ms ${EASE}`;
+      el.style.transform = "translateY(100%)";
+      window.setTimeout(() => {
+        cb.current.onClose();
+        el.style.transform = "";
+        el.style.transition = "";
+      }, 190);
+      return;
+    }
+    let target: number;
+    if (v <= -SHEET_FLICK) target = max;
+    else {
+      // jak w iOS: wysokość „rzucona” w kierunku ruchu (ok. 150 ms dalej), potem najbliższa z trzech
+      const projected = s.h - v * 150;
+      target = stops.reduce((a, b) => (Math.abs(b - projected) < Math.abs(a - projected) ? b : a));
+    }
+    const pct = Math.round((target / vh) * 10) / 10;
+    el.style.transition = `height 260ms ${EASE}, transform 260ms ${EASE}`;
     el.style.transform = "";
-    el.style.setProperty("--sheet-h", `${v}dvh`);
-    cb.current.onResize(v);
+    el.style.setProperty("--sheet-h", `${pct}dvh`);
+    cb.current.onResize(pct);
   };
 
   // uchwyt: zdarzenia wskaźnika z przechwyceniem (touch-action: none w CSS)
@@ -501,7 +506,7 @@ export function useSheetResize(onClose: () => void, onResize: (vh: number) => vo
           own = false;
           return;
         }
-        const { max } = bounds();
+        const { max } = sheetStops();
         const atTop = node.scrollTop <= 0;
         const h = el.getBoundingClientRect().height;
         own = (dy > 0 && atTop) || (dy < 0 && h < max - 1);
@@ -528,19 +533,21 @@ export function useSheetResize(onClose: () => void, onResize: (vh: number) => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const step = (d: number, from: HTMLElement) => {
+  // klawiatura: strzałki przechodzą do sąsiedniej wysokości
+  const step = (dir: 1 | -1, from: HTMLElement) => {
     const el = from.closest<HTMLElement>(".mantine-Drawer-content");
-    const { vh, min, max } = bounds();
-    const now = el ? el.getBoundingClientRect().height / vh : 60;
-    const v = Math.round(Math.min(max / vh, Math.max(min / vh, now + d)) * 10) / 10;
-    cb.current.onResize(v);
+    const { vh, stops } = sheetStops();
+    const now = el ? el.getBoundingClientRect().height : stops[1];
+    const next = dir > 0 ? (stops.find((p) => p > now + 4) ?? stops[stops.length - 1]) : ([...stops].reverse().find((p) => p < now - 4) ?? stops[0]);
+    if (el) el.style.transition = `height 260ms ${EASE}`;
+    cb.current.onResize(Math.round((next / vh) * 10) / 10);
   };
   return { handle, bodyRef, moved, step };
 }
 
 /** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć.
- *  Z `sheet` (useSheetResize): przeciąganie zmienia wysokość, osobny ruch w dół z najniższej – zamyka;
- *  strzałki ↑↓ na uchwycie zmieniają wysokość z klawiatury. */
+ *  Z `sheet` (useSheetResize): wysokości jak w iOS – powoli do najbliższej z trzech, machnięcie w dół zamyka,
+ *  w górę – maksimum; strzałki ↑↓ na uchwycie przechodzą do sąsiedniej wysokości. */
 export function SheetHandle({ onClose, sheet, children }: { onClose: () => void; sheet?: SheetResize; children?: ReactNode }) {
   const own = useRef(false);
   const close = useDragToClose(onClose, own);
@@ -558,7 +565,7 @@ export function SheetHandle({ onClose, sheet, children }: { onClose: () => void;
             ? (e: KeyboardEvent<HTMLButtonElement>) => {
                 if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                   e.preventDefault();
-                  sheet.step(e.key === "ArrowUp" ? 10 : -10, e.currentTarget);
+                  sheet.step(e.key === "ArrowUp" ? 1 : -1, e.currentTarget);
                 }
               }
             : undefined

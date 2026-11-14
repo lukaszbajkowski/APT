@@ -66,9 +66,9 @@ export function TemplateEditPage() {
   const [sheetH, setSheetH] = useState<number | null>(() => {
     try {
       const v = Number(localStorage.getItem("apt-tpe-sheet-h"));
-      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : null;
+      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : 60;
     } catch {
-      return null;
+      return 60; // środkowa z trzech wysokości (35 / 60 / 92%)
     }
   });
   const saveSheetH = (vh: number) => {

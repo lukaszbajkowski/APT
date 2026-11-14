@@ -12,7 +12,7 @@ import { useConfirm } from "../lib/confirm";
 import { RowsSkeleton } from "./States";
 import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Text, Title, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconDots, IconX } from "@tabler/icons-react";
-import { useIsPhone } from "../lib/device";
+import { isPhone, useIsPhone } from "../lib/device";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
 export interface MobileHeader {
@@ -161,48 +161,239 @@ export function CompactEmpty({ title, text, action }: { title: string; text?: st
 }
 
 /* ——— przeciąganie arkusza w dół, żeby go zamknąć (jak w iOS) ——— */
+/** Zamykanie arkusza jak w iOS: arkusz idzie za palcem w dół, po puszczeniu zamyka się przy szybkim ruchu
+ *  (≥ 0,5 px/ms) albo po przeciągnięciu o ⅓ wysokości, inaczej wraca sprężyście. W górę – tylko lekki opór.
+ *  Zwraca obsługę uchwytu (zdarzenia wskaźnika) oraz begin/move/end dla gestu w treści arkusza. */
+export const SHEET_EASE = "cubic-bezier(.32,.72,0,1)"; // krzywa arkuszy iOS
 export function useDragToClose(onClose: () => void, moved?: { current: boolean }) {
-  // zdarzenia wskaźnika z przechwyceniem: gest zostaje przy uchwycie także gdy palec z niego zjedzie,
-  // a touch-action: none (CSS) nie pozwala przeglądarce przejąć go jako przewijania
-  const st = useRef<{ y: number; dy: number; id: number | null; el: HTMLElement | null }>({ y: 0, dy: 0, id: null, el: null });
-  const finish = () => {
-    const { el, dy } = st.current;
-    st.current.id = null;
+  const cb = useRef(onClose);
+  cb.current = onClose;
+  const st = useRef<{ y0: number; dy: number; id: number | null; el: HTMLElement | null; h: number; s: [number, number][] }>({ y0: 0, dy: 0, id: null, el: null, h: 0, s: [] });
+  const begin = (el: HTMLElement, y: number) => {
+    st.current = { ...st.current, y0: y, dy: 0, el, h: el.getBoundingClientRect().height, s: [[performance.now(), y]] };
+    if (moved) moved.current = false;
+    el.style.transition = "none";
+  };
+  const move = (y: number) => {
+    const c = st.current;
+    if (!c.el) return;
+    const now = performance.now();
+    c.s.push([now, y]);
+    while (c.s.length > 2 && now - c.s[0][0] > 100) c.s.shift();
+    const raw = y - c.y0;
+    c.dy = raw > 0 ? raw : raw * 0.15; // w górę arkusz prawie stoi (opór)
+    if (moved && Math.abs(raw) > 6) moved.current = true;
+    c.el.style.transform = `translateY(${c.dy}px)`;
+  };
+  const end = () => {
+    const c = st.current;
+    const el = c.el;
+    c.id = null;
     if (!el) return;
-    st.current.el = null;
-    el.style.transition = "transform 180ms ease-out";
-    if (dy > 80) {
+    c.el = null;
+    const first = c.s[0];
+    const last = c.s[c.s.length - 1];
+    const v = performance.now() - last[0] > 80 || last[0] <= first[0] ? 0 : (last[1] - first[1]) / (last[0] - first[0]);
+    const go = (v >= 0.5 && c.dy > 8) || c.dy > c.h / 3;
+    el.style.transition = `transform ${go ? 220 : 320}ms ${SHEET_EASE}`;
+    if (go) {
       el.style.transform = "translateY(100%)";
       window.setTimeout(() => {
-        onClose();
+        cb.current();
         el.style.transform = "";
         el.style.transition = "";
-      }, 170);
+      }, 200);
     } else el.style.transform = "";
   };
   return {
-    onPointerDown: (e: PointerEvent<HTMLElement>) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      const el = e.currentTarget.closest<HTMLElement>(".mantine-Drawer-content");
-      st.current = { y: e.clientY, dy: 0, id: e.pointerId, el };
-      if (moved) moved.current = false;
-      if (el) el.style.transition = "none";
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch {
-        /* starsze przeglądarki – działa bez przechwycenia */
-      }
+    begin,
+    move,
+    end,
+    handle: {
+      onPointerDown: (e: PointerEvent<HTMLElement>) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        const el = e.currentTarget.closest<HTMLElement>(".mantine-Drawer-content");
+        if (!el) return;
+        st.current.id = e.pointerId;
+        begin(el, e.clientY);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* starsze przeglądarki – działa bez przechwycenia */
+        }
+      },
+      onPointerMove: (e: PointerEvent<HTMLElement>) => {
+        if (st.current.id === e.pointerId) move(e.clientY);
+      },
+      onPointerUp: (e: PointerEvent<HTMLElement>) => {
+        if (st.current.id === e.pointerId) end();
+      },
+      onPointerCancel: (e: PointerEvent<HTMLElement>) => {
+        if (st.current.id === e.pointerId) end();
+      },
     },
-    onPointerMove: (e: PointerEvent<HTMLElement>) => {
-      if (st.current.id !== e.pointerId) return;
-      const dy = Math.max(0, e.clientY - st.current.y);
-      st.current.dy = dy;
-      if (moved && dy > 6) moved.current = true;
-      if (st.current.el) st.current.el.style.transform = `translateY(${dy}px)`;
-    },
-    onPointerUp: finish,
-    onPointerCancel: finish,
   };
+}
+
+/** Gest w treści arkusza (iOS): ruch w dół należy do arkusza, gdy przewijany obszar pod palcem jest na samej górze.
+ *  `onDown` – czy przejąć ruch (np. arkusz zmieniający wysokość przejmuje też ruch w górę). */
+function attachSheetBodyGesture(
+  root: HTMLElement,
+  skip: string,
+  want: (dy: number, scroller: HTMLElement | null) => boolean,
+  g: { begin: (el: HTMLElement, y: number) => void; move: (y: number) => void; end: () => void },
+) {
+  let x0 = 0;
+  let y0 = 0;
+  let own: boolean | null = null;
+  const scrollerOf = (t: EventTarget | null) => {
+    let el = t instanceof HTMLElement ? t : null;
+    while (el && el !== root) {
+      const o = getComputedStyle(el).overflowY;
+      if ((o === "auto" || o === "scroll") && el.scrollHeight > el.clientHeight + 1) return el;
+      el = el.parentElement;
+    }
+    return null;
+  };
+  let scroller: HTMLElement | null = null;
+  const start = (e: globalThis.TouchEvent) => {
+    own = null;
+    if (e.touches.length !== 1 || (e.target instanceof Element && e.target.closest(skip))) {
+      own = false;
+      return;
+    }
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    scroller = scrollerOf(e.target);
+  };
+  const mv = (e: globalThis.TouchEvent) => {
+    if (own === false || e.touches.length !== 1) return;
+    const y = e.touches[0].clientY;
+    if (own === null) {
+      const dy = y - y0;
+      const dx = e.touches[0].clientX - x0;
+      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      own = e.cancelable && Math.abs(dy) > Math.abs(dx) && want(dy, scroller);
+      if (!own) return;
+      const el = root.closest<HTMLElement>(".mantine-Drawer-content") ?? root;
+      g.begin(el, y0);
+    }
+    e.preventDefault();
+    g.move(y);
+  };
+  const up = () => {
+    if (own) g.end();
+    own = null;
+  };
+  root.addEventListener("touchstart", start, { passive: true });
+  root.addEventListener("touchmove", mv, { passive: false });
+  root.addEventListener("touchend", up);
+  root.addEventListener("touchcancel", up);
+  return () => {
+    root.removeEventListener("touchstart", start);
+    root.removeEventListener("touchmove", mv);
+    root.removeEventListener("touchend", up);
+    root.removeEventListener("touchcancel", up);
+  };
+}
+
+/* ——— cofanie przesunięciem od lewej krawędzi (iOS) ———
+ * W Safari ten gest daje przeglądarka; w aplikacji dodanej do ekranu głównego (iOS, tryb „standalone”) go nie ma,
+ * więc dokładamy własny: dotyk przy lewej krawędzi + ruch w prawo przesuwa ekran za palcem, po puszczeniu
+ * dalej niż ⅓ szerokości albo szybkim ruchem – „Wróć” (to samo co strzałka w górnym pasku). */
+export const EDGE_PX = 24;
+export const edgeBackOn = (): boolean =>
+  isPhone && typeof navigator !== "undefined" && (navigator as Navigator & { standalone?: boolean }).standalone === true;
+/** Czy dotyk zaczął się w strefie cofania – inne gesty poziome go wtedy pomijają. */
+export const atBackEdge = (x: number) => edgeBackOn() && x <= EDGE_PX;
+
+export function useEdgeSwipeBack(onBack: (() => void) | null) {
+  const cb = useRef(onBack);
+  cb.current = onBack;
+  useEffect(() => {
+    if (!edgeBackOn()) return;
+    let c: { x0: number; y0: number; own: boolean | null; el: HTMLElement | null; s: [number, number][]; dx: number } | null = null;
+    const target = () => {
+      // ekran pełnoekranowy (formularz, rozmowa) przykrywa resztę – przesuwamy jego; inaczej treść strony
+      const full = [...document.querySelectorAll<HTMLElement>(".ui-inpage, .ui-chat")].filter((e) => e.offsetParent !== null || getComputedStyle(e).position === "fixed");
+      return full[full.length - 1] ?? document.querySelector<HTMLElement>(".mantine-AppShell-main");
+    };
+    const start = (e: globalThis.TouchEvent) => {
+      c = null;
+      if (!cb.current || e.touches.length !== 1 || e.touches[0].clientX > EDGE_PX) return;
+      if (document.querySelector(".mantine-Drawer-content, .mantine-Modal-content")) return; // otwarty arkusz / okno – nie cofamy pod nim
+      c = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, own: null, el: null, s: [[performance.now(), e.touches[0].clientX]], dx: 0 };
+    };
+    const move = (e: globalThis.TouchEvent) => {
+      if (!c || e.touches.length !== 1) return;
+      const x = e.touches[0].clientX;
+      const dx = x - c.x0;
+      const dy = e.touches[0].clientY - c.y0;
+      if (c.own === null) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        c.own = dx > 0 && dx > Math.abs(dy) * 1.2 && e.cancelable;
+        if (!c.own) {
+          c = null;
+          return;
+        }
+        c.el = target();
+        if (c.el) {
+          c.el.style.transition = "none";
+          c.el.style.boxShadow = "-12px 0 32px rgba(0,0,0,.14)";
+        }
+      }
+      e.preventDefault();
+      const now = performance.now();
+      c.s.push([now, x]);
+      while (c.s.length > 2 && now - c.s[0][0] > 100) c.s.shift();
+      c.dx = Math.max(0, dx);
+      if (c.el) c.el.style.transform = `translateX(${c.dx}px)`;
+    };
+    const end = () => {
+      if (!c || !c.own) {
+        c = null;
+        return;
+      }
+      const { el, s, dx } = c;
+      c = null;
+      const first = s[0];
+      const last = s[s.length - 1];
+      const v = performance.now() - last[0] > 80 || last[0] <= first[0] ? 0 : (last[1] - first[1]) / (last[0] - first[0]);
+      const go = dx > window.innerWidth / 3 || (v > 0.5 && dx > 20);
+      const reset = () => {
+        if (!el) return;
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.boxShadow = "";
+      };
+      if (!el) return;
+      el.style.transition = `transform ${go ? 220 : 300}ms ${SHEET_EASE}`;
+      if (!go) {
+        el.style.transform = "";
+        window.setTimeout(reset, 300);
+        return;
+      }
+      el.style.transform = "translateX(100%)";
+      window.setTimeout(() => {
+        cb.current?.();
+        // nowy ekran pojawia się na miejscu; gdy powrót zatrzymało pytanie o niezapisane zmiany – stary wraca
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          el.style.transition = "none";
+          reset();
+        }));
+      }, 210);
+    };
+    document.addEventListener("touchstart", start, { passive: true });
+    document.addEventListener("touchmove", move, { passive: false });
+    document.addEventListener("touchend", end);
+    document.addEventListener("touchcancel", end);
+    return () => {
+      document.removeEventListener("touchstart", start);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+    };
+  }, []);
 }
 
 /** Przesunięcie palcem w bok (np. między zakładkami). Ignoruje ruchy pionowe i przewijane w bok elementy. */
@@ -211,7 +402,7 @@ export function useSwipe(onLeft: () => void, onRight: () => void) {
   return {
     onTouchStart: (e: TouchEvent) => {
       const t = e.target as HTMLElement;
-      const skip = !!t.closest("input, textarea, select, .mantine-Tabs-list, .mantine-ScrollArea-root, [data-no-swipe], .mantine-TableScrollContainer-scrollContainer");
+      const skip = atBackEdge(e.touches[0].clientX) || !!t.closest("input, textarea, select, .mantine-Tabs-list, .mantine-ScrollArea-root, [data-no-swipe], .mantine-TableScrollContainer-scrollContainer");
       st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, skip };
     },
     onTouchEnd: (e: TouchEvent) => {
@@ -260,6 +451,7 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
   handlers.current.start = (e) => {
     const t = e.target as HTMLElement;
     const skip =
+      atBackEdge(e.touches[0].clientX) ||
       typeof t?.closest !== "function" ||
       !!t.closest("input, textarea, select, [data-no-swipe], .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer, .mantine-Drawer-root, .mantine-Modal-root, .mantine-Popover-dropdown, .ui-chat, .tabbar, .mantine-AppShell-navbar");
     st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, lock: "", skip };
@@ -552,8 +744,22 @@ export function SheetHandle({ onClose, sheet, children }: { onClose: () => void;
   const own = useRef(false);
   const close = useDragToClose(onClose, own);
   const moved = sheet ? sheet.moved : own;
+  const ref = useRef<HTMLDivElement>(null);
+  const g = useRef(close);
+  g.current = close;
+  // zwykły arkusz: pociągnięcie w dół w dowolnym miejscu treści (gdy treść jest na górze) też go zamyka
+  useEffect(() => {
+    if (sheet) return;
+    const root = ref.current?.closest<HTMLElement>(".mantine-Drawer-content");
+    if (!root) return;
+    return attachSheetBodyGesture(root, ".ui-sheet-drag", (dy, sc) => dy > 0 && (!sc || sc.scrollTop <= 0), {
+      begin: (el, y) => g.current.begin(el, y),
+      move: (y) => g.current.move(y),
+      end: () => g.current.end(),
+    });
+  }, [sheet]);
   return (
-    <div className="ui-sheet-drag" data-resizable={sheet ? "" : undefined} {...(sheet ? sheet.handle : close)}>
+    <div ref={ref} className="ui-sheet-drag" data-resizable={sheet ? "" : undefined} {...(sheet ? sheet.handle : close.handle)}>
       {/* stuknięcie zamyka; przeciągnięcie: bez `sheet` krótkie – arkusz wraca, z `sheet` – zmienia wysokość */}
       <button
         type="button"
@@ -1203,7 +1409,7 @@ export function useSwipeAnywhere(enabled: boolean, onLeft: () => void, onRight: 
     const st = { x: 0, y: 0, skip: false };
     const start = (e: globalThis.TouchEvent) => {
       const t = e.target as HTMLElement;
-      st.skip = typeof t?.closest === "function" && !!t.closest("input:not([type=file]), textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .tabbar, nav");
+      st.skip = atBackEdge(e.touches[0].clientX) || (typeof t?.closest === "function" && !!t.closest("input:not([type=file]), textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .tabbar, nav"));
       st.x = e.touches[0].clientX;
       st.y = e.touches[0].clientY;
     };

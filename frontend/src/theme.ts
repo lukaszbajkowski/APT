@@ -1,4 +1,4 @@
-import { Combobox, createTheme, SegmentedControl, Menu, Modal, Popover, type MantineColorsTuple } from "@mantine/core";
+import { Combobox, createTheme, Drawer, SegmentedControl, Menu, Modal, Popover, type MantineColorsTuple } from "@mantine/core";
 
 /*
  * Paleta „ciepłe neutralne” – jasny i ciemny motyw.
@@ -70,6 +70,8 @@ export const theme = createTheme({
   components: {
     // okna dialogowe na środku ekranu – w zasięgu kciuka na telefonie
     Modal: Modal.extend({ defaultProps: { centered: true } }),
+    // szuflady i arkusze od dołu: krzywa arkuszy iOS – szybki start, długie, miękkie dojście; zamykanie krótsze
+    Drawer: Drawer.extend({ defaultProps: { transitionProps: { duration: 420, exitDuration: 260, timingFunction: "cubic-bezier(.32,.72,0,1)" } } }),
     // warstwy rozwijane (menu „⋯”, listy wyboru, kalendarz) z cieniem – wychodzą na pierwszy plan
     Menu: Menu.extend({ defaultProps: { shadow: "md" } }),
     Popover: Popover.extend({ defaultProps: { shadow: "md" } }),

@@ -74,7 +74,7 @@ import { ServiceNoticeBanner } from "./ServiceNotices";
 import { api, MFA_PATH, ROLE_LABELS } from "../api";
 import { useResponsiveTables } from "../lib/responsiveTables";
 import { useDocTitle } from "../lib/docTitle";
-import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
+import { MobileHeaderProvider, useEdgeSwipeBack, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
 import { useCases } from "./TodayInbox";
 import { useIsPhone } from "../lib/device";
 
@@ -173,6 +173,8 @@ function MobileTopBar() {
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, [location.pathname]);
+  // iOS (aplikacja na ekranie głównym): przesunięcie od lewej krawędzi = strzałka „Wróć”
+  useEdgeSwipeBack(back && !own.close ? () => (own.onBack ? own.onBack() : navigate(back)) : own.close && own.onBack ? () => own.onBack?.() : null);
   const swap = deep && !!own.scrolledTitle;
   const title = swap ? own.scrolledTitle! : own.title ?? auto.title;
   const subtitle = swap ? own.scrolledSubtitle : own.subtitle;

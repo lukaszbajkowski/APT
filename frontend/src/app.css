@@ -1675,3 +1675,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
     backdrop-filter: none;
   }
 }
+/* telefon (Safari): przewijanie w arkuszu / oknie zostaje w nim – nie przechodzi na stronę pod spodem
+   (na końcu listy ani gdy Safari uzna treść za nieprzewijalną); strona pod otwartym oknem stoi */
+.mantine-Drawer-content, .mantine-Drawer-body, .mantine-Modal-content, .mantine-Modal-body { overscroll-behavior: contain; }
+:where(:root[data-device="phone"]):has(.mantine-Drawer-content, .mantine-Modal-content),
+:where(:root[data-device="phone"]) body:has(.mantine-Drawer-content, .mantine-Modal-content) { overflow: hidden; }

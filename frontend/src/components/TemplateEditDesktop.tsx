@@ -770,7 +770,10 @@ export function TouchSortList({
     const edge = Math.min(72, Math.round(h * 0.15));
     const top = scroller.current ? scroller.current.getBoundingClientRect().top : 0;
     const bar = document.querySelector<HTMLElement>(".ui-inpage .ui-chat-compose") ?? document.querySelector<HTMLElement>(".ui-tpe-save");
-    const limit = bar ? bar.getBoundingClientRect().top : h;
+    // pasek liczy się tylko wtedy, gdy jest na ekranie – w układzie komputerowym na niskim ekranie (duży telefon w poziomie)
+    // leży na końcu strony, daleko pod ekranem, i dolna strefa byłaby nieosiągalna
+    const bt = bar ? bar.getBoundingClientRect().top : h;
+    const limit = bt < h && bt > top + 2 * edge ? bt : h;
     return { edge: top + edge, bottom: limit - edge };
   };
   // ruch palca: najwyżej jedno przeliczenie na klatkę ekranu (zdarzeń bywa 2–4× więcej niż klatek)

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
@@ -10,6 +9,7 @@ import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, Loading } from "../components/States";
 import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface Item {
   id: number;
@@ -32,7 +32,7 @@ const CONFIG: Record<Kind, { title: string; noun: string; codeLabel?: string; co
 
 function DictionaryTab({ kind, query, addSignal = 0, search }: { kind: Kind; query: UseQueryResult<Item[]>; addSignal?: number; /** wyszukiwanie z nagłówka ekranu (telefon) */ search?: string }) {
   const cfg = CONFIG[kind];
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const qc = useQueryClient();
   const departments = useDepartments();
   const [editing, setEditing] = useState<Item | "new" | null>(null);
@@ -282,7 +282,7 @@ export function DictionariesPage() {
   const departments = useDepartments();
   const positions = usePositions();
   const countries = useCountries();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [tab, setTab] = useState<Kind>("agencies");
   const [addSignal, setAddSignal] = useState(0);
   const [search, setSearch] = useState("");

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { ImportMobile } from "../components/ImportMobile";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +8,7 @@ import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload
 
 import { api, errorText, formatDate, withAcct } from "../api";
 import { PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface FieldDef {
   key: string;
@@ -162,7 +162,7 @@ export function ImportPage() {
   const rows = (preview?.rows ?? []).filter((r) => filter === "all" || r.status === filter);
   const canImport = preview && preview.summary.to_import > 0 && (preview.summary.errors === 0 || skipErrors);
 
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // telefon: przełącznik słowników na ekranie sprawdzenia – od razu przelicz podgląd
   useEffect(() => {
     if (mobile && step === 2 && file) check.mutate();

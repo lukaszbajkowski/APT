@@ -5,13 +5,13 @@ import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal,
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 
 import { api, ApiError, formatDateTime, ROLE_LABELS, type DictionaryItem, type Role, type User } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { ActionSheet, CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, type SheetAction, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => r !== "employee").map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 
@@ -53,7 +53,7 @@ export function UsersPage() {
   const [tempOpen, setTempOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const showDisabled = mobile ? mobileDisabled : routeDisabled;
   const confirm = useConfirm();
   const [sheetUser, setSheetUser] = useState<User | null>(null);

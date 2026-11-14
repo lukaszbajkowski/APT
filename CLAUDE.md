@@ -32,6 +32,11 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
 - Nagłówek strony: zawsze `PageTitle` z `components/Mobile.tsx` (wzór: lista Pracownicy) – tytuł i licznik
   po lewej, akcje po prawej w tej samej linii, opis pod spodem (≤ 72 znaki szerokości). Bez własnych układów nagłówka.
   Licznik obok tytułu: każdy fragment po „·” od wielkiej litery („Wersja 0.1.0 · Migracja 0047”), ta sama treść co na telefonie.
+- Interfejs wybiera **rodzaj urządzenia**, nie szerokość okna (`lib/device.ts`): telefon (dotyk, krótszy bok < 600 px)
+  dostaje interfejs telefonu także w poziomie; tablet i komputer – komputerowy (wąskie okno komputera = ten sam
+  interfejs, węższy). W komponentach `useIsPhone()`, w CSS `:where(:root[data-device="phone"])`, klasy
+  `.ui-phone-only` / `.ui-desktop-only`. Nie używaj `max-width: 48em` ani `visibleFrom` / `hiddenFrom` do wyboru układu.
+  Podgląd na komputerze: `?urzadzenie=telefon` (powrót: `?urzadzenie=auto`).
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)
@@ -42,7 +47,7 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
    polskie cudzysłowy, kolory przez zmienne (bez `yellow.8` / `#…` na sztywno), teksty od wielkiej litery.
 2. **Przegląd ekranu:** `APT_UI_PASSWORD=… node scripts/ui-check.mjs /ścieżka [/inna]` (tylko lokalne demo –
    klika przyciski i zmienia dane). Robi zrzuty dla każdej roli (admin, kierownik, agencja) × jasny/ciemny ×
-   **każde urządzenie**: komputer 1440 i 800 px, telefon w pionie i w poziomie, tablet w pionie i w poziomie –
+   **każde urządzenie**: komputer 1440 i 800 px, telefon w pionie i w poziomie (także duży – szerszy niż 900 px), tablet w pionie i w poziomie –
    w trakcie ładowania (opóźnione API) i po nim, klika przyciski i zgłasza błędy JS, odpowiedzi API ≥ 400
    i czerwone powiadomienia.
 3. **Obejrzyj zrzuty** – skrypt nie oceni wyglądu: ciemny motyw (kontrast bursztynu), wąskie okno (nic nie

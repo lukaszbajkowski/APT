@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, cap, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +11,7 @@ import { api, errorText, formatDate, type Employee, type MedicalExam, withAcct }
 import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 const STATE: Record<MedicalExam["state"], { label: string; color: string }> = {
   valid: { label: "Ważne", color: "teal" },
@@ -132,7 +132,7 @@ export function MedicalExamsCard({ employee }: { employee: Employee }) {
       notifications.show({ color: "green", message: "Usunięto badanie." });
     },
   });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [sheet, setSheet] = useState<MedicalExam | null>(null);
   if (mobile) {
     const acts: SheetAction[] = [];

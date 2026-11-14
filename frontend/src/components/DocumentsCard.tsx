@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog, RowMenu } from "./Mobile";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +14,7 @@ import { fieldMask, fieldProblem, maskExample, maskPartial, peselProblem, type F
 import { api, errorText, formatDateTime, LANGUAGES, type DocTemplate, type Employee, type GeneratedDoc, type TemplateField, withAcct } from "../api";
 import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
+import { useIsPhone } from "../lib/device";
 
 export type Values = Record<string, string | boolean | number | null>;
 
@@ -385,7 +385,7 @@ export function DocumentsCard({ employee }: { employee: Employee }) {
   const [mailDoc, setMailDoc] = useState<GeneratedDoc | null>(null);
   const [delDoc, setDelDoc] = useState<GeneratedDoc | null>(null);
   const remind = useRemindSignature();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [error, setError] = useState<string | null>(null);
 
   const template = useMemo(() => templates.data?.find((t) => String(t.id) === templateId), [templates.data, templateId]);

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, Grid, Group, Paper, Skeleton, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
@@ -27,8 +26,9 @@ import { ErrorState, EmptyState, Loading } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
 import { CompactEmpty, ListRow, PageTitle, Section, SectionHead, StatusBadge, cap } from "../components/Mobile";
 import { TodayInbox, useCases } from "../components/TodayInbox";
+import { useIsPhone } from "../lib/device";
 
-const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+const useMobile = () => useIsPhone();
 /** ton plakietki zdarzenia: zaległe i nieważne – bursztyn, terminy – oczekiwanie, reszta – neutralnie */
 const EVENT_TONE: Record<UpcomingEvent["kind"], "warn" | "wait" | "neutral" | "ok"> = {
   exam: "wait",
@@ -217,7 +217,7 @@ interface QueueGroup {
 
 /** „Do zrobienia dzisiaj”: wszystko, co wymaga uwagi kadr, jako lista z przyciskami do list z problemem. */
 function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<{ total: number; groups: QueueGroup[] }>("/work-queue"), refetchInterval: 60_000, enabled: full });
   const rows: { key: string; label: string; count: number; url: string; sample?: string; hint?: string; color: string; icon: typeof IconCamera; action: string }[] = [];
   if (d.without_photo)
@@ -600,7 +600,7 @@ export function HomePage() {
               />
             </form>
             {staff && (
-              <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />} visibleFrom="sm">
+              <Button component={Link} to="/pracownicy/nowy" size="md" leftSection={<IconUserPlus size={18} />} className="ui-desktop-only">
                 Dodaj pracownika
               </Button>
             )}

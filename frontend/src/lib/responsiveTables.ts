@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isPhone } from "./device";
 
 /**
  * Na telefonie tabele zamieniają się w karty (CSS w app.css, `table[data-cards]`).
@@ -12,7 +13,7 @@ export function useResponsiveTables() {
     const label = () => {
       frame = 0;
       // telefon: listy wyboru bez wpisywania (bez klawiatury) – wybór tylko z listy
-      if (window.matchMedia("(max-width: 48em)").matches) {
+      if (isPhone) {
         document.querySelectorAll<HTMLInputElement>(".mantine-Select-input:not([readonly]):not([data-allow-typing])").forEach((el) => {
           el.readOnly = true;
           el.inputMode = "none";

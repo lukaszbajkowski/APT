@@ -18,6 +18,7 @@ import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
 import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 const PAGE_SIZE = 50;
 
@@ -34,7 +35,7 @@ const MISSING = [
 export function EmployeesPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // węższe okno: kolumna „Wymaga uwagi” skrócona (pierwszy powód i liczba, pełna lista w dymku)
   const narrowList = useMediaQuery("(max-width: 80em)", false, { getInitialValueInEffect: false });
   const canPrint = hasRole("admin", "hr", "manager");

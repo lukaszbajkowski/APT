@@ -6,13 +6,13 @@ import { type FieldType, type TemplateField } from "../api";
 import { useFieldFormats } from "./DocumentsCard";
 import { EmptyState } from "./States";
 import { useState } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
 import { UnstyledButton } from "@mantine/core";
 import { ActionSheet, ListRow } from "./Mobile";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
-const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+const useMobile = () => useIsPhone();
 
 /* telefon: opcje listy jedna pod drugą – tekst na liście i wartość w szablonie na pełną szerokość */
 function OptionsMobile({ field, onChange }: { field: TemplateField; onChange: (f: TemplateField) => void }) {

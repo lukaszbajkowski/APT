@@ -1,5 +1,4 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useMediaQuery } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconId, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
@@ -9,6 +8,7 @@ import { MyDataCards, MyPhotoEditor, type MyEmployee } from "../components/MyDat
 import { Messenger } from "../components/HrThreads";
 import { useT } from "../lib/i18n";
 import { ListRow, PageHead, Section, CompactEmpty, StatusBadge, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 export function EmployeeMessagesPage() {
   return <Messenger staff={false} />;
@@ -62,7 +62,7 @@ export function EmployeeHome() {
   const t = useT();
   const d = mine.data;
   const noContact = d && !(d.phone_verified || d.email_verified);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
 
   if (mobile) {
     const sign = toSign.data?.pending ?? 0;

@@ -5,13 +5,13 @@ import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Te
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconDownload, IconMail } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 
 import { useAuth } from "../auth";
 import { api, formatDate, formatDateTime, type DictionaryItem, withAcct } from "../api";
 import { ErrorState, EmptyState, Loading } from "../components/States";
+import { useIsPhone } from "../lib/device";
 
 interface Row {
   employee_id: number;
@@ -82,7 +82,7 @@ export function AgencyReportPage() {
   });
 
   const r = report.data;
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [pick, setPick] = useState<null | "agency" | "month" | "more">(null);
   const confirm = useConfirm();
 

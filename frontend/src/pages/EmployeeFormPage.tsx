@@ -12,10 +12,10 @@ import { options, useAgencies, useCountries, useDepartments, usePositions } from
 import { parsePesel } from "../pesel";
 import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
-import { useMediaQuery } from "@mantine/hooks";
 import { UnstyledButton } from "@mantine/core";
 import { useMobileHeader, useNavHeightVar } from "../components/Mobile";
 import type { ReactNode } from "react";
+import { useIsPhone } from "../lib/device";
 
 /* Grupa pól: na komputerze karta, na telefonie etykieta sekcji bez ramki (formularz na pełnym ekranie). */
 function Block({ mobile, title, children }: { mobile: boolean; title: string; children: ReactNode }) {
@@ -129,7 +129,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   useNavHeightVar();
 
   const employee = useQuery({
@@ -275,14 +275,14 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
     <form onSubmit={submit} className={mobile ? "ui-inpage" : embed ? "ui-embed-form" : undefined}>
       <Stack maw={embed ? undefined : 900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
         {!embed && (
-        <Group justify="space-between" visibleFrom="sm">
+        <Group justify="space-between" className="ui-desktop-only">
           <div>
-            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" visibleFrom="sm">
+            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" className="ui-desktop-only">
               <Group gap={4}>
                 <IconArrowLeft size={14} /> {editing ? "Wróć do profilu" : "Wróć do listy"}
               </Group>
             </Anchor>
-            <Title order={2} mt={4} visibleFrom="sm">
+            <Title order={2} mt={4} className="ui-desktop-only">
               {!editing
                 ? "Nowy pracownik"
                 : part === "dane"

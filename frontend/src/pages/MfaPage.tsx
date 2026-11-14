@@ -174,7 +174,7 @@ function SetupFlow({ forced }: { forced: boolean }) {
           {error}
         </Alert>
       )}
-      <List type="ordered" spacing="xs" size="sm" visibleFrom="sm">
+      <List type="ordered" spacing="xs" size="sm" className="ui-desktop-only">
         <List.Item>
           Zainstaluj w telefonie aplikację do kodów, np. <b>Google Authenticator</b> lub <b>Microsoft Authenticator</b>{" "}
           (na iPhonie wystarczą też wbudowane <b>Hasła</b>).
@@ -182,7 +182,7 @@ function SetupFlow({ forced }: { forced: boolean }) {
         <List.Item>Zeskanuj w niej kod QR.</List.Item>
         <List.Item>Wpisz 6-cyfrowy kod, który pokaże aplikacja.</List.Item>
       </List>
-      <List type="ordered" spacing="xs" size="sm" hiddenFrom="sm">
+      <List type="ordered" spacing="xs" size="sm" className="ui-phone-only">
         <List.Item>Dotknij „Skopiuj klucz” poniżej.</List.Item>
         <List.Item>
           Na iPhonie otwórz <b>Hasła</b> → konto <b>aptid.pl</b> → <b>Skonfiguruj kod weryfikacyjny</b> → <b>Wpisz klucz
@@ -193,14 +193,14 @@ function SetupFlow({ forced }: { forced: boolean }) {
       {!setup ? (
         <Group>
           <Button onClick={start} loading={busy} leftSection={<IconShieldLock size={16} />}>
-            <Text component="span" visibleFrom="sm">Pokaż kod QR</Text>
-            <Text component="span" hiddenFrom="sm">Pokaż klucz do aplikacji</Text>
+            <Text component="span" className="ui-desktop-only">Pokaż kod QR</Text>
+            <Text component="span" className="ui-phone-only">Pokaż klucz do aplikacji</Text>
           </Button>
         </Group>
       ) : (
         <form onSubmit={enable}>
           <Stack>
-            <Stack gap="xs" hiddenFrom="sm">
+            <Stack gap="xs" className="ui-phone-only">
               <Code fz="md" style={{ wordBreak: "break-all", textAlign: "center", padding: 12 }}>
                 {setup.secret}
               </Code>
@@ -238,7 +238,7 @@ function SetupFlow({ forced }: { forced: boolean }) {
                 </Text>
               )}
             </Stack>
-            <Group align="flex-start" gap="xl" visibleFrom="sm">
+            <Group align="flex-start" gap="xl" className="ui-desktop-only">
               <Box
                 w={200}
                 h={200}

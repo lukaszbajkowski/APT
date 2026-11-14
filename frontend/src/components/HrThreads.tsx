@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
-import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArchive, IconArchiveOff, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
 
@@ -20,6 +19,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
+import { useIsPhone } from "../lib/device";
 
 export interface ThreadRow {
   id: number;
@@ -826,7 +826,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
 export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }) {
   const T = useT();
   const base = staff ? "/hr-messages" : "/me/messages";
-  const mobile = useMediaQuery("(max-width: 48em)");
+  const mobile = useIsPhone();
   const [openId, setOpenId] = useUrlOpen();
   const [composing, setComposing] = useState(!!preset);
   const [q, setQ] = useState("");

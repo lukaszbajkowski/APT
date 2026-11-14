@@ -5,9 +5,9 @@
  */
 import { useState } from "react";
 import { Combobox, Input, InputBase, Select as MantineSelect, type SelectProps } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 
 import { PickSheet } from "./Mobile";
+import { useIsPhone } from "../lib/device";
 
 type Opt = { value: string; label: string };
 
@@ -27,7 +27,7 @@ function flat(data: SelectProps["data"]): Opt[] | null {
 const LONG = 12;
 
 export function Select(props: SelectProps) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [open, setOpen] = useState(false);
   const opts = flat(props.data);
   if (!mobile || !opts || (props.searchable && opts.length > LONG)) return <MantineSelect {...props} />;

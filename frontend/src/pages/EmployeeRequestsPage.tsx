@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
@@ -13,6 +12,7 @@ import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, For
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useIsPhone } from "../lib/device";
 
 const STATUS: Record<EmployeeRequest["status"], { label: string; color: string }> = {
   pending: { label: "Czeka na kadry", color: "orange" },
@@ -269,7 +269,7 @@ export function EmployeeRequestsPage() {
   const { hasRole } = useAuth();
   const isAgency = hasRole("agency");
   const q = useQuery({ queryKey: ["employee-requests"], queryFn: () => api<EmployeeRequest[]>("/employee-requests") });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [newOpen, setNewOpen] = useState(false);
   const [deciding, setDeciding] = useState<EmployeeRequest | null>(null);
   const [show, setShow] = useState<"pending" | "all">("pending");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
-import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
+import { useDebouncedValue } from "@mantine/hooks";
 import { IconAdjustmentsHorizontal, IconSearch } from "@tabler/icons-react";
 import { Chips, CompactEmpty, FilterSheet, ListRow, Pager, PageHead, PageTitle } from "../components/Mobile";
 import { ErrorState } from "../components/States";
@@ -10,6 +10,7 @@ import { ErrorState } from "../components/States";
 import { ACTION_LABELS, api, ApiError, formatDateTime, type AuditEntry, type Page } from "../api";
 import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
+import { useIsPhone } from "../lib/device";
 
 const PAGE_SIZE = 50;
 
@@ -69,7 +70,7 @@ export function AuditPage() {
     setPage(1);
   };
 
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [sheet, setSheet] = useState(false);
   if (mobile) {
     const nFilters = (action ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);

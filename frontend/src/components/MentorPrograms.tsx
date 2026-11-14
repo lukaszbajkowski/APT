@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useConfirm } from "../lib/confirm";
 import { useMemo, useState } from "react";
@@ -11,6 +10,7 @@ import { IconDotsVertical, IconPlus, IconTrash, IconUsers } from "@tabler/icons-
 
 import { api, type Employee, type MentorProgram, type Page, type TrainingProgram, type TrainingType } from "../api";
 import { useAuth } from "../auth";
+import { useIsPhone } from "../lib/device";
 
 const programLabel = (p: { name: string; department: string | null }) => (p.department ? `${p.name} · ${p.department}` : p.name);
 
@@ -101,7 +101,7 @@ export function ProgramMentorsButton({ program }: { program: TrainingProgram }) 
 
 /** Sekcja w kartotece: jakie szkolenia stanowiskowe pracownik może prowadzić. */
 export function MentorProgramsCard({ employee }: { employee: Employee }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");

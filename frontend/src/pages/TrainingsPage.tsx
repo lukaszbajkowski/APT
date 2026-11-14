@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
+import { useDebouncedValue } from "@mantine/hooks";
 import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,7 @@ import { TrainingsReport } from "../components/TrainingsReport";
 import { CompetenceMatrix, PositionRequirements } from "../components/Competence";
 import { Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 function Expiring({ mobile }: { mobile?: boolean }) {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -537,7 +538,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
   const [f, setF] = useState<TypeForm>({ name: "", kind: "general", validity_months: "", template_id: null, is_active: true });
   const [error, setError] = useState<string | null>(null);
   const selectedTemplate = templates.data?.find((t) => String(t.id) === f.template_id);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const types = useQuery({ queryKey: ["training-types"], queryFn: () => api<TrainingType[]>("/training-types"), enabled: opened && !!mobile });
   const [pickTpl, setPickTpl] = useState(false);
   const confirmDel = useConfirm();
@@ -849,7 +850,7 @@ function Types() {
 export function TrainingsPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
     <Stack>

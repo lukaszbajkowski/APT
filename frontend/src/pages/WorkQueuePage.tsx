@@ -3,8 +3,8 @@ import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Text } from "@man
 import { Link } from "react-router-dom";
 
 import { api, errorText } from "../api";
-import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, PageHead, Section, PageTitle, PageLoading } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface Item {
   title: string;
@@ -25,7 +25,7 @@ interface Queue {
 
 export function WorkQueuePage() {
   const q = useQuery({ queryKey: ["work-queue"], queryFn: () => api<Queue>("/work-queue"), refetchInterval: 60_000 });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   if (q.isLoading) return <PageLoading title="Do zrobienia" />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const d = q.data!;

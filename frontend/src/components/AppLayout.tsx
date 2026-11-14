@@ -76,6 +76,7 @@ import { useResponsiveTables } from "../lib/responsiveTables";
 import { useDocTitle } from "../lib/docTitle";
 import { MobileHeaderProvider, useMobileHeaderValue, useNavHeightVar } from "./Mobile";
 import { useCases } from "./TodayInbox";
+import { useIsPhone } from "../lib/device";
 
 type NavItem = { to: string; label: string; icon: typeof IconHome; show: boolean; badge?: number; group?: string; /** krótsza etykieta w dolnym menu telefonu */ tab?: string };
 
@@ -255,7 +256,7 @@ export function AppLayout() {
 
 function AppLayoutInner() {
   const navScroll = useNavScroll();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // wysokość dolnego menu (z paskiem iPhone'a) jako --apt-nav-h – formularze i toasty ustawiają się tuż nad nim
   useNavHeightVar(mobile);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -399,9 +400,9 @@ function AppLayoutInner() {
     <AppShell
       header={{ height: 52, collapsed: !mobile }}
       footer={{ height: 58, collapsed: !mobile }}
-      // menu boczne od 769 px: przy dokładnie 768 px (iPad Mini w pionie) aplikacja jest już w układzie telefonu
-      // (max-width: 48em) – z progiem „sm” (od 48em) pokazywały się naraz menu boczne i dolny pasek
-      navbar={{ width: rail ? 64 : 256, breakpoint: "48.0625em", collapsed: { mobile: true } }}
+      // menu boczne zależy od rodzaju urządzenia (lib/device.ts), nie od szerokości okna: próg 0 = Mantine zawsze
+      // w trybie „komputer”, telefon chowa menu (ma dolny pasek); wąskie okno komputera dostaje pasek ikon
+      navbar={{ width: rail ? 64 : 256, breakpoint: 0, collapsed: { mobile: true, desktop: mobile } }}
       padding={mobile ? "sm" : "lg"}
     >
       {mobile && (

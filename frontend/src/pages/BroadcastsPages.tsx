@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Progress, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
-import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume, IconUsers, IconArchive } from "@tabler/icons-react";
 
@@ -17,6 +16,7 @@ import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
 import { cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, useMobileHeader, useNavHeightVar, useSwipeAnywhere } from "../components/Mobile";
+import { isPhone, useIsPhone } from "../lib/device";
 
 interface FileRef {
   id: number;
@@ -228,7 +228,7 @@ function RecipientsPane({ id, mobile }: { id: number; mobile?: boolean }) {
 /** Komunikaty do grup w stylu „Napisz do kadr”: lista po lewej („+” = nowy), szczegóły lub formularz po prawej. */
 export function BroadcastsPage() {
   const qc = useQueryClient();
-  const mobile = useMediaQuery("(max-width: 48em)");
+  const mobile = useIsPhone();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
   const [archive, setArchive] = useState(false);
@@ -304,7 +304,7 @@ export function BroadcastsPage() {
   });
   const opts = (d?: DictionaryItem[]) => (d ?? []).filter((x) => x.is_active).map((x) => ({ value: String(x.id), label: x.name }));
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState(() => (window.matchMedia("(max-width: 48em)").matches ? "" : "open"));
+  const [status, setStatus] = useState(() => (isPhone ? "" : "open"));
   const remindAll = useMutation({
     mutationFn: (id: number) => api<{ unread: number; pushed: number }>(`/broadcasts/${id}/remind`, { method: "POST" }),
     onSuccess: (r) => notifications.show({ color: "green", message: `Przypomnienie wysłane do ${r.unread} ${r.unread === 1 ? "osoby" : "osób"} (powiadomienie w aplikacji: ${r.pushed}).` }),
@@ -806,7 +806,7 @@ interface Mine {
 
 /** Komunikaty pracownika: na telefonie lista jak „Wiadomości” i szczegół z paskiem górnym, na komputerze dwa panele. */
 export function MyBroadcastsPage() {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   return mobile ? <MyBroadcastsMobile /> : <MyBroadcastsDesktop />;
 }
 
@@ -970,7 +970,7 @@ function MyBroadcastsDesktop() {
   const qc = useQueryClient();
   const { me } = useAuth();
   const lang = me?.user.language ?? "pl";
-  const mobile = useMediaQuery("(max-width: 48em)");
+  const mobile = useIsPhone();
   const [view, setView] = useState<"active" | "archive">("active");
   const [openId, setOpenId] = useState<number | null>(null);
   const [speaking, setSpeaking] = useState<number | null>(null);

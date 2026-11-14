@@ -15,8 +15,8 @@ import { createPasskey, getPasskey, inAppBrowser, passkeyErrorText, passkeysSupp
 import { EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface Options {
   challenge_id: string;
@@ -402,7 +402,7 @@ export function MyAccountPage() {
     onError: (e) => setError(errorText(e)),
   });
 
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   if (!hasRole("employee") && !hasRole("admin", "hr", "manager", "viewer", "agency")) return <Navigate to="/" replace />;
 
   const addKey = () => (prepared ? add.mutate() : prepare.mutate());

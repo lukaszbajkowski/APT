@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Button, Group, Menu, Select, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconEdit, IconPlayerStop, IconPlus, IconTrash } from "@tabler/icons-react";
 
@@ -12,6 +11,7 @@ import { DateField } from "../components/DateField";
 import { TimeField } from "../components/TimeField";
 import { allTimezones, HOME_TZ, isoToZonedInput, tzCity, tzLabel, zonedInputToIso } from "../lib/time";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 const KIND_OPTIONS = (Object.keys(NOTICE_KINDS) as NoticeKind[]).map((k) => ({ value: k, label: NOTICE_KINDS[k].label }));
 const TITLE_HINT: Record<NoticeKind, string> = {
@@ -117,7 +117,7 @@ const STAGE_BADGE: Record<Stage, { tone: "ok" | "warn" | "error" | "neutral"; la
 export function ServiceNoticesPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const q = useQuery({ queryKey: ["service-notices"], queryFn: () => api<ServiceNotice[]>("/service-notices"), refetchInterval: 60_000 });
   const [editing, setEditing] = useState<ServiceNotice | "new" | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);

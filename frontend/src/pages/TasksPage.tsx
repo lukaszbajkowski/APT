@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMediaQuery } from "@mantine/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconListCheck, IconUser } from "@tabler/icons-react";
@@ -10,6 +9,7 @@ import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 import { ErrorState, Loading } from "../components/States";
 import { ActionSheet, CompactEmpty, GroupLabel, PageHead, Segments, SwipePager, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface Task extends ChecklistItem {
   employee_id: number;
@@ -21,7 +21,7 @@ interface Task extends ChecklistItem {
 export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [settings, setSettings] = useState(false);
   if (mobile)
     return (
@@ -94,7 +94,7 @@ function OpenTasks() {
   });
   const rows = q.data ?? [];
   const overdue = rows.filter((t) => t.state === "overdue").length;
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<Task | null>(null);
   // telefon: obie zakładki wczytane od razu – przesuwanie pokazuje gotową treść

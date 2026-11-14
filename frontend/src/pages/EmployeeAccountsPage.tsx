@@ -6,8 +6,8 @@ import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface Row {
   employee_id: number;
@@ -29,7 +29,7 @@ const STATUS: Record<Row["status"], { label: string; color: string }> = {
 export function EmployeeAccountsPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const list = useQuery({
     enabled: !mobile,
     queryKey: ["employee-accounts", q, status],

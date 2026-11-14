@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Group, Stack, Text, TextInput, Textarea } from "@mantine/core";
@@ -10,6 +9,7 @@ import { IconLanguage, IconSearch } from "@tabler/icons-react";
 import { api, errorText, formatDateTime } from "../api";
 import { CompactEmpty, FormDialog, ListRow, PageHead, Segments, StatusBadge, PageLoading, PageTitle } from "../components/Mobile";
 import { Loading } from "../components/States";
+import { useIsPhone } from "../lib/device";
 
 type Origin = "manual" | "glossary" | "google";
 interface Row {
@@ -45,7 +45,7 @@ const KNOWN: Record<string, string> = { uk: "Ukraiński", ru: "Rosyjski", en: "A
  * Kolejność ważności: poprawka tutaj → słownik sprawdzonych słów (w kodzie) → tłumaczenie Google.
  */
 export function TranslationsPage() {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const langs = useQuery({ queryKey: ["i18n-admin-langs"], queryFn: () => api<Lang[]>("/i18n/admin/languages") });
   const names = useQuery({
     queryKey: ["i18n-languages", "pl"],

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Anchor, Button, CopyButton, Drawer, Group, Stack, Text, TextInput } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { ListRow, Section, SheetHandle, FormDialog } from "./Mobile";
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 interface Status {
   account_active: boolean;
@@ -43,7 +43,7 @@ export function DataLinkCard({ employeeId, contactEmail }: { employeeId: number;
     onError: (e) => setError(errorText(e)),
   });
   const confirm = useConfirm();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [sheet, setSheet] = useState(false);
   const cancel = useMutation({
     mutationFn: () => api<Status>(`/employees/${employeeId}/data-link`, { method: "DELETE" }),

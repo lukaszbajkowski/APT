@@ -31,7 +31,6 @@ import {
   IconAlertTriangle,
   IconChevronRight,
 } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 
 import {
   ACTION_LABELS,
@@ -64,6 +63,7 @@ import { DetailSkeleton, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { ActionSheet, CompactEmpty, InfoRow, ListRow, Section, StatusBadge, useMobileHeader, SwipePager, type SheetAction } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 const PESEL_VISIBLE_SECONDS = 30;
 
@@ -158,7 +158,7 @@ function PeselValue({ employee }: { employee: Employee }) {
 const HISTORY_SHORT = 5;
 
 export function EmployeeProfilePage() {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const { id } = useParams();
   const qc = useQueryClient();
   const { hasRole } = useAuth();

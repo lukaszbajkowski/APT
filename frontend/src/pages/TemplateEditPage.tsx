@@ -10,10 +10,10 @@ import { FieldInput, legacyToGroups } from "../components/DocumentsCard";
 import { GroupDialog, announce, moveGroupBy, FieldForm, FormPreview, TouchSortList, MOBILE_HINT, TemplateEditDesktop, TemplateEditMobileSkeleton, TemplateEditSkeleton, type TemplateDraft } from "../components/TemplateEditDesktop";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type DownloadFormats, type TemplateField, withAcct } from "../api";
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
-import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
 import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
 function blocksOf(fields: TemplateField[]): TemplateField[][] {
@@ -58,7 +58,7 @@ export function TemplateEditPage() {
   const [strictPdf, setStrictPdf] = useState(false);
   const [formats, setFormats] = useState<DownloadFormats>("both");
   const [error, setError] = useState<string | null>(null);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // telefon: zakładka, edytowane pole, podgląd formularza
   const [mtab, setMtab] = useState("fields");
   const [editIdx, setEditIdx] = useState<number | null>(null);

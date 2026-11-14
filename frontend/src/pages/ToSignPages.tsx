@@ -12,8 +12,8 @@ import { getPasskey, passkeyErrorText, passkeysSupported } from "../lib/passkey"
 import { useT } from "../lib/i18n";
 import { SignaturePad } from "./SignPage";
 import { EmptyState, Loading } from "../components/States";
-import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, FormScreen, ListRow, PageHead, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 interface ListOut {
   pending: { id: number; document: string; requested_at: string; requested_by: string | null }[];
@@ -30,7 +30,7 @@ const LIVE = { refetchInterval: 8000, refetchOnWindowFocus: true } as const;
 export function ToSignListPage() {
   const t = useT();
   const list = useQuery({ queryKey: ["my-signatures"], queryFn: () => api<ListOut>("/me/signatures"), ...LIVE });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   if (mobile) {
     const pending = list.data?.pending ?? [];
     const signed = list.data?.signed ?? [];
@@ -133,7 +133,7 @@ export function ToSignPage() {
   const [error, setError] = useState<string | null>(null);
   const { me, accounts, switchAccount } = useAuth();
   const others = accounts.filter((a) => a.id !== me?.user.id && a.role === "employee");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // telefon: krok 1 – przeczytaj, krok 2 – podpis; „trusted” = podpis zaufany / kwalifikowany (plik)
   const [step, setStep] = useState<1 | 2>(1);
   const [trusted, setTrusted] = useState(false);

@@ -8,12 +8,12 @@ import { notifications } from "@mantine/notifications";
 import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
 import { ErrorState, Loading } from "../components/States";
-import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
-const useMobile = () => useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+const useMobile = () => useIsPhone();
 const PERIODS = [
   { value: "7", label: "Ostatnie 7 dni" },
   { value: "30", label: "Ostatnie 30 dni" },

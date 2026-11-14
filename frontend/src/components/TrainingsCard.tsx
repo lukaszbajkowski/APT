@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, Section, StatusBadge, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import { EmployeeRequirements } from "./Competence";
 import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 interface Form {
   type_id: string | null;
@@ -387,7 +387,7 @@ function summary(t: Training): string {
 }
 
 export function TrainingsCard({ employee }: { employee: Employee }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");

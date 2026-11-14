@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Group, Stack, Tabs, Text, TextInput, Title } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconCamera, IconMail, IconMessage, IconPhone } from "@tabler/icons-react";
 
@@ -12,6 +11,7 @@ import { CompactEmpty, DangerAction, DangerZone, FormScreen, InfoRow, ListRow, S
 import { Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { useT } from "../lib/i18n";
+import { useIsPhone } from "../lib/device";
 
 interface History {
   periods: { hire_date: string | null; termination_date: string | null; agency: string | null; department: string | null; position: string | null; current: boolean }[];
@@ -128,7 +128,7 @@ function ContactScreen({ kind, d, onClose }: { kind: "phone" | "email"; d: MyEmp
 /** „Moje dane” pracownika – na telefonie jak karta pracownika: zdjęcie, imię, zakładki przesuwane w bok. */
 export function MyDataPage() {
   const t = useT();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [params, setParams] = useSearchParams();
   const mine = useQuery({ queryKey: ["my-employee"], queryFn: () => api<MyEmployee>("/me/employee"), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const history = useQuery({ queryKey: ["my-history"], queryFn: () => api<History>("/me/history"), refetchInterval: 60_000 });

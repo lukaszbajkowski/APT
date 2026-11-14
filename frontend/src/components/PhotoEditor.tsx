@@ -5,12 +5,12 @@ import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconCamera, IconCheck, IconUpload, IconWand } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useMediaQuery } from "@mantine/hooks";
 import { IconPhoto } from "@tabler/icons-react";
 
 import { useT } from "../lib/i18n";
 import { ActionSheet, FormScreen } from "./Mobile";
 import { api, errorText, type Employee } from "../api";
+import { useIsPhone } from "../lib/device";
 
 const OUT_W = 600;
 const OUT_H = 800;
@@ -214,7 +214,7 @@ export function PhotoEditor({
   }, [opened]);
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => setArea(pixels), []);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const fileRef = useRef<HTMLInputElement>(null);
   const shootRef = useRef<(() => void) | null>(null);
 

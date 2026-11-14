@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, cap, FormDialog, SectionHead, RowMenu } from "./Mobile";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import { api, errorText, formatDate, type Employee, type Permit } from "../api";
 import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 export const PERMIT_KINDS = [
   { value: "karta_pobytu", label: "Karta pobytu" },
@@ -88,7 +88,7 @@ export function PermitsCard({ employee }: { employee: Employee }) {
       notifications.show({ color: "green", message: "Usunięto dokument." });
     },
   });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [sheet, setSheet] = useState<Permit | null>(null);
   const polish = /^pol(ska|and)$/i.test(employee.country?.name ?? "");
   if (mobile) {

@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
@@ -9,6 +8,7 @@ import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
 import { ViewScreen } from "./Mobile";
+import { useIsPhone } from "../lib/device";
 
 /** Nazwa pliku z miejscami łamania po „_”, „.”, „-” – długa nazwa zawija się w całych członach, a nie w środku słowa. */
 export function breakableName(name: string) {
@@ -69,7 +69,7 @@ export function DocumentViewer({
     staleTime: 0,
   });
   const [hidden, setHidden] = useState(false);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
 
   const protect = variant !== "attachment";
   useEffect(() => {

@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 import { Chips, CompactEmpty, ListRow, PageHead, cap, PageTitle, PageLoading } from "../components/Mobile";
 
 import { api, errorText } from "../api";
+import { useIsPhone } from "../lib/device";
 
 interface QualityCheck {
   key: string;
@@ -40,7 +40,7 @@ const SHORT: Record<string, string> = {
 export function QualityPage() {
   const q = useQuery({ queryKey: ["quality"], queryFn: () => api<Quality>("/quality") });
   const [filter, setFilter] = useState<string | null>(null);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
 
   if (q.isLoading) return <PageLoading title="Braki w danych" />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;

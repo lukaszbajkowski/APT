@@ -21,12 +21,14 @@ const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
 const pages = args.filter((a, i) => a.startsWith("/") && !["--out", "--users", "--devices", "--schemes"].includes(args[i - 1]));
 const schemes = opt("--schemes", "light,dark").split(",");
-// urządzenia: komputer (szeroki i wąski), telefon i tablet w obu orientacjach (dotyk, prawdziwe proporcje ekranu)
+// urządzenia: komputer (szeroki i wąski), telefon (też duży w poziomie) i tablet w obu orientacjach (dotyk, prawdziwe proporcje ekranu)
 const DEVICES = [
   { name: "pc-1440", ctx: { viewport: { width: 1440, height: 900 } } },
   { name: "pc-800", ctx: { viewport: { width: 800, height: 900 } } },
   { name: "telefon", ctx: devices["iPhone 13"] },
   { name: "telefon-poziom", ctx: devices["iPhone 13 landscape"] },
+  // duży telefon w poziomie jest szerszy niż 900 px – dalej ma dostać interfejs telefonu (lib/device.ts)
+  { name: "telefon-duzy-poziom", ctx: devices["iPhone 15 Pro Max landscape"] },
   { name: "tablet", ctx: devices["iPad Mini"] },
   { name: "tablet-poziom", ctx: devices["iPad Pro 11 landscape"] },
 ];

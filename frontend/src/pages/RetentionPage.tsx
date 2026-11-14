@@ -21,9 +21,9 @@ import { IconAlertTriangle, IconClockPause, IconTrash } from "@tabler/icons-reac
 
 import { api, errorText, formatDate, type RetentionItem, type RetentionOverview } from "../api";
 import { DateField } from "../components/DateField";
-import { useMediaQuery } from "@mantine/hooks";
 import { IconDots } from "@tabler/icons-react";
 import { ActionSheet, CompactEmpty, ListRow, PageHead, Section as MSection, SectionHead, StatusBadge, FormDialog, PageTitle, PageLoading } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 const CONFIRM = "USUŃ";
 
@@ -85,7 +85,7 @@ export function RetentionPage() {
   const [holdReason, setHoldReason] = useState("");
   const [holdError, setHoldError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<null | { kind: "all" | "due" | "held"; item?: RetentionItem }>(null);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const navigate = useNavigate();
   // ostatnio kliknięty wiersz (Shift + kliknięcie zaznacza zakres) – hook przed wczesnymi return
   const lastPicked = useRef<number | null>(null);

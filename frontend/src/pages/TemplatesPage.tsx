@@ -4,12 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, FileInput, Stack, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { IconFileTypeDocx, IconPlus, IconUpload } from "@tabler/icons-react";
-import { useMediaQuery } from "@mantine/hooks";
 
 import { api, errorText, LANGUAGES, type DocTemplate } from "../api";
 import { ErrorState, Loading } from "../components/States";
 import { TemplatesBrowser } from "../components/TemplatesBrowser";
 import { CompactEmpty, ListRow, PageHead, StatusBadge, FormDialog } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 export const LANGUAGE_OPTIONS = Object.entries(LANGUAGES).map(([value, label]) => ({ value, label }));
 
@@ -17,7 +17,7 @@ export function TemplatesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const templates = useQuery({ queryKey: ["templates", "all"], queryFn: () => api<DocTemplate[]>("/templates") });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("pl");

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
@@ -23,6 +22,7 @@ import { useAuth } from "../auth";
 import { EmptyState, Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -107,7 +107,7 @@ function PlannedList({ employee }: { employee: Employee }) {
 }
 
 export function TimelineCard({ employee }: { employee: Employee }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const q = useQuery({
     queryKey: ["employee-timeline", employee.id],
     queryFn: () => api<{ periods: Period[]; assignments: AssignmentRow[] }>(`/employees/${employee.id}/timeline`),
@@ -325,7 +325,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
   const done = it.state === "done" || it.state === "auto";
   const [dueOpen, setDueOpen] = useState(false);
   const [sheet, setSheet] = useState(false);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [due, setDue] = useState(it.due_date ?? "");
   return (
     <Group justify="space-between" wrap="nowrap" gap="sm" py={mobile ? 6 : undefined} px={mobile ? 12 : undefined} mih={mobile ? 60 : undefined} className={mobile ? undefined : "ui-drow"}>
@@ -404,7 +404,7 @@ function ItemRow({ it, onChange }: { it: ChecklistItem; onChange: () => void }) 
 }
 
 export function ChecklistsCard({ employee }: { employee: Employee }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const qc = useQueryClient();
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
@@ -782,7 +782,7 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
 export function ChecklistTemplates() {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   if (q.isLoading) return <Loading />;
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
   if (mobile) {

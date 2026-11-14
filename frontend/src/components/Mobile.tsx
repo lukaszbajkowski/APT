@@ -11,8 +11,8 @@ import { useT } from "../lib/i18n";
 import { useConfirm } from "../lib/confirm";
 import { RowsSkeleton } from "./States";
 import { ActionIcon, Anchor, Button, Drawer, Group, Menu, Modal, Text, Title, UnstyledButton } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertTriangle, IconArchive, IconCheck, IconChevronDown, IconChevronRight, IconClock, IconDots, IconX } from "@tabler/icons-react";
+import { useIsPhone } from "../lib/device";
 
 /* ——— tytuł i powrót w pasku górnym telefonu ——— */
 export interface MobileHeader {
@@ -920,7 +920,7 @@ export function FormDialog({
   /** są wpisane, niezapisane dane – zamknięcie pyta o potwierdzenie; bez podania: od pierwszego wpisania czegokolwiek */
   dirty?: boolean;
 }) {
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [typed, setTyped] = useState(false);
   useEffect(() => {
     if (!opened) setTyped(false);

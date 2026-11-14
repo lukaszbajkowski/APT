@@ -6,12 +6,12 @@ import { Link } from "react-router-dom";
 import { api, formatDate, type PermitRow } from "../api";
 import { PERMIT_STATE } from "../components/Permits";
 import { ErrorState, Loading } from "../components/States";
-import { useMediaQuery } from "@mantine/hooks";
 import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 export function PermitsReportPage() {
   const [all, setAll] = useState(false);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const q = useQuery({
     queryKey: ["permits-report", all],
     queryFn: () => api<PermitRow[]>(`/permits/report?only_problems=${all ? "false" : "true"}`),

@@ -6,8 +6,8 @@ import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } fr
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { useMediaQuery } from "@mantine/hooks";
 import { useMobileHeader, useNavHeightVar, PageTitle } from "../components/Mobile";
+import { useIsPhone } from "../lib/device";
 
 type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 declare global {
@@ -78,7 +78,7 @@ export function ScannerPage() {
   const busyRef = useRef(false);
 
   const [scanning, setScanning] = useState(false);
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   // telefon, aparat włączony: ekran skanera zajmuje całą przestrzeń między paskiem górnym a menu
   const live = !!mobile && scanning;
   useNavHeightVar();

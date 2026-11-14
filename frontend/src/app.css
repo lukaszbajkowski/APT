@@ -188,37 +188,36 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
 .tile-card:hover { background: var(--apt-subtle); }
 
 /* ——— telefon ——— */
-@media (max-width: 48em) {
-  /* iOS powiększa stronę przy polach < 16 px – pola na telefonie mają 16 px */
-  input, textarea, select, .mantine-Input-input { font-size: 16px !important; }
+/* iOS powiększa stronę przy polach < 16 px – pola na telefonie i tablecie (iPad też powiększa) mają 16 px */
+:where(:root[data-device="phone"], :root[data-device="tablet"]) input, :where(:root[data-device="phone"], :root[data-device="tablet"]) textarea, :where(:root[data-device="phone"], :root[data-device="tablet"]) select, :where(:root[data-device="phone"], :root[data-device="tablet"]) .mantine-Input-input { font-size: 16px !important; }
 
   /* pasek dolny nad wskaźnikiem iPhone'a, treść nie chowa się pod paskiem */
   /* stopka: Mantine sam dolicza pasek domowy iPhone'a (wysokość + padding-bottom env(safe-area-inset-bottom)) – nie dodawać drugi raz */
-  .mantine-AppShell-main { padding-bottom: calc(58px + var(--apt-safe-bottom) + 24px) !important; }
-  .mantine-AppShell-header { padding-top: var(--apt-safe-top); box-sizing: content-box; }
+  :where(:root[data-device="phone"]) .mantine-AppShell-main { padding-bottom: calc(58px + var(--apt-safe-bottom) + 24px) !important; }
+  :where(:root[data-device="phone"]) .mantine-AppShell-header { padding-top: var(--apt-safe-top); box-sizing: content-box; }
   /* pasek górny jest wyższy o obszar pod godziną – treść zaczyna się pod nim (inaczej początek ekranu chowa się pod paskiem) */
-  .mantine-AppShell-main { padding-top: calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding, 0rem) + var(--apt-safe-top)) !important; }
+  :where(:root[data-device="phone"]) .mantine-AppShell-main { padding-top: calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding, 0rem) + var(--apt-safe-top)) !important; }
 
   /* zakładki przewijane w bok zamiast łamania w kilka wierszy */
-  .mantine-Tabs-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-  .mantine-Tabs-list::-webkit-scrollbar { display: none; }
-  .mantine-Tabs-tab { white-space: nowrap; flex: none; }
-  .mantine-SegmentedControl-root { max-width: 100%; overflow-x: auto; }
+  :where(:root[data-device="phone"]) .mantine-Tabs-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  :where(:root[data-device="phone"]) .mantine-Tabs-list::-webkit-scrollbar { display: none; }
+  :where(:root[data-device="phone"]) .mantine-Tabs-tab { white-space: nowrap; flex: none; }
+  :where(:root[data-device="phone"]) .mantine-SegmentedControl-root { max-width: 100%; overflow-x: auto; }
 
   /* tabele jako karty: etykieta po lewej, wartość po prawej */
-  .mantine-TableScrollContainer-scrollContainerInner { min-width: 0 !important; }
-  table[data-cards] { display: block; width: 100%; }
-  table[data-cards] thead { display: none; }
-  table[data-cards] tbody { display: block; }
-  table[data-cards] tr {
+  :where(:root[data-device="phone"]) .mantine-TableScrollContainer-scrollContainerInner { min-width: 0 !important; }
+  :where(:root[data-device="phone"]) table[data-cards] { display: block; width: 100%; }
+  :where(:root[data-device="phone"]) table[data-cards] thead { display: none; }
+  :where(:root[data-device="phone"]) table[data-cards] tbody { display: block; }
+  :where(:root[data-device="phone"]) table[data-cards] tr {
     display: flex;
     flex-direction: column;
     gap: 2px;
     padding: 12px 14px;
     border-bottom: 1px solid var(--apt-line);
   }
-  table[data-cards] tr:last-child { border-bottom: 0; }
-  table[data-cards] td {
+  :where(:root[data-device="phone"]) table[data-cards] tr:last-child { border-bottom: 0; }
+  :where(:root[data-device="phone"]) table[data-cards] td {
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -230,7 +229,7 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
     text-align: left;
     overflow-wrap: anywhere;
   }
-  table[data-cards] td[data-label] {
+  :where(:root[data-device="phone"]) table[data-cards] td[data-label] {
     display: grid;
     grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
     column-gap: 12px;
@@ -238,8 +237,8 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
     align-items: start;
     text-align: right;
   }
-  table[data-cards] td[data-label] > * { grid-column: 2; justify-self: end; max-width: 100%; }
-  table[data-cards] td[data-label]::before {
+  :where(:root[data-device="phone"]) table[data-cards] td[data-label] > * { grid-column: 2; justify-self: end; max-width: 100%; }
+  :where(:root[data-device="phone"]) table[data-cards] td[data-label]::before {
     content: attr(data-label);
     grid-column: 1;
     grid-row: 1 / span 6;
@@ -248,9 +247,8 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
     font-weight: 400;
     color: var(--mantine-color-dimmed);
   }
-  table[data-cards] td:first-child { font-weight: 600; }
-  table[data-cards] td:empty { display: none; }
-}
+  :where(:root[data-device="phone"]) table[data-cards] td:first-child { font-weight: 600; }
+  :where(:root[data-device="phone"]) table[data-cards] td:empty { display: none; }
 .list-row-plain { text-decoration: none; color: inherit; }
 .list-row-plain:active { background: var(--apt-subtle); }
 
@@ -516,8 +514,7 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
 .ui-cap { display: inline-block; }
 
 /* telefon: każde menu „⋯” wysuwa się od dołu jako arkusz, z dużymi pozycjami */
-@media (max-width: 48em) {
-  .mantine-Menu-dropdown {
+:where(:root[data-device="phone"]) .mantine-Menu-dropdown {
     position: fixed !important;
     left: 0 !important;
     right: 0 !important;
@@ -534,7 +531,7 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
     background: var(--apt-surface) !important;
     animation: sheet-up 200ms ease-out;
   }
-  .mantine-Menu-dropdown::before {
+  :where(:root[data-device="phone"]) .mantine-Menu-dropdown::before {
     content: "";
     display: block;
     width: 40px;
@@ -543,19 +540,18 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
     border-radius: 3px;
     background: var(--mantine-color-default-border);
   }
-  .mantine-Menu-arrow { display: none; }
+  :where(:root[data-device="phone"]) .mantine-Menu-arrow { display: none; }
   /* przyciemnienie pod arkuszem; łapie stuknięcia, żeby nie trafić w to, co pod spodem */
-  body:has(.mantine-Menu-dropdown)::after {
+  :where(:root[data-device="phone"]) body:has(.mantine-Menu-dropdown)::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: 400;
     background: rgba(17, 14, 12, 0.55);
   }
-  .mantine-Menu-item { min-height: 52px; font-size: 16px; padding: 0 12px; border-radius: 12px; }
-  .mantine-Menu-itemSection svg { width: 20px; height: 20px; }
-  .mantine-Menu-label { font-size: 13px; padding: 8px 12px; }
-}
+  :where(:root[data-device="phone"]) .mantine-Menu-item { min-height: 52px; font-size: 16px; padding: 0 12px; border-radius: 12px; }
+  :where(:root[data-device="phone"]) .mantine-Menu-itemSection svg { width: 20px; height: 20px; }
+  :where(:root[data-device="phone"]) .mantine-Menu-label { font-size: 13px; padding: 8px 12px; }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ——— listy (telefon) ——— */
@@ -739,25 +735,21 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-hint-warn { font-size: 13px; line-height: 1.45; color: var(--mantine-color-orange-text); }
 
 /* ——— telefon: cele dotyku min. 44 px (zasada „System mobilny”) ——— */
-@media (max-width: 48em) {
-  /* Mantine definiuje rozmiary jako zmienne na klasie komponentu (.m_77c9d27d itd.) – nadpisujemy je tam, wyżej specyficznie */
-  .mantine-Button-root.mantine-Button-root { --button-height-xs: 44px; --button-height-sm: 44px; --button-height-compact-xs: 44px; --button-height-compact-sm: 44px; --button-height-compact-md: 44px; }
-  .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-xs: 44px; --ai-size-sm: 44px; --ai-size-md: 44px; }
-  .mantine-Input-wrapper.mantine-Input-wrapper { --input-height-xs: 44px; --input-height-sm: 44px; --input-height-md: 44px; }
+/* Mantine definiuje rozmiary jako zmienne na klasie komponentu (.m_77c9d27d itd.) – nadpisujemy je tam, wyżej specyficznie */
+  :where(:root[data-device="phone"]) .mantine-Button-root.mantine-Button-root { --button-height-xs: 44px; --button-height-sm: 44px; --button-height-compact-xs: 44px; --button-height-compact-sm: 44px; --button-height-compact-md: 44px; }
+  :where(:root[data-device="phone"]) .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-xs: 44px; --ai-size-sm: 44px; --ai-size-md: 44px; }
+  :where(:root[data-device="phone"]) .mantine-Input-wrapper.mantine-Input-wrapper { --input-height-xs: 44px; --input-height-sm: 44px; --input-height-md: 44px; }
   /* przycisk kalendarza w polu daty mieści się w polu 44 px */
-  .mantine-Input-section .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-md: 40px; }
+  :where(:root[data-device="phone"]) .mantine-Input-section .mantine-ActionIcon-root.mantine-ActionIcon-root { --ai-size-md: 40px; }
   /* powiadomienia: środek, nad dolnym menu i paskiem akcji */
   /* Mantine centruje przez left:50% + translateX(-50%) – przy własnych marginesach przesunięcie trzeba zdjąć */
-  .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
+  :where(:root[data-device="phone"]) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 12px) !important; left: 16px !important; right: 16px !important; width: auto !important; max-width: none !important; transform: none !important; }
   /* otwarty formularz: toast nad paskiem „Anuluj / Zapisz” */
-  body:has(.ui-inpage) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 84px) !important; }
-}
+  :where(:root[data-device="phone"]) body:has(.ui-inpage) .mantine-Notifications-root[data-position="bottom-center"] { bottom: calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + 84px) !important; }
 
 /* ——— telefon: płynne przejście między ekranami (150–250 ms, wyłączane przez „ogranicz ruch”) ——— */
 @keyframes ui-route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (max-width: 48em) {
-  .ui-route { animation: ui-route-in .2s ease-out; }
-}
+:where(:root[data-device="phone"]) .ui-route { animation: ui-route-in .2s ease-out; }
 
 /* informacja o tłumaczeniu automatycznym (telefon, pod treścią ekranu) */
 .ui-lang-note { display: flex; gap: 8px; align-items: flex-start; margin: 24px 0 0; font-size: 14px; line-height: 1.4; color: var(--mantine-color-dimmed); }
@@ -788,36 +780,28 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-hit::after { content: ""; position: absolute; inset: -12px -6px; }
 /* ekran z formularzem / rozmową na pełnym ekranie: samo przenikanie – transform w animacji przesunąłby elementy position:fixed */
 @keyframes ui-route-fade { from { opacity: 0; } to { opacity: 1; } }
-@media (max-width: 48em) and (prefers-reduced-motion: no-preference) {
-  .ui-route:has(.ui-inpage, .ui-chat) { animation-name: ui-route-fade; }
+@media (prefers-reduced-motion: no-preference) {
+  :where(:root[data-device="phone"]) .ui-route:has(.ui-inpage, .ui-chat) { animation-name: ui-route-fade; }
 }
 /* lista dni (Dziś · Najbliższe 14 dni): etykieta dnia wewnątrz grupy, bursztyn dla zaległych */
 .ui-day-group + .ui-day-group, .ui-day-group + .ui-row { border-top: 1px solid var(--apt-line); }
 .ui-day-label { display: flex; align-items: center; gap: 6px; padding: 10px 16px 2px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--mantine-color-dimmed); }
 .ui-day-label[data-warn] { color: var(--mantine-color-orange-text); }
 /* zakładki przewijane w bok (karta pracownika): linia pod listą sięga pod wszystkie zakładki, także po przewinięciu */
-@media (max-width: 48em) {
-  .mantine-Tabs-list::before { display: none; }
-  .mantine-Tabs-list { gap: 0 !important; }
-  .mantine-Tabs-list { box-shadow: inset 0 calc(-1 * var(--tabs-list-border-size, 2px)) 0 var(--tab-border-color); }
-  .mantine-Tabs-tab:not([data-active]) { border-bottom-color: var(--tab-border-color); }
-}
+:where(:root[data-device="phone"]) .mantine-Tabs-list::before { display: none; }
+  :where(:root[data-device="phone"]) .mantine-Tabs-list { gap: 0 !important; }
+  :where(:root[data-device="phone"]) .mantine-Tabs-list { box-shadow: inset 0 calc(-1 * var(--tabs-list-border-size, 2px)) 0 var(--tab-border-color); }
+  :where(:root[data-device="phone"]) .mantine-Tabs-tab:not([data-active]) { border-bottom-color: var(--tab-border-color); }
 /* podgląd dokumentu na pełnym ekranie: tytuł skracany, „×” zawsze widoczny, nic nie przewija się w bok */
 .doc-viewer-title { flex: 1; min-width: 0; overflow: hidden; }
 .doc-viewer-content { overflow-x: hidden; }
 .doc-viewer img { max-width: 100%; height: auto; }
-@media (max-width: 48em) {
-  html, body { overflow-x: hidden; }
-  .mantine-AppShell-main { overflow-x: clip; }
-}
+:where(:root[data-device="phone"]), :where(:root[data-device="phone"]) body { overflow-x: hidden; }
+  :where(:root[data-device="phone"]) .mantine-AppShell-main { overflow-x: clip; }
 /* telefon, lista/szczegóły (komunikaty): wewnętrzne przewijanie wyłączone – przewija się tylko strona */
-@media (max-width: 48em) {
-  .ui-md-mobile .mantine-ScrollArea-root { height: auto !important; overflow: visible !important; }
-  .ui-md-mobile .mantine-ScrollArea-viewport { overflow: visible !important; height: auto !important; }
-}
-@media (max-width: 48em) {
-  .ui-md-mobile .mantine-ScrollArea-scrollbar, .ui-md-mobile .mantine-ScrollArea-corner { display: none !important; }
-}
+:where(:root[data-device="phone"]) .ui-md-mobile .mantine-ScrollArea-root { height: auto !important; overflow: visible !important; }
+  :where(:root[data-device="phone"]) .ui-md-mobile .mantine-ScrollArea-viewport { overflow: visible !important; height: auto !important; }
+:where(:root[data-device="phone"]) .ui-md-mobile .mantine-ScrollArea-scrollbar, :where(:root[data-device="phone"]) .ui-md-mobile .mantine-ScrollArea-corner { display: none !important; }
 /* skaner kart (telefon, aparat włączony): obraz z aparatu zajmuje całą wolną wysokość między paskiem a menu */
 .ui-scan-live { position: fixed; left: 0; right: 0; top: calc(52px + var(--apt-safe-top)); bottom: var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))); z-index: 120; display: flex; flex-direction: column; gap: 12px !important; padding: 12px 16px; background: var(--apt-ground); box-sizing: border-box; }
 .ui-scan-live .ui-scan-head { display: none; }
@@ -965,13 +949,11 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   --page-wide: 1760px; --page-reading: 72ch;
 }
 /* komputer: margines strony 32 px, na dużym monitorze 48 px */
-@media (min-width: 48em) { .mantine-AppShell-root { --app-shell-padding: var(--s-6) !important; } }
+:where(:root:not([data-device="phone"])) .mantine-AppShell-root { --app-shell-padding: var(--s-6) !important; }
 @media (min-width: 100em) { .mantine-AppShell-root { --app-shell-padding: var(--s-7) !important; } }
 /* tabele: tekst 14/20, wiersz zwarty, nagłówek kolumny 13 półgruby szary */
-@media (min-width: 48em) {
-  .mantine-Table-table { font-size: var(--t-table); line-height: var(--t-table-lh); }
-  .mantine-Table-th { font-size: var(--t-meta); font-weight: 600; color: var(--mantine-color-dimmed); }
-}
+:where(:root:not([data-device="phone"])) .mantine-Table-table { font-size: var(--t-table); line-height: var(--t-table-lh); }
+  :where(:root:not([data-device="phone"])) .mantine-Table-th { font-size: var(--t-meta); font-weight: 600; color: var(--mantine-color-dimmed); }
 
 /* ---- Wzorzec „szczegóły” (karta pracownika na komputerze) ---- */
 .ui-detail{display:flex;flex-direction:column;gap:var(--s-5)}
@@ -1118,7 +1100,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-mic-eq i:nth-child(1){animation-delay:-.2s}.ui-mic-eq i:nth-child(2){animation-delay:-.55s}.ui-mic-eq i:nth-child(3){animation-delay:-.1s}.ui-mic-eq i:nth-child(4){animation-delay:-.7s}
 @keyframes ui-mic-eq{0%,100%{height:4px}50%{height:16px}}
 @media (prefers-reduced-motion:reduce){.ui-mic[data-on]::before,.ui-mic[data-on]::after{display:none}.ui-mic-eq i{animation:none;height:10px}}
-@media (max-width:48em){.ui-mic{width:44px;height:44px}}
+:where(:root[data-device="phone"]) .ui-mic {width:44px;height:44px}
 /* załącznik komunikatu (wariant „jak w poczcie”) */
 .ui-attach{display:flex;align-items:center;gap:var(--s-3);border:1px solid var(--apt-line);border-radius:10px;padding:12px 14px;background:var(--mantine-color-body);max-width:72ch}
 .ui-attach-ico{width:40px;height:48px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--mantine-color-red-light);color:var(--mantine-color-red-text)}
@@ -1409,7 +1391,7 @@ a.ui-case-link:hover{text-decoration:underline}
 /* pasek boczny (komputer i telefon w poziomie): szerszy o wcięcie, treść paska nie wchodzi pod nie */
 .mantine-AppShell-navbar { padding-left: var(--apt-safe-left); width: calc(var(--app-shell-navbar-width) + var(--apt-safe-left)) !important; }
 .mantine-AppShell-main { --app-shell-navbar-offset: calc(var(--app-shell-navbar-width) + var(--apt-safe-left)); }
-@media (max-width: 48em) { .mantine-AppShell-main { --app-shell-navbar-offset: var(--apt-safe-left); } }
+:where(:root[data-device="phone"]) .mantine-AppShell-main { --app-shell-navbar-offset: var(--apt-safe-left); }
 .mantine-AppShell-header { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
 .tabbar { padding-left: calc(4px + var(--apt-safe-left)); padding-right: calc(4px + var(--apt-safe-right)); }
 .ui-chat, .ui-inpage, .ui-scan-live { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
@@ -1418,15 +1400,13 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-sheet { padding-left: calc(12px + var(--apt-safe-left)); padding-right: calc(12px + var(--apt-safe-right)); }
 .ui-outage { padding-left: calc(16px + var(--apt-safe-left)); padding-right: calc(16px + var(--apt-safe-right)); }
 body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
-@media (max-width: 48em) {
-  .mantine-Notifications-root[data-position="bottom-center"] { left: calc(16px + var(--apt-safe-left)) !important; right: calc(16px + var(--apt-safe-right)) !important; }
-}
+:where(:root[data-device="phone"]) .mantine-Notifications-root[data-position="bottom-center"] { left: calc(16px + var(--apt-safe-left)) !important; right: calc(16px + var(--apt-safe-right)) !important; }
 /* okna na pełnym ekranie (Mantine fullScreen) i szuflady przy krawędzi */
 .mantine-Modal-content[data-full-screen], .mantine-Drawer-content { padding-left: var(--apt-safe-left); padding-right: var(--apt-safe-right); }
 /* dół w układzie komputerowym (telefon w poziomie): pasek gestów nie zasłania przypiętych pasków ani dołu menu */
 .mantine-AppShell-navbar { padding-bottom: var(--apt-safe-bottom); }
 .ui-tpe-save { bottom: calc(var(--s-4) + var(--apt-safe-bottom)); }
-@media (min-width: 48.01em) { .mantine-AppShell-main { padding-bottom: calc(var(--app-shell-padding, 0rem) + var(--apt-safe-bottom)) !important; } }
+:where(:root:not([data-device="phone"])) .mantine-AppShell-main { padding-bottom: calc(var(--app-shell-padding, 0rem) + var(--apt-safe-bottom)) !important; }
 /* „⋯” obok zwykłego przycisku – ta sama wysokość co przycisk (w wierszach tabel i list zostaje mniejsze) */
 /* (wysokość „⋯” jest wpisana w element, stąd !important; przyciski obok w rozmiarze xs – bez zmian) */
 *:has(> .mantine-Button-root:not([data-size="xs"])) > .ui-rowmenu,
@@ -1588,7 +1568,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-fsheet .mantine-Drawer-body{display:flex;flex-direction:column;min-height:0;flex:1}
 .ui-tpe-fsheet-head{display:flex;align-items:center;gap:var(--s-2)}
 .ui-tpe-fsheet-body{overflow-y:auto;min-height:0;flex:1;padding:var(--s-1) var(--s-2) 0}
-@media (max-width:48em){.ui-tpe-paper{padding:var(--s-3) 0 var(--s-2);border-radius:var(--mantine-radius-md)}.ui-tpe-paper .ui-tsl-cbody{padding:var(--s-3)}}
+:where(:root[data-device="phone"]) .ui-tpe-paper {padding:var(--s-3) 0 var(--s-2);border-radius:var(--mantine-radius-md)}:where(:root[data-device="phone"]) .ui-tpe-paper .ui-tsl-cbody {padding:var(--s-3)}
 .ui-noselect,.ui-noselect *{-webkit-user-select:none !important;user-select:none !important}
 /* w trakcie przeciągania przeglądarka nie „kotwiczy” przewinięcia – inaczej przy każdej zmianie szczeliny odbija stronę z powrotem w dół */
 .ui-noselect,.ui-noselect *{overflow-anchor:none}
@@ -1612,10 +1592,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpe-fsheet .ui-tpe-fsheet-body{padding:var(--s-1) var(--s-4) 0}
 .ui-tpe-fsheet .ui-tpe-fsheet-done{margin-left:var(--s-4);margin-right:var(--s-4);width:auto}
 /* telefon w poziomie (niski ekran): menu „⋯” mieści wszystkie pozycje bez przewijania – pozycje 44 px, arkusz do 92% wysokości */
-@media (max-width: 48em) and (max-height: 500px) {
-  .mantine-Menu-dropdown { max-height: 92dvh; padding-top: 8px !important; }
-  .mantine-Menu-dropdown::before { margin-bottom: var(--s-2); }
-  .mantine-Menu-item { min-height: 44px; }
+@media (max-height: 500px) {
+  :where(:root[data-device="phone"]) .mantine-Menu-dropdown { max-height: 92dvh; padding-top: 8px !important; }
+  :where(:root[data-device="phone"]) .mantine-Menu-dropdown::before { margin-bottom: var(--s-2); }
+  :where(:root[data-device="phone"]) .mantine-Menu-item { min-height: 44px; }
 }
 .ui-tsl[data-settling] .ui-tsl-row,.ui-tsl[data-settling] .ui-tsl-ghead{transition:none !important}
 /* szkielet edycji szablonu – ten sam kształt co formularz */
@@ -1660,3 +1640,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tsl[data-canvas] .ui-tsl-row[data-lifted]{overflow:visible}
 .ui-tsl[data-canvas] .ui-tsl-cbody .ui-tsl-target{top:calc(-1 * var(--s-3));right:var(--s-4);z-index:1;box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .ui-tpe-tags{margin-top:var(--s-2)}
+
+/* rodzaj urządzenia (lib/device.ts) zamiast szerokości okna: elementy tylko dla telefonu / tylko dla komputera i tabletu */
+:where(:root[data-device="phone"]) .ui-desktop-only{display:none !important}
+:where(:root:not([data-device="phone"])) .ui-phone-only{display:none !important}

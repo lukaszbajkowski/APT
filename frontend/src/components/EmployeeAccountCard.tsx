@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMediaQuery } from "@mantine/hooks";
 import { DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge, SectionHead, FormDialog } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Button, Menu, CopyButton, Drawer, Group, Stack, Text, TextInput } from "@mantine/core";
@@ -7,6 +6,7 @@ import { IconAlertCircle, IconDots, IconKey, IconMail, IconUserOff, IconDevices 
 
 import { api, errorText, formatDateTime } from "../api";
 import { useConfirm } from "../lib/confirm";
+import { useIsPhone } from "../lib/device";
 
 interface Account {
   exists: boolean;
@@ -25,7 +25,7 @@ interface InviteOut {
 /** Konto pracownika w systemie (tylko kadry): zaproszenie, status, wyłączenie. */
 export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: number; contactEmail?: string | null }) {
   const confirm = useConfirm();
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [inviteOpen, setInviteOpen] = useState(false);
   // ten sam panel: zaproszenie (pierwszy klucz) albo „dodaj urządzenie” (kolejny klucz, obecne zostają)
   const [mode, setMode] = useState<"invite" | "device">("invite");

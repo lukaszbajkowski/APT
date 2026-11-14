@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Paper, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconFileSpreadsheet, IconFileTypePdf } from "@tabler/icons-react";
-import { useElementSize, useMediaQuery } from "@mantine/hooks";
+import { useElementSize } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 
 import { api, apiDownload, errorText, formatDateTime, type ReportRow, type ReportSummary } from "../api";
+import { useIsPhone } from "../lib/device";
 
 function Bar({ value, max, color = "var(--mantine-primary-color-filled)" }: { value: number; max: number; color?: string }) {
   const pct = max ? Math.max(2, Math.round((value / max) * 100)) : 0;
@@ -245,7 +246,7 @@ export function ReportsPage() {
     }
   }
 
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [more, setMore] = useState(false);
   if (data.isLoading) return <PageLoading title="Raporty" />;
   if (!data.data) return <Alert color="red">{errorText(data.error)}</Alert>;

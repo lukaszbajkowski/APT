@@ -3,10 +3,10 @@ import { Alert, Paper, Progress, Stack, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, errorText, formatDateTime } from "../api";
-import { useMediaQuery } from "@mantine/hooks";
 import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
 import { useState, type ReactNode } from "react";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
+import { useIsPhone } from "../lib/device";
 
 function runState(run: Run | null | undefined, staleHours: number) {
   const stale = run ? Date.now() - new Date(run.at).getTime() > staleHours * 3600_000 : false;
@@ -49,7 +49,7 @@ interface Status {
 
 export function SystemStatusPage() {
   const q = useQuery({ queryKey: ["system-status"], queryFn: () => api<Status>("/system/status"), refetchInterval: 60_000 });
-  const mobile = useMediaQuery("(max-width: 48em)", false, { getInitialValueInEffect: false });
+  const mobile = useIsPhone();
   const [detail, setDetail] = useState<{ title: string; info: string } | null>(null);
   if (q.isLoading) return <PageLoading title="Stan systemu" />;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;

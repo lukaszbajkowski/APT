@@ -333,14 +333,106 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
   );
 }
 
-/** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć. */
-export function SheetHandle({ onClose, children }: { onClose: () => void; children?: ReactNode }) {
+/** Wysokość arkusza ustawiana palcem (w procentach wysokości ekranu, dvh) – w górę wyżej, w dół niżej,
+ *  mocno w dół poniżej najmniejszej wysokości – zamyka. onResize dostaje nową wysokość po puszczeniu. */
+export const SHEET_MIN_VH = 25;
+export const SHEET_MAX_VH = 92;
+export function useDragToResize(onClose: () => void, onResize: (vh: number) => void, moved?: { current: boolean }) {
+  const st = useRef<{ y: number; h0: number; dy: number; id: number | null; el: HTMLElement | null }>({ y: 0, h0: 0, dy: 0, id: null, el: null });
+  const bounds = () => {
+    const vh = window.innerHeight / 100;
+    return { vh, min: SHEET_MIN_VH * vh, max: SHEET_MAX_VH * vh };
+  };
+  const finish = () => {
+    const { el, dy, h0 } = st.current;
+    st.current.id = null;
+    if (!el) return;
+    st.current.el = null;
+    const { vh, min, max } = bounds();
+    const h = h0 - dy;
+    el.style.transition = "transform 180ms ease-out";
+    if (h < min - 80) {
+      el.style.transform = "translateY(100%)";
+      window.setTimeout(() => {
+        onClose();
+        el.style.transform = "";
+        el.style.transition = "";
+      }, 170);
+      return;
+    }
+    el.style.transform = "";
+    if (moved?.current) {
+      const v = Math.round((Math.min(max, Math.max(min, h)) / vh) * 10) / 10;
+      el.style.setProperty("--sheet-h", `${v}dvh`);
+      onResize(v);
+    }
+  };
+  return {
+    onPointerDown: (e: PointerEvent<HTMLElement>) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.currentTarget.closest<HTMLElement>(".mantine-Drawer-content");
+      st.current = { y: e.clientY, h0: el ? el.getBoundingClientRect().height : 0, dy: 0, id: e.pointerId, el };
+      if (moved) moved.current = false;
+      if (el) el.style.transition = "none";
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* starsze przeglądarki – działa bez przechwycenia */
+      }
+    },
+    onPointerMove: (e: PointerEvent<HTMLElement>) => {
+      const s = st.current;
+      if (s.id !== e.pointerId || !s.el) return;
+      s.dy = e.clientY - s.y;
+      if (moved && Math.abs(s.dy) > 6) moved.current = true;
+      const { min, max } = bounds();
+      const h = s.h0 - s.dy;
+      // powyżej najmniejszej wysokości arkusz rośnie / maleje; poniżej – zjeżdża w dół (zapowiedź zamknięcia)
+      // wysokość przez zmienną i klasę – .ui-sheet ma height: auto !important
+      s.el.classList.add("ui-sheet-sized");
+      if (h >= min) {
+        s.el.style.setProperty("--sheet-h", `${Math.min(max, h)}px`);
+        s.el.style.transform = "";
+      } else {
+        s.el.style.setProperty("--sheet-h", `${Math.min(min, s.h0)}px`);
+        s.el.style.transform = `translateY(${Math.min(min, s.h0) - h}px)`;
+      }
+    },
+    onPointerUp: finish,
+    onPointerCancel: finish,
+  };
+}
+
+/** Uchwyt i nagłówek arkusza: przeciągnij w dół albo stuknij uchwyt, żeby zamknąć.
+ *  Z onResize: przeciąganie zmienia wysokość arkusza (strzałki ↑↓ na uchwycie – to samo z klawiatury). */
+export function SheetHandle({ onClose, onResize, height, children }: { onClose: () => void; onResize?: (vh: number) => void; height?: number; children?: ReactNode }) {
   const moved = useRef(false);
-  const drag = useDragToClose(onClose, moved);
+  const close = useDragToClose(onClose, moved);
+  const resize = useDragToResize(onClose, onResize ?? (() => {}), moved);
+  const step = (d: number, e: KeyboardEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget.closest<HTMLElement>(".mantine-Drawer-content");
+    const now = height ?? (el ? Math.round((el.getBoundingClientRect().height / window.innerHeight) * 100) : 60);
+    onResize?.(Math.min(SHEET_MAX_VH, Math.max(SHEET_MIN_VH, now + d)));
+  };
   return (
-    <div className="ui-sheet-drag" {...drag}>
-      {/* stuknięcie zamyka; przeciągnięcie obsługuje useDragToClose (krótkie – arkusz wraca, nie zamyka się) */}
-      <button type="button" className="ui-sheet-grip" aria-label="Zamknij" onClick={() => !moved.current && onClose()} />
+    <div className="ui-sheet-drag" data-resizable={onResize ? "" : undefined} {...(onResize ? resize : close)}>
+      {/* stuknięcie zamyka; przeciągnięcie: bez onResize krótkie – arkusz wraca, z onResize – zmienia wysokość */}
+      <button
+        type="button"
+        className="ui-sheet-grip"
+        aria-label={onResize ? "Zamknij (przeciągnij, aby zmienić wysokość)" : "Zamknij"}
+        onClick={() => !moved.current && onClose()}
+        onKeyDown={
+          onResize
+            ? (e) => {
+                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  step(e.key === "ArrowUp" ? 10 : -10, e);
+                }
+              }
+            : undefined
+        }
+      />
       {children}
     </div>
   );

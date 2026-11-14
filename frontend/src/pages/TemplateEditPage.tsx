@@ -12,7 +12,7 @@ import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type Download
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SHEET_MAX_VH, SHEET_MIN_VH, SheetHandle, StatusBadge } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
@@ -62,6 +62,23 @@ export function TemplateEditPage() {
   // telefon: zakładka, edytowane pole, podgląd formularza
   const [mtab, setMtab] = useState("fields");
   const [editIdx, setEditIdx] = useState<number | null>(null);
+  // wysokość arkusza edycji pola (% wysokości ekranu) – użytkownik ustawia ją uchwytem, pamiętamy na tym urządzeniu
+  const [sheetH, setSheetH] = useState<number | null>(() => {
+    try {
+      const v = Number(localStorage.getItem("apt-tpe-sheet-h"));
+      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  const saveSheetH = (vh: number) => {
+    setSheetH(vh);
+    try {
+      localStorage.setItem("apt-tpe-sheet-h", String(vh));
+    } catch {
+      /* tryb prywatny – wysokość tylko do zamknięcia karty */
+    }
+  };
   const [previewOpen, setPreviewOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -361,12 +378,14 @@ export function TemplateEditPage() {
           radius="lg"
           withCloseButton={false}
           overlayProps={{ backgroundOpacity: 0.08 }}
-          classNames={{ content: "ui-sheet ui-tpe-fsheet" }}
+          classNames={{ content: `ui-sheet ui-tpe-fsheet${sheetH ? " ui-sheet-sized" : ""}` }}
+          // wysokość ustawiona palcem (uchwyt) – zapamiętana na kolejne otwarcia
+          styles={sheetH ? { content: { "--sheet-h": `${sheetH}dvh` } as React.CSSProperties } : undefined}
           aria-label={ef?.label || "Pole"}
         >
           {ef && editIdx !== null && (
             <>
-              <SheetHandle onClose={() => setEditIdx(null)}>
+              <SheetHandle onClose={() => setEditIdx(null)} onResize={saveSheetH} height={sheetH ?? undefined}>
                 <div className="ui-sheet-head ui-tpe-fsheet-head">
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="ui-sheet-title">{ef.label || "Pole"}</div>

@@ -5,7 +5,7 @@ import { SavedFilters, describeQuery, useSavedFilters } from "../components/Save
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash } from "@tabler/icons-react";
+import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash, IconMessage } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -17,7 +17,7 @@ import { PrintCardsModal } from "../components/PrintCardsModal";
 import { BatchDocumentsModal } from "../components/BatchDocumentsModal";
 import { TrainingModal } from "../components/TrainingsCard";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status, PageTitle } from "../components/Mobile";
+import { ActionSheet, Chips, ListRow, PageHead, PickSheet, RowMenu, Segments, SheetHandle, StatusBadge as Status, PageTitle, SwipeRow, type RowAction } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 const PAGE_SIZE = 50;
@@ -112,6 +112,8 @@ export function EmployeesPage() {
   const [pick, setPick] = useState<null | "status" | "agency" | "department" | "missing" | "add" | "more" | "selmore" | "filters" | "saved">(null);
   const [sub, setSub] = useState<null | "agency" | "department" | "position" | "missing">(null);
   const [selMode, setSelMode] = useState(false);
+  // druk jednej karty prosto z listy (przesunięcie wiersza / przytrzymanie) – bez ruszania zaznaczenia
+  const [printOne, setPrintOne] = useState<number[] | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -311,9 +313,8 @@ export function EmployeesPage() {
             {list.data.items.map((e) => {
               const w = warnOf(e);
               const on = selected.has(e.id);
-              return (
+              const row = (
                 <ListRow
-                  key={e.id}
                   to={selMode ? undefined : `/pracownicy/${e.id}`}
                   onClick={selMode ? () => toggle(e.id) : undefined}
                   pressed={selMode ? on : undefined}
@@ -346,6 +347,43 @@ export function EmployeesPage() {
                     </span>
                   }
                 />
+              );
+              if (selMode) return <div key={e.id}>{row}</div>;
+              const full = `${e.last_name} ${e.first_name}`;
+              const actions: RowAction[] = [];
+              if (staff && e.status === "active")
+                actions.push({
+                  label: "Napisz",
+                  tone: "accent",
+                  icon: <IconMessage size={20} />,
+                  onClick: () => navigate(`/wiadomosci?do=${e.id}&nazwa=${encodeURIComponent(`${full} (${e.number_display})`)}`),
+                });
+              if (canPrint)
+                actions.push({
+                  label: "Drukuj",
+                  icon: <IconPrinter size={20} />,
+                  description: "Karta identyfikacyjna",
+                  onClick: () => {
+                    setPrintOne([e.id]);
+                    setPrintOpen(true);
+                  },
+                });
+              actions.push({ label: "Otwórz kartę", icon: <IconChevronRight size={20} />, menuOnly: true, onClick: () => navigate(`/pracownicy/${e.id}`) });
+              if (canPrint)
+                actions.push({
+                  label: "Zaznacz",
+                  description: "Wybierz kilka osób – druk kart, dokumenty, szkolenia",
+                  icon: <IconChecks size={20} />,
+                  menuOnly: true,
+                  onClick: () => {
+                    setSelMode(true);
+                    setSelected(new Set([e.id]));
+                  },
+                });
+              return (
+                <SwipeRow key={e.id} actions={actions} menuTitle={full} menuSubtitle={<span className="ui-mono">{e.number_display}</span>}>
+                  {row}
+                </SwipeRow>
               );
             })}
           </div>
@@ -545,7 +583,16 @@ export function EmployeesPage() {
             { label: "Importuj z arkusza", description: "Excel, Numbers lub CSV", icon: <IconFileSpreadsheet size={20} />, onClick: () => navigate("/pracownicy/import") },
           ]}
         />
-        {canPrint && <PrintCardsModal ids={[...selected]} opened={printOpen} onClose={() => setPrintOpen(false)} />}
+        {canPrint && (
+          <PrintCardsModal
+            ids={printOne ?? [...selected]}
+            opened={printOpen}
+            onClose={() => {
+              setPrintOpen(false);
+              setPrintOne(null);
+            }}
+          />
+        )}
         {trainingOpen && <TrainingModal employeeIds={[...selected]} editing={null} opened={trainingOpen} onClose={() => setTrainingOpen(false)} />}
         {docsOpen && <BatchDocumentsModal ids={[...selected]} opened={docsOpen} onClose={() => setDocsOpen(false)} />}
       </Stack>

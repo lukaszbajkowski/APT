@@ -1648,3 +1648,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-sheet.ui-sheet-sized{height:min(92dvh, max(220px, var(--sheet-h))) !important;max-height:none !important}
 /* treść arkusza nie przekazuje przewijania stronie pod spodem */
 .ui-tpe-fsheet-body{overscroll-behavior:contain}
+/* wiersz z akcjami pod przesunięciem (SwipeRow) – przyciski pod wierszem, wiersz zasłania je tłem grupy */
+.ui-swipe{position:relative;overflow:hidden}
+.ui-swipe-acts{position:absolute;top:0;bottom:0;right:0;display:flex}
+.ui-swipe-act{width:76px;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-1);font-family:inherit;font-size:var(--t-meta);line-height:var(--t-meta-lh);font-weight:600;cursor:pointer;color:var(--mantine-color-white);background:var(--mantine-color-gray-6)}
+.ui-swipe-act[data-tone="accent"]{background:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
+.ui-swipe-body{position:relative;background:var(--apt-surface);-webkit-touch-callout:none;transition:scale .5s ease}
+/* przytrzymanie: wiersz lekko się „unosi” zanim pokaże się menu (jak w iOS) */
+.ui-swipe-body[data-holding]{scale:.97;transition:scale .35s ease .15s}
+@media (prefers-reduced-motion:reduce){.ui-swipe-body{transition:none}.ui-swipe-body[data-holding]{scale:1}}

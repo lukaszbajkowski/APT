@@ -143,6 +143,183 @@ export function ListRow({
   return <div className="ui-row">{body}</div>;
 }
 
+/* ——— wiersz z akcjami jak w iOS ———
+ * Przesunięcie w lewo odsłania przyciski (jak w Poczcie); stuknięcie w wiersz albo przesunięcie z powrotem je chowa.
+ * Przytrzymanie (0,5 s) otwiera menu z akcjami (jak menu kontekstowe w iOS) – także klawiszem menu / Shift+F10
+ * i prawym przyciskiem myszy. Gest nie jest jedynym dostępem: te same akcje są na karcie / w „⋯”. */
+export interface RowAction {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  /** kolor przycisku po przesunięciu: główna akcja (orzech) albo zwykła (szara) */
+  tone?: "accent" | "neutral";
+  /** tylko w menu po przytrzymaniu, nie pod przesunięciem */
+  menuOnly?: boolean;
+  description?: string;
+}
+const ACT_W = 76;
+let openRowClose: (() => void) | null = null; // otwarty może być jeden wiersz naraz
+
+export function SwipeRow({ actions, menuTitle, menuSubtitle, children }: { actions: RowAction[]; menuTitle: string; menuSubtitle?: ReactNode; children: ReactNode }) {
+  const body = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const swipe = actions.filter((a) => !a.menuOnly);
+  const W = swipe.length * ACT_W;
+  const st = useRef({ x0: 0, y0: 0, lock: "" as "" | "x" | "y", off: 0, base: 0, s: [] as [number, number][], suppress: false, timer: 0, held: false });
+  const place = (x: number, anim: boolean) => {
+    const el = body.current;
+    if (!el) return;
+    el.style.transition = anim ? `transform 300ms ${SHEET_EASE}` : "none";
+    el.style.transform = x ? `translateX(${x}px)` : "";
+    st.current.off = x;
+  };
+  const close = () => {
+    place(0, true);
+    if (openRowClose === close) openRowClose = null;
+  };
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  const cancelHold = () => {
+    window.clearTimeout(st.current.timer);
+    setHolding(false);
+  };
+  useEffect(() => () => window.clearTimeout(st.current.timer), []);
+
+  useEffect(() => {
+    const el = body.current?.parentElement;
+    if (!el) return;
+    const start = (e: globalThis.TouchEvent) => {
+      const c = st.current;
+      if (e.touches.length !== 1 || atBackEdge(e.touches[0].clientX)) return;
+      if (openRowClose && openRowClose !== closeRef.current) openRowClose();
+      c.x0 = e.touches[0].clientX;
+      c.y0 = e.touches[0].clientY;
+      c.lock = "";
+      c.base = c.off;
+      c.s = [[e.timeStamp, c.x0]]; // czas zdarzenia, nie obsługi – odporne na przycięcia strony
+      c.suppress = c.off !== 0; // stuknięcie w otwarty wiersz tylko go zamyka
+      c.held = false;
+      // przytrzymanie: menu po 0,5 s bez ruchu
+      setHolding(true);
+      c.timer = window.setTimeout(() => {
+        setHolding(false);
+        c.suppress = true;
+        c.held = true;
+        c.lock = "y";
+        navigator.vibrate?.(10);
+        closeRef.current();
+        setMenu(true);
+      }, 500);
+    };
+    const move = (e: globalThis.TouchEvent) => {
+      const c = st.current;
+      if (e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - c.x0;
+      const dy = e.touches[0].clientY - c.y0;
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelHold();
+      if (!c.lock) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        c.lock = Math.abs(dx) > Math.abs(dy) && (W > 0 || c.base) ? "x" : "y";
+      }
+      if (c.lock !== "x" || !e.cancelable) return;
+      e.preventDefault();
+      c.suppress = true;
+      const now = e.timeStamp;
+      c.s.push([now, e.touches[0].clientX]);
+      while (c.s.length > 2 && now - c.s[0][0] > 100) c.s.shift();
+      let x = c.base + dx;
+      if (x > 0) x = x * 0.2; // w prawo – opór
+      if (x < -W) x = -W + (x + W) * 0.25; // dalej niż przyciski – opór
+      place(x, false);
+    };
+    const end = (e: globalThis.TouchEvent) => {
+      const c = st.current;
+      cancelHold();
+      // po przytrzymaniu puszczenie palca nie może „kliknąć” – trafiłoby w tło otwartego menu i je zamknęło
+      if (c.held && e.cancelable) e.preventDefault();
+      if (c.lock !== "x") return;
+      const a = c.s[0];
+      const b = c.s[c.s.length - 1];
+      // palec zatrzymany na dłużej przed puszczeniem = ruch powolny
+      const v = e.timeStamp - b[0] > 120 || b[0] <= a[0] ? 0 : (b[1] - a[1]) / (b[0] - a[0]);
+      const open = v < -0.3 || (v <= 0.3 && c.off < -W / 2);
+      if (open) {
+        place(-W, true);
+        openRowClose = closeRef.current;
+      } else closeRef.current();
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", end);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+    };
+  }, [W]);
+
+  return (
+    <div className="ui-swipe" data-no-swipe>
+      {swipe.length > 0 && (
+        <div className="ui-swipe-acts" aria-hidden>
+          {swipe.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              tabIndex={-1}
+              className="ui-swipe-act"
+              data-tone={a.tone ?? "neutral"}
+              onClick={() => {
+                closeRef.current();
+                a.onClick();
+              }}
+            >
+              {a.icon}
+              <span>{a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div
+        ref={body}
+        className="ui-swipe-body"
+        data-holding={holding || undefined}
+        onClickCapture={(e) => {
+          if (st.current.suppress) {
+            e.preventDefault();
+            e.stopPropagation();
+            st.current.suppress = false;
+            if (st.current.off) closeRef.current();
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          cancelHold();
+          setMenu(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+            e.preventDefault();
+            setMenu(true);
+          }
+        }}
+      >
+        {children}
+      </div>
+      <ActionSheet
+        opened={menu}
+        onClose={() => setMenu(false)}
+        title={menuTitle}
+        subtitle={menuSubtitle}
+        actions={actions.map((a) => ({ label: a.label, icon: a.icon, description: a.description, onClick: a.onClick }))}
+      />
+    </div>
+  );
+}
+
 /* ——— pusta sekcja jako jeden wiersz ——— */
 export function CompactEmpty({ title, text, action }: { title: string; text?: string; action?: { label: string; onClick: () => void } }) {
   return (
@@ -804,7 +981,7 @@ export function ActionSheet({
   opened: boolean;
   onClose: () => void;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions: SheetAction[];
 }) {
   const t = useT();

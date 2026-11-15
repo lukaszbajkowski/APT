@@ -37,6 +37,12 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   interfejs, węższy). W komponentach `useIsPhone()`, w CSS `:where(:root[data-device="phone"])`, klasy
   `.ui-phone-only` / `.ui-desktop-only`. Nie używaj `max-width: 48em` ani `visibleFrom` / `hiddenFrom` do wyboru układu.
   Podgląd na komputerze: `?urzadzenie=telefon` (powrót: `?urzadzenie=auto`).
+- Gesty na telefonie (styl iOS, opis i przykłady we Wzorniku): szybki ruch = prędkość ≥ 0,5 px/ms w chwili puszczenia
+  (próbki z ostatnich 100 ms, `e.timeStamp`), nie przebyta droga. Arkusze od dołu: `SheetHandle` (zamykanie ruchem w dół,
+  także za treść przewiniętą do góry); arkusz zmieniający wysokość – `useSheetResize` (35 / 60 / 92%, powoli nigdy nie zamyka).
+  Wiersze list na telefonie: `SwipeRow` (akcje po przesunięciu w lewo, menu po przytrzymaniu); akcje nieodwracalne nie pod
+  gestem. Każdy gest ma drugą drogę bez gestu (przycisk, „⋯”, klawiatura). Nowe gesty sprawdzaj symulacją dotyku (CDP)
+  na telefonie w pionie, w poziomie i dużym w poziomie.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)

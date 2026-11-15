@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Button, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
-import { IconDownload, IconEye, IconFileText, IconPencil, IconPlus, IconPrinter, IconSignature } from "@tabler/icons-react";
+import { Button, Drawer, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconDownload, IconEye, IconFileText, IconMessage, IconPencil, IconPlus, IconPrinter, IconSignature } from "@tabler/icons-react";
 
-import { ActionSheet, CompactEmpty, DangerAction, DangerZone, InfoRow, ListRow, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge, PageTitle, SwipeRow, useSheetResize, type RowAction } from "../components/Mobile";
 
 /** Wzornik: wszystkie wspólne klocki w jednym miejscu – do sprawdzenia na telefonie (jasny i ciemny motyw). */
 export function PatternsPage() {
@@ -63,6 +64,8 @@ export function PatternsPage() {
           <CompactEmpty title="Dokumenty pobytowe" text="Nie dotyczy – obywatelstwo polskie" />
         </Section>
       </div>
+
+<Gestures />
 
       <TextInput label="Pole tekstowe (16 px – iPhone nie powiększa strony)" placeholder="Wpisz coś" size="md" />
 
@@ -161,6 +164,85 @@ function Foundations() {
           </Group>
         ))}
       </section>
+    </Stack>
+  );
+}
+
+/** Gesty na telefonie (styl iOS) – działające przykłady i zasady. Te same klocki są w aplikacji:
+ *  SwipeRow (lista Pracownicy), arkusz z trzema wysokościami (edycja szablonu), zamykanie arkuszy, cofanie od krawędzi. */
+function Gestures() {
+  const [tall, setTall] = useState(false);
+  const [h, setH] = useState(60);
+  const sheet = useSheetResize(() => setTall(false), setH);
+  const done = (what: string) => notifications.show({ color: "green", message: `Przykład: ${what}` });
+  const actions: RowAction[] = [
+    { label: "Napisz", tone: "accent", icon: <IconMessage size={20} />, onClick: () => done("Napisz") },
+    { label: "Drukuj", icon: <IconPrinter size={20} />, onClick: () => done("Drukuj") },
+    { label: "Otwórz", icon: <IconEye size={20} />, menuOnly: true, onClick: () => done("Otwórz") },
+  ];
+  const rules: [string, string][] = [
+    ["Szybki ruch (≥ 0,5 px/ms)", "Liczy się prędkość w chwili puszczenia (z ostatnich 100 ms, czas zdarzeń), nie przebyta droga."],
+    ["Arkusz zwykły", "Idzie za palcem w dół; zamyka machnięcie albo ⅓ wysokości, inaczej wraca. Pociągnąć można też za treść przewiniętą do góry."],
+    ["Arkusz z wysokościami", "35 / 60 / 92% ekranu (min. 220 px). Szybko w dół – zamyka, szybko w górę – 92%, powoli – najbliższa wysokość; powoli nigdy nie zamyka."],
+    ["Wiersz listy", "W lewo – akcje (główna orzechowa, reszta szara), przytrzymanie 0,5 s – menu; akcje nieodwracalne tylko z potwierdzeniem, nie pod gestem."],
+    ["Cofanie", "Od lewej krawędzi – tylko w aplikacji na ekranie głównym iOS (w Safari robi to przeglądarka)."],
+    ["Bez gestu", "Każda akcja z gestu ma drugą drogę: przycisk, „⋯”, „Gotowe”, klawisz menu / strzałki."],
+  ];
+  return (
+    <Stack gap="sm">
+      <Title order={3}>Gesty na telefonie</Title>
+      <Text size="sm" c="dimmed">
+        Przesuń wiersz w lewo albo przytrzymaj go. Przycisk niżej otwiera arkusz z trzema wysokościami.
+      </Text>
+      <div className="ui-group">
+        <SwipeRow actions={actions} menuTitle="Kowalska Anna" menuSubtitle={<span className="ui-mono">000123</span>}>
+          <ListRow title="Kowalska Anna" description="Magazyn · Operator wózka" onClick={() => done("stuknięcie w wiersz")} />
+        </SwipeRow>
+        <SwipeRow actions={actions} menuTitle="Nowak Piotr" menuSubtitle={<span className="ui-mono">000124</span>}>
+          <ListRow title="Nowak Piotr" description="Produkcja · Pakowacz" onClick={() => done("stuknięcie w wiersz")} />
+        </SwipeRow>
+      </div>
+      <Button variant="default" size="md" onClick={() => setTall(true)} w="fit-content">
+        Arkusz z trzema wysokościami
+      </Button>
+      <Stack gap="sm">
+        {rules.map(([k, v]) => (
+          <div key={k}>
+            <Text fw={600}>{k}</Text>
+            <Text size="sm" c="dimmed">
+              {v}
+            </Text>
+          </div>
+        ))}
+      </Stack>
+      <Drawer
+        opened={tall}
+        onClose={() => setTall(false)}
+        position="bottom"
+        size="auto"
+        radius="lg"
+        withCloseButton={false}
+        classNames={{ content: "ui-sheet ui-tpe-fsheet ui-sheet-sized" }}
+        styles={{ content: { "--sheet-h": `${h}dvh` } as React.CSSProperties }}
+        aria-label="Arkusz z trzema wysokościami"
+      >
+        <SheetHandle onClose={() => setTall(false)} sheet={sheet}>
+          <div className="ui-sheet-head">
+            <div className="ui-sheet-title">Arkusz z trzema wysokościami</div>
+            <div className="ui-row-desc">Teraz: {Math.round(h)}% ekranu</div>
+          </div>
+        </SheetHandle>
+        <div className="ui-tpe-fsheet-body" ref={sheet.bodyRef}>
+          <Stack gap="sm">
+            {Array.from({ length: 12 }, (_, i) => (
+              <Text key={i}>Wiersz treści {i + 1} – przewiń treść; u góry ruch w dół należy do arkusza.</Text>
+            ))}
+          </Stack>
+        </div>
+        <Button size="md" fullWidth mt="sm" className="ui-tpe-fsheet-done" onClick={() => setTall(false)}>
+          Gotowe
+        </Button>
+      </Drawer>
     </Stack>
   );
 }

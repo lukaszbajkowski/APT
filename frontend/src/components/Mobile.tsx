@@ -166,13 +166,19 @@ export function SwipeRow({ actions, menuTitle, menuSubtitle, children }: { actio
   const [holding, setHolding] = useState(false);
   const swipe = actions.filter((a) => !a.menuOnly);
   const W = swipe.length * ACT_W;
-  const st = useRef({ x0: 0, y0: 0, lock: "" as "" | "x" | "y", off: 0, base: 0, s: [] as [number, number][], suppress: false, timer: 0, held: false });
+  const st = useRef({ x0: 0, y0: 0, lock: "" as "" | "x" | "y", off: 0, base: 0, s: [] as [number, number][], suppress: false, timer: 0, held: false, hide: 0 });
   const place = (x: number, anim: boolean) => {
     const el = body.current;
     if (!el) return;
     el.style.transition = anim ? `transform 300ms ${SHEET_EASE}` : "none";
     el.style.transform = x ? `translateX(${x}px)` : "";
     st.current.off = x;
+    // przyciski pod wierszem istnieją tylko wtedy, gdy wiersz jest odsunięty (po zamknięciu – po animacji)
+    const wrap = el.parentElement;
+    window.clearTimeout(st.current.hide);
+    if (x) wrap?.setAttribute("data-shown", "");
+    else if (anim) st.current.hide = window.setTimeout(() => wrap?.removeAttribute("data-shown"), 300);
+    else wrap?.removeAttribute("data-shown");
   };
   const close = () => {
     place(0, true);

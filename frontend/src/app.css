@@ -1651,6 +1651,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* wiersz z akcjami pod przesunięciem (SwipeRow) – przyciski pod wierszem, wiersz zasłania je tłem grupy */
 .ui-swipe{position:relative;overflow:hidden}
 .ui-swipe-acts{position:absolute;top:0;bottom:0;right:0;display:flex}
+.ui-swipe:not([data-shown]) .ui-swipe-acts{visibility:hidden}
 .ui-swipe-act{width:76px;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-1);font-family:inherit;font-size:var(--t-meta);line-height:var(--t-meta-lh);font-weight:600;cursor:pointer;color:var(--mantine-color-white);background:var(--mantine-color-gray-6)}
 .ui-swipe-act[data-tone="accent"]{background:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
 .ui-swipe-body{position:relative;background:var(--apt-surface);-webkit-touch-callout:none;transition:scale .5s ease}

@@ -8,6 +8,7 @@ import { PERMIT_STATE } from "../components/Permits";
 import { ErrorState, Loading } from "../components/States";
 import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
+import { EmployeeSwipe } from "../components/EmployeeSwipe";
 
 export function PermitsReportPage() {
   const [all, setAll] = useState(false);
@@ -87,8 +88,8 @@ function PermitsList({ all }: { all: boolean }) {
       {q.data && q.data.length > 0 && (
         <div className="ui-group">
           {q.data.map((r, i) => (
+            <EmployeeSwipe key={`${r.employee_id}-${r.kind_label}-${i}`} id={r.employee_id} name={r.employee} about={`${cap(r.kind_label)} · nr ${r.number}`}>
             <ListRow
-              key={`${r.employee_id}-${r.kind_label}-${i}`}
               to={`/pracownicy/${r.employee_id}`}
               title={r.employee}
               description={
@@ -101,6 +102,7 @@ function PermitsList({ all }: { all: boolean }) {
                 </>
               }
             />
+            </EmployeeSwipe>
           ))}
         </div>
       )}

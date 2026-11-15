@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconArchive, IconArchiveOff, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
+import { IconArchive, IconArchiveOff, IconMessage, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
 import { api, errorText, shortTime, type Employee } from "../api";
@@ -17,7 +17,7 @@ import { MasterDetail } from "./MasterDetail";
 import { EmployeeAside } from "./EmployeeAside";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
-import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, useMobileHeader, useNavHeightVar } from "./Mobile";
+import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, type RowAction } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 import { useIsPhone } from "../lib/device";
 
@@ -846,6 +846,31 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     ...LIVE,
   });
   const rows = list.data ?? [];
+  // telefon: akcje wiersza (przesunięcie / przytrzymanie) – te same co „⋯” w otwartej rozmowie
+  const qcRow = useQueryClient();
+  const rowAct = useMutation({
+    mutationFn: (v: { id: number; act: "done" | "in_progress" | "archive" | "unarchive" }) =>
+      v.act === "archive" || v.act === "unarchive"
+        ? api<Thread>(`${base}/${v.id}/${v.act}`, { method: "POST" })
+        : api<Thread>(`${base}/${v.id}/status`, { method: "POST", body: { status: v.act } }),
+    onSuccess: (_r, v) => {
+      qcRow.invalidateQueries({ queryKey: ["threads", base] });
+      qcRow.invalidateQueries({ queryKey: ["hr-count"] });
+      const msg = { done: T("Rozmowa zakończona"), in_progress: T("Rozmowa w toku"), archive: T("Przeniesiono do archiwum"), unarchive: T("Przywrócono z archiwum") }[v.act];
+      notifications.show({ color: "green", message: msg });
+    },
+    onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
+  });
+  const rowActions = (t: ThreadRow): RowAction[] => {
+    const a: RowAction[] = [];
+    if (staff && t.status !== "done" && !t.archived) a.push({ label: T("Zakończ"), tone: "accent", icon: <IconCheck size={20} />, onClick: () => rowAct.mutate({ id: t.id, act: "done" }) });
+    if (t.status === "done" && !t.archived) a.push({ label: T("Archiwizuj"), icon: <IconArchive size={20} />, onClick: () => rowAct.mutate({ id: t.id, act: "archive" }) });
+    if (t.archived) a.push({ label: T("Przywróć"), icon: <IconArchiveOff size={20} />, onClick: () => rowAct.mutate({ id: t.id, act: "unarchive" }) });
+    if (staff && t.status === "new" && !t.archived)
+      a.push({ label: T("Oznacz jako w toku"), icon: <IconProgress size={20} />, menuOnly: true, onClick: () => rowAct.mutate({ id: t.id, act: "in_progress" }) });
+    a.push({ label: T("Otwórz rozmowę"), icon: <IconMessage size={20} />, menuOnly: true, onClick: () => { setOpenId(t.id); setComposing(false); } });
+    return a;
+  };
   // telefon: wszystkie zakładki wczytane od razu – przesuwanie pokazuje gotową treść
   const segs: string[] = staff ? ["all", "new", "archive"] : ["all", "archive"];
   const segQuery = (sv: string) => ({
@@ -937,7 +962,8 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                       const name = staff ? (t.employee_name ?? "") : t.subject;
                       const snip = (t.last_from_staff === staff ? T("Ty:") + " " : "") + (t.preview || t.subject);
                       return (
-                        <UnstyledButton key={t.id} className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
+                        <SwipeRow key={t.id} actions={rowActions(t)} menuTitle={name} menuSubtitle={t.subject !== name ? t.subject : undefined}>
+                        <UnstyledButton className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
                           <span className="ui-thread-avatar" aria-hidden>{initials(staff ? name : T("Kadry"))}</span>
                           <span className="ui-row-text">
                             <span className="ui-thread-line">
@@ -952,6 +978,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                             </span>
                           </span>
                         </UnstyledButton>
+                        </SwipeRow>
                       );
                     })}
                   </div>

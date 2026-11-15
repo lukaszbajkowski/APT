@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Progress, Avatar, Badge, Box, Button, ScrollArea, UnstyledButton, Checkbox, FileButton, FileInput, Group, SegmentedControl, Stack, Table, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume, IconUsers, IconArchive } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconPaperclip, IconFileText, IconMaximize, IconPlus, IconSearch, IconPlayerStop, IconSpeakerphone, IconVolume, IconUsers, IconArchive, IconArchiveOff, IconBell } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, shortTime, type DictionaryItem } from "../api";
 import { useAuth } from "../auth";
@@ -15,7 +15,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, useMobileHeader, useNavHeightVar, useSwipeAnywhere } from "../components/Mobile";
+import { cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, useSwipeAnywhere, type RowAction } from "../components/Mobile";
 import { isPhone, useIsPhone } from "../lib/device";
 
 interface FileRef {
@@ -491,8 +491,17 @@ export function BroadcastsPage() {
                 {src && items.length === 0 && <CompactEmpty title="Brak komunikatów" text={v === "archive" ? undefined : "Nowy komunikat dodasz przyciskiem „+”."} />}
                 {items.length > 0 && (
                   <div className="ui-group">
-                    {items.map((x) => (
-                      <UnstyledButton key={x.id} className="ui-bc" onClick={() => setOpenId(x.id)}>
+                    {items.map((x) => {
+                        // akcje wiersza (przesunięcie / przytrzymanie) – te same co przyciski w otwartym komunikacie
+                        const a: RowAction[] = [];
+                        if (v !== "archive" && x.read < x.total)
+                          a.push({ label: "Przypomnij", description: `Nieodczytane: ${x.total - x.read}`, tone: "accent", icon: <IconBell size={20} />, onClick: () => remindAll.mutate(x.id) });
+                        if (v === "archive") a.push({ label: "Przywróć", icon: <IconArchiveOff size={20} />, onClick: () => arch.mutate({ id: x.id, on: false }) });
+                        else if (x.finished) a.push({ label: "Archiwizuj", icon: <IconArchive size={20} />, onClick: () => arch.mutate({ id: x.id, on: true }) });
+                        a.push({ label: "Otwórz", icon: <IconChevronRight size={20} />, menuOnly: true, onClick: () => setOpenId(x.id) });
+                        return (
+                      <SwipeRow key={x.id} actions={a} menuTitle={x.subject} menuSubtitle={x.target}>
+                      <UnstyledButton className="ui-bc" onClick={() => setOpenId(x.id)}>
                         <span className="ui-thread-line">
                           <span className="ui-thread-name">{x.subject}</span>
                           <span className="ui-thread-time">{shortTime(x.created_at)}</span>
@@ -505,7 +514,9 @@ export function BroadcastsPage() {
                           <span>Przeczytało {x.read} z {x.total}</span>
                         </span>
                       </UnstyledButton>
-                    ))}
+                      </SwipeRow>
+                        );
+                    })}
                   </div>
                 )}
               </Stack>

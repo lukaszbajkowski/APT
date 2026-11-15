@@ -226,7 +226,8 @@ export function SwipeRow({ actions, menuTitle, menuSubtitle, children }: { actio
       if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelHold();
       if (!c.lock) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        c.lock = Math.abs(dx) > Math.abs(dy) && (W > 0 || c.base) ? "x" : "y";
+        // w lewo – akcje wiersza; w prawo tylko na odsuniętym wierszu (zamyka), inaczej ruch należy do zakładek strony
+        c.lock = Math.abs(dx) > Math.abs(dy) && ((W > 0 && dx < 0) || c.base) ? "x" : "y";
       }
       if (c.lock !== "x" || !e.cancelable) return;
       e.preventDefault();
@@ -268,7 +269,7 @@ export function SwipeRow({ actions, menuTitle, menuSubtitle, children }: { actio
   }, [W]);
 
   return (
-    <div className="ui-swipe" data-no-swipe>
+    <div className="ui-swipe">
       {swipe.length > 0 && (
         <div className="ui-swipe-acts" aria-hidden>
           {swipe.map((a) => (
@@ -579,19 +580,28 @@ export function useEdgeSwipeBack(onBack: (() => void) | null) {
   }, []);
 }
 
+/** Czy poziomy ruch należy do wiersza z akcjami (SwipeRow), a nie do zakładek strony:
+ *  odsunięty wiersz – każdy ruch; zamknięty – tylko w lewo (odsłania akcje). */
+export function rowOwnsSwipe(t: EventTarget | null, dx: number) {
+  const row = t instanceof Element ? t.closest(".ui-swipe") : null;
+  if (!row) return false;
+  return row.hasAttribute("data-shown") || dx < 0;
+}
+
 /** Przesunięcie palcem w bok (np. między zakładkami). Ignoruje ruchy pionowe i przewijane w bok elementy. */
 export function useSwipe(onLeft: () => void, onRight: () => void) {
-  const st = useRef<{ x: number; y: number; skip: boolean }>({ x: 0, y: 0, skip: false });
+  const st = useRef<{ x: number; y: number; skip: boolean; t: EventTarget | null }>({ x: 0, y: 0, skip: false, t: null });
   return {
     onTouchStart: (e: TouchEvent) => {
       const t = e.target as HTMLElement;
       const skip = atBackEdge(e.touches[0].clientX) || !!t.closest("input, textarea, select, .mantine-Tabs-list, .mantine-ScrollArea-root, [data-no-swipe], .mantine-TableScrollContainer-scrollContainer");
-      st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, skip };
+      st.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, skip, t: e.target };
     },
     onTouchEnd: (e: TouchEvent) => {
       if (st.current.skip) return;
       const dx = e.changedTouches[0].clientX - st.current.x;
       const dy = e.changedTouches[0].clientY - st.current.y;
+      if (rowOwnsSwipe(st.current.t, dx)) return;
       if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
       if (dx < 0) onLeft();
       else onRight();
@@ -647,6 +657,11 @@ export function SwipePager({ index, onIndex, children }: { index: number; onInde
     if (!c.lock) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       c.lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (c.lock === "x" && rowOwnsSwipe(e.target, dx)) {
+        c.skip = true;
+        c.lock = "";
+        return;
+      }
     }
     if (c.lock !== "x") return;
     // opór na pierwszej i ostatniej stronie
@@ -1176,9 +1191,10 @@ export function Segments({ value, onChange, items, swipe }: { value: string; onC
   cur.current = { value, items, onChange };
   useEffect(() => {
     if (!swipe) return;
-    const st = { x: 0, y: 0, skip: false };
+    const st = { x: 0, y: 0, skip: false, t: null as EventTarget | null };
     const start = (e: globalThis.TouchEvent) => {
       const t = e.target as HTMLElement;
+      st.t = e.target;
       st.skip = typeof t?.closest === "function" && !!t.closest("input, textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .mantine-TableScrollContainer-scrollContainer, .ui-chat, nav, .tabbar");
       st.x = e.touches[0].clientX;
       st.y = e.touches[0].clientY;
@@ -1188,6 +1204,7 @@ export function Segments({ value, onChange, items, swipe }: { value: string; onC
       const dx = e.changedTouches[0].clientX - st.x;
       const dy = e.changedTouches[0].clientY - st.y;
       if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (rowOwnsSwipe(st.t, dx)) return;
       const { value: v, items: its, onChange: go } = cur.current;
       const i = its.findIndex((x) => x.value === v) + (dx < 0 ? 1 : -1);
       if (i < 0 || i >= its.length) return;
@@ -1589,9 +1606,10 @@ export function useSwipeAnywhere(enabled: boolean, onLeft: () => void, onRight: 
   cb.current = { onLeft, onRight };
   useEffect(() => {
     if (!enabled) return;
-    const st = { x: 0, y: 0, skip: false };
+    const st = { x: 0, y: 0, skip: false, t: null as EventTarget | null };
     const start = (e: globalThis.TouchEvent) => {
       const t = e.target as HTMLElement;
+      st.t = e.target;
       st.skip = atBackEdge(e.touches[0].clientX) || (typeof t?.closest === "function" && !!t.closest("input:not([type=file]), textarea, select, [data-no-swipe], .mantine-Drawer-root, .mantine-Modal-root, .mantine-ScrollArea-root, .tabbar, nav"));
       st.x = e.touches[0].clientX;
       st.y = e.touches[0].clientY;
@@ -1601,6 +1619,7 @@ export function useSwipeAnywhere(enabled: boolean, onLeft: () => void, onRight: 
       const dx = e.changedTouches[0].clientX - st.x;
       const dy = e.changedTouches[0].clientY - st.y;
       if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (rowOwnsSwipe(st.t, dx)) return;
       if (dx < 0) cb.current.onLeft();
       else cb.current.onRight();
     };

@@ -31,6 +31,7 @@ import { CompetenceMatrix, PositionRequirements } from "../components/Competence
 import { Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { useIsPhone } from "../lib/device";
+import { EmployeeSwipe } from "../components/EmployeeSwipe";
 
 function Expiring({ mobile }: { mobile?: boolean }) {
   const q = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring") });
@@ -43,8 +44,8 @@ function Expiring({ mobile }: { mobile?: boolean }) {
     ) : (
       <div className="ui-group">
         {rows.map((r) => (
+          <EmployeeSwipe key={r.training_id} id={r.employee_id} name={`${r.last_name} ${r.first_name}`} about={r.name ?? r.type_name}>
           <ListRow
-            key={r.training_id}
             to={`/pracownicy/${r.employee_id}`}
             title={`${r.last_name} ${r.first_name}`}
             description={
@@ -57,6 +58,7 @@ function Expiring({ mobile }: { mobile?: boolean }) {
               </>
             }
           />
+          </EmployeeSwipe>
         ))}
       </div>
     );

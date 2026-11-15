@@ -446,6 +446,14 @@ export async function api<T>(
 }
 
 /** POST zwracający plik (np. PDF) – zapisuje go na dysku użytkownika. */
+/** Zgłoszenie błędu przeglądarki do „Stan systemu → Błędy” – po cichu: bez wylogowania przy 401 i bez powiadomień. */
+export function reportClientError(body: { kind: string; message: string; path: string }): void {
+  if (!csrfToken) return; // niezalogowany – serwer i tak by odrzucił
+  const headers: Record<string, string> = { "Content-Type": "application/json", "X-CSRF-Token": csrfToken };
+  if (accountId !== null) headers["X-APT-Account"] = String(accountId);
+  fetch("/api/client-errors", { method: "POST", headers, credentials: "same-origin", body: JSON.stringify(body), keepalive: true }).catch(() => undefined);
+}
+
 export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<void> {
   const headers: Record<string, string> = {};
   if (accountId !== null) headers["X-APT-Account"] = String(accountId);

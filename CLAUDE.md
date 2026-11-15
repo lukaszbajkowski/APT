@@ -80,5 +80,6 @@ W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”)
   i dopisania dostawcy jako podmiotu przetwarzającego w informacji RODO. Dziś jakość poprawiają: słownik
   `backend/app/i18n_glossary.py` (uk, ru, en) i ekran administratora „Tłumaczenia” (`/tlumaczenia`).
 - **Słownik dla kolejnych języków** (be, ka, hi…) – tylko z tłumaczeniem sprawdzonym przez osobę znającą język.
-- Z listy „przed startem”: zbieranie błędów z przeglądarki i API, test obciążenia podglądu PDF (renderowanie
-  stron idzie po kolei – `app/pdfium_safe.py`), pilot na jednej agencji.
+- Z listy „przed startem”: test obciążenia podglądu PDF (renderowanie stron idzie po kolei – `app/pdfium_safe.py`),
+  pilot na jednej agencji. Zbieranie błędów jest gotowe: „Stan systemu → Błędy aplikacji” (`app/errors.py`,
+  `lib/errorReport.ts`) – bez danych osobowych (szablon trasy, wycięte cyfry, e-maile i parametry adresu).

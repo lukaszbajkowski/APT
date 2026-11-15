@@ -983,3 +983,22 @@ class SiteInfo(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class AppError(Base):
+    """Błąd aplikacji (API 5xx albo błąd w przeglądarce) – zgrupowany po „odcisku”, bez danych osobowych:
+    adres jako szablon trasy, z treści wycięte ciągi cyfr i adresy e-mail. Wpisy starsze niż 30 dni są usuwane."""
+
+    __tablename__ = "app_errors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(8), nullable=False)  # api|browser
+    kind: Mapped[str] = mapped_column(String(120), nullable=False)
+    message: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    path: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    status: Mapped[int | None] = mapped_column(Integer)
+    role: Mapped[str | None] = mapped_column(String(20))
+    count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    first_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

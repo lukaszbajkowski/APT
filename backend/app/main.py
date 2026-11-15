@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.deps import DbSession
 from app.routers import (
     access_review,
+    app_errors,
     agency_portal,
     agency_reports,
     audit_log,
@@ -57,6 +58,27 @@ hardening.install_log_filter()
 app.middleware("http")(hardening.sign_rate_limit)
 
 
+@app.middleware("http")
+async def _record_server_errors(request, call_next):  # type: ignore[no-untyped-def]
+    """Błędy 5xx z API do „Stan systemu → Błędy” – adres jako szablon trasy, bez parametrów i treści zapytania."""
+    from starlette.concurrency import run_in_threadpool
+
+    from app import errors
+
+    def where() -> str:
+        route = request.scope.get("route")
+        return getattr(route, "path", None) or request.url.path
+
+    try:
+        response = await call_next(request)
+    except Exception as exc:  # noqa: BLE001 – zapisujemy i oddajemy dalej (FastAPI zwróci 500)
+        await run_in_threadpool(errors.record, "api", type(exc).__name__, str(exc), f"{request.method} {where()}", 500)
+        raise
+    if response.status_code >= 500 and request.url.path.startswith("/api/"):
+        await run_in_threadpool(errors.record, "api", f"HTTP {response.status_code}", "", f"{request.method} {where()}", response.status_code)
+    return response
+
+
 @app.on_event("startup")
 def _check_secrets() -> None:
     """Ostrzeżenie w logach, gdy na serwerze klucz jest domyślny lub krótki (nie blokuje startu)."""
@@ -80,6 +102,7 @@ def _apply_planned_changes() -> None:
         pass
 
 
+app.include_router(app_errors.router)
 app.include_router(auth.router)
 app.include_router(passkeys.router)
 app.include_router(me.router)

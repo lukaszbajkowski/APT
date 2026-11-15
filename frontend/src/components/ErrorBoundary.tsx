@@ -4,6 +4,7 @@ import { Button, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 import { translateText as t } from "../lib/i18n";
+import { reportError } from "../lib/errorReport";
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -12,6 +13,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   }
   componentDidCatch(error: unknown) {
     console.error("Błąd ekranu:", error); // eslint-disable-line no-console
+    reportError(error, "Błąd ekranu");
   }
   render() {
     if (!this.state.failed) return this.props.children;

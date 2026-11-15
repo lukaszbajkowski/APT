@@ -2,6 +2,8 @@ import "./lib/install";
 import { markDevice } from "./lib/device";
 // rodzaj urządzenia na <html> przed pierwszym wyświetleniem – CSS wybiera układ telefonu lub komputera
 markDevice();
+import { installErrorReporting } from "./lib/errorReport";
+installErrorReporting();
 // krój Golos Text z naszego serwera (polskie znaki i cyrylica), bez zależności od Google
 import "@fontsource/golos-text/400.css";
 import "@fontsource/golos-text/500.css";

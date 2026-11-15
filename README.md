@@ -24,6 +24,8 @@ Specyfikacja MVP: https://claude.ai/artifact/XwKd3LZWNSmiApfLDFHhhZ
 4. [Design brief](docs/04-design-brief.md)
 5. [Schemat backendu i bazy](docs/05-backend-schema.md)
 6. [Plan wdrożenia](docs/06-implementation-plan.md)
+7. [Audyt bezpieczeństwa](docs/07-audyt-bezpieczenstwa.md)
+8. [Pilot na jednej agencji](docs/08-pilot.md)
 
 ## Architektura
 

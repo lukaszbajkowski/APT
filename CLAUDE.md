@@ -80,7 +80,7 @@ W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”)
   i dopisania dostawcy jako podmiotu przetwarzającego w informacji RODO. Dziś jakość poprawiają: słownik
   `backend/app/i18n_glossary.py` (uk, ru, en) i ekran administratora „Tłumaczenia” (`/tlumaczenia`).
 - **Słownik dla kolejnych języków** (be, ka, hi…) – tylko z tłumaczeniem sprawdzonym przez osobę znającą język.
-- Z listy „przed startem”: pilot na jednej agencji. Test obciążenia podglądu PDF zrobiony (11.2026,
+- Z listy „przed startem”: pilot na jednej agencji – plan i lista kontrolna w `docs/08-pilot.md`. Test obciążenia podglądu PDF zrobiony (11.2026,
   `backend/scripts/pdf_load.py`, jeden proces uvicorn): pdfium (po kolei) to tylko ~20 ms na stronę; czas zjadały znak
   wodny i PNG `optimize` – po poprawce 20 osób naraz: strona p50 0,6 s, dokument ≤ 1,8 s; 40 osób: p50 1,1 s,
   reszta aplikacji odpowiada < 1 s, bez błędów. Zbieranie błędów jest gotowe: „Stan systemu → Błędy aplikacji” (`app/errors.py`,

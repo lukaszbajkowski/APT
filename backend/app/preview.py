@@ -2,6 +2,7 @@
 
 import io
 from datetime import datetime
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
@@ -37,11 +38,11 @@ def _page_image(data: bytes, ext: str, page: int) -> Image.Image:
     return img
 
 
-def watermark(img: Image.Image, viewer: str, when: datetime | None = None) -> Image.Image:
-    """Ukośny, półprzezroczysty napis powtarzany na całej stronie."""
-    when = when or datetime.now(TZ)
-    text = f"{viewer} · {when.astimezone(TZ):%d.%m.%Y %H:%M} · tylko podgląd"
-    w, h = img.size
+@lru_cache(maxsize=8)  # ~6 MB na warstwę – najwyżej ~46 MB
+def _watermark_layer(w: int, h: int, text: str) -> Image.Image:
+    """Gotowa warstwa znaku wodnego dla rozmiaru strony i napisu (osoba + minuta). Rysowanie i obrót trwają
+    ~300 ms, a kolejne strony dokumentu mają zwykle ten sam rozmiar – warstwa jest więc liczona raz.
+    Zwracany obraz jest tylko do odczytu (alpha_composite nie zmienia warstwy)."""
     size = max(14, w // 55)
     font = ImageFont.truetype(str(FONT_DIR / "IBMPlexSans-Medium.ttf"), size)
     tw = int(font.getlength(text)) + size * 4
@@ -55,8 +56,15 @@ def watermark(img: Image.Image, viewer: str, when: datetime | None = None) -> Im
             d.text((x + off, y), text, font=font, fill=(40, 60, 120, 46))
     layer = layer.rotate(30, resample=Image.BICUBIC)
     left, top = (diag - w) // 2, (diag - h) // 2
+    return layer.crop((left, top, left + w, top + h))
+
+
+def watermark(img: Image.Image, viewer: str, when: datetime | None = None) -> Image.Image:
+    """Ukośny, półprzezroczysty napis powtarzany na całej stronie."""
+    when = when or datetime.now(TZ)
+    text = f"{viewer} · {when.astimezone(TZ):%d.%m.%Y %H:%M} · tylko podgląd"
     out = img.convert("RGBA")
-    out.alpha_composite(layer.crop((left, top, left + w, top + h)))
+    out.alpha_composite(_watermark_layer(img.width, img.height, text))
     return out.convert("RGB")
 
 
@@ -66,5 +74,6 @@ def render_page(data: bytes, ext: str, page: int, viewer: str) -> bytes:
         img = img.resize((MAX_W, int(img.height * MAX_W / img.width)))
     img = watermark(img, viewer)
     buf = io.BytesIO()
-    img.save(buf, "PNG", optimize=True)
+    # zwykła kompresja: optimize=True liczy ~4× dłużej, a plik wychodzi tej samej wielkości (test obciążenia, 11.2026)
+    img.save(buf, "PNG", compress_level=6)
     return buf.getvalue()

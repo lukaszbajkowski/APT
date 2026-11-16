@@ -720,6 +720,17 @@ function DeskTemplates({
   // jeden panel z przełącznikiem: wybrane zadanie albo „co dostanie osoba”
   const [view, setView] = useState<"task" | "person">("task");
   const [editing, setEditing] = useState(false);
+  // komputer, wąski obszar (jak edycja szablonu): kartka na całą szerokość, ustawienia zadania w panelu z prawej
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || phone) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 880));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [phone]);
   // telefon: arkusz zadania jak arkusz pola w edycji szablonu – wysokość ustawiona uchwytem zapamiętana na tym urządzeniu
   const [sheetH, setSheetH] = useState<number>(() => {
     try {
@@ -1041,6 +1052,7 @@ function DeskTemplates({
     setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
     setSel(items.length);
     if (phone) setEditing(true);
+    else if (narrow) setPanelOpen(true);
   };
   const addBtn = (
     <Button variant="default" leftSection={<IconPlus size={16} />} onClick={addTask}>
@@ -1050,6 +1062,7 @@ function DeskTemplates({
   const pick = (i: number) => {
     setSel(i);
     if (phone) setEditing(true);
+    else if (narrow) setPanelOpen(true);
   };
   const listJSX = (
     <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
@@ -1424,7 +1437,7 @@ function DeskTemplates({
 
   const kindName = kind === "onboarding" ? "Wdrożenie" : "Odejście";
   return (
-    <div className="ui-cl">
+    <div className="ui-cl" ref={rootRef}>
       {/* układ edycji szablonu: nagłówek, pod nim rodzaj (jak „Pola / Ustawienia”) i tryb (jak „Edycja / Podgląd”),
           kartka z zadaniami po lewej, panel wybranego zadania po prawej */}
       {page && (
@@ -1465,7 +1478,7 @@ function DeskTemplates({
           {addBtn}
         </Group>
       </div>
-      <div className="ui-cl-grid">
+      <div className="ui-cl-grid" data-narrow={narrow || undefined}>
         <div className="ui-cl-paper">
           <Text size="sm" c="dimmed">
             Tak zobaczy to kadra na karcie nowej osoby
@@ -1493,15 +1506,28 @@ function DeskTemplates({
           )}
           {listJSX}
         </div>
-        <aside className="ui-cl-side ui-cl-panel">
-          {editor ??
-            (items.length > 0 && (
-              <Text size="sm" c="dimmed">
-                Wybierz zadanie na kartce, żeby je zmienić.
-              </Text>
-            ))}
-        </aside>
+        {!narrow && (
+          <aside className="ui-cl-side ui-cl-panel">
+            {editor ??
+              (items.length > 0 && (
+                <Text size="sm" c="dimmed">
+                  Wybierz zadanie na kartce, żeby je zmienić.
+                </Text>
+              ))}
+          </aside>
+        )}
       </div>
+      <Drawer
+        opened={narrow && panelOpen && !!cur}
+        onClose={() => setPanelOpen(false)}
+        position="right"
+        size={420}
+        title="Ustawienia zadania"
+        overlayProps={{ backgroundOpacity: 0.12 }}
+        classNames={{ body: "ui-tpe-drawer" }}
+      >
+        {editor}
+      </Drawer>
       {saveBar}
     </div>
   );

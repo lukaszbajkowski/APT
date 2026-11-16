@@ -23,6 +23,14 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
   const [settings, setSettings] = useState(false);
+  // telefon: „Checklisty” z menu (Administracja) otwiera od razu szablony
+  if (mobile && settingsOnly)
+    return (
+      <Stack gap="md">
+        <PageHead title="Checklisty" subtitle="Szablony wdrożenia i odejścia" />
+        <ChecklistTemplates />
+      </Stack>
+    );
   if (mobile)
     return (
       <Stack gap="md">

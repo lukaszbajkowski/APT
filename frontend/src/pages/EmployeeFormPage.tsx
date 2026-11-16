@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Group, Input, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Group, Input, Modal, SegmentedControl, SimpleGrid, Stack, Text, Paper, TextInput, Textarea } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconArrowLeft } from "@tabler/icons-react";
+import { IconAlertCircle, IconAlertTriangle, IconArrowLeft, IconCircleCheck, IconCircleDashed } from "@tabler/icons-react";
 
 import { api, ApiError, errorText, type DuplicateRef, type Employee } from "../api";
 import { useAuth } from "../auth";
@@ -13,11 +13,12 @@ import { parsePesel } from "../pesel";
 import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { UnstyledButton } from "@mantine/core";
-import { useMobileHeader, useNavHeightVar } from "../components/Mobile";
+import { PageTitle, SectionHead, useMobileHeader, useNavHeightVar } from "../components/Mobile";
 import type { ReactNode } from "react";
 import { useIsPhone } from "../lib/device";
 
-/* Grupa pól: na komputerze karta, na telefonie etykieta sekcji bez ramki (formularz na pełnym ekranie). */
+/* Grupa pól: na komputerze sekcja na tle (nagłówek + pola, bez ramki – fundamenty), na telefonie i w okienku
+   etykieta sekcji bez ramki (formularz na pełnym ekranie). */
 function Block({ mobile, title, children }: { mobile: boolean; title: string; children: ReactNode }) {
   if (mobile)
     return (
@@ -27,14 +28,30 @@ function Block({ mobile, title, children }: { mobile: boolean; title: string; ch
       </section>
     );
   return (
-    <Card withBorder padding="lg">
-      {title && (
-        <Title order={4} mb="sm">
-          {title}
-        </Title>
-      )}
+    <section className="ui-dsec">
+      {title && <SectionHead title={title} />}
       {children}
-    </Card>
+    </section>
+  );
+}
+
+/* Panel obok formularza (komputer): „tak to wyjdzie” – przy nowym pracowniku karta i braki, przy edycji lista zmian. */
+type Check = { label: string; tone: "ok" | "warn" | "error" | "todo"; note?: string };
+function CheckList({ items }: { items: Check[] }) {
+  const icon = (t: Check["tone"]) =>
+    t === "ok" ? <IconCircleCheck size={18} aria-hidden /> : t === "todo" ? <IconCircleDashed size={18} aria-hidden /> : <IconAlertTriangle size={18} aria-hidden />;
+  return (
+    <ul className="ui-ef-checks">
+      {items.map((c) => (
+        <li key={c.label} data-tone={c.tone}>
+          {icon(c.tone)}
+          <span>
+            {c.label}
+            {c.note && <small>{c.note}</small>}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -271,39 +288,142 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
     !form.department_id ? true : p.department_id === null || p.department_id === Number(form.department_id),
   );
 
+  // komputer, pełny ekran (nie okienko na karcie): formularz + panel „tak to wyjdzie” + pasek zapisu (wariant B)
+  const desk = !mobile && !embed;
+  const nameOf = (list: { id: number; name: string }[] | undefined, v: string | null) => (v ? (list?.find((x) => String(x.id) === v)?.name ?? "—") : "—");
+  const sexName = (s: FormState["sex"]) => (s === "K" ? "kobieta" : s === "M" ? "mężczyzna" : "nie podano");
+  const dateName = (d: string) => (d ? new Date(d + "T00:00:00").toLocaleDateString("pl-PL") : "—");
+  const changes: { label: string; before: string; after: string }[] = [];
+  if (editing && original) {
+    const add = (label: string, a: string, b: string) => {
+      if (a !== b) changes.push({ label, before: a || "—", after: b || "—" });
+    };
+    add("Nazwisko", original.last_name.trim(), form.last_name.trim());
+    add("Imię", original.first_name.trim(), form.first_name.trim());
+    if (form.pesel.trim()) changes.push({ label: "PESEL", before: current?.pesel_masked ?? "—", after: "nowy numer" });
+    else if (form.clear_pesel) changes.push({ label: "PESEL", before: current?.pesel_masked ?? "—", after: "usunięty" });
+    add("Data urodzenia", dateName(original.birth_date), dateName(form.birth_date));
+    add("Płeć", sexName(original.sex), sexName(form.sex));
+    add("Obywatelstwo", nameOf(countries.data, original.country_id), nameOf(countries.data, form.country_id));
+    add("APT", nameOf(agencies.data, original.agency_id), nameOf(agencies.data, form.agency_id));
+    add("Data zatrudnienia", dateName(original.hire_date), dateName(form.hire_date));
+    add("Wydział", nameOf(departments.data, original.department_id), nameOf(departments.data, form.department_id));
+    add("Stanowisko", nameOf(positions.data, original.position_id), nameOf(positions.data, form.position_id));
+    if (original.notes.trim() !== form.notes.trim()) changes.push({ label: "Uwagi", before: original.notes.trim() ? "…" : "—", after: form.notes.trim() ? "zmienione" : "usunięte" });
+  }
+  const nChanges = changes.length;
+  const changesWord = nChanges === 1 ? "zmiana" : nChanges % 10 >= 2 && nChanges % 10 <= 4 && (nChanges % 100 < 10 || nChanges % 100 >= 20) ? "zmiany" : "zmian";
+  const namesOk = !!form.last_name.trim() && !!form.first_name.trim();
+  const peselState: Check =
+    peselCheck && !peselCheck.valid
+      ? { label: "PESEL", tone: "error", note: peselCheck.message }
+      : peselDuplicate
+        ? { label: "PESEL", tone: "warn", note: `Ten numer ma już ${peselDuplicate.name} (nr ${peselDuplicate.number}) – sprawdź, czy to nie ta sama osoba.` }
+        : peselCheck?.valid
+          ? { label: "PESEL", tone: "ok", note: "Poprawny – data urodzenia i płeć uzupełnione" }
+          : { label: "PESEL", tone: "todo", note: "Można dodać później" };
+  const newChecks: Check[] = [
+    namesOk ? { label: "Nazwisko i imię", tone: "ok" } : { label: "Nazwisko i imię", tone: "error", note: "Wymagane, żeby zapisać" },
+    ...(staff ? [peselState] : []),
+    { label: "Zdjęcie do karty", tone: "todo", note: "Dodasz na karcie pracownika po zapisaniu" },
+    { label: "Konto pracownika", tone: "todo", note: "Zaproszenie wyślesz po zapisaniu" },
+  ];
+  const initials = `${form.last_name.trim()[0] ?? ""}${form.first_name.trim()[0] ?? ""}`.toUpperCase() || "?";
+  const saveStatus = !editing
+    ? !namesOk
+      ? "Wpisz nazwisko i imię – reszta danych jest nieobowiązkowa."
+      : peselCheck && !peselCheck.valid
+        ? "Popraw PESEL albo wyczyść pole – bez niego też można zapisać."
+        : peselDuplicate
+        ? "PESEL do sprawdzenia – zapis i tak jest możliwy."
+        : "Gotowe do zapisania."
+    : nChanges
+      ? `${nChanges} ${changesWord} do zapisania${assignmentChanged && effectiveDate ? ` · przydział od ${dateName(effectiveDate)}` : ""}`
+      : "Brak zmian.";
+  const effectiveField = (
+    <>
+      <DateField
+        label="Zmiana APT / wydziału / stanowiska obowiązuje od"
+        value={effectiveDate}
+        min={current?.hire_date ?? undefined}
+        onChange={(e) => setEffectiveDate(e.currentTarget.value)}
+      />
+      <Text size="xs" c={effectiveDate > todayIso ? "blue" : "dimmed"}>
+        {effectiveDate > todayIso
+          ? `Zaplanowana zmiana: do ${dayBefore(effectiveDate)} obowiązuje obecny przydział, a nowy aplikacja wprowadzi sama w dniu ${new Date(effectiveDate + "T00:00:00").toLocaleDateString("pl-PL")}. Pozostałe zmiany w formularzu zapiszą się od razu.`
+          : `Poprzedni przydział kończy się dzień wcześniej${effectiveDate ? ` (${dayBefore(effectiveDate)})` : ""}. Zapisze się w „Przebiegu zatrudnienia”.`}
+      </Text>
+    </>
+  );
+  const side = desk && (
+    <aside className="ui-ef-side" aria-label={editing ? "Zmiany do zapisania" : "Podgląd"}>
+      {!editing ? (
+        <>
+          <section className="ui-dsec">
+            <SectionHead title="Karta identyfikacyjna" />
+            <div className="ui-ef-card" aria-label="Podgląd karty identyfikacyjnej">
+              <span className="ui-ef-photo" aria-hidden>{initials}</span>
+              <span className="ui-ef-card-text">
+                <span className="ui-ef-card-name">{namesOk ? `${form.last_name.trim()} ${form.first_name.trim()}` : "Nazwisko i imię"}</span>
+                <span className="ui-ef-card-meta">{[nameOf(positions.data, form.position_id), nameOf(departments.data, form.department_id)].filter((x) => x !== "—").join(" · ") || "Stanowisko · wydział"}</span>
+                <span className="ui-ef-card-meta">{nameOf(agencies.data, form.agency_id) !== "—" ? nameOf(agencies.data, form.agency_id) : "APT"}</span>
+                <span className="ui-ef-card-num">nr nadany po zapisaniu</span>
+              </span>
+            </div>
+          </section>
+          <section className="ui-dsec">
+            <SectionHead title="Co jeszcze potrzebne" />
+            <CheckList items={newChecks} />
+          </section>
+        </>
+      ) : (
+        <section className="ui-dsec">
+          <SectionHead title="Zmiany do zapisania" />
+          {nChanges === 0 ? (
+            <Text size="sm" c="dimmed">
+              Jeszcze nic nie zmieniono. Każda zmiana pola pojawi się tutaj jako „było → będzie”.
+            </Text>
+          ) : (
+            <ul className="ui-ef-changes">
+              {changes.map((c) => (
+                <li key={c.label}>
+                  <span className="ui-ef-ch-label">{c.label}</span>
+                  <span>
+                    <s>{c.before}</s> → <b>{c.after}</b>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {assignmentChanged && <div className="ui-ef-effective">{effectiveField}</div>}
+        </section>
+      )}
+    </aside>
+  );
+
   return (
-    <form onSubmit={submit} className={mobile ? "ui-inpage" : embed ? "ui-embed-form" : undefined}>
-      <Stack maw={embed ? undefined : 900} className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : undefined}>
-        {!embed && (
-        <Group justify="space-between" className="ui-desktop-only">
+    <form onSubmit={submit} className={mobile ? "ui-inpage" : embed ? "ui-embed-form" : "ui-ef"}>
+      <Stack className={mobile ? "ui-chat-body ui-form-body" : undefined} gap={mobile ? 24 : desk ? "lg" : undefined}>
+        {desk && (
           <div>
-            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" className="ui-desktop-only">
-              <Group gap={4}>
-                <IconArrowLeft size={14} /> {editing ? "Wróć do profilu" : "Wróć do listy"}
-              </Group>
+            <Anchor component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"} size="sm" className="ui-back-link">
+              <IconArrowLeft size={14} aria-hidden /> {editing ? `${current?.last_name ?? ""} ${current?.first_name ?? ""}` : "Pracownicy"}
             </Anchor>
-            <Title order={2} mt={4} className="ui-desktop-only">
-              {!editing
-                ? "Nowy pracownik"
-                : part === "dane"
-                  ? `Dane osobowe: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`
-                  : part === "zatrudnienie"
-                    ? `Zatrudnienie: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`
-                    : `Edycja: ${current?.last_name ?? ""} ${current?.first_name ?? ""}`}
-            </Title>
-            {editing && current && (
-              <Text c="dimmed" size="sm">
-                Nr ewidencyjny {current.number_display}
-              </Text>
-            )}
-            {!editing && (
-              <Text c="dimmed" size="sm">
-                Numer ewidencyjny zostanie nadany automatycznie po zapisaniu.
-              </Text>
-            )}
+            <PageTitle
+              title={!editing ? "Nowy pracownik" : part === "dane" ? "Dane osobowe" : part === "zatrudnienie" ? "Zatrudnienie" : "Edycja"}
+              meta={editing && current ? `${current.last_name} ${current.first_name} · Nr ${current.number_display}` : undefined}
+              description={
+                !editing
+                  ? "Wystarczą nazwisko i imię – resztę można uzupełnić później. Numer ewidencyjny zostanie nadany po zapisaniu."
+                  : staff
+                    ? "Przed zapisem zobaczysz listę zmian. Zmiana APT, wydziału lub stanowiska trafi do „Przebiegu zatrudnienia”."
+                    : "Przed zapisem zobaczysz listę zmian."
+              }
+            />
           </div>
-        </Group>
         )}
+        <div className={desk ? "ui-ef-grid" : "ui-ef-flat"}>
+        <Stack gap={mobile ? 24 : desk ? "xl" : undefined} className={desk ? "ui-ef-main" : undefined}>
 
         {mobile && (!form.last_name.trim() || !form.first_name.trim()) && (
           <span className="ui-hint-warn">Wpisz nazwisko i imię – reszta danych jest nieobowiązkowa.</span>
@@ -497,7 +617,7 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
               }}
             />
           </SimpleGrid>
-          {assignmentChanged && (
+          {assignmentChanged && !desk && (
             <Paper withBorder p="sm" mt="md" radius="md" bg="var(--mantine-color-blue-light)">
               <Group align="flex-end" gap="md" wrap="wrap">
                 <DateField
@@ -528,6 +648,10 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
         </Block>
         )}
 
+        </Stack>
+        {side}
+        </div>
+
         {!mobile && embed && (
           <Group justify="flex-end" className="ui-modal-foot">
             <Button variant="default" onClick={embed.onClose}>
@@ -538,15 +662,26 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
             </Button>
           </Group>
         )}
-        {!mobile && !embed && (
-          <Group justify="flex-end">
-            <Button variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"}>
-              Anuluj
-            </Button>
-            <Button type="submit" loading={save.isPending}>
-              {editing ? "Zapisz zmiany" : "Dodaj pracownika"}
-            </Button>
-          </Group>
+        {desk && (
+          // pasek zapisu jak w edycji szablonu: co jest niezapisane + jedna akcja główna
+          <div className="ui-tpe-save ui-ef-save">
+            <Text
+              size="sm"
+              c={(editing && nChanges) || (!editing && (!namesOk || peselDuplicate || (peselCheck && !peselCheck.valid))) ? undefined : "dimmed"}
+              className={(editing && nChanges) || (!editing && (!namesOk || peselDuplicate || (peselCheck && !peselCheck.valid))) ? "ui-ef-pending" : undefined}
+              aria-live="polite"
+            >
+              {saveStatus}
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <Button variant="default" component={Link} to={editing ? `/pracownicy/${id}` : "/pracownicy"}>
+                Anuluj
+              </Button>
+              <Button type="submit" loading={save.isPending} disabled={editing && nChanges === 0}>
+                {editing ? "Zapisz zmiany" : "Dodaj pracownika"}
+              </Button>
+            </Group>
+          </div>
         )}
       </Stack>
       {mobile && (

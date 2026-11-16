@@ -1685,3 +1685,33 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-st-row.ui-err-row{grid-template-columns:minmax(0,1fr) auto auto;align-items:center}
 .ui-err-what{display:flex;flex-direction:column;gap:var(--s-1);min-width:0}
 .ui-err-msg{overflow-wrap:anywhere;font-family:var(--mantine-font-family-monospace);font-size:var(--t-meta);line-height:var(--t-meta-lh)}
+/* formularz pracownika (komputer): formularz do 760 px + panel „tak to wyjdzie” 340 px; w wąskim oknie panel pod formularzem */
+.ui-ef{container:ef/inline-size;max-width:1180px}
+.ui-ef-flat{display:contents}
+.ui-ef-grid{display:grid;grid-template-columns:minmax(0,760px) 340px;gap:var(--s-7);align-items:start}
+.ui-ef-side{position:sticky;top:var(--s-4);display:flex;flex-direction:column;gap:var(--s-6)}
+@container ef (max-width:1060px){.ui-ef-grid{grid-template-columns:minmax(0,1fr)}.ui-ef-side{position:static}}
+.ui-ef-card{display:grid;grid-template-columns:72px minmax(0,1fr);gap:var(--s-3);aspect-ratio:85.6/54;padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface)}
+.ui-ef-photo{display:grid;place-items:center;border-radius:var(--mantine-radius-sm);background:var(--apt-subtle);color:var(--mantine-color-dimmed);font-size:18px;line-height:24px;font-weight:700;aspect-ratio:3/4;align-self:start}
+.ui-ef-card-text{display:flex;flex-direction:column;gap:var(--s-1);min-width:0}
+.ui-ef-card-name{font-size:15px;line-height:22px;font-weight:700;overflow-wrap:anywhere}
+.ui-ef-card-meta{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-ef-card-num{margin-top:auto;font-family:var(--mantine-font-family-monospace);font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-ef-checks,.ui-ef-changes{list-style:none;margin:0;padding:0;border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
+.ui-ef-checks li{display:flex;gap:var(--s-3);align-items:flex-start;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
+.ui-ef-checks li:first-child,.ui-ef-changes li:first-child{border-top:0}
+.ui-ef-checks li > svg{flex:none;margin-top:1px;color:var(--mantine-color-dimmed)}
+.ui-ef-checks li[data-tone="ok"] > svg{color:var(--mantine-color-green-text)}
+.ui-ef-checks li[data-tone="warn"] > svg{color:var(--mantine-color-orange-text)}
+.ui-ef-checks li[data-tone="error"] > svg{color:var(--mantine-color-red-text)}
+.ui-ef-checks small{display:block;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-ef-checks li[data-tone="warn"] small{color:var(--mantine-color-orange-text)}
+.ui-ef-checks li[data-tone="error"] small{color:var(--mantine-color-red-text)}
+.ui-ef-changes li{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--s-3);padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
+.ui-ef-ch-label{color:var(--mantine-color-dimmed)}
+.ui-ef-changes s{color:var(--mantine-color-dimmed)}
+.ui-ef-changes b{font-weight:600}
+.ui-ef-effective{display:flex;flex-direction:column;gap:var(--s-2)}
+.ui-ef-save{margin-top:var(--s-2)}
+/* niezapisane / do sprawdzenia: bursztyn (wymaga działania) */
+.ui-ef-pending{color:var(--mantine-color-orange-text);font-weight:600}

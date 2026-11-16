@@ -1168,19 +1168,22 @@ function DeskTemplates({
     cur && sel !== null ? (
       <section className="ui-cl-pbody" aria-label="Wybrane zadanie">
         {!phone && (
-        <Group justify="space-between" wrap="nowrap" align="flex-start">
-          <Title order={3} className="ui-cl-ptitle">
-            {cur.label || "Nowe zadanie"}
-          </Title>
-          <Group gap={2} wrap="nowrap">
-            <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)} aria-label="Przesuń wyżej">
+        <div className="ui-tpe-phead">
+          <div style={{ minWidth: 0 }}>
+            <h2 className="ui-dsec-title">{cur.label || "Nowe zadanie"}</h2>
+            <Text size="sm" c="dimmed">
+              {groups[gIdx(cur.due_days)]?.label}
+            </Text>
+          </div>
+          <Group gap={4} wrap="nowrap">
+            <ActionIcon variant="default" size={36} disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)} aria-label="Przesuń wyżej">
               <IconArrowUp size={16} />
             </ActionIcon>
-            <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)} aria-label="Przesuń niżej">
+            <ActionIcon variant="default" size={36} disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)} aria-label="Przesuń niżej">
               <IconArrowDown size={16} />
             </ActionIcon>
           </Group>
-        </Group>
+        </div>
         )}
         <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus />
         <SimpleGrid cols={phone ? 1 : 2} spacing="sm">

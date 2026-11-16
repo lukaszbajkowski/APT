@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, ViewScreen, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Checkbox, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -11,15 +11,16 @@ import {
   IconDots,
   IconDotsVertical,
   IconCalendarEvent,
+  IconCheck,
+  IconChevronDown,
   IconGripVertical,
   IconPlayerSkipForward,
   IconPlus,
-  IconTrash,
 } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
 import { useAuth } from "../auth";
-import { EmptyState, Loading, RowsSkeleton } from "./States";
+import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 import { useIsPhone } from "../lib/device";
@@ -574,7 +575,8 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
 }
 
 type ChecklistPage = { title: string; description: ReactNode };
-function TemplatePanel({ kind, data, switcher, page }: { kind: Kind; data: Templates; switcher?: ReactNode; page?: ChecklistPage }) {
+type KindPick = { set: (k: Kind) => void; counts: Record<Kind, number> };
+function TemplatePanel({ kind, data, switcher, page, kindPick }: { kind: Kind; data: Templates; switcher?: ReactNode; page?: ChecklistPage; kindPick?: KindPick }) {
   const mobile = useIsPhone();
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
@@ -615,29 +617,14 @@ function TemplatePanel({ kind, data, switcher, page }: { kind: Kind; data: Templ
     },
   });
 
-  const upd = (i: number, v: Partial<TemplateItem>) => {
-    setDirty(true);
-    setItems((l) => l.map((x, j) => (j === i ? { ...x, ...v } : x)));
-  };
-  const move = (i: number, d: number) => {
-    setDirty(true);
-    setItems((l) => {
-      const n = [...l];
-      [n[i], n[i + d]] = [n[i + d], n[i]];
-      return n;
-    });
-  };
-  const ids = (v: string[]) => v.map(Number);
-
   const applies = (it: TemplateItem) =>
     (!it.agency_ids.length || (pAg !== null && it.agency_ids.includes(Number(pAg)))) &&
     (!it.department_ids.length || (pDep !== null && it.department_ids.includes(Number(pDep))));
-  const preview = items.filter(applies);
-  const base = kind === "onboarding" ? "zatrudnienia" : "zwolnienia";
 
-  if (!mobile)
-    return (
+  return (
       <DeskTemplates
+        phone={mobile}
+        kindPick={kindPick}
         switcher={switcher}
         page={page}
         kind={kind}
@@ -665,168 +652,10 @@ function TemplatePanel({ kind, data, switcher, page }: { kind: Kind; data: Templ
           setDirty(false);
         }}
       />
-    );
-
-  return (
-    <Grid gutter="lg">
-      <Grid.Col span={{ base: 12, lg: 8 }}>
-        <Stack gap="xs">
-          {items.map((it, i) => (
-            <Paper key={it.id ?? `n${i}`} withBorder p="sm" radius="md">
-              <Group justify="space-between" wrap="nowrap" mb="xs">
-                <Text size="xs" c="dimmed">
-                  {i + 1}. {scopeText(it, agMap, depMap)} · {dueText(it.due_days, kind)}
-                </Text>
-                <Group gap={0} wrap="nowrap">
-                  <ActionIcon variant="subtle" color="gray" disabled={i === 0} onClick={() => move(i, -1)} aria-label="W górę">
-                    <IconArrowUp size={14} />
-                  </ActionIcon>
-                  <ActionIcon variant="subtle" color="gray" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="W dół">
-                    <IconArrowDown size={14} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    onClick={() => {
-                      setDirty(true);
-                      setItems((l) => l.filter((_, j) => j !== i));
-                    }}
-                    aria-label="Usuń"
-                  >
-                    <IconTrash size={14} />
-                  </ActionIcon>
-                </Group>
-              </Group>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" verticalSpacing="xs">
-                <TextInput size="xs" label="Zadanie" value={it.label} onChange={(e) => upd(i, { label: e.currentTarget.value })} />
-                <SimpleGrid cols={2} spacing="xs">
-                  <Select
-                    size="xs"
-                    label="Odpowiada"
-                    allowDeselect={false}
-                    data={[
-                      { value: "hr", label: "HR" },
-                      { value: "manager", label: "Kierownik" },
-                    ]}
-                    value={it.responsible}
-                    onChange={(v) => v && upd(i, { responsible: v as TemplateItem["responsible"] })}
-                  />
-                  <NumberInput
-                    size="xs"
-                    label={`Termin (dni od ${base})`}
-                    min={-365}
-                    max={365}
-                    allowDecimal={false}
-                    value={it.due_days}
-                    onChange={(v) => upd(i, { due_days: Number(v) || 0 })}
-                  />
-                </SimpleGrid>
-                <MultiSelect
-                  size="xs"
-                  label="Dotyczy APT"
-                  placeholder={it.agency_ids.length ? undefined : "wszystkie APT"}
-                  searchable
-                  clearable
-                  data={agOpts}
-                  value={it.agency_ids.map(String)}
-                  onChange={(v) => upd(i, { agency_ids: ids(v) })}
-                />
-                <MultiSelect
-                  size="xs"
-                  label="Dotyczy wydziałów"
-                  placeholder={it.department_ids.length ? undefined : "wszystkie wydziały"}
-                  searchable
-                  clearable
-                  data={depOpts}
-                  value={it.department_ids.map(String)}
-                  onChange={(v) => upd(i, { department_ids: ids(v) })}
-                />
-                <Select
-                  size="xs"
-                  label="Odhacz automatycznie, gdy"
-                  placeholder="ręcznie"
-                  clearable
-                  searchable
-                  data={data.auto_options}
-                  value={it.auto}
-                  onChange={(v) => upd(i, { auto: v })}
-                />
-              </SimpleGrid>
-            </Paper>
-          ))}
-          <Group justify="space-between">
-            <Button
-              size="compact-sm"
-              variant="light"
-              leftSection={<IconPlus size={14} />}
-              onClick={() => {
-                setDirty(true);
-                setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
-              }}
-            >
-              Dodaj zadanie
-            </Button>
-            <Group gap="xs">
-              {saved && !dirty && (
-                <Button size="xs" variant="light" onClick={() => apply.mutate()} loading={apply.isPending}>
-                  Zastosuj do trwających checklist
-                </Button>
-              )}
-              <Button size="xs" onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty || items.some((x) => !x.label.trim())}>
-                Zapisz ustawienia
-              </Button>
-            </Group>
-          </Group>
-          {saved && !dirty && (
-            <Text size="xs" c="dimmed" ta="right">
-              „Zastosuj” dopasuje otwarte checklisty: doda nowe zadania, przeliczy terminy nieodhaczonych, usunie nietknięte, które
-              przestały dotyczyć osoby.
-            </Text>
-          )}
-        </Stack>
-      </Grid.Col>
-      <Grid.Col span={{ base: 12, lg: 4 }}>
-        <Card withBorder padding="md" style={{ position: "sticky", top: 70 }}>
-          <Title order={6} mb="xs">
-            Podgląd: co dostanie osoba
-          </Title>
-          <SimpleGrid cols={2} spacing="xs" mb="sm">
-            <Select size="xs" label="APT" placeholder="dowolne" clearable searchable data={agOpts} value={pAg} onChange={setPAg} />
-            <Select size="xs" label="Wydział" placeholder="dowolny" clearable searchable data={depOpts} value={pDep} onChange={setPDep} />
-          </SimpleGrid>
-          {preview.length === 0 ? (
-            <EmptyState compact title="Brak zadań"
-          text="Wszystkie punkty są wykonane albo checklista nie ma jeszcze pozycji." />
-          ) : (
-            <Stack gap={6}>
-              {[...preview]
-                .sort((a, b) => a.due_days - b.due_days)
-                .map((it, i) => (
-                  <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
-                    <Badge size="sm" variant="light" w={70} style={{ flexShrink: 0 }}>
-                      {it.due_days === 0 ? "dzień 0" : it.due_days > 0 ? `+${it.due_days} dni` : `${it.due_days} dni`}
-                    </Badge>
-                    <div style={{ minWidth: 0 }}>
-                      <Text size="sm">{it.label || "(bez nazwy)"}</Text>
-                      <Text size="xs" c="dimmed">
-                        {RESPONSIBLE[it.responsible]}
-                        {it.auto ? " · automatycznie" : ""}
-                      </Text>
-                    </div>
-                  </Group>
-                ))}
-            </Stack>
-          )}
-          <Text size="xs" c="dimmed" mt="sm">
-            Dzień 0 = data {base}. Wartości ujemne – przed tą datą.
-          </Text>
-        </Card>
-      </Grid.Col>
-    </Grid>
   );
 }
 
-/* Komputer: lista zadań pogrupowana wg terminu + panel wybranego zadania + „co dostanie osoba” (wariant A z podglądem z C).
+/* Komputer i telefon: lista zadań pogrupowana wg terminu + panel wybranego zadania + „co dostanie osoba” (wariant A z podglądem z C).
    Podgląd działa podwójnie: wybór APT i wydziału nad listą przygasza zadania, których osoba nie dostanie,
    a pod panelem jest lista jej zadań w kolejności terminów. */
 function DeskTemplates({
@@ -850,9 +679,14 @@ function DeskTemplates({
   onDiscard,
   switcher,
   page,
+  phone = false,
+  kindPick,
 }: {
   switcher?: ReactNode;
   page?: ChecklistPage;
+  /** telefon (wariant B): rodzaj w tytule, „Zadania | Co dostanie osoba” z przesuwaniem, zadanie na pełnym ekranie */
+  phone?: boolean;
+  kindPick?: KindPick;
   kind: Kind;
   data: Templates;
   items: TemplateItem[];
@@ -875,6 +709,7 @@ function DeskTemplates({
   const [sel, setSelRaw] = useState<number | null>(items.length ? 0 : null);
   // jeden panel z przełącznikiem: wybrane zadanie albo „co dostanie osoba”
   const [view, setView] = useState<"task" | "person">("task");
+  const [editing, setEditing] = useState(false);
   const setSel = (i: number | null) => {
     setSelRaw(i);
     setView("task");
@@ -1110,18 +945,310 @@ function DeskTemplates({
     return () => clearTimeout(t);
   }, [moved]);
 
+  const addTask = () => {
+    setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
+    setSel(items.length);
+    if (phone) setEditing(true);
+  };
   const addBtn = (
-    <Button
-      variant="default"
-      leftSection={<IconPlus size={16} />}
-      onClick={() => {
-        setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
-        setSel(items.length);
-      }}
-    >
+    <Button variant="default" leftSection={<IconPlus size={16} />} onClick={addTask}>
       Dodaj zadanie
     </Button>
   );
+  const pick = (i: number) => {
+    setSel(i);
+    if (phone) setEditing(true);
+  };
+  const listJSX = (
+    <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
+      {lifted && <div ref={slotRef} className="ui-cl-slot" aria-hidden />}
+      {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
+      {groups.map((g) => {
+        const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
+        if (!rows.length) return null;
+        return (
+          <div key={g.label} className="ui-cl-group">
+            <div className="ui-cl-glabel">{g.label}</div>
+            {rows.map(({ it, i }) => {
+              const k = rowKey(it);
+              const dim = filtering && !applies(it);
+              return (
+                <div
+                  key={k}
+                  ref={(el) => {
+                    if (el) rowEls.current.set(k, el);
+                    else rowEls.current.delete(k);
+                  }}
+                  className="ui-cl-row"
+                  data-on={(!phone && sel === i) || undefined}
+                  data-dim={dim ? "" : undefined}
+                  data-lifted={lifted === k || undefined}
+                  data-moved={moved === k && !lifted ? "" : undefined}
+                >
+                  <span
+                    className="ui-cl-grip"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Przenieś: ${it.label || "zadanie bez nazwy"}`}
+                    title="Przeciągnij albo użyj strzałek ↑ ↓"
+                    onPointerDown={(e) => startDrag(i, e)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                      e.preventDefault();
+                      step(i, e.key === "ArrowUp" ? -1 : 1);
+                    }}
+                  >
+                    <IconGripVertical size={20} aria-hidden />
+                  </span>
+                  <button
+                    type="button"
+                    className="ui-cl-pick"
+                    aria-pressed={sel === i}
+                    title={dim ? "Ta osoba nie dostanie tego zadania" : undefined}
+                    onClick={() => pick(i)}
+                  >
+                    {lifted === k && due0 !== null && gIdx(it.due_days) !== gIdx(due0) && (
+                      <span className="ui-cl-target">
+                        Trafi do: {groups[gIdx(it.due_days)]?.label} · {dueChip(it.due_days)}
+                      </span>
+                    )}
+                    <span className="ui-cl-text">
+                      <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
+                      <span className="ui-cl-meta">
+                        {phone
+                          ? [cap(RESPONSIBLE[it.responsible]), it.agency_ids.length || it.department_ids.length ? scopeText(it, agMap, depMap) : null, it.auto ? "automatycznie" : null].filter(Boolean).join(" · ")
+                          : `${cap(RESPONSIBLE[it.responsible])} · ${scopeText(it, agMap, depMap)}`}
+                      </span>
+                    </span>
+                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                      {dueChip(it.due_days)}
+                    </span>
+                    {!phone && (
+                      <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
+                        {it.auto ? "automatycznie" : "ręcznie"}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+  const editor =
+    cur && sel !== null ? (
+      <section className="ui-cl-pbody" aria-label="Wybrane zadanie">
+        {!phone && (
+        <Group justify="space-between" wrap="nowrap" align="flex-start">
+          <Title order={3} className="ui-cl-ptitle">
+            {cur.label || "Nowe zadanie"}
+          </Title>
+          <Group gap={2} wrap="nowrap">
+            <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)} aria-label="Przesuń wyżej">
+              <IconArrowUp size={16} />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)} aria-label="Przesuń niżej">
+              <IconArrowDown size={16} />
+            </ActionIcon>
+          </Group>
+        </Group>
+        )}
+        <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus />
+        <SimpleGrid cols={phone ? 1 : 2} spacing="sm">
+          <Select
+            label="Odpowiada"
+            allowDeselect={false}
+            data={[
+              { value: "hr", label: "HR" },
+              { value: "manager", label: "Kierownik" },
+            ]}
+            value={cur.responsible}
+            onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
+          />
+          <NumberInput
+            label="Termin (dni)"
+            description={dueText(cur.due_days, kind)}
+            inputWrapperOrder={["label", "input", "description", "error"]}
+            min={-365}
+            max={365}
+            allowDecimal={false}
+            value={cur.due_days}
+            onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
+          />
+        </SimpleGrid>
+        <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
+        <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
+        <Select
+          label="Odhacz automatycznie, gdy"
+          description="Bez tego zadanie odhacza się ręcznie na karcie pracownika."
+          placeholder="ręcznie"
+          clearable
+          searchable
+          data={data.auto_options}
+          value={cur.auto}
+          onChange={(v) => upd(sel, { auto: v })}
+        />
+        <Anchor
+          component="button"
+          type="button"
+          c="red"
+          size="sm"
+          fw={600}
+          w="fit-content"
+          onClick={() => {
+            setItems((l) => l.filter((_, j) => j !== sel));
+            setSel(items.length > 1 ? Math.max(0, sel - 1) : null);
+            setEditing(false);
+          }}
+        >
+          Usuń zadanie
+        </Anchor>
+        {phone && (
+          <Group gap="xs" grow>
+            <Button variant="default" leftSection={<IconArrowUp size={18} />} disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)}>
+              Wyżej
+            </Button>
+            <Button variant="default" leftSection={<IconArrowDown size={18} />} disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)}>
+              Niżej
+            </Button>
+          </Group>
+        )}
+      </section>
+    ) : null;
+  const personView = (
+    <section className="ui-cl-pbody" aria-label="Co dostanie osoba">
+      <Text size="sm" c="dimmed">
+        Dla: {[pAg ? agMap.get(Number(pAg)) : null, pDep ? depMap.get(Number(pDep)) : null].filter(Boolean).join(" · ") || "dowolne APT i wydział"}
+      </Text>
+      {shown.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          Ta osoba nie dostanie żadnego zadania z tej checklisty.
+        </Text>
+      ) : (
+        <ul className="ui-cl-preview">
+          {shown.map(({ it, i }) => (
+            <li key={i}>
+              <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                {dueChip(it.due_days)}
+              </span>
+              <span>
+                {it.label || "(bez nazwy)"}
+                <small>
+                  {cap(RESPONSIBLE[it.responsible])}
+                  {it.auto ? ` · automatycznie: ${autoLabel(it.auto)}` : ""}
+                </small>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Text size="xs" c="dimmed">
+        Dzień 0 = dzień {ev}. Wartości ujemne – przed tą datą.{!filtering ? phone ? " Wybierz agencję i wydział powyżej, żeby zobaczyć zadania konkretnej osoby." : " Wybierz agencję i wydział nad listą, żeby zobaczyć zadania konkretnej osoby." : ""}
+      </Text>
+    </section>
+  );
+  const saveBar = (
+    <div className="ui-tpe-save ui-cl-save">
+      {dirty ? (
+        <Text size="sm" className="ui-ef-pending">
+          {emptyLabels ? "Uzupełnij nazwy zadań, żeby zapisać." : phone ? "Niezapisane zmiany." : "Niezapisane zmiany w checkliście."}
+        </Text>
+      ) : saved ? (
+        <Text size="sm" c="dimmed">
+          {phone
+          ? "Zapisano. Dopasować otwarte checklisty?"
+          : "Zapisano. „Zastosuj” dopasuje otwarte checklisty: doda nowe zadania, przeliczy terminy nieodhaczonych i usunie nietknięte, które przestały dotyczyć osoby."}
+        </Text>
+      ) : (
+        <Text size="sm" c="dimmed">
+          Wszystko zapisane.
+        </Text>
+      )}
+      <Group gap="xs" wrap="nowrap">
+        {dirty && (
+          <Button variant="default" onClick={onDiscard}>
+            Odrzuć
+          </Button>
+        )}
+        {saved && !dirty ? (
+          <Button onClick={() => apply.mutate()} loading={apply.isPending}>
+            {phone ? "Zastosuj" : "Zastosuj do trwających checklist"}
+          </Button>
+        ) : (
+          <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty || emptyLabels}>
+            {phone ? "Zapisz" : "Zapisz checklistę"}
+          </Button>
+        )}
+      </Group>
+    </div>
+  );
+
+  if (phone) {
+    const kinds: Kind[] = ["onboarding", "offboarding"];
+    const kindName = (k: Kind) => (k === "onboarding" ? "Wdrożenie" : "Odejście");
+    return (
+      <div className="ui-cl ui-cl-phone">
+        <div className="ui-head">
+          <div className="ui-head-text">
+            {kindPick ? (
+              <Menu position="bottom-start" width={240}>
+                <Menu.Target>
+                  <UnstyledButton className="ui-cl-kindbtn" aria-label={`Rodzaj checklisty: ${kindName(kind)}`}>
+                    <h1 className="ui-head-title">{kindName(kind)}</h1>
+                    <IconChevronDown size={22} aria-hidden />
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {kinds.map((k) => (
+                    <Menu.Item key={k} onClick={() => kindPick.set(k)} rightSection={k === kind ? <IconCheck size={18} /> : undefined}>
+                      {kindName(k)} · {kindPick.counts[k]}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
+            ) : (
+              <h1 className="ui-head-title">{kindName(kind)}</h1>
+            )}
+            <span className="ui-head-sub">
+              Checklista · {items.length} {tasksWord(items.length)}
+            </span>
+          </div>
+          <UnstyledButton className="ui-head-action" aria-label="Dodaj zadanie" onClick={addTask}>
+            <IconPlus size={22} />
+          </UnstyledButton>
+        </div>
+        <Segments
+          value={view}
+          onChange={(v) => setView(v as "task" | "person")}
+          items={[
+            { value: "task", label: "Zadania" },
+            { value: "person", label: "Co dostanie osoba" },
+          ]}
+        />
+        <SwipePager index={view === "person" ? 1 : 0} onIndex={(i) => setView(i ? "person" : "task")}>
+          {[
+            <div key="task">{listJSX}</div>,
+            <div key="person" className="ui-cl-phperson">
+              <Group gap="xs" grow wrap="nowrap">
+                <Select aria-label="Podgląd dla agencji" placeholder="Agencja" clearable searchable data={agOpts} value={pAg} onChange={setPAg} />
+                <Select aria-label="Podgląd dla wydziału" placeholder="Wydział" clearable searchable data={depOpts} value={pDep} onChange={setPDep} />
+              </Group>
+              <div className="ui-cl-phbox">{personView}</div>
+            </div>,
+          ]}
+        </SwipePager>
+        {(dirty || saved) && saveBar}
+        {editing && editor && cur && (
+          <ViewScreen title={cur.label || "Nowe zadanie"} subtitle={groups[gIdx(cur.due_days)]?.label} onClose={() => setEditing(false)}>
+            <div className="ui-cl-phedit">{editor}</div>
+          </ViewScreen>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="ui-cl">
       {page && (
@@ -1143,78 +1270,7 @@ function DeskTemplates({
         {switcher && <div className="ui-cl-kind">{switcher}</div>}
       </div>
       <div className="ui-cl-grid">
-        <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
-          {lifted && <div ref={slotRef} className="ui-cl-slot" aria-hidden />}
-          {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
-          {groups.map((g) => {
-            const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
-            if (!rows.length) return null;
-            return (
-              <div key={g.label} className="ui-cl-group">
-                <div className="ui-cl-glabel">{g.label}</div>
-                {rows.map(({ it, i }) => {
-                  const k = rowKey(it);
-                  const dim = filtering && !applies(it);
-                  return (
-                    <div
-                      key={k}
-                      ref={(el) => {
-                        if (el) rowEls.current.set(k, el);
-                        else rowEls.current.delete(k);
-                      }}
-                      className="ui-cl-row"
-                      data-on={sel === i || undefined}
-                      data-dim={dim ? "" : undefined}
-                      data-lifted={lifted === k || undefined}
-                      data-moved={moved === k && !lifted ? "" : undefined}
-                    >
-                      <span
-                        className="ui-cl-grip"
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Przenieś: ${it.label || "zadanie bez nazwy"}`}
-                        title="Przeciągnij albo użyj strzałek ↑ ↓"
-                        onPointerDown={(e) => startDrag(i, e)}
-                        onKeyDown={(e) => {
-                          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-                          e.preventDefault();
-                          step(i, e.key === "ArrowUp" ? -1 : 1);
-                        }}
-                      >
-                        <IconGripVertical size={20} aria-hidden />
-                      </span>
-                      <button
-                        type="button"
-                        className="ui-cl-pick"
-                        aria-pressed={sel === i}
-                        title={dim ? "Ta osoba nie dostanie tego zadania" : undefined}
-                        onClick={() => setSel(i)}
-                      >
-                        {lifted === k && due0 !== null && gIdx(it.due_days) !== gIdx(due0) && (
-                          <span className="ui-cl-target">
-                            Trafi do: {groups[gIdx(it.due_days)]?.label} · {dueChip(it.due_days)}
-                          </span>
-                        )}
-                        <span className="ui-cl-text">
-                          <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
-                          <span className="ui-cl-meta">
-                            {cap(RESPONSIBLE[it.responsible])} · {scopeText(it, agMap, depMap)}
-                          </span>
-                        </span>
-                        <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
-                          {dueChip(it.due_days)}
-                        </span>
-                        <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
-                          {it.auto ? "automatycznie" : "ręcznie"}
-                        </span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+        {listJSX}
         <aside className="ui-cl-side ui-cl-panel">
           <SegmentedControl
             fullWidth
@@ -1225,143 +1281,17 @@ function DeskTemplates({
               { value: "person", label: `Co dostanie osoba · ${shown.length}` },
             ]}
           />
-          {view === "task" && (cur && sel !== null ? (
-            <section className="ui-cl-pbody" aria-label="Wybrane zadanie">
-              <Group justify="space-between" wrap="nowrap" align="flex-start">
-                <Title order={3} className="ui-cl-ptitle">
-                  {cur.label || "Nowe zadanie"}
-                </Title>
-                <Group gap={2} wrap="nowrap">
-                  <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)} aria-label="Przesuń wyżej">
-                    <IconArrowUp size={16} />
-                  </ActionIcon>
-                  <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)} aria-label="Przesuń niżej">
-                    <IconArrowDown size={16} />
-                  </ActionIcon>
-                </Group>
-              </Group>
-              <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus />
-              <SimpleGrid cols={2} spacing="sm">
-                <Select
-                  label="Odpowiada"
-                  allowDeselect={false}
-                  data={[
-                    { value: "hr", label: "HR" },
-                    { value: "manager", label: "Kierownik" },
-                  ]}
-                  value={cur.responsible}
-                  onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
-                />
-                <NumberInput
-                  label="Termin (dni)"
-                  description={dueText(cur.due_days, kind)}
-                  inputWrapperOrder={["label", "input", "description", "error"]}
-                  min={-365}
-                  max={365}
-                  allowDecimal={false}
-                  value={cur.due_days}
-                  onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
-                />
-              </SimpleGrid>
-              <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
-              <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
-              <Select
-                label="Odhacz automatycznie, gdy"
-                description="Bez tego zadanie odhacza się ręcznie na karcie pracownika."
-                placeholder="ręcznie"
-                clearable
-                searchable
-                data={data.auto_options}
-                value={cur.auto}
-                onChange={(v) => upd(sel, { auto: v })}
-              />
-              <Anchor
-                component="button"
-                type="button"
-                c="red"
-                size="sm"
-                fw={600}
-                w="fit-content"
-                onClick={() => {
-                  setItems((l) => l.filter((_, j) => j !== sel));
-                  setSel(items.length > 1 ? Math.max(0, sel - 1) : null);
-                }}
-              >
-                Usuń zadanie
-              </Anchor>
-            </section>
-          ) : (
+          {view === "task" && (editor ?? (
             items.length > 0 && (
               <Text size="sm" c="dimmed">
                 Wybierz zadanie na liście, żeby je zmienić.
               </Text>
             )
           ))}
-          {view === "person" && (
-          <section className="ui-cl-pbody" aria-label="Co dostanie osoba">
-            <Text size="sm" c="dimmed">
-              Dla: {[pAg ? agMap.get(Number(pAg)) : null, pDep ? depMap.get(Number(pDep)) : null].filter(Boolean).join(" · ") || "dowolne APT i wydział"}
-            </Text>
-            {shown.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                Ta osoba nie dostanie żadnego zadania z tej checklisty.
-              </Text>
-            ) : (
-              <ul className="ui-cl-preview">
-                {shown.map(({ it, i }) => (
-                  <li key={i}>
-                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
-                      {dueChip(it.due_days)}
-                    </span>
-                    <span>
-                      {it.label || "(bez nazwy)"}
-                      <small>
-                        {cap(RESPONSIBLE[it.responsible])}
-                        {it.auto ? ` · automatycznie: ${autoLabel(it.auto)}` : ""}
-                      </small>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Text size="xs" c="dimmed">
-              Dzień 0 = dzień {ev}. Wartości ujemne – przed tą datą.{!filtering ? " Wybierz APT i wydział nad listą, żeby zobaczyć zadania konkretnej osoby." : ""}
-            </Text>
-          </section>
-          )}
+          {view === "person" && personView}
         </aside>
       </div>
-      <div className="ui-tpe-save ui-cl-save">
-        {dirty ? (
-          <Text size="sm" className="ui-ef-pending">
-            {emptyLabels ? "Uzupełnij nazwy zadań, żeby zapisać." : "Niezapisane zmiany w checkliście."}
-          </Text>
-        ) : saved ? (
-          <Text size="sm" c="dimmed">
-            Zapisano. „Zastosuj” dopasuje otwarte checklisty: doda nowe zadania, przeliczy terminy nieodhaczonych i usunie nietknięte, które przestały dotyczyć osoby.
-          </Text>
-        ) : (
-          <Text size="sm" c="dimmed">
-            Wszystko zapisane.
-          </Text>
-        )}
-        <Group gap="xs" wrap="nowrap">
-          {dirty && (
-            <Button variant="default" onClick={onDiscard}>
-              Odrzuć
-            </Button>
-          )}
-          {saved && !dirty ? (
-            <Button onClick={() => apply.mutate()} loading={apply.isPending}>
-              Zastosuj do trwających checklist
-            </Button>
-          ) : (
-            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty || emptyLabels}>
-              Zapisz checklistę
-            </Button>
-          )}
-        </Group>
-      </div>
+      {saveBar}
     </div>
   );
 }
@@ -1380,29 +1310,9 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
       <Loading />
     );
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
-  if (mobile) {
-    const kinds: Kind[] = ["onboarding", "offboarding"];
-    return (
-      <Stack gap={16}>
-        <Text size="sm" c="dimmed">
-          Każde zadanie może dotyczyć wszystkich albo wybranych APT i wydziałów.
-        </Text>
-        <Segments
-          value={kind}
-          onChange={(v) => setKind(v as Kind)}
-          items={[
-            { value: "onboarding", label: `Wdrożenie · ${q.data.onboarding.length}` },
-            { value: "offboarding", label: `Odejście · ${q.data.offboarding.length}` },
-          ]}
-        />
-        <SwipePager index={kinds.indexOf(kind)} onIndex={(i) => setKind(kinds[i])}>
-          {kinds.map((k) => (
-            <TemplatePanel key={k} kind={k} data={q.data!} />
-          ))}
-        </SwipePager>
-      </Stack>
-    );
-  }
+  // telefon (wariant B): rodzaj w tytule z rozwijaniem, bez osobnego przełącznika
+  if (mobile)
+    return <TemplatePanel key={kind} kind={kind} data={q.data} kindPick={{ set: setKind, counts: { onboarding: q.data.onboarding.length, offboarding: q.data.offboarding.length } }} />;
   // komputer: przełącznik rodzaju w jednym pasku z podglądem i „Dodaj zadanie”
   return (
     <TemplatePanel

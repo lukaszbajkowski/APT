@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text } from "@mantine/core";
-import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconListCheck, IconUser } from "@tabler/icons-react";
+import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconUser } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { useAuth } from "../auth";
@@ -22,30 +22,16 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
-  const [settings, setSettings] = useState(false);
-  // telefon: „Checklisty” z menu (Administracja) otwiera od razu szablony
-  if (mobile && settingsOnly)
-    return (
-      <Stack gap="md">
-        <PageHead title="Checklisty" subtitle="Szablony wdrożenia i odejścia" />
-        <ChecklistTemplates />
-      </Stack>
-    );
+  if (mobile && settingsOnly) return <ChecklistTemplates />;
   if (mobile)
     return (
       <Stack gap="md">
         <PageHead
-          title={settings ? "Ustawienia checklist" : "Zadania"}
-          subtitle={settings ? "Szablony wdrożenia i odejścia" : "Checklisty wdrożenia i odejścia"}
-          action={
-            staff
-              ? settings
-                ? { label: "Wróć do zadań", icon: <IconListCheck size={20} />, variant: "outline", onClick: () => setSettings(false) }
-                : { label: "Ustawienia checklist", icon: <IconAdjustmentsHorizontal size={20} />, variant: "outline", onClick: () => setSettings(true) }
-              : undefined
-          }
+          title="Zadania"
+          subtitle="Checklisty wdrożenia i odejścia"
+          action={staff ? { label: "Ustawienia checklist", icon: <IconAdjustmentsHorizontal size={20} />, variant: "outline", to: "/checklisty" } : undefined}
         />
-        {settings ? <ChecklistTemplates /> : <OpenTasks />}
+        <OpenTasks />
       </Stack>
     );
   if (settingsOnly)

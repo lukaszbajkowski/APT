@@ -889,8 +889,8 @@ function DeskTemplates({
           <Text size="sm" c="dimmed">
             Podgląd dla:
           </Text>
-          <Select size="sm" w={170} aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
-          <Select size="sm" w={170} aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+          <Select size="sm" w={200} aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
+          <Select size="sm" w={200} aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
         </Group>
         <Button
           variant="default"

@@ -1341,7 +1341,23 @@ function DeskTemplates({
             </div>,
           ]}
         </SwipePager>
-        {(dirty || saved) && saveBar}
+        {/* pasek jak przy zaznaczaniu wielu pracowników: cały wiersz nad dolnym menu, duży przycisk */}
+        {(dirty || saved) && (
+          <div className="ui-selbar ui-savebar">
+            <Text size="sm" className={dirty ? "ui-ef-pending" : undefined} c={dirty ? undefined : "dimmed"}>
+              {dirty ? (emptyLabels ? "Uzupełnij nazwy zadań" : "Niezapisane zmiany") : "Zapisano. Dopasować otwarte checklisty?"}
+            </Text>
+            {dirty ? (
+              <Button size="lg" radius="md" onClick={() => save.mutate()} loading={save.isPending} disabled={emptyLabels}>
+                Zapisz
+              </Button>
+            ) : (
+              <Button size="lg" radius="md" onClick={() => apply.mutate()} loading={apply.isPending}>
+                Zastosuj
+              </Button>
+            )}
+          </div>
+        )}
         {/* zadanie: arkusz od dołu (jak pole w edycji szablonu) – lista nad nim widać i zmienia się na żywo */}
         <Drawer
           opened={editing && !!cur}

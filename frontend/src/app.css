@@ -1785,11 +1785,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-phperson{display:flex;flex-direction:column;gap:var(--s-3)}
 .ui-cl-phbox{padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-cl-phedit{display:flex;flex-direction:column;gap:var(--s-3);padding:var(--s-4)}
-:where(:root[data-device="phone"]) .ui-cl-save{position:fixed;left:calc(var(--s-4) + var(--apt-safe-left));right:calc(var(--s-4) + var(--apt-safe-right));bottom:calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + var(--s-3));margin:0;flex-wrap:nowrap;gap:var(--s-3);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);z-index:110}
-:where(:root[data-device="phone"]) .ui-cl-save > p{flex:1 1 auto;min-width:0;font-weight:600}
 /* miejsce pod listą na przypięty pasek „Zapisz” */
-.ui-cl-phone:has(> .ui-cl-save){padding-bottom:calc(2 * var(--s-7))}
+.ui-cl-phone:has(> .ui-savebar){padding-bottom:calc(2 * var(--s-7))}
 
-/* zwarty pasek zapisu na telefonie (edycja szablonu, checklisty): karta nad dolnym menu, tekst + „Zapisz” */
-.ui-savebar-ph{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin:var(--s-2) var(--s-4) var(--s-3);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);box-shadow:0 -4px 24px rgba(0,0,0,.08)}
-.ui-savebar-ph > p{flex:1 1 auto;min-width:0;font-weight:600}
+/* pasek zapisu na telefonie (edycja szablonu, checklisty) – jak pasek zaznaczonych pracowników: cały wiersz nad dolnym menu */
+.ui-savebar-ph{flex:none;display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2) var(--s-4);background:var(--apt-nav);border-top:1px solid var(--apt-line)}
+.ui-savebar-ph > p,.ui-savebar > p{flex:1 1 auto;min-width:0;font-weight:600}
+.ui-savebar{align-items:center}

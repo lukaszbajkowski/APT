@@ -195,7 +195,7 @@ export function TemplateEditPage() {
               <Text size="sm" className="ui-ef-pending">
                 {name.trim() ? "Niezapisane zmiany" : "Wpisz nazwę szablonu"}
               </Text>
-              <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!name.trim()}>
+              <Button size="lg" radius="md" onClick={() => save.mutate()} loading={save.isPending} disabled={!name.trim()}>
                 Zapisz
               </Button>
             </>

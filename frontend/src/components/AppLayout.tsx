@@ -281,7 +281,9 @@ function AppLayoutInner() {
       return "auto";
     }
   });
-  const rail = !mobile && (railPref === "rail" || (railPref === "auto" && narrow));
+  // bardzo wąskie okno (< 1024 px): zawsze same ikony – bez zmiany zapisanego wyboru; po poszerzeniu wraca ustawienie użytkownika
+  const tight = useMediaQuery("(max-width: 63.99em)", false, { getInitialValueInEffect: false });
+  const rail = !mobile && (tight || railPref === "rail" || (railPref === "auto" && narrow));
   const chooseRail = (next: "auto" | "rail" | "full") => {
     setRailPref(next);
     try {
@@ -428,11 +430,13 @@ function AppLayoutInner() {
             </AppShell.Section>
             <AppShell.Section pt={6} className="ui-rail-foot">
               <AccountMenu compact rail navPref={navPref} />
-              <Tooltip label="Rozwiń menu" position="right" withArrow>
-                <ActionIcon variant="subtle" color="gray" size={36} onClick={toggleRail} aria-label="Rozwiń menu">
-                  <IconLayoutSidebarLeftExpand size={20} />
-                </ActionIcon>
-              </Tooltip>
+              {!tight && (
+                <Tooltip label="Rozwiń menu" position="right" withArrow>
+                  <ActionIcon variant="subtle" color="gray" size={36} onClick={toggleRail} aria-label="Rozwiń menu">
+                    <IconLayoutSidebarLeftExpand size={20} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </AppShell.Section>
           </>
         ) : (
@@ -768,7 +772,7 @@ function AccountMenu({
                 ]}
               />
               <Text size="xs" c="dimmed" mt={4}>
-                {t("Automatycznie: same ikony, gdy okno jest węższe niż 1280 px.")}
+                {t("Automatycznie: same ikony, gdy okno jest węższe niż 1280 px.")} {t("Poniżej 1024 px zawsze same ikony.")}
               </Text>
             </Box>
           </>

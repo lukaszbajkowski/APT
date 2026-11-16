@@ -912,7 +912,7 @@ function DeskTemplates({
   itemsRef.current = items;
   const rowEls = useRef(new Map<string, HTMLElement>());
   const prevTops = useRef<Map<string, number> | null>(null);
-  const drag = useRef<{ item: TemplateItem; key: string; grab: number; y: number; ty: number } | null>(null);
+  const drag = useRef<{ item: TemplateItem; key: string; grab: number; y: number; y0: number; ty: number } | null>(null);
   const [lifted, setLifted] = useState<string | null>(null);
   const [moved, setMoved] = useState<string | null>(null);
   const motion = typeof window === "undefined" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -958,6 +958,10 @@ function DeskTemplates({
     return dir < 0 ? v > 0 : v >= 0 && v < vis.length - 1;
   };
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [due0, setDue0] = useState<number | null>(null);
+  // przeniesiony wiersz idzie za palcem; miejsce, w które trafi, jest wypełnione tłem (jak w edycji szablonu)
   const positionLifted = () => {
     const d = drag.current;
     const el = d && rowEls.current.get(d.key);
@@ -965,6 +969,11 @@ function DeskTemplates({
     const natural = el.getBoundingClientRect().top - d.ty;
     d.ty = d.y - d.grab - natural;
     el.style.transform = `translateY(${d.ty}px)`;
+    const slot = slotRef.current;
+    if (slot) {
+      slot.style.top = `${el.offsetTop}px`;
+      slot.style.height = `${el.offsetHeight}px`;
+    }
   };
   const onDragMove = () => {
     const d = drag.current;
@@ -981,7 +990,7 @@ function DeskTemplates({
       const r = rowEls.current.get(rowKey(o))?.getBoundingClientRect();
       if (r && r.top + r.height / 2 < center) k++;
     }
-    // na granicy dwóch innych grup decyduje nagłówek grupy: środek wiersza pod nagłówkiem = grupa niższa
+    // na granicy dwóch grup decyduje nagłówek grupy: środek wiersza pod nagłówkiem = grupa niższa
     const P = others[k - 1];
     const N = others[k];
     let force: number | undefined;
@@ -994,28 +1003,83 @@ function DeskTemplates({
     const r = placeAt(cur, k, d.item.due_days, force);
     setSelRaw(r.idx);
   };
+  // ruch palca: najwyżej jedno przeliczenie na klatkę ekranu
+  const frame = useRef<number | null>(null);
+  const onFrame = () => {
+    if (frame.current !== null) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      onDragMove();
+    });
+  };
+  // przewijanie przy krawędziach ekranu (dół: górna krawędź paska „Zapisz”, gdy jest widoczny); dopiero po ruchu w tę stronę
+  const auto = useRef<number | null>(null);
+  const autoscroll = () => {
+    const d = drag.current;
+    if (!d) return;
+    const h = window.innerHeight;
+    const edge = Math.min(72, Math.round(h * 0.15));
+    const bt = document.querySelector<HTMLElement>(".ui-cl-save")?.getBoundingClientRect().top ?? h;
+    const bottom = (bt < h && bt > 2 * edge ? bt : h) - edge;
+    const movedBy = d.y - d.y0;
+    const v = d.y < edge && movedBy < -12 ? -Math.min(20, 4 + Math.round((edge - d.y) / 4)) : d.y > bottom && movedBy > 12 ? Math.min(20, 4 + Math.round((d.y - bottom) / 4)) : 0;
+    if (v) {
+      window.scrollBy(0, v);
+      onDragMove();
+    }
+    auto.current = requestAnimationFrame(autoscroll);
+  };
+  const noSelect = (on: boolean) => {
+    document.documentElement.classList.toggle("ui-noselect", on);
+    document.documentElement.classList.toggle("ui-grabbing", on);
+    if (on) window.getSelection()?.removeAllRanges();
+  };
+  useEffect(() => () => noSelect(false), []);
   const startDrag = (i: number, e: ReactPointerEvent) => {
     if (e.button !== 0) return;
     const it = items[i];
     const el = rowEls.current.get(rowKey(it));
     if (!el) return;
     e.preventDefault();
-    drag.current = { item: it, key: rowKey(it), grab: e.clientY - el.getBoundingClientRect().top, y: e.clientY, ty: 0 };
+    noSelect(true);
+    // przechył jak kartka podniesiona z blatu: krawędź wychyla się o ok. 9 px niezależnie od szerokości listy
+    const w = Math.max(1, listRef.current?.clientWidth ?? 600);
+    listRef.current?.style.setProperty("--cl-tilt", `${(-Math.min(1.5, (Math.atan(9 / w) * 180) / Math.PI)).toFixed(2)}deg`);
+    drag.current = { item: it, key: rowKey(it), grab: e.clientY - el.getBoundingClientRect().top, y: e.clientY, y0: e.clientY, ty: 0 };
     setLifted(rowKey(it));
+    setDue0(it.due_days);
     setSelRaw(i);
     setView("task");
+    navigator.vibrate?.(10);
+    auto.current = requestAnimationFrame(autoscroll);
     const move = (ev: PointerEvent) => {
       if (drag.current) drag.current.y = ev.clientY;
-      onDragMove();
+      onFrame();
     };
-    const scroll = () => onDragMove();
+    const scroll = () => onFrame();
     const end = () => {
       const d = drag.current;
       const elx = d && rowEls.current.get(d.key);
-      if (elx) elx.style.transform = "";
-      if (d) setMoved(d.key);
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
+      if (auto.current !== null) cancelAnimationFrame(auto.current);
+      auto.current = null;
+      noSelect(false);
+      if (elx && d) {
+        elx.style.transform = "";
+        // odłożenie: wiersz dosuwa się na swoje miejsce i prostuje (bez animacji przy ograniczonym ruchu)
+        if (motion && Math.abs(d.ty) > 1) {
+          elx.setAttribute("data-dropping", "");
+          const a = elx.animate([{ transform: `translateY(${d.ty}px)` }, { transform: "none" }], { duration: 180, easing: "cubic-bezier(.22,.9,.3,1)" });
+          a.onfinish = a.oncancel = () => elx.removeAttribute("data-dropping");
+        }
+        setMoved(d.key);
+      }
+      // uchwyt nie zostaje z obwódką fokusu po puszczeniu
+      if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-cl-grip")) document.activeElement.blur();
       drag.current = null;
       setLifted(null);
+      setDue0(null);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
@@ -1036,7 +1100,7 @@ function DeskTemplates({
       const p = prev.get(k);
       if (p === undefined) continue;
       const dy = p - el.getBoundingClientRect().top;
-      if (Math.abs(dy) > 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 160, easing: "cubic-bezier(.2,.8,.2,1)" });
+      if (Math.abs(dy) > 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.22,.9,.3,1)" });
     }
   }, [items]);
   // krótkie podświetlenie po upuszczeniu – widać, gdzie trafiło zadanie
@@ -1081,7 +1145,8 @@ function DeskTemplates({
         {!page && addBtn}
       </div>
       <div className="ui-cl-grid">
-        <div className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
+        <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
+          {lifted && <div ref={slotRef} className="ui-cl-slot" aria-hidden />}
           {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
           {groups.map((g) => {
             const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
@@ -1127,6 +1192,11 @@ function DeskTemplates({
                         title={dim ? "Ta osoba nie dostanie tego zadania" : undefined}
                         onClick={() => setSel(i)}
                       >
+                        {lifted === k && due0 !== null && gIdx(it.due_days) !== gIdx(due0) && (
+                          <span className="ui-cl-target">
+                            Trafi do: {groups[gIdx(it.due_days)]?.label} · {dueChip(it.due_days)}
+                          </span>
+                        )}
                         <span className="ui-cl-text">
                           <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
                           <span className="ui-cl-meta">

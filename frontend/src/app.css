@@ -1686,9 +1686,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-err-what{display:flex;flex-direction:column;gap:var(--s-1);min-width:0}
 .ui-err-msg{overflow-wrap:anywhere;font-family:var(--mantine-font-family-monospace);font-size:var(--t-meta);line-height:var(--t-meta-lh)}
 /* formularz pracownika (komputer): formularz do 760 px + panel „tak to wyjdzie” 340 px; w wąskim oknie panel pod formularzem */
-.ui-ef{container:ef/inline-size;max-width:1180px}
+.ui-ef{container:ef/inline-size;max-width:1760px}
 .ui-ef-flat{display:contents}
-.ui-ef-grid{display:grid;grid-template-columns:minmax(0,760px) 340px;gap:var(--s-7);align-items:start}
+/* na szerokim ekranie formularz na całą szerokość (jak lista pracowników), panel stały obok */
+.ui-ef-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-7);align-items:start}
 .ui-ef-side{position:sticky;top:var(--s-4);display:flex;flex-direction:column;gap:var(--s-6)}
 @container ef (max-width:1060px){.ui-ef-grid{grid-template-columns:minmax(0,1fr)}.ui-ef-side{position:static}}
 .ui-ef-card{display:grid;grid-template-columns:72px minmax(0,1fr);gap:var(--s-3);aspect-ratio:85.6/54;padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface)}
@@ -1696,7 +1697,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-ef-card-text{display:flex;flex-direction:column;gap:var(--s-1);min-width:0}
 .ui-ef-card-name{font-size:15px;line-height:22px;font-weight:700;overflow-wrap:anywhere}
 .ui-ef-card-meta{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
-.ui-ef-card-num{margin-top:auto;font-family:var(--mantine-font-family-monospace);font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-ef-card-num{margin-top:auto;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
 .ui-ef-checks,.ui-ef-changes{list-style:none;margin:0;padding:0;border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-ef-checks li{display:flex;gap:var(--s-3);align-items:flex-start;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
 .ui-ef-checks li:first-child,.ui-ef-changes li:first-child{border-top:0}
@@ -1713,5 +1714,33 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-ef-changes b{font-weight:600}
 .ui-ef-effective{display:flex;flex-direction:column;gap:var(--s-2)}
 .ui-ef-save{margin-top:var(--s-2)}
+/* checklisty (komputer): lista zadań wg terminu + panel zadania i „co dostanie osoba” */
+.ui-cl{container:cl/inline-size;display:flex;flex-direction:column;gap:var(--s-4)}
+.ui-cl-bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3);flex-wrap:wrap}
+.ui-cl-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-6);align-items:start}
+@container cl (max-width:900px){.ui-cl-grid{grid-template-columns:minmax(0,1fr)}.ui-cl-side{position:static}}
+.ui-cl-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);overflow:hidden}
+.ui-cl-group + .ui-cl-group{border-top:1px solid var(--apt-line)}
+.ui-cl-glabel{padding:var(--s-2) var(--s-4) var(--s-1);font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-color-dimmed);background:var(--apt-ground)}
+.ui-cl-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) var(--s-4);border:0;border-top:1px solid var(--apt-line);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ui-cl-glabel + .ui-cl-row{border-top:0}
+.ui-cl-row:hover{background:var(--apt-subtle)}
+.ui-cl-row[data-on]{background:var(--mantine-primary-color-light)}
+.ui-cl-row[data-dim]{opacity:.45}
+.ui-cl-row:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px}
+.ui-cl-text{display:flex;flex-direction:column;min-width:0}
+.ui-cl-name{font-size:15px;line-height:22px;font-weight:600;overflow-wrap:anywhere}
+.ui-cl-meta{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-cl-chip{display:inline-flex;align-items:center;white-space:nowrap;padding:var(--s-1) var(--s-2);border-radius:var(--mantine-radius-sm);font-size:13px;line-height:18px;font-weight:600;background:var(--apt-subtle);color:var(--mantine-color-dimmed)}
+.ui-cl-chip[data-zero]{background:var(--mantine-primary-color-light);color:var(--mantine-primary-color-light-color)}
+.ui-cl-chip[data-auto]{background:var(--mantine-color-green-light);color:var(--mantine-color-green-text)}
+.ui-cl-side{position:sticky;top:var(--s-4);display:flex;flex-direction:column;gap:var(--s-6)}
+.ui-cl-panel{display:flex;flex-direction:column;gap:var(--s-4);padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
+.ui-cl-pbody{display:flex;flex-direction:column;gap:var(--s-3)}
+.ui-cl-ptitle.ui-cl-ptitle{font-size:18px;line-height:24px;font-weight:600;margin:0;overflow-wrap:anywhere}
+.ui-cl-preview{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s-2)}
+.ui-cl-preview li{display:grid;grid-template-columns:76px minmax(0,1fr);gap:var(--s-2);align-items:start;font-size:14px;line-height:20px}
+.ui-cl-preview li .ui-cl-chip{justify-content:center}
+.ui-cl-preview small{display:block;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
 /* niezapisane / do sprawdzenia: bursztyn (wymaga działania) */
 .ui-ef-pending{color:var(--mantine-color-orange-text);font-weight:600}

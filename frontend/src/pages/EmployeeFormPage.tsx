@@ -481,6 +481,8 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
             {staff && (
               <TextInput
                 label="PESEL"
+                // podpowiedź pod polem – pola w rzędzie zaczynają się na tej samej wysokości
+                inputWrapperOrder={["label", "input", "description", "error"]}
                 inputMode="numeric"
                 maxLength={13}
                 autoComplete="off"
@@ -519,13 +521,14 @@ export function EmployeeFormPage({ embed }: { embed?: EmbedForm } = {}) {
             {staff && (
               <DateField
                 label="Data urodzenia"
+                inputWrapperOrder={["label", "input", "description", "error"]}
                 description={fromPesel ? "Wynika z numeru PESEL" : undefined}
                 disabled={fromPesel}
                 value={form.birth_date}
                 onChange={(e) => set("birth_date", e.currentTarget.value)}
               />
             )}
-            <Input.Wrapper label="Płeć" description={fromPesel ? "Wynika z numeru PESEL" : undefined}>
+            <Input.Wrapper label="Płeć" description={fromPesel ? "Wynika z numeru PESEL" : undefined} inputWrapperOrder={["label", "input", "description", "error"]}>
               {mobile ? (
                 <div className="ui-seg2" role="radiogroup" aria-label="Płeć" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
                   {([["K", "Kobieta"], ["M", "Mężczyzna"], ["none", "Nie podano"]] as const).map(([v, l]) => {

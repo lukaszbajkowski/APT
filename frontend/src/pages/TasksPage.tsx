@@ -43,7 +43,10 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   if (settingsOnly)
     return (
       <Stack maw={1300}>
-        <PageTitle title="Checklisty" description="Szablony wdrożenia i odejścia. Otwarte zadania z checklist są w „Dziś”." />
+        <PageTitle
+          title="Checklisty"
+          description="Zadania tworzone przy zatrudnieniu i odejściu – dla wszystkich albo wybranych APT i wydziałów. Otwarte zadania są w „Dziś”."
+        />
         <ChecklistTemplates />
       </Stack>
     );

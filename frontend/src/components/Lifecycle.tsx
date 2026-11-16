@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -560,6 +560,7 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
 }
 
 function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
+  const mobile = useIsPhone();
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api<DictionaryItem[]>("/departments") });
@@ -613,12 +614,41 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
   };
   const ids = (v: string[]) => v.map(Number);
 
-  const preview = items.filter(
-    (it) =>
-      (!it.agency_ids.length || (pAg !== null && it.agency_ids.includes(Number(pAg)))) &&
-      (!it.department_ids.length || (pDep !== null && it.department_ids.includes(Number(pDep)))),
-  );
+  const applies = (it: TemplateItem) =>
+    (!it.agency_ids.length || (pAg !== null && it.agency_ids.includes(Number(pAg)))) &&
+    (!it.department_ids.length || (pDep !== null && it.department_ids.includes(Number(pDep))));
+  const preview = items.filter(applies);
   const base = kind === "onboarding" ? "zatrudnienia" : "zwolnienia";
+
+  if (!mobile)
+    return (
+      <DeskTemplates
+        kind={kind}
+        data={data}
+        items={items}
+        setItems={(f) => {
+          setDirty(true);
+          setItems(f);
+        }}
+        dirty={dirty}
+        saved={saved}
+        save={save}
+        apply={apply}
+        agOpts={agOpts}
+        depOpts={depOpts}
+        agMap={agMap}
+        depMap={depMap}
+        pAg={pAg}
+        pDep={pDep}
+        setPAg={setPAg}
+        setPDep={setPDep}
+        applies={applies}
+        onDiscard={() => {
+          setItems(data[kind]);
+          setDirty(false);
+        }}
+      />
+    );
 
   return (
     <Grid gutter="lg">
@@ -779,6 +809,290 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
   );
 }
 
+/* Komputer: lista zadań pogrupowana wg terminu + panel wybranego zadania + „co dostanie osoba” (wariant A z podglądem z C).
+   Podgląd działa podwójnie: wybór APT i wydziału nad listą przygasza zadania, których osoba nie dostanie,
+   a pod panelem jest lista jej zadań w kolejności terminów. */
+function DeskTemplates({
+  kind,
+  data,
+  items,
+  setItems,
+  dirty,
+  saved,
+  save,
+  apply,
+  agOpts,
+  depOpts,
+  agMap,
+  depMap,
+  pAg,
+  pDep,
+  setPAg,
+  setPDep,
+  applies,
+  onDiscard,
+}: {
+  kind: Kind;
+  data: Templates;
+  items: TemplateItem[];
+  setItems: (f: (l: TemplateItem[]) => TemplateItem[]) => void;
+  dirty: boolean;
+  saved: boolean;
+  save: { mutate: () => void; isPending: boolean };
+  apply: { mutate: () => void; isPending: boolean };
+  agOpts: { value: string; label: string }[];
+  depOpts: { value: string; label: string }[];
+  agMap: Map<number, string>;
+  depMap: Map<number, string>;
+  pAg: string | null;
+  pDep: string | null;
+  setPAg: (v: string | null) => void;
+  setPDep: (v: string | null) => void;
+  applies: (it: TemplateItem) => boolean;
+  onDiscard: () => void;
+}) {
+  const [sel, setSelRaw] = useState<number | null>(items.length ? 0 : null);
+  // jeden panel z przełącznikiem: wybrane zadanie albo „co dostanie osoba”
+  const [view, setView] = useState<"task" | "person">("task");
+  const setSel = (i: number | null) => {
+    setSelRaw(i);
+    setView("task");
+  };
+  const pickAg = (v: string | null) => {
+    setPAg(v);
+    setView("person");
+  };
+  const pickDep = (v: string | null) => {
+    setPDep(v);
+    setView("person");
+  };
+  const ev = kind === "onboarding" ? "zatrudnienia" : "odejścia";
+  const filtering = pAg !== null || pDep !== null;
+  const autoLabel = (v: string | null) => (v ? (data.auto_options.find((o) => o.value === v)?.label ?? v) : null);
+  const dueChip = (d: number) => (d === 0 ? "dzień 0" : d > 0 ? `+${d} ${d === 1 ? "dzień" : "dni"}` : `−${-d} ${d === -1 ? "dzień" : "dni"}`);
+  // grupy wg terminu: kolejność w grupie = kolejność zapisana (strzałki w panelu)
+  const groups: { label: string; test: (d: number) => boolean }[] = [
+    { label: kind === "onboarding" ? "Przed zatrudnieniem" : "Przed odejściem", test: (d) => d < 0 },
+    { label: kind === "onboarding" ? "Dzień zatrudnienia" : "Dzień odejścia", test: (d) => d === 0 },
+    { label: kind === "onboarding" ? "Pierwszy tydzień" : "Tydzień po odejściu", test: (d) => d > 0 && d <= 7 },
+    { label: "Później", test: (d) => d > 7 },
+  ];
+  const upd = (i: number, v: Partial<TemplateItem>) => setItems((l) => l.map((x, j) => (j === i ? { ...x, ...v } : x)));
+  const cur = sel !== null ? items[sel] : null;
+  const emptyLabels = items.some((x) => !x.label.trim());
+  const shown = [...items.map((it, i) => ({ it, i }))].filter(({ it }) => applies(it)).sort((a, b) => a.it.due_days - b.it.due_days || a.i - b.i);
+
+  return (
+    <div className="ui-cl">
+      <div className="ui-cl-bar">
+        <Group gap="xs" wrap="nowrap" align="center">
+          <Text size="sm" c="dimmed">
+            Podgląd dla:
+          </Text>
+          <Select size="sm" w={170} aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
+          <Select size="sm" w={170} aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+        </Group>
+        <Button
+          variant="default"
+          leftSection={<IconPlus size={16} />}
+          onClick={() => {
+            setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
+            setSel(items.length);
+          }}
+        >
+          Dodaj zadanie
+        </Button>
+      </div>
+      <div className="ui-cl-grid">
+        <div className="ui-cl-list" role="listbox" aria-label="Zadania checklisty">
+          {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
+          {groups.map((g) => {
+            const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
+            if (!rows.length) return null;
+            return (
+              <div key={g.label} className="ui-cl-group">
+                <div className="ui-cl-glabel">{g.label}</div>
+                {rows.map(({ it, i }) => (
+                  <button
+                    key={it.id ?? `n${i}`}
+                    type="button"
+                    role="option"
+                    aria-selected={sel === i}
+                    className="ui-cl-row"
+                    data-on={sel === i || undefined}
+                    data-dim={filtering && !applies(it) ? "" : undefined}
+                    title={filtering && !applies(it) ? "Ta osoba nie dostanie tego zadania" : undefined}
+                    onClick={() => setSel(i)}
+                  >
+                    <span className="ui-cl-text">
+                      <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
+                      <span className="ui-cl-meta">
+                        {cap(RESPONSIBLE[it.responsible])} · {scopeText(it, agMap, depMap)}
+                      </span>
+                    </span>
+                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                      {dueChip(it.due_days)}
+                    </span>
+                    <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
+                      {it.auto ? "automatycznie" : "ręcznie"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        <aside className="ui-cl-side ui-cl-panel">
+          <SegmentedControl
+            fullWidth
+            value={view}
+            onChange={(v) => setView(v as "task" | "person")}
+            data={[
+              { value: "task", label: "Zadanie" },
+              { value: "person", label: `Co dostanie osoba · ${shown.length}` },
+            ]}
+          />
+          {view === "task" && (cur && sel !== null ? (
+            <section className="ui-cl-pbody" aria-label="Wybrane zadanie">
+              <Group justify="space-between" wrap="nowrap" align="flex-start">
+                <Title order={3} className="ui-cl-ptitle">
+                  {cur.label || "Nowe zadanie"}
+                </Title>
+                <Group gap={2} wrap="nowrap">
+                  <ActionIcon variant="subtle" color="gray" disabled={sel === 0} onClick={() => { setItems((l) => { const n = [...l]; [n[sel], n[sel - 1]] = [n[sel - 1], n[sel]]; return n; }); setSel(sel - 1); }} aria-label="Przesuń wyżej">
+                    <IconArrowUp size={16} />
+                  </ActionIcon>
+                  <ActionIcon variant="subtle" color="gray" disabled={sel === items.length - 1} onClick={() => { setItems((l) => { const n = [...l]; [n[sel], n[sel + 1]] = [n[sel + 1], n[sel]]; return n; }); setSel(sel + 1); }} aria-label="Przesuń niżej">
+                    <IconArrowDown size={16} />
+                  </ActionIcon>
+                </Group>
+              </Group>
+              <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus />
+              <SimpleGrid cols={2} spacing="sm">
+                <Select
+                  label="Odpowiada"
+                  allowDeselect={false}
+                  data={[
+                    { value: "hr", label: "HR" },
+                    { value: "manager", label: "Kierownik" },
+                  ]}
+                  value={cur.responsible}
+                  onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
+                />
+                <NumberInput
+                  label="Termin (dni)"
+                  description={dueText(cur.due_days, kind)}
+                  inputWrapperOrder={["label", "input", "description", "error"]}
+                  min={-365}
+                  max={365}
+                  allowDecimal={false}
+                  value={cur.due_days}
+                  onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
+                />
+              </SimpleGrid>
+              <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
+              <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
+              <Select
+                label="Odhacz automatycznie, gdy"
+                description="Bez tego zadanie odhacza się ręcznie na karcie pracownika."
+                placeholder="ręcznie"
+                clearable
+                searchable
+                data={data.auto_options}
+                value={cur.auto}
+                onChange={(v) => upd(sel, { auto: v })}
+              />
+              <Anchor
+                component="button"
+                type="button"
+                c="red"
+                size="sm"
+                fw={600}
+                w="fit-content"
+                onClick={() => {
+                  setItems((l) => l.filter((_, j) => j !== sel));
+                  setSel(items.length > 1 ? Math.max(0, sel - 1) : null);
+                }}
+              >
+                Usuń zadanie
+              </Anchor>
+            </section>
+          ) : (
+            items.length > 0 && (
+              <Text size="sm" c="dimmed">
+                Wybierz zadanie na liście, żeby je zmienić.
+              </Text>
+            )
+          ))}
+          {view === "person" && (
+          <section className="ui-cl-pbody" aria-label="Co dostanie osoba">
+            <Text size="sm" c="dimmed">
+              Dla: {[pAg ? agMap.get(Number(pAg)) : null, pDep ? depMap.get(Number(pDep)) : null].filter(Boolean).join(" · ") || "dowolne APT i wydział"}
+            </Text>
+            {shown.length === 0 ? (
+              <Text size="sm" c="dimmed">
+                Ta osoba nie dostanie żadnego zadania z tej checklisty.
+              </Text>
+            ) : (
+              <ul className="ui-cl-preview">
+                {shown.map(({ it, i }) => (
+                  <li key={i}>
+                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                      {dueChip(it.due_days)}
+                    </span>
+                    <span>
+                      {it.label || "(bez nazwy)"}
+                      <small>
+                        {cap(RESPONSIBLE[it.responsible])}
+                        {it.auto ? ` · automatycznie: ${autoLabel(it.auto)}` : ""}
+                      </small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Text size="xs" c="dimmed">
+              Dzień 0 = dzień {ev}. Wartości ujemne – przed tą datą.{!filtering ? " Wybierz APT i wydział nad listą, żeby zobaczyć zadania konkretnej osoby." : ""}
+            </Text>
+          </section>
+          )}
+        </aside>
+      </div>
+      <div className="ui-tpe-save ui-cl-save">
+        {dirty ? (
+          <Text size="sm" className="ui-ef-pending">
+            {emptyLabels ? "Uzupełnij nazwy zadań, żeby zapisać." : "Niezapisane zmiany w checkliście."}
+          </Text>
+        ) : saved ? (
+          <Text size="sm" c="dimmed">
+            Zapisano. „Zastosuj” dopasuje otwarte checklisty: doda nowe zadania, przeliczy terminy nieodhaczonych i usunie nietknięte, które przestały dotyczyć osoby.
+          </Text>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Wszystko zapisane.
+          </Text>
+        )}
+        <Group gap="xs" wrap="nowrap">
+          {dirty && (
+            <Button variant="default" onClick={onDiscard}>
+              Odrzuć
+            </Button>
+          )}
+          {saved && !dirty ? (
+            <Button onClick={() => apply.mutate()} loading={apply.isPending}>
+              Zastosuj do trwających checklist
+            </Button>
+          ) : (
+            <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!dirty || emptyLabels}>
+              Zapisz checklistę
+            </Button>
+          )}
+        </Group>
+      </div>
+    </div>
+  );
+}
+
 export function ChecklistTemplates() {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
@@ -810,10 +1124,6 @@ export function ChecklistTemplates() {
   }
   return (
     <Stack>
-      <Text size="sm" c="dimmed">
-        Zadania z checklist, ich terminy i zakres: każde zadanie może dotyczyć wszystkich albo tylko wybranych APT i wydziałów.
-        Zmiana wydziału lub APT u pracownika w trakcie wdrożenia sama dopasuje jego checklistę.
-      </Text>
       <SegmentedControl
         w="fit-content"
         value={kind}

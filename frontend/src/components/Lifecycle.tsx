@@ -576,6 +576,11 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
   return `${a} · ${d}`;
 }
 
+// tylko zawężenia (bez „wszystkie …”): „Adecco” / „Produkcja, Magazyn” / „Adecco · Produkcja”
+function limitText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, string>) {
+  return [it.agency_ids.map((x) => ag.get(x) ?? "?").join(", "), it.department_ids.map((x) => dep.get(x) ?? "?").join(", ")].filter(Boolean).join(" · ");
+}
+
 type ChecklistPage = { title: string; description: ReactNode };
 type KindPick = { set: (k: Kind) => void; counts: Record<Kind, number> };
 type DirtyRef = { current: boolean };
@@ -1057,10 +1062,17 @@ function DeskTemplates({
         return [
             <div key={`g:${g.label}`} className="ui-cl-glabel" data-g={gi}>
               {g.label}
+              {!phone && (
+                <small>
+                  {filtering && view === "person"
+                    ? `${rows.filter(({ it }) => applies(it)).length} z ${rows.length} ${tasksWord(rows.length)}`
+                    : `${rows.length} ${tasksWord(rows.length)}`}
+                </small>
+              )}
             </div>,
-            ...rows.map(({ it, i }) => {
+            ...rows.map(({ it, i }, ri) => {
               const k = rowKey(it);
-              const dim = filtering && !applies(it);
+              const dim = filtering && view === "person" && !applies(it);
               return (
                 <div
                   key={k}
@@ -1074,6 +1086,7 @@ function DeskTemplates({
                   data-dim={dim ? "" : undefined}
                   data-lifted={lifted === k || undefined}
                   data-moved={moved === k && !lifted ? "" : undefined}
+                  data-glast={ri === rows.length - 1 || undefined}
                   onPointerDown={(e) => rowDown(i, e)}
                   onPointerMove={rowMove}
                   onPointerUp={() => hold.current && !hold.current.mouse && cancelHold()}
@@ -1106,21 +1119,28 @@ function DeskTemplates({
                         Trafi do: {groups[gIdx(it.due_days)]?.label} · {dueChip(it.due_days)}
                       </span>
                     )}
+                    {/* komputer: zadanie tak, jak na karcie pracownika – pole wyboru, nazwa, kto i kiedy */}
+                    {!phone && <span className="ui-cl-cb" aria-hidden />}
                     <span className="ui-cl-text">
                       <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
                       <span className="ui-cl-meta">
                         {phone
                           ? [cap(RESPONSIBLE[it.responsible]), it.agency_ids.length || it.department_ids.length ? scopeText(it, agMap, depMap) : null, it.auto ? "automatycznie" : null].filter(Boolean).join(" · ")
-                          : `${cap(RESPONSIBLE[it.responsible])} · ${scopeText(it, agMap, depMap)}`}
+                          : dim
+                            ? `Nie dostanie – tylko ${limitText(it, agMap, depMap)}`
+                            : [cap(RESPONSIBLE[it.responsible]), dueText(it.due_days, kind), limitText(it, agMap, depMap) || null].filter(Boolean).join(" · ")}
                       </span>
                     </span>
-                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
-                      {dueChip(it.due_days)}
-                    </span>
-                    {!phone && (
-                      <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
-                        {it.auto ? "automatycznie" : "ręcznie"}
+                    {phone ? (
+                      <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                        {dueChip(it.due_days)}
                       </span>
+                    ) : (
+                      it.auto && (
+                        <span className="ui-cl-chip" data-auto="">
+                          automatycznie
+                        </span>
+                      )
                     )}
                   </button>
                 </div>
@@ -1402,46 +1422,84 @@ function DeskTemplates({
     );
   }
 
+  const kindName = kind === "onboarding" ? "Wdrożenie" : "Odejście";
   return (
     <div className="ui-cl">
+      {/* układ edycji szablonu: nagłówek, pod nim rodzaj (jak „Pola / Ustawienia”) i tryb (jak „Edycja / Podgląd”),
+          kartka z zadaniami po lewej, panel wybranego zadania po prawej */}
       {page && (
         <PageTitle
           title={page.title}
-          meta={`${items.length} ${tasksWord(items.length)}`}
-          description={page.description}
-          actions={addBtn}
+          meta={`${kindName} · ${items.length} ${tasksWord(items.length)}`}
+          actions={
+            <Menu position="bottom-end" width={300}>
+              <Menu.Target>
+                <ActionIcon variant="default" size={36} aria-label="Więcej akcji">
+                  <IconDots size={18} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item disabled={dirty || apply.isPending} onClick={() => apply.mutate()}>
+                  Zastosuj do trwających checklist
+                  <Text size="xs" c="dimmed">
+                    {dirty ? "Najpierw zapisz zmiany." : "Doda nowe zadania, przeliczy terminy nieodhaczonych i usunie nietknięte, które przestały dotyczyć osoby."}
+                  </Text>
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          }
         />
       )}
-      {/* jak na liście Pracownicy: po lewej to, co zawęża widok (podgląd dla osoby), po prawej przełącznik rodzaju */}
       <div className="ui-cl-bar">
-        <Group gap="xs" wrap="nowrap" align="center" className="ui-cl-preview-for">
-          <Select className="ui-cl-pick-sel" aria-label="Podgląd dla agencji" placeholder="Agencja" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
-          <Select className="ui-cl-pick-sel" aria-label="Podgląd dla wydziału" placeholder="Wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
-          {!page && addBtn}
-        </Group>
-        {/* przełącznik rodzaju nad panelem, tej samej szerokości co „Zadanie / Co dostanie osoba” */}
-        {switcher && <div className="ui-cl-kind">{switcher}</div>}
-      </div>
-      <div className="ui-cl-grid">
-        {listJSX}
-        <aside className="ui-cl-side ui-cl-panel">
+        {switcher}
+        <Group gap="sm" wrap="nowrap">
           <SegmentedControl
-            fullWidth
             value={view}
             onChange={(v) => setView(v as "task" | "person")}
+            aria-label="Tryb"
             data={[
-              { value: "task", label: "Zadanie" },
-              { value: "person", label: `Co dostanie osoba · ${shown.length}` },
+              { value: "task", label: "Edycja" },
+              { value: "person", label: "Co dostanie osoba" },
             ]}
           />
-          {view === "task" && (editor ?? (
-            items.length > 0 && (
+          {addBtn}
+        </Group>
+      </div>
+      <div className="ui-cl-grid">
+        <div className="ui-cl-paper">
+          <Text size="sm" c="dimmed">
+            Tak zobaczy to kadra na karcie nowej osoby
+          </Text>
+          <Title order={2} className="ui-cl-ptitle">
+            Checklista {kind === "onboarding" ? "wdrożenia" : "odejścia"}
+            {view === "person" && filtering ? ` · ${shown.length} z ${items.length} ${tasksWord(items.length)}` : ""}
+          </Title>
+          {view === "task" ? (
+            <Text size="xs" c="dimmed">
+              Kliknij zadanie, aby je zmienić. Przeciągnij, aby zmienić kolejność – w innej grupie dostanie jej termin.
+            </Text>
+          ) : (
+            <>
+              <Group gap="xs" grow wrap="nowrap" mt="xs">
+                <Select aria-label="Podgląd dla agencji" placeholder="Agencja" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
+                <Select aria-label="Podgląd dla wydziału" placeholder="Wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+              </Group>
+              {!filtering && (
+                <Text size="xs" c="dimmed">
+                  Wybierz agencję i wydział – zadania, których ta osoba nie dostanie, przygasną.
+                </Text>
+              )}
+            </>
+          )}
+          {listJSX}
+        </div>
+        <aside className="ui-cl-side ui-cl-panel">
+          {editor ??
+            (items.length > 0 && (
               <Text size="sm" c="dimmed">
-                Wybierz zadanie na liście, żeby je zmienić.
+                Wybierz zadanie na kartce, żeby je zmienić.
               </Text>
-            )
-          ))}
-          {view === "person" && personView}
+            ))}
         </aside>
       </div>
       {saveBar}
@@ -1494,13 +1552,12 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
       dirtyRef={dirtyRef}
       switcher={
         <SegmentedControl
-          fullWidth
           value={kind}
           onChange={(v) => void pickKind(v as Kind)}
           aria-label="Rodzaj checklisty"
           data={[
-            { value: "onboarding", label: `Wdrożenie · ${q.data.onboarding.length}` },
-            { value: "offboarding", label: `Odejście · ${q.data.offboarding.length}` },
+            { value: "onboarding", label: `Wdrożenie ${q.data.onboarding.length}` },
+            { value: "offboarding", label: `Odejście ${q.data.offboarding.length}` },
           ]}
         />
       }

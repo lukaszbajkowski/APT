@@ -1716,13 +1716,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-ef-save{margin-top:var(--s-2)}
 /* checklisty (komputer): lista zadań wg terminu + panel zadania i „co dostanie osoba” */
 .ui-cl{container:cl/inline-size;display:flex;flex-direction:column;gap:var(--s-4)}
-.ui-cl-bar{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-3) var(--s-6);align-items:center}
+.ui-cl-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--s-3)}
 .ui-cl-preview-for{min-width:0}
 /* padding panelu + ramka: przełącznik wypada dokładnie nad „Zadanie / Co dostanie osoba” */
-.ui-cl-kind{padding:0 calc(var(--s-4) + 1px)}
 .ui-cl-pick-sel{flex:1 1 0;min-width:160px}
 .ui-cl-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-6);align-items:start}
-@container cl (max-width:900px){.ui-cl-grid,.ui-cl-bar{grid-template-columns:minmax(0,1fr)}.ui-cl-kind{padding:0}.ui-cl-side{position:static}}
+@container cl (max-width:900px){.ui-cl-grid{grid-template-columns:minmax(0,1fr)}.ui-cl-side{position:static}}
 .ui-cl-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-cl-list > .ui-cl-glabel:first-child{border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
 .ui-cl-list > .ui-cl-row:nth-last-child(1 of .ui-cl-row):not([data-lifted]){border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
@@ -1792,3 +1791,26 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-savebar-ph{flex:none;display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2) var(--s-4);background:var(--apt-nav);border-top:1px solid var(--apt-line)}
 .ui-savebar-ph > p,.ui-savebar > p{flex:1 1 auto;min-width:0;font-weight:600}
 .ui-savebar{align-items:center}
+
+/* checklisty na komputerze – układ edycji szablonu: kartka „tak zobaczy kadra”, grupy terminu jako szare bloki
+   (jak grupy pól), zadania jak na karcie pracownika; zaznaczenie pełną obwódką, najechanie – przerywaną */
+.ui-cl-paper{display:flex;flex-direction:column;gap:var(--s-1);min-width:0;padding:var(--s-6);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface)}
+.ui-cl-paper .ui-cl-ptitle.ui-cl-ptitle{margin:0}
+.ui-cl-paper .ui-cl-list{margin-top:var(--s-3);border:0;border-radius:0;background:transparent}
+.ui-cl-paper .ui-cl-glabel{display:flex;flex-direction:column;margin-top:var(--s-3);padding:var(--s-3) var(--s-4) var(--s-2);border:0;border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0;background:var(--apt-subtle);color:var(--mantine-color-text);font-size:15px;line-height:22px}
+.ui-cl-paper .ui-cl-glabel:first-child{margin-top:0}
+.ui-cl-paper .ui-cl-glabel small{font-size:13px;line-height:18px;font-weight:400;color:var(--mantine-color-dimmed)}
+.ui-cl-paper .ui-cl-row{padding:0 var(--s-2);border-top:0;border-radius:0;background:var(--apt-subtle)}
+.ui-cl-paper .ui-cl-row[data-glast]{padding-bottom:var(--s-2);border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-cl-paper .ui-cl-row:hover{background:var(--apt-subtle)}
+.ui-cl-paper .ui-cl-pick{grid-template-columns:auto minmax(0,1fr) auto;padding:var(--s-3);border-radius:var(--mantine-radius-sm);background:var(--apt-surface)}
+.ui-cl-paper .ui-cl-row + .ui-cl-row:not([data-lifted]) .ui-cl-pick{box-shadow:0 -1px 0 var(--apt-line)}
+.ui-cl-paper .ui-cl-row:hover:not([data-on]):not([data-lifted]) .ui-cl-pick{outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-2px}
+.ui-cl-paper .ui-cl-row[data-on]{background:var(--apt-subtle)}
+.ui-cl-paper .ui-cl-row[data-on]::after{content:none}
+.ui-cl-paper .ui-cl-row[data-on] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,var(--apt-surface))}
+.ui-cl-paper .ui-cl-row[data-moved] .ui-cl-pick{background:var(--mantine-primary-color-light)}
+.ui-cl-paper .ui-cl-row[data-lifted]{background:transparent;outline:none;box-shadow:none;border-radius:0}
+.ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+.ui-cl-paper .ui-cl-name{font-weight:500}
+.ui-cl-cb{width:18px;height:18px;flex:none;border:1.5px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-xs);background:var(--apt-surface)}

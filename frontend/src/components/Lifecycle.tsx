@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -540,6 +540,7 @@ interface TemplateItem {
   agency_ids: number[];
   department_ids: number[];
 }
+const tasksWord = (n: number) => (n === 1 ? "zadanie" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "zadania" : "zadań");
 // stały klucz wiersza – nowe zadania nie mają id, a przeciąganie podmienia obiekt (inny termin)
 const rowKeys = new WeakMap<TemplateItem, string>();
 let rowSeq = 0;
@@ -572,7 +573,8 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
   return `${a} · ${d}`;
 }
 
-function TemplatePanel({ kind, data, switcher }: { kind: Kind; data: Templates; switcher?: ReactNode }) {
+type ChecklistPage = { title: string; description: ReactNode };
+function TemplatePanel({ kind, data, switcher, page }: { kind: Kind; data: Templates; switcher?: ReactNode; page?: ChecklistPage }) {
   const mobile = useIsPhone();
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
@@ -637,6 +639,7 @@ function TemplatePanel({ kind, data, switcher }: { kind: Kind; data: Templates; 
     return (
       <DeskTemplates
         switcher={switcher}
+        page={page}
         kind={kind}
         data={data}
         items={items}
@@ -846,8 +849,10 @@ function DeskTemplates({
   applies,
   onDiscard,
   switcher,
+  page,
 }: {
   switcher?: ReactNode;
+  page?: ChecklistPage;
   kind: Kind;
   data: Templates;
   items: TemplateItem[];
@@ -1041,28 +1046,39 @@ function DeskTemplates({
     return () => clearTimeout(t);
   }, [moved]);
 
+  const addBtn = (
+    <Button
+      variant="default"
+      leftSection={<IconPlus size={16} />}
+      onClick={() => {
+        setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
+        setSel(items.length);
+      }}
+    >
+      Dodaj zadanie
+    </Button>
+  );
   return (
     <div className="ui-cl">
+      {page && (
+        <PageTitle
+          title={page.title}
+          meta={`${items.length} ${tasksWord(items.length)}`}
+          description={page.description}
+          actions={addBtn}
+        />
+      )}
+      {/* jak na liście Pracownicy: po lewej to, co zawęża widok (podgląd dla osoby), po prawej przełącznik rodzaju */}
       <div className="ui-cl-bar">
-        {switcher}
         <Group gap="xs" wrap="nowrap" align="center" className="ui-cl-preview-for">
-          <Text size="sm" c="dimmed">
+          <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap" }}>
             Podgląd dla:
           </Text>
-          <Select size="sm" w={200} aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
-          <Select size="sm" w={200} aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+          <Select className="ui-cl-pick-sel" aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
+          <Select className="ui-cl-pick-sel" aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
         </Group>
-        <Button
-          variant="default"
-          className="ui-cl-add"
-          leftSection={<IconPlus size={16} />}
-          onClick={() => {
-            setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
-            setSel(items.length);
-          }}
-        >
-          Dodaj zadanie
-        </Button>
+        {switcher}
+        {!page && addBtn}
       </div>
       <div className="ui-cl-grid">
         <div className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
@@ -1282,11 +1298,19 @@ function DeskTemplates({
   );
 }
 
-export function ChecklistTemplates() {
+export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
   const mobile = useIsPhone();
-  if (q.isLoading) return <Loading />;
+  if (q.isLoading)
+    return page && !mobile ? (
+      <div className="ui-cl">
+        <PageTitle title={page.title} description={page.description} />
+        <RowsSkeleton rows={6} />
+      </div>
+    ) : (
+      <Loading />
+    );
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
   if (mobile) {
     const kinds: Kind[] = ["onboarding", "offboarding"];
@@ -1317,6 +1341,7 @@ export function ChecklistTemplates() {
       key={kind}
       kind={kind}
       data={q.data}
+      page={page}
       switcher={
         <SegmentedControl
           value={kind}

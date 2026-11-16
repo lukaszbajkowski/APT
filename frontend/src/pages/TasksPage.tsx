@@ -43,11 +43,12 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   if (settingsOnly)
     return (
       <Stack maw={1760}>
-        <PageTitle
-          title="Checklisty"
-          description="Zadania tworzone przy zatrudnieniu i odejściu – dla wszystkich albo wybranych APT i wydziałów. Otwarte zadania są w „Dziś”."
+        <ChecklistTemplates
+          page={{
+            title: "Checklisty",
+            description: "Zadania tworzone przy zatrudnieniu i odejściu – dla wszystkich albo wybranych APT i wydziałów. Otwarte zadania są w „Dziś”.",
+          }}
         />
-        <ChecklistTemplates />
       </Stack>
     );
   return (

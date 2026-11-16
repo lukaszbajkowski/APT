@@ -1716,8 +1716,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-ef-save{margin-top:var(--s-2)}
 /* checklisty (komputer): lista zadań wg terminu + panel zadania i „co dostanie osoba” */
 .ui-cl{container:cl/inline-size;display:flex;flex-direction:column;gap:var(--s-4)}
-.ui-cl-bar{display:flex;align-items:center;gap:var(--s-3) var(--s-6);flex-wrap:wrap}
-.ui-cl-add{margin-left:auto}
+.ui-cl-bar{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
+.ui-cl-preview-for{flex:1 1 480px;min-width:0}
+.ui-cl-pick-sel{flex:1 1 0;min-width:160px}
 .ui-cl-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-6);align-items:start}
 @container cl (max-width:900px){.ui-cl-grid{grid-template-columns:minmax(0,1fr)}.ui-cl-side{position:static}}
 .ui-cl-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}

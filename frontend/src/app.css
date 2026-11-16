@@ -1716,11 +1716,13 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-ef-save{margin-top:var(--s-2)}
 /* checklisty (komputer): lista zadań wg terminu + panel zadania i „co dostanie osoba” */
 .ui-cl{container:cl/inline-size;display:flex;flex-direction:column;gap:var(--s-4)}
-.ui-cl-bar{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
-.ui-cl-preview-for{flex:1 1 480px;min-width:0}
+.ui-cl-bar{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-3) var(--s-6);align-items:center}
+.ui-cl-preview-for{min-width:0}
+/* padding panelu + ramka: przełącznik wypada dokładnie nad „Zadanie / Co dostanie osoba” */
+.ui-cl-kind{padding:0 calc(var(--s-4) + 1px)}
 .ui-cl-pick-sel{flex:1 1 0;min-width:160px}
 .ui-cl-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:var(--s-6);align-items:start}
-@container cl (max-width:900px){.ui-cl-grid{grid-template-columns:minmax(0,1fr)}.ui-cl-side{position:static}}
+@container cl (max-width:900px){.ui-cl-grid,.ui-cl-bar{grid-template-columns:minmax(0,1fr)}.ui-cl-kind{padding:0}.ui-cl-side{position:static}}
 .ui-cl-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-cl-group:first-child .ui-cl-glabel{border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
 .ui-cl-group:last-child .ui-cl-row:last-child:not([data-lifted]){border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}

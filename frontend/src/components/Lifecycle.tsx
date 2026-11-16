@@ -1135,14 +1135,12 @@ function DeskTemplates({
       {/* jak na liście Pracownicy: po lewej to, co zawęża widok (podgląd dla osoby), po prawej przełącznik rodzaju */}
       <div className="ui-cl-bar">
         <Group gap="xs" wrap="nowrap" align="center" className="ui-cl-preview-for">
-          <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap" }}>
-            Podgląd dla:
-          </Text>
-          <Select className="ui-cl-pick-sel" aria-label="Podgląd: APT" placeholder="dowolne APT" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
-          <Select className="ui-cl-pick-sel" aria-label="Podgląd: wydział" placeholder="dowolny wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+          <Select className="ui-cl-pick-sel" aria-label="Podgląd dla agencji" placeholder="Agencja" clearable searchable data={agOpts} value={pAg} onChange={pickAg} />
+          <Select className="ui-cl-pick-sel" aria-label="Podgląd dla wydziału" placeholder="Wydział" clearable searchable data={depOpts} value={pDep} onChange={pickDep} />
+          {!page && addBtn}
         </Group>
-        {switcher}
-        {!page && addBtn}
+        {/* przełącznik rodzaju nad panelem, tej samej szerokości co „Zadanie / Co dostanie osoba” */}
+        {switcher && <div className="ui-cl-kind">{switcher}</div>}
       </div>
       <div className="ui-cl-grid">
         <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
@@ -1414,6 +1412,7 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
       page={page}
       switcher={
         <SegmentedControl
+          fullWidth
           value={kind}
           onChange={(v) => setKind(v as Kind)}
           aria-label="Rodzaj checklisty"

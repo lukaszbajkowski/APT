@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Grid, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title } from "@mantine/core";
@@ -11,7 +11,7 @@ import {
   IconDots,
   IconDotsVertical,
   IconCalendarEvent,
-  
+  IconGripVertical,
   IconPlayerSkipForward,
   IconPlus,
   IconTrash,
@@ -540,6 +540,19 @@ interface TemplateItem {
   agency_ids: number[];
   department_ids: number[];
 }
+// stały klucz wiersza – nowe zadania nie mają id, a przeciąganie podmienia obiekt (inny termin)
+const rowKeys = new WeakMap<TemplateItem, string>();
+let rowSeq = 0;
+const rowKey = (it: TemplateItem) => {
+  if (it.id != null) return `i${it.id}`;
+  let k = rowKeys.get(it);
+  if (!k) rowKeys.set(it, (k = `n${++rowSeq}`));
+  return k;
+};
+const carryKey = (from: TemplateItem, to: TemplateItem) => {
+  if (from.id == null) rowKeys.set(to, rowKey(from));
+  return to;
+};
 interface Templates {
   onboarding: TemplateItem[];
   offboarding: TemplateItem[];
@@ -559,7 +572,7 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
   return `${a} · ${d}`;
 }
 
-function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
+function TemplatePanel({ kind, data, switcher }: { kind: Kind; data: Templates; switcher?: ReactNode }) {
   const mobile = useIsPhone();
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
@@ -623,6 +636,7 @@ function TemplatePanel({ kind, data }: { kind: Kind; data: Templates }) {
   if (!mobile)
     return (
       <DeskTemplates
+        switcher={switcher}
         kind={kind}
         data={data}
         items={items}
@@ -831,7 +845,9 @@ function DeskTemplates({
   setPDep,
   applies,
   onDiscard,
+  switcher,
 }: {
+  switcher?: ReactNode;
   kind: Kind;
   data: Templates;
   items: TemplateItem[];
@@ -877,15 +893,159 @@ function DeskTemplates({
     { label: kind === "onboarding" ? "Pierwszy tydzień" : "Tydzień po odejściu", test: (d) => d > 0 && d <= 7 },
     { label: "Później", test: (d) => d > 7 },
   ];
-  const upd = (i: number, v: Partial<TemplateItem>) => setItems((l) => l.map((x, j) => (j === i ? { ...x, ...v } : x)));
+  const upd = (i: number, v: Partial<TemplateItem>) => setItems((l) => l.map((x, j) => (j === i ? carryKey(x, { ...x, ...v }) : x)));
   const cur = sel !== null ? items[sel] : null;
   const emptyLabels = items.some((x) => !x.label.trim());
   const shown = [...items.map((it, i) => ({ it, i }))].filter(({ it }) => applies(it)).sort((a, b) => a.it.due_days - b.it.due_days || a.i - b.i);
 
+  /* Przeciąganie za uchwyt (jak w edycji szablonu): lista przestawia się na żywo, przeniesiony wiersz idzie za kursorem.
+     Kolejność w grupie = kolejność zapisana. Upuszczenie w innej grupie terminu przejmuje termin sąsiada
+     (np. z „Dnia zatrudnienia” do „Pierwszego tygodnia” → +1 dzień). Druga droga: strzałki ↑ ↓ na uchwycie i w panelu. */
+  const gIdx = (d: number) => groups.findIndex((g) => g.test(d));
+  const visual = (l: TemplateItem[]) => groups.flatMap((g) => l.filter((it) => g.test(it.due_days)));
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const rowEls = useRef(new Map<string, HTMLElement>());
+  const prevTops = useRef<Map<string, number> | null>(null);
+  const drag = useRef<{ item: TemplateItem; key: string; grab: number; y: number; ty: number } | null>(null);
+  const [lifted, setLifted] = useState<string | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
+  const motion = typeof window === "undefined" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // przestawia zadanie na pozycję k wśród pozostałych (kolejność widoczna); zwraca nowy indeks
+  const placeAt = (cur: TemplateItem, k: number, due0: number, force?: number) => {
+    const l = itemsRef.current;
+    const others = visual(l).filter((x) => x !== cur);
+    const P = others[k - 1];
+    const N = others[k];
+    let due = force ?? due0;
+    if (force === undefined && !((P && gIdx(P.due_days) === gIdx(due0)) || (N && gIdx(N.due_days) === gIdx(due0)))) due = P ? P.due_days : N ? N.due_days : due0;
+    const base = l.filter((x) => x !== cur);
+    const next = due === cur.due_days ? cur : carryKey(cur, { ...cur, due_days: due });
+    let at = base.length;
+    if (P && gIdx(P.due_days) === gIdx(due)) at = base.indexOf(P) + 1;
+    else if (N) at = base.indexOf(N);
+    const out = [...base.slice(0, at), next, ...base.slice(at)];
+    if (out.every((x, i) => x === l[i])) return { next, idx: l.indexOf(cur) };
+    // zapamiętaj położenie pozostałych wierszy – po przestawieniu przesuną się płynnie (FLIP)
+    prevTops.current = new Map([...rowEls.current].map(([k2, el]) => [k2, el.getBoundingClientRect().top - (k2 === drag.current?.key ? drag.current.ty : 0)]));
+    setItems(() => out);
+    return { next, idx: out.indexOf(next) };
+  };
+
+  // krok o jedno miejsce (klawiatura, strzałki w panelu); na granicy grupy zadanie przechodzi do sąsiedniej grupy
+  const step = (i: number, dir: -1 | 1) => {
+    const it = itemsRef.current[i];
+    if (!it) return;
+    const vis = visual(itemsRef.current);
+    const v = vis.indexOf(it);
+    const others = vis.filter((x) => x !== it);
+    const nb = dir > 0 ? others[v] : others[v - 1];
+    if (!nb) return;
+    const cross = gIdx(nb.due_days) !== gIdx(it.due_days);
+    const r = placeAt(it, cross ? v : v + dir, it.due_days, cross ? nb.due_days : undefined);
+    setSelRaw(r.idx);
+    setMoved(rowKey(r.next));
+  };
+  const canStep = (i: number, dir: -1 | 1) => {
+    const vis = visual(items);
+    const v = vis.indexOf(items[i]);
+    return dir < 0 ? v > 0 : v >= 0 && v < vis.length - 1;
+  };
+
+  const positionLifted = () => {
+    const d = drag.current;
+    const el = d && rowEls.current.get(d.key);
+    if (!d || !el) return;
+    const natural = el.getBoundingClientRect().top - d.ty;
+    d.ty = d.y - d.grab - natural;
+    el.style.transform = `translateY(${d.ty}px)`;
+  };
+  const onDragMove = () => {
+    const d = drag.current;
+    if (!d) return;
+    positionLifted();
+    const l = itemsRef.current;
+    const cur = l.find((x) => rowKey(x) === d.key);
+    const el = rowEls.current.get(d.key);
+    if (!cur || !el) return;
+    const center = d.y - d.grab + el.offsetHeight / 2;
+    const others = visual(l).filter((x) => x !== cur);
+    let k = 0;
+    for (const o of others) {
+      const r = rowEls.current.get(rowKey(o))?.getBoundingClientRect();
+      if (r && r.top + r.height / 2 < center) k++;
+    }
+    // na granicy dwóch innych grup decyduje nagłówek grupy: środek wiersza pod nagłówkiem = grupa niższa
+    const P = others[k - 1];
+    const N = others[k];
+    let force: number | undefined;
+    const g0 = gIdx(d.item.due_days);
+    if (P && N && gIdx(P.due_days) !== gIdx(N.due_days)) {
+      const lab = rowEls.current.get(rowKey(N))?.closest(".ui-cl-group")?.querySelector(".ui-cl-glabel")?.getBoundingClientRect();
+      const to = lab && center > lab.top + lab.height / 2 ? N : P;
+      force = gIdx(to.due_days) === g0 ? d.item.due_days : to.due_days;
+    }
+    const r = placeAt(cur, k, d.item.due_days, force);
+    setSelRaw(r.idx);
+  };
+  const startDrag = (i: number, e: ReactPointerEvent) => {
+    if (e.button !== 0) return;
+    const it = items[i];
+    const el = rowEls.current.get(rowKey(it));
+    if (!el) return;
+    e.preventDefault();
+    drag.current = { item: it, key: rowKey(it), grab: e.clientY - el.getBoundingClientRect().top, y: e.clientY, ty: 0 };
+    setLifted(rowKey(it));
+    setSelRaw(i);
+    setView("task");
+    const move = (ev: PointerEvent) => {
+      if (drag.current) drag.current.y = ev.clientY;
+      onDragMove();
+    };
+    const scroll = () => onDragMove();
+    const end = () => {
+      const d = drag.current;
+      const elx = d && rowEls.current.get(d.key);
+      if (elx) elx.style.transform = "";
+      if (d) setMoved(d.key);
+      drag.current = null;
+      setLifted(null);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("scroll", scroll, true);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    window.addEventListener("scroll", scroll, true);
+  };
+  useLayoutEffect(() => {
+    const prev = prevTops.current;
+    prevTops.current = null;
+    positionLifted();
+    if (!prev || !motion) return;
+    for (const [k, el] of rowEls.current) {
+      if (k === drag.current?.key) continue;
+      const p = prev.get(k);
+      if (p === undefined) continue;
+      const dy = p - el.getBoundingClientRect().top;
+      if (Math.abs(dy) > 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 160, easing: "cubic-bezier(.2,.8,.2,1)" });
+    }
+  }, [items]);
+  // krótkie podświetlenie po upuszczeniu – widać, gdzie trafiło zadanie
+  useEffect(() => {
+    if (!moved) return;
+    const t = setTimeout(() => setMoved(null), 700);
+    return () => clearTimeout(t);
+  }, [moved]);
+
   return (
     <div className="ui-cl">
       <div className="ui-cl-bar">
-        <Group gap="xs" wrap="nowrap" align="center">
+        {switcher}
+        <Group gap="xs" wrap="nowrap" align="center" className="ui-cl-preview-for">
           <Text size="sm" c="dimmed">
             Podgląd dla:
           </Text>
@@ -894,6 +1054,7 @@ function DeskTemplates({
         </Group>
         <Button
           variant="default"
+          className="ui-cl-add"
           leftSection={<IconPlus size={16} />}
           onClick={() => {
             setItems((l) => [...l, { label: "", responsible: "hr", due_days: 0, auto: null, agency_ids: [], department_ids: [] }]);
@@ -904,7 +1065,7 @@ function DeskTemplates({
         </Button>
       </div>
       <div className="ui-cl-grid">
-        <div className="ui-cl-list" role="listbox" aria-label="Zadania checklisty">
+        <div className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
           {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
           {groups.map((g) => {
             const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
@@ -912,32 +1073,60 @@ function DeskTemplates({
             return (
               <div key={g.label} className="ui-cl-group">
                 <div className="ui-cl-glabel">{g.label}</div>
-                {rows.map(({ it, i }) => (
-                  <button
-                    key={it.id ?? `n${i}`}
-                    type="button"
-                    role="option"
-                    aria-selected={sel === i}
-                    className="ui-cl-row"
-                    data-on={sel === i || undefined}
-                    data-dim={filtering && !applies(it) ? "" : undefined}
-                    title={filtering && !applies(it) ? "Ta osoba nie dostanie tego zadania" : undefined}
-                    onClick={() => setSel(i)}
-                  >
-                    <span className="ui-cl-text">
-                      <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
-                      <span className="ui-cl-meta">
-                        {cap(RESPONSIBLE[it.responsible])} · {scopeText(it, agMap, depMap)}
+                {rows.map(({ it, i }) => {
+                  const k = rowKey(it);
+                  const dim = filtering && !applies(it);
+                  return (
+                    <div
+                      key={k}
+                      ref={(el) => {
+                        if (el) rowEls.current.set(k, el);
+                        else rowEls.current.delete(k);
+                      }}
+                      className="ui-cl-row"
+                      data-on={sel === i || undefined}
+                      data-dim={dim ? "" : undefined}
+                      data-lifted={lifted === k || undefined}
+                      data-moved={moved === k && !lifted ? "" : undefined}
+                    >
+                      <span
+                        className="ui-cl-grip"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Przenieś: ${it.label || "zadanie bez nazwy"}`}
+                        title="Przeciągnij albo użyj strzałek ↑ ↓"
+                        onPointerDown={(e) => startDrag(i, e)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                          e.preventDefault();
+                          step(i, e.key === "ArrowUp" ? -1 : 1);
+                        }}
+                      >
+                        <IconGripVertical size={20} aria-hidden />
                       </span>
-                    </span>
-                    <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
-                      {dueChip(it.due_days)}
-                    </span>
-                    <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
-                      {it.auto ? "automatycznie" : "ręcznie"}
-                    </span>
-                  </button>
-                ))}
+                      <button
+                        type="button"
+                        className="ui-cl-pick"
+                        aria-pressed={sel === i}
+                        title={dim ? "Ta osoba nie dostanie tego zadania" : undefined}
+                        onClick={() => setSel(i)}
+                      >
+                        <span className="ui-cl-text">
+                          <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
+                          <span className="ui-cl-meta">
+                            {cap(RESPONSIBLE[it.responsible])} · {scopeText(it, agMap, depMap)}
+                          </span>
+                        </span>
+                        <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+                          {dueChip(it.due_days)}
+                        </span>
+                        <span className="ui-cl-chip" data-auto={it.auto ? "" : undefined}>
+                          {it.auto ? "automatycznie" : "ręcznie"}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -959,10 +1148,10 @@ function DeskTemplates({
                   {cur.label || "Nowe zadanie"}
                 </Title>
                 <Group gap={2} wrap="nowrap">
-                  <ActionIcon variant="subtle" color="gray" disabled={sel === 0} onClick={() => { setItems((l) => { const n = [...l]; [n[sel], n[sel - 1]] = [n[sel - 1], n[sel]]; return n; }); setSel(sel - 1); }} aria-label="Przesuń wyżej">
+                  <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)} aria-label="Przesuń wyżej">
                     <IconArrowUp size={16} />
                   </ActionIcon>
-                  <ActionIcon variant="subtle" color="gray" disabled={sel === items.length - 1} onClick={() => { setItems((l) => { const n = [...l]; [n[sel], n[sel + 1]] = [n[sel + 1], n[sel]]; return n; }); setSel(sel + 1); }} aria-label="Przesuń niżej">
+                  <ActionIcon variant="subtle" color="gray" disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)} aria-label="Przesuń niżej">
                     <IconArrowDown size={16} />
                   </ActionIcon>
                 </Group>
@@ -1122,18 +1311,23 @@ export function ChecklistTemplates() {
       </Stack>
     );
   }
+  // komputer: przełącznik rodzaju w jednym pasku z podglądem i „Dodaj zadanie”
   return (
-    <Stack>
-      <SegmentedControl
-        w="fit-content"
-        value={kind}
-        onChange={(v) => setKind(v as Kind)}
-        data={[
-          { value: "onboarding", label: `Wdrożenie (${q.data.onboarding.length})` },
-          { value: "offboarding", label: `Odejście (${q.data.offboarding.length})` },
-        ]}
-      />
-      <TemplatePanel key={kind} kind={kind} data={q.data} />
-    </Stack>
+    <TemplatePanel
+      key={kind}
+      kind={kind}
+      data={q.data}
+      switcher={
+        <SegmentedControl
+          value={kind}
+          onChange={(v) => setKind(v as Kind)}
+          aria-label="Rodzaj checklisty"
+          data={[
+            { value: "onboarding", label: `Wdrożenie · ${q.data.onboarding.length}` },
+            { value: "offboarding", label: `Odejście · ${q.data.offboarding.length}` },
+          ]}
+        />
+      }
+    />
   );
 }

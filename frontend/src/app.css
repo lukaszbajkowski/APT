@@ -1815,3 +1815,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-paper .ui-cl-name{font-weight:500}
 .ui-cl-cb{width:18px;height:18px;flex:none;border:1.5px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-xs);background:var(--apt-surface)}
 .ui-cl-grid[data-narrow]{grid-template-columns:minmax(0,1fr)}
+/* nagłówek kartki (checklisty, edycja szablonu): opis i tytuł po lewej, Edycja / Podgląd w prawym górnym rogu */
+.ui-paper-headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s-3);flex-wrap:wrap}
+.ui-paper-headrow > div{min-width:0}
+.ui-paper-headrow > .mantine-SegmentedControl-root{margin-left:auto}

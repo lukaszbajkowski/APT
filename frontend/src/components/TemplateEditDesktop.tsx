@@ -104,6 +104,18 @@ export function TemplateEditDesktop({
   const groupNames = [...new Set(fields.map((f) => f.group).filter(Boolean) as string[])];
   const legacy = fields.some((f) => !f.group && f.label.includes(" – "));
 
+  // Edycja / Podgląd – w prawym górnym rogu kartki: przełącza tylko jej zawartość
+  const modeSwitch = (
+    <SegmentedControl
+      value={side}
+      onChange={setSide}
+      data={[
+        { value: "edit", label: "Edycja" },
+        { value: "preview", label: "Podgląd" },
+      ]}
+      aria-label="Tryb formularza"
+    />
+  );
   return (
     <div className="ui-tpe" ref={rootRef}>
       <Link to={`/szablony?id=${t.id}`} className="ui-back-link">
@@ -114,6 +126,11 @@ export function TemplateEditDesktop({
         meta={`Wersja ${t.version} · ${fields.length} ${fields.length === 1 ? "pole" : fields.length % 10 >= 2 && fields.length % 10 <= 4 && (fields.length % 100 < 12 || fields.length % 100 > 14) ? "pola" : "pól"}`}
         actions={
           <>
+            {tab === "fields" && fields.length > 0 && side === "edit" && (
+              <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => setGroupDlg({})}>
+                Nowa grupa
+              </Button>
+            )}
             <input ref={fileRef} type="file" accept=".docx" hidden onChange={(e) => e.currentTarget.files?.[0] && onReplace(e.currentTarget.files[0])} />
             <Button variant="default" loading={replacing} onClick={() => fileRef.current?.click()}>
               Wgraj nową wersję
@@ -123,7 +140,7 @@ export function TemplateEditDesktop({
         }
       />
 
-      {/* przełącznik części szablonu – jak w Wiadomościach i Komunikatach; tryb formularza i „Nowa grupa” w tym samym wierszu */}
+      {/* jeden przełącznik pod tytułem (część szablonu); „Nowa grupa” w linii tytułu, Edycja / Podgląd na kartce */}
       <div className="ui-tpe-topbar">
         <SegmentedControl
           value={tab}
@@ -135,24 +152,6 @@ export function TemplateEditDesktop({
             { value: "tags", label: "Znaczniki w pliku" },
           ]}
         />
-        {tab === "fields" && fields.length > 0 && (
-          <div className="ui-tpe-tools">
-              <SegmentedControl
-                value={side}
-                onChange={setSide}
-                data={[
-                  { value: "edit", label: "Edycja" },
-                  { value: "preview", label: "Podgląd" },
-                ]}
-                aria-label="Tryb formularza"
-              />
-              {side === "edit" && (
-                <Button size="xs" variant="default" leftSection={<IconPlus size={14} />} onClick={() => setGroupDlg({})}>
-                  Nowa grupa
-                </Button>
-              )}
-          </div>
-        )}
       </div>
 
         {tab === "fields" && (
@@ -174,17 +173,22 @@ export function TemplateEditDesktop({
             <GroupDialog opened={!!groupDlg} onClose={() => setGroupDlg(null)} fields={fields} editing={groupDlg?.editing} initialKeys={groupDlg?.keys} onApply={(nf) => set({ fields: nf })} />
             {side === "preview" ? (
               <div className="ui-tpe-pvwrap">
-                <FormPreview title={draft.name || t.name} fields={fields} />
+                <FormPreview title={draft.name || t.name} fields={fields} corner={modeSwitch} />
               </div>
             ) : (
             <div className="ui-tpe-grid" data-narrow={narrow || undefined}>
               {/* płótno: formularz taki, jak zobaczy go kadra; pole łapie się w całości, przyciąga do szczeliny, przewija przy krawędzi */}
               <div ref={listRef} className="ui-tpe-plist ui-tpe-paper" aria-label="Pola formularza">
                 <div className="ui-tpe-paperhead">
-                  <Text size="sm" c="dimmed">
-                    Tak zobaczy to użytkownik przy „Nowy dokument”
-                  </Text>
-                  <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
+                  <div className="ui-paper-headrow">
+                    <div>
+                      <Text size="sm" c="dimmed">
+                        Tak zobaczy to użytkownik przy „Nowy dokument”
+                      </Text>
+                      <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
+                    </div>
+                    {modeSwitch}
+                  </div>
                   <Text size="xs" c="dimmed">
                     {touch
                       ? "Dotknij dwa razy etykietę, aby zmienić jej treść. Przytrzymaj pole, aby je przenieść."
@@ -519,16 +523,13 @@ export function TemplateEditSkeleton() {
       <div className="ui-tpe-skhead">
         <Skeleton height={28} width={320} />
         <Group gap="xs" wrap="nowrap">
+          <Skeleton height={36} width={130} radius="sm" />
           <Skeleton height={36} width={150} radius="sm" />
           <Skeleton height={36} width={36} radius="sm" />
         </Group>
       </div>
       <div className="ui-tpe-topbar">
         <Skeleton height={39} width={380} radius="md" />
-        <Group gap="sm" wrap="nowrap">
-          <Skeleton height={39} width={150} radius="md" />
-          <Skeleton height={39} width={120} radius="sm" />
-        </Group>
       </div>
       <div className="ui-tpe-grid">
         <CanvasSkel />
@@ -575,7 +576,7 @@ export function TemplateEditMobileSkeleton() {
  * Podgląd na żywo: ten sam formularz, który kadra widzi przy „Nowy dokument” (grupy, „Więcej pól”, typy pól),
  * zbudowany z bieżących, niezapisanych ustawień. Wybrane pole podświetlone; klik w pole je wybiera (także na liście).
  */
-export function FormPreview({ title, fields, active, onPick, plain }: { title: string; fields: TemplateField[]; active?: string; onPick?: (key: string) => void; plain?: boolean }) {
+export function FormPreview({ title, fields, active, onPick, plain, corner }: { title: string; fields: TemplateField[]; active?: string; onPick?: (key: string) => void; plain?: boolean; corner?: ReactNode }) {
   const [values, setValues] = useState<Values>({});
   const [more, setMore] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -600,11 +601,14 @@ export function FormPreview({ title, fields, active, onPick, plain }: { title: s
     />;
   return (
     <Paper withBorder={!plain} radius="md" className={plain ? "ui-pv-plain" : "ui-tpe-panel ui-pv"} ref={box}>
-      <div>
-        <Text size="sm" c="dimmed">
-          Tak zobaczy to użytkownik przy „Nowy dokument”
-        </Text>
-        <h2 className="ui-dsec-title">{title}</h2>
+      <div className="ui-paper-headrow">
+        <div>
+          <Text size="sm" c="dimmed">
+            Tak zobaczy to użytkownik przy „Nowy dokument”
+          </Text>
+          <h2 className="ui-dsec-title">{title}</h2>
+        </div>
+        {corner}
       </div>
       {render(shown)}
       {hidden.length > 0 && (

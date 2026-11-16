@@ -1445,6 +1445,8 @@ function DeskTemplates({
           title={page.title}
           meta={`${kindName} · ${items.length} ${tasksWord(items.length)}`}
           actions={
+            <>
+            {addBtn}
             <Menu position="bottom-end" width={300}>
               <Menu.Target>
                 <ActionIcon variant="default" size={36} aria-label="Więcej akcji">
@@ -1460,33 +1462,37 @@ function DeskTemplates({
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
+            </>
           }
         />
       )}
+      {/* pod tytułem jeden przełącznik (rodzaj); „Dodaj zadanie” w linii tytułu, Edycja / Co dostanie osoba na kartce */}
       <div className="ui-cl-bar">
         {switcher}
-        <Group gap="sm" wrap="nowrap">
-          <SegmentedControl
-            value={view}
-            onChange={(v) => setView(v as "task" | "person")}
-            aria-label="Tryb"
-            data={[
-              { value: "task", label: "Edycja" },
-              { value: "person", label: "Co dostanie osoba" },
-            ]}
-          />
-          {addBtn}
-        </Group>
+        {!page && addBtn}
       </div>
       <div className="ui-cl-grid" data-narrow={narrow || undefined}>
         <div className="ui-cl-paper">
-          <Text size="sm" c="dimmed">
-            Tak zobaczy to kadra na karcie nowej osoby
-          </Text>
-          <Title order={2} className="ui-cl-ptitle">
-            Checklista {kind === "onboarding" ? "wdrożenia" : "odejścia"}
-            {view === "person" && filtering ? ` · ${shown.length} z ${items.length} ${tasksWord(items.length)}` : ""}
-          </Title>
+          <div className="ui-paper-headrow">
+            <div>
+              <Text size="sm" c="dimmed">
+                Tak zobaczy to kadra na karcie nowej osoby
+              </Text>
+              <Title order={2} className="ui-cl-ptitle">
+                Checklista {kind === "onboarding" ? "wdrożenia" : "odejścia"}
+                {view === "person" && filtering ? ` · ${shown.length} z ${items.length} ${tasksWord(items.length)}` : ""}
+              </Title>
+            </div>
+            <SegmentedControl
+              value={view}
+              onChange={(v) => setView(v as "task" | "person")}
+              aria-label="Tryb kartki"
+              data={[
+                { value: "task", label: "Edycja" },
+                { value: "person", label: "Co dostanie osoba" },
+              ]}
+            />
+          </div>
           {view === "task" ? (
             <Text size="xs" c="dimmed">
               Kliknij zadanie, aby je zmienić. Przeciągnij, aby zmienić kolejność – w innej grupie dostanie jej termin.

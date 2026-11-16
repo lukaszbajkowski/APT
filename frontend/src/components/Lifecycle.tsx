@@ -13,8 +13,7 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconChevronDown,
-  IconGripVertical,
-  IconPlayerSkipForward,
+    IconPlayerSkipForward,
   IconPlus,
 } from "@tabler/icons-react";
 
@@ -576,7 +575,8 @@ function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, s
 
 type ChecklistPage = { title: string; description: ReactNode };
 type KindPick = { set: (k: Kind) => void; counts: Record<Kind, number> };
-function TemplatePanel({ kind, data, switcher, page, kindPick }: { kind: Kind; data: Templates; switcher?: ReactNode; page?: ChecklistPage; kindPick?: KindPick }) {
+type DirtyRef = { current: boolean };
+function TemplatePanel({ kind, data, switcher, page, kindPick, dirtyRef }: { kind: Kind; data: Templates; switcher?: ReactNode; page?: ChecklistPage; kindPick?: KindPick; dirtyRef?: DirtyRef }) {
   const mobile = useIsPhone();
   const qc = useQueryClient();
   const agencies = useQuery({ queryKey: ["agencies"], queryFn: () => api<DictionaryItem[]>("/agencies") });
@@ -590,6 +590,8 @@ function TemplatePanel({ kind, data, switcher, page, kindPick }: { kind: Kind; d
     setItems(data[kind]);
     setDirty(false);
   }, [data, kind]);
+  // rodzic pyta przed przełączeniem Wdrożenie / Odejście, gdy są niezapisane zmiany
+  if (dirtyRef) dirtyRef.current = dirty;
 
   const agMap = new Map((agencies.data ?? []).map((x) => [x.id, x.name]));
   const depMap = new Map((departments.data ?? []).map((x) => [x.id, x.name]));
@@ -831,7 +833,7 @@ function DeskTemplates({
     let force: number | undefined;
     const g0 = gIdx(d.item.due_days);
     if (P && N && gIdx(P.due_days) !== gIdx(N.due_days)) {
-      const lab = rowEls.current.get(rowKey(N))?.closest(".ui-cl-group")?.querySelector(".ui-cl-glabel")?.getBoundingClientRect();
+      const lab = listRef.current?.querySelector(`.ui-cl-glabel[data-g="${gIdx(N.due_days)}"]`)?.getBoundingClientRect();
       const to = lab && center > lab.top + lab.height / 2 ? N : P;
       force = gIdx(to.due_days) === g0 ? d.item.due_days : to.due_days;
     }
@@ -870,17 +872,73 @@ function DeskTemplates({
     if (on) window.getSelection()?.removeAllRanges();
   };
   useEffect(() => () => noSelect(false), []);
-  const startDrag = (i: number, e: ReactPointerEvent) => {
-    if (e.button !== 0) return;
-    const it = items[i];
-    const el = rowEls.current.get(rowKey(it));
+  // telefon (jak edycja szablonu): bez uchwytu – przytrzymanie wiersza 300 ms bez ruchu podnosi go;
+  // ruch palca wcześniej to zwykłe przewijanie ekranu
+  const hold = useRef<{ i: number; x: number; y: number; timer: number; mouse: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  const cancelHold = () => {
+    if (hold.current) window.clearTimeout(hold.current.timer);
+    hold.current = null;
+  };
+  // mysz (komputer): przeciąganie zaczyna się po ruszeniu o 5 px – zwykły klik tylko wybiera zadanie
+  const rowDown = (i: number, e: ReactPointerEvent) => {
+    if (e.button !== 0 || drag.current) return;
+    const mouse = e.pointerType === "mouse";
+    suppressClick.current = false;
+    if (mouse) e.preventDefault(); // bez zaznaczania tekstu
+    const h = { i, x: e.clientX, y: e.clientY, timer: 0, mouse };
+    if (!mouse)
+      h.timer = window.setTimeout(() => {
+        if (hold.current !== h) return;
+        hold.current = null;
+        suppressClick.current = true;
+        begin(h.i, h.y);
+      }, 300);
+    hold.current = h;
+    if (mouse) {
+      const mv = (ev: PointerEvent) => {
+        if (hold.current !== h) return window.removeEventListener("pointermove", mv);
+        if (Math.hypot(ev.clientX - h.x, ev.clientY - h.y) > 5) {
+          window.removeEventListener("pointermove", mv);
+          hold.current = null;
+          suppressClick.current = true;
+          begin(h.i, h.y);
+          if (drag.current) drag.current.y = ev.clientY;
+          onFrame();
+        }
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", mv);
+        window.removeEventListener("pointerup", up);
+        if (hold.current === h) hold.current = null;
+      };
+      window.addEventListener("pointermove", mv);
+      window.addEventListener("pointerup", up);
+    }
+  };
+  const rowMove = (e: ReactPointerEvent) => {
+    const h = hold.current;
+    if (h && !h.mouse && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) cancelHold();
+  };
+  // po podniesieniu wiersza palec nie przewija ekranu (zdarzenie touchmove musi być „niepasywne”)
+  useEffect(() => {
+    const el = listRef.current;
     if (!el) return;
-    e.preventDefault();
+    const stop = (ev: TouchEvent) => {
+      if (drag.current) ev.preventDefault();
+    };
+    el.addEventListener("touchmove", stop, { passive: false });
+    return () => el.removeEventListener("touchmove", stop);
+  });
+  const begin = (i: number, clientY: number) => {
+    const it = itemsRef.current[i];
+    const el = it && rowEls.current.get(rowKey(it));
+    if (!it || !el) return;
     noSelect(true);
     // przechył jak kartka podniesiona z blatu: krawędź wychyla się o ok. 9 px niezależnie od szerokości listy
     const w = Math.max(1, listRef.current?.clientWidth ?? 600);
     listRef.current?.style.setProperty("--cl-tilt", `${(-Math.min(1.5, (Math.atan(9 / w) * 180) / Math.PI)).toFixed(2)}deg`);
-    drag.current = { item: it, key: rowKey(it), grab: e.clientY - el.getBoundingClientRect().top, y: e.clientY, y0: e.clientY, ty: 0 };
+    drag.current = { item: it, key: rowKey(it), grab: clientY - el.getBoundingClientRect().top, y: clientY, y0: clientY, ty: 0 };
     setLifted(rowKey(it));
     setDue0(it.due_days);
     setSelRaw(i);
@@ -910,8 +968,7 @@ function DeskTemplates({
         }
         setMoved(d.key);
       }
-      // uchwyt nie zostaje z obwódką fokusu po puszczeniu
-      if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains("ui-cl-grip")) document.activeElement.blur();
+      
       drag.current = null;
       setLifted(null);
       setDue0(null);
@@ -961,15 +1018,17 @@ function DeskTemplates({
   };
   const listJSX = (
     <div ref={listRef} className="ui-cl-list" role="group" aria-label="Zadania checklisty" data-dragging={lifted ? "" : undefined}>
-      {lifted && <div ref={slotRef} className="ui-cl-slot" aria-hidden />}
       {items.length === 0 && <CompactEmpty title="Brak zadań" text="Dodaj pierwsze zadanie przyciskiem „Dodaj zadanie”." />}
-      {groups.map((g) => {
+      {/* lista płaska (nagłówki grup i wiersze to rodzeństwo): przeniesiony do innej grupy wiersz zostaje tym samym
+          elementem – palec go nie „gubi” i dotyk dalej blokuje przewijanie ekranu */}
+      {groups.flatMap((g, gi) => {
         const rows = items.map((it, i) => ({ it, i })).filter(({ it }) => g.test(it.due_days));
-        if (!rows.length) return null;
-        return (
-          <div key={g.label} className="ui-cl-group">
-            <div className="ui-cl-glabel">{g.label}</div>
-            {rows.map(({ it, i }) => {
+        if (!rows.length) return [];
+        return [
+            <div key={`g:${g.label}`} className="ui-cl-glabel" data-g={gi}>
+              {g.label}
+            </div>,
+            ...rows.map(({ it, i }) => {
               const k = rowKey(it);
               const dim = filtering && !applies(it);
               return (
@@ -984,28 +1043,32 @@ function DeskTemplates({
                   data-dim={dim ? "" : undefined}
                   data-lifted={lifted === k || undefined}
                   data-moved={moved === k && !lifted ? "" : undefined}
+                  onPointerDown={(e) => rowDown(i, e)}
+                  onPointerMove={rowMove}
+                  onPointerUp={() => hold.current && !hold.current.mouse && cancelHold()}
+                  onPointerCancel={cancelHold}
+                  onContextMenu={(e) => drag.current || hold.current ? e.preventDefault() : undefined}
                 >
-                  <span
-                    className="ui-cl-grip"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Przenieś: ${it.label || "zadanie bez nazwy"}`}
-                    title="Przeciągnij albo użyj strzałek ↑ ↓"
-                    onPointerDown={(e) => startDrag(i, e)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-                      e.preventDefault();
-                      step(i, e.key === "ArrowUp" ? -1 : 1);
-                    }}
-                  >
-                    <IconGripVertical size={20} aria-hidden />
-                  </span>
                   <button
                     type="button"
                     className="ui-cl-pick"
                     aria-pressed={sel === i}
-                    title={dim ? "Ta osoba nie dostanie tego zadania" : undefined}
-                    onClick={() => pick(i)}
+                    onClick={() => {
+                      // puszczenie palca po przeniesieniu nie otwiera zadania
+                      if (suppressClick.current) {
+                        suppressClick.current = false;
+                        return;
+                      }
+                      pick(i);
+                    }}
+                    onKeyDown={(e) => {
+                      // klawiatura: Alt + ↑ / ↓ przesuwa zadanie (na granicy grupy – do sąsiedniej)
+                      if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+                      e.preventDefault();
+                      step(i, e.key === "ArrowUp" ? -1 : 1);
+                      requestAnimationFrame(() => rowEls.current.get(k)?.querySelector<HTMLElement>(".ui-cl-pick")?.focus());
+                    }}
+                    title={dim ? "Ta osoba nie dostanie tego zadania" : "Przeciągnij, żeby przenieść · Alt + ↑ ↓"}
                   >
                     {lifted === k && due0 !== null && gIdx(it.due_days) !== gIdx(due0) && (
                       <span className="ui-cl-target">
@@ -1031,10 +1094,10 @@ function DeskTemplates({
                   </button>
                 </div>
               );
-            })}
-          </div>
-        );
+            }),
+        ];
       })}
+      {lifted && <div ref={slotRef} className="ui-cl-slot" aria-hidden />}
     </div>
   );
   const editor =
@@ -1300,6 +1363,24 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
   const q = useQuery({ queryKey: ["checklist-templates"], queryFn: () => api<Templates>("/checklist-templates") });
   const [kind, setKind] = useState<Kind>("onboarding");
   const mobile = useIsPhone();
+  const ask = useConfirm();
+  const dirtyRef = useRef(false);
+  const pickKind = async (k: Kind) => {
+    if (k === kind) return;
+    if (
+      dirtyRef.current &&
+      !(await ask({
+        title: "Niezapisane zmiany",
+        message: `W checkliście „${kind === "onboarding" ? "Wdrożenie" : "Odejście"}” są niezapisane zmiany. Po przełączeniu przepadną.`,
+        confirmLabel: "Przełącz bez zapisu",
+        cancelLabel: "Zostań",
+        danger: true,
+      }))
+    )
+      return;
+    dirtyRef.current = false;
+    setKind(k);
+  };
   if (q.isLoading)
     return page && !mobile ? (
       <div className="ui-cl">
@@ -1312,7 +1393,7 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
   // telefon (wariant B): rodzaj w tytule z rozwijaniem, bez osobnego przełącznika
   if (mobile)
-    return <TemplatePanel key={kind} kind={kind} data={q.data} kindPick={{ set: setKind, counts: { onboarding: q.data.onboarding.length, offboarding: q.data.offboarding.length } }} />;
+    return <TemplatePanel key={kind} kind={kind} data={q.data} dirtyRef={dirtyRef} kindPick={{ set: pickKind, counts: { onboarding: q.data.onboarding.length, offboarding: q.data.offboarding.length } }} />;
   // komputer: przełącznik rodzaju w jednym pasku z podglądem i „Dodaj zadanie”
   return (
     <TemplatePanel
@@ -1320,11 +1401,12 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
       kind={kind}
       data={q.data}
       page={page}
+      dirtyRef={dirtyRef}
       switcher={
         <SegmentedControl
           fullWidth
           value={kind}
-          onChange={(v) => setKind(v as Kind)}
+          onChange={(v) => void pickKind(v as Kind)}
           aria-label="Rodzaj checklisty"
           data={[
             { value: "onboarding", label: `Wdrożenie · ${q.data.onboarding.length}` },

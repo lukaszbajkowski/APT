@@ -165,6 +165,13 @@ export function TemplateEditPage() {
     setFields(next);
     setEditIdx(to);
   };
+  // liczba niezapisanych zmian: ustawienia + każde zmienione pole (także kolejność)
+  const orig = { name: t.name, description: t.description ?? "", language: t.language, active: t.is_active, allowManager: t.allow_manager, strictPdf: t.strict_pdf, formats: t.download_formats };
+  const now = { name, description, language, active, allowManager, strictPdf, formats };
+  const dirty =
+    (Object.keys(orig) as (keyof typeof orig)[]).filter((k) => orig[k] !== now[k]).length +
+    Math.max(fields.length, t.fields.length) -
+    fields.filter((f, i) => JSON.stringify(f) === JSON.stringify(t.fields[i])).length;
   if (mobile) {
     const sw = (label: string, description: string | undefined, checked: boolean, on: (v: boolean) => void) => (
       <ListRow title={label} description={description} trailing={<Switch size="md" checked={checked} onChange={(e) => on(e.currentTarget.checked)} aria-label={label} />} />
@@ -180,6 +187,20 @@ export function TemplateEditPage() {
         subtitle={t.name}
         onClose={() => navigate("/szablony")}
         primary={{ label: "Zapisz szablon", onClick: () => save.mutate(), loading: save.isPending, disabled: !name.trim() }}
+        dirty={dirty > 0}
+        // zwarty pasek jak w Checklistach: pojawia się dopiero po zmianie
+        bar={
+          dirty > 0 ? (
+            <>
+              <Text size="sm" className="ui-ef-pending">
+                {name.trim() ? "Niezapisane zmiany" : "Wpisz nazwę szablonu"}
+              </Text>
+              <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!name.trim()}>
+                Zapisz
+              </Button>
+            </>
+          ) : null
+        }
       >
         {error && (
           <Alert color="red" withCloseButton onClose={() => setError(null)}>
@@ -423,13 +444,6 @@ export function TemplateEditPage() {
   }
 
 
-  // liczba niezapisanych zmian: ustawienia + każde zmienione pole (także kolejność)
-  const orig = { name: t.name, description: t.description ?? "", language: t.language, active: t.is_active, allowManager: t.allow_manager, strictPdf: t.strict_pdf, formats: t.download_formats };
-  const now = { name, description, language, active, allowManager, strictPdf, formats };
-  const dirty =
-    (Object.keys(orig) as (keyof typeof orig)[]).filter((k) => orig[k] !== now[k]).length +
-    Math.max(fields.length, t.fields.length) -
-    fields.filter((f, i) => JSON.stringify(f) === JSON.stringify(t.fields[i])).length;
   const draft: TemplateDraft = { name, description, language, active, allowManager, strictPdf, formats, fields };
   const set = (p: Partial<TemplateDraft>) => {
     if (p.name !== undefined) setName(p.name);

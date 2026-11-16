@@ -1442,6 +1442,7 @@ export function FormScreen({
   cancel = "Anuluj",
   onCancel,
   dirty,
+  bar,
 }: {
   title: string;
   subtitle?: string;
@@ -1454,6 +1455,8 @@ export function FormScreen({
   cancel?: string | false;
   /** są wpisane, niezapisane dane – wyjście pyta o potwierdzenie; bez podania: od pierwszego wpisania czegokolwiek */
   dirty?: boolean;
+  /** zwarty pasek „Niezapisane zmiany · Zapisz” (edytory) zamiast „Anuluj / główny”; null = bez paska */
+  bar?: ReactNode | null;
 }) {
   const { header, set } = useContext(HeaderCtx);
   const prev = useRef(header);
@@ -1474,6 +1477,9 @@ export function FormScreen({
   return createPortal(
     <div className="ui-inpage" role="dialog" aria-label={title} onInput={() => setTyped(true)}>
       <div className="ui-chat-body ui-form-body">{children}</div>
+      {bar !== undefined ? (
+        bar && <div className="ui-savebar-ph">{bar}</div>
+      ) : (
       <div className="ui-chat-compose">
         {cancel !== false && (
           <Button size="lg" radius="md" variant="default" onClick={leave} style={{ flex: "none", minWidth: 110 }}>
@@ -1484,6 +1490,7 @@ export function FormScreen({
           {primary.label}
         </Button>
       </div>
+      )}
     </div>,
     document.body,
   );

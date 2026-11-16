@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, ViewScreen, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Button, Checkbox, Group, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -13,6 +13,7 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconChevronDown,
+  IconMinus,
     IconPlayerSkipForward,
   IconPlus,
 } from "@tabler/icons-react";
@@ -564,7 +565,9 @@ type Kind = "onboarding" | "offboarding";
 function dueText(days: number, kind: Kind) {
   const ev = kind === "onboarding" ? "zatrudnienia" : "zwolnienia";
   if (days === 0) return `w dniu ${ev}`;
-  return days > 0 ? `${days} dni po ${ev.replace("ia", "iu")}` : `${-days} dni przed ${ev.replace("ia", "iem")}`;
+  const n = Math.abs(days);
+  const d = `${n} ${n === 1 ? "dzień" : "dni"}`;
+  return days > 0 ? `${d} po ${ev.replace("ia", "iu")}` : `${d} przed ${ev.replace("ia", "iem")}`;
 }
 
 function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, string>) {
@@ -712,6 +715,33 @@ function DeskTemplates({
   // jeden panel z przełącznikiem: wybrane zadanie albo „co dostanie osoba”
   const [view, setView] = useState<"task" | "person">("task");
   const [editing, setEditing] = useState(false);
+  // telefon: arkusz zadania jak arkusz pola w edycji szablonu – wysokość ustawiona uchwytem zapamiętana na tym urządzeniu
+  const [sheetH, setSheetH] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem("apt-cl-sheet-h"));
+      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : 60;
+    } catch {
+      return 60;
+    }
+  });
+  const sheet = useSheetResize(
+    () => setEditing(false),
+    (vh) => {
+      setSheetH(vh);
+      try {
+        localStorage.setItem("apt-cl-sheet-h", String(vh));
+      } catch {
+        /* tryb prywatny */
+      }
+    },
+  );
+  // wybrane zadanie przewija się na górę – arkusz zasłania dolną część ekranu
+  useEffect(() => {
+    if (!phone || !editing) return;
+    requestAnimationFrame(() =>
+      document.querySelector(".ui-cl-row[data-editing]")?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }),
+    );
+  }, [editing, sel, phone]);
   const setSel = (i: number | null) => {
     setSelRaw(i);
     setView("task");
@@ -1039,7 +1069,8 @@ function DeskTemplates({
                     else rowEls.current.delete(k);
                   }}
                   className="ui-cl-row"
-                  data-on={(!phone && sel === i) || undefined}
+                  data-on={(!phone && sel === i) || (phone && editing && sel === i) || undefined}
+                  data-editing={(phone && editing && sel === i) || undefined}
                   data-dim={dim ? "" : undefined}
                   data-lifted={lifted === k || undefined}
                   data-moved={moved === k && !lifted ? "" : undefined}
@@ -1130,16 +1161,29 @@ function DeskTemplates({
             value={cur.responsible}
             onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
           />
-          <NumberInput
-            label="Termin (dni)"
-            description={dueText(cur.due_days, kind)}
-            inputWrapperOrder={["label", "input", "description", "error"]}
-            min={-365}
-            max={365}
-            allowDecimal={false}
-            value={cur.due_days}
-            onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
-          />
+          <Input.Wrapper label="Termin" description={dueText(cur.due_days, kind)} inputWrapperOrder={["label", "input", "description", "error"]}>
+            {/* − wartość + : przyciski obok pola, w polu termin z jednostką („+7 dni”, „dzień 0”) */}
+            <div className="ui-cl-step">
+              <ActionIcon variant="default" className="ui-cl-step-btn" aria-label="Dzień wcześniej" disabled={cur.due_days <= -365} onClick={() => upd(sel, { due_days: cur.due_days - 1 })}>
+                <IconMinus size={16} />
+              </ActionIcon>
+              <NumberInput
+                aria-label="Termin (dni)"
+                min={-365}
+                max={365}
+                allowDecimal={false}
+                hideControls
+                prefix={cur.due_days > 0 ? "+" : ""}
+                suffix={Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
+                classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
+                value={cur.due_days}
+                onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
+              />
+              <ActionIcon variant="default" className="ui-cl-step-btn" aria-label="Dzień później" disabled={cur.due_days >= 365} onClick={() => upd(sel, { due_days: cur.due_days + 1 })}>
+                <IconPlus size={16} />
+              </ActionIcon>
+            </div>
+          </Input.Wrapper>
         </SimpleGrid>
         <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
         <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
@@ -1168,16 +1212,6 @@ function DeskTemplates({
         >
           Usuń zadanie
         </Anchor>
-        {phone && (
-          <Group gap="xs" grow>
-            <Button variant="default" leftSection={<IconArrowUp size={18} />} disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)}>
-              Wyżej
-            </Button>
-            <Button variant="default" leftSection={<IconArrowDown size={18} />} disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)}>
-              Niżej
-            </Button>
-          </Group>
-        )}
       </section>
     ) : null;
   const personView = (
@@ -1230,7 +1264,7 @@ function DeskTemplates({
         </Text>
       )}
       <Group gap="xs" wrap="nowrap">
-        {dirty && (
+        {dirty && !phone && (
           <Button variant="default" onClick={onDiscard}>
             Odrzuć
           </Button>
@@ -1292,7 +1326,12 @@ function DeskTemplates({
         />
         <SwipePager index={view === "person" ? 1 : 0} onIndex={(i) => setView(i ? "person" : "task")}>
           {[
-            <div key="task">{listJSX}</div>,
+            <div key="task" className="ui-cl-phperson">
+              <Text size="sm" c="dimmed">
+                Dotknij zadanie, aby zmienić jego ustawienia. Przytrzymaj zadanie, aby je przenieść – w innej grupie dostanie jej termin.
+              </Text>
+              {listJSX}
+            </div>,
             <div key="person" className="ui-cl-phperson">
               <Group gap="xs" grow wrap="nowrap">
                 <Select aria-label="Podgląd dla agencji" placeholder="Agencja" clearable searchable data={agOpts} value={pAg} onChange={setPAg} />
@@ -1303,11 +1342,46 @@ function DeskTemplates({
           ]}
         </SwipePager>
         {(dirty || saved) && saveBar}
-        {editing && editor && cur && (
-          <ViewScreen title={cur.label || "Nowe zadanie"} subtitle={groups[gIdx(cur.due_days)]?.label} onClose={() => setEditing(false)}>
-            <div className="ui-cl-phedit">{editor}</div>
-          </ViewScreen>
-        )}
+        {/* zadanie: arkusz od dołu (jak pole w edycji szablonu) – lista nad nim widać i zmienia się na żywo */}
+        <Drawer
+          opened={editing && !!cur}
+          onClose={() => setEditing(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          overlayProps={{ backgroundOpacity: 0.08 }}
+          classNames={{ content: "ui-sheet ui-tpe-fsheet ui-sheet-sized" }}
+          styles={{ content: { "--sheet-h": `${sheetH}dvh` } as React.CSSProperties }}
+          aria-label={cur?.label || "Zadanie"}
+        >
+          {cur && sel !== null && (
+            <>
+              <SheetHandle onClose={() => setEditing(false)} sheet={sheet}>
+                <div className="ui-sheet-head ui-tpe-fsheet-head">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="ui-sheet-title">{cur.label || "Nowe zadanie"}</div>
+                    <div className="ui-row-desc">
+                      {groups[gIdx(cur.due_days)]?.label} · {dueChip(cur.due_days)}
+                    </div>
+                  </div>
+                  <ActionIcon variant="default" size={44} aria-label="Przesuń wyżej" disabled={!canStep(sel, -1)} onClick={() => step(sel, -1)}>
+                    <IconArrowUp size={18} />
+                  </ActionIcon>
+                  <ActionIcon variant="default" size={44} aria-label="Przesuń niżej" disabled={!canStep(sel, 1)} onClick={() => step(sel, 1)}>
+                    <IconArrowDown size={18} />
+                  </ActionIcon>
+                </div>
+              </SheetHandle>
+              <div className="ui-tpe-fsheet-body" ref={sheet.bodyRef}>
+                {editor}
+              </div>
+              <Button size="md" fullWidth mt="sm" className="ui-tpe-fsheet-done" onClick={() => setEditing(false)}>
+                Gotowe
+              </Button>
+            </>
+          )}
+        </Drawer>
       </div>
     );
   }

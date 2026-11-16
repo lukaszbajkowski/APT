@@ -1732,10 +1732,17 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr);-webkit-touch-callout:none;align-items:stretch;border-top:1px solid var(--apt-line);background:var(--apt-surface)}
 .ui-cl-glabel + .ui-cl-row{border-top:0}
 .ui-cl-row:hover{background:var(--apt-subtle)}
-.ui-cl-row[data-on]{background:var(--mantine-primary-color-light)}
+.ui-cl-row[data-on]{background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,var(--apt-surface))}
+/* wybrane zadanie: przerywana obwódka (jak pole na płótnie edycji szablonu) */
+.ui-cl-row[data-on]:not([data-lifted])::after{content:"";position:absolute;inset:3px;border:2px dashed var(--mantine-primary-color-filled);border-radius:var(--mantine-radius-sm);pointer-events:none}
+.ui-cl-step{display:flex;align-items:center;gap:var(--s-2)}
+.ui-cl-step-field{flex:1;min-width:0}
+.ui-cl-step-input{text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.ui-cl-step-btn{width:var(--input-height-sm,36px);height:var(--input-height-sm,36px);flex:none}
+:where(:root[data-device="phone"]) .ui-cl-step-btn{width:44px;height:44px}
 .ui-cl-row[data-dim] .ui-cl-pick{opacity:.45}
 .ui-cl-pick{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:var(--s-3);align-items:center;width:100%;padding:var(--s-3) var(--s-4);border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;user-select:none;-webkit-user-select:none}
-.ui-cl-pick:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;border-radius:var(--mantine-radius-sm)}
+.ui-cl-pick:focus-visible{outline:2px dashed var(--mantine-primary-color-filled);outline-offset:-2px;border-radius:var(--mantine-radius-sm)}
 .ui-cl-list[data-dragging]{user-select:none}
 .ui-cl-list[data-dragging] .ui-cl-row:hover{background:var(--apt-surface)}
 .ui-cl-row[data-lifted] .ui-cl-pick{cursor:grabbing}
@@ -1779,6 +1786,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-phbox{padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-cl-phedit{display:flex;flex-direction:column;gap:var(--s-3);padding:var(--s-4)}
 :where(:root[data-device="phone"]) .ui-cl-save{position:fixed;left:calc(var(--s-4) + var(--apt-safe-left));right:calc(var(--s-4) + var(--apt-safe-right));bottom:calc(var(--apt-nav-h, calc(58px + var(--apt-safe-bottom))) + var(--s-3));margin:0;flex-wrap:nowrap;gap:var(--s-3);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);z-index:110}
-:where(:root[data-device="phone"]) .ui-cl-save > p{flex:1 1 auto;min-width:0}
+:where(:root[data-device="phone"]) .ui-cl-save > p{flex:1 1 auto;min-width:0;font-weight:600}
 /* miejsce pod listą na przypięty pasek „Zapisz” */
 .ui-cl-phone:has(> .ui-cl-save){padding-bottom:calc(2 * var(--s-7))}
+
+/* zwarty pasek zapisu na telefonie (edycja szablonu, checklisty): karta nad dolnym menu, tekst + „Zapisz” */
+.ui-savebar-ph{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin:var(--s-2) var(--s-4) var(--s-3);padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);box-shadow:0 -4px 24px rgba(0,0,0,.08)}
+.ui-savebar-ph > p{flex:1 1 auto;min-width:0;font-weight:600}

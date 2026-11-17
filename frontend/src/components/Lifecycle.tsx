@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -1564,15 +1564,7 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
     dirtyRef.current = false;
     setKind(k);
   };
-  if (q.isLoading)
-    return page && !mobile ? (
-      <div className="ui-cl">
-        <PageTitle title={page.title} description={page.description} />
-        <RowsSkeleton rows={6} />
-      </div>
-    ) : (
-      <Loading />
-    );
+  if (q.isLoading) return mobile ? <ChecklistPhoneSkeleton /> : page ? <ChecklistDeskSkeleton title={page.title} /> : <Loading />;
   if (!q.data) return <Alert color="red">{errorText(q.error)}</Alert>;
   // telefon (wariant B): rodzaj w tytule z rozwijaniem, bez osobnego przełącznika
   if (mobile)
@@ -1597,5 +1589,94 @@ export function ChecklistTemplates({ page }: { page?: ChecklistPage } = {}) {
         />
       }
     />
+  );
+}
+
+/** Szkielet Checklist (komputer): ten sam układ co gotowy ekran – nagłówek z akcjami, przełącznik rodzaju,
+ *  kartka z grupami terminu i panel zadania (w wąskim obszarze bez panelu, jak gotowy ekran). */
+function ChecklistDeskSkeleton({ title }: { title: string }) {
+  return (
+    <div className="ui-cl" aria-busy="true" aria-label="Ładowanie">
+      <PageTitle
+        title={title}
+        actions={
+          <>
+            <Skeleton height={36} width={150} radius="sm" />
+            <Skeleton height={36} width={36} radius="sm" />
+          </>
+        }
+      />
+      <div className="ui-cl-bar ui-under-title">
+        <Skeleton height={39} width={200} radius="md" />
+      </div>
+      <div className="ui-cl-grid">
+        <div className="ui-cl-paper">
+          <div className="ui-paper-headrow">
+            <div>
+              <Skeleton height={12} width={260} mb={8} />
+              <Skeleton height={18} width={180} />
+            </div>
+            <Skeleton height={39} width={230} radius="md" />
+          </div>
+          <Skeleton height={10} width="60%" mt={8} />
+          <div className="ui-cl-list">
+            {[1, 2, 3].map((n, g) => (
+              <div key={g} className="ui-cl-skelgroup">
+                <Skeleton height={14} width={150} mb={6} />
+                <Skeleton height={10} width={70} mb={14} />
+                {Array.from({ length: n }).map((_, i) => (
+                  <Skeleton key={i} height={52} radius="sm" mb={8} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <aside className="ui-cl-side ui-cl-panel ui-cl-skelpanel">
+          <Skeleton height={18} width="60%" />
+          <Skeleton height={12} width="35%" mb={8} />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i}>
+              <Skeleton height={12} width="40%" mb={8} />
+              <Skeleton height={36} radius="sm" />
+            </div>
+          ))}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/** Szkielet Checklist (telefon): tytuł z rozwijaniem i „+”, przełącznik Zadania / Co dostanie osoba, podpowiedź, grupy. */
+function ChecklistPhoneSkeleton() {
+  return (
+    <div className="ui-cl ui-cl-phone" aria-busy="true" aria-label="Ładowanie">
+      <div className="ui-head">
+        <div className="ui-head-text">
+          <Skeleton height={32} width={200} mb={8} />
+          <Skeleton height={14} width={140} />
+        </div>
+        <Skeleton height={44} width={44} radius="md" />
+      </div>
+      <Skeleton height={48} radius="md" />
+      <Skeleton height={12} width="85%" />
+      <div className="ui-cl-list">
+        {[1, 2, 3].map((n, g) => (
+          <div key={g}>
+            <div className="ui-cl-glabel">
+              <Skeleton height={12} width={130} />
+            </div>
+            {Array.from({ length: n }).map((_, i) => (
+              <div key={i} className="ui-cl-row" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ flex: 1 }}>
+                  <Skeleton height={14} width="70%" mb={6} />
+                  <Skeleton height={10} width="40%" />
+                </span>
+                <Skeleton height={22} width={60} radius="sm" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -119,6 +119,13 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
     </>
   );
 
+  // wąskie okno z adresem ?id=… w trakcie wczytywania: od razu szkielet strony szablonu (bez mignięcia listy)
+  if (single && openId && loading)
+    return (
+      <div ref={box} className="ui-tpl-single">
+        <TemplatePageSkeleton />
+      </div>
+    );
   if (single && current)
     return (
       <div ref={box} className="ui-tpl-single">
@@ -338,6 +345,39 @@ function TemplateDetailSkeleton() {
             <Skeleton height={14} width={180} mb={12} />
             <Skeleton height={44} radius="md" />
           </div>
+        </div>
+        <div className="ui-tpl-info">
+          <Skeleton height={12} width="45%" mb={24} />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 24, marginBottom: 16 }}>
+              <Skeleton height={12} width="70%" />
+              <Skeleton height={12} width={`${75 - (i % 3) * 15}%`} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Szkielet strony szablonu (wąskie okno): powrót, nazwa z akcjami, podgląd obok opisu – jak gotowa strona. */
+function TemplatePageSkeleton() {
+  return (
+    <div className="ui-tpl-detail" data-page aria-busy="true" aria-label="Ładowanie">
+      <Skeleton height={14} width={150} />
+      <PageTitle
+        title={<Skeleton height={28} width={260} />}
+        actions={
+          <>
+            <Skeleton height={36} width={180} radius="sm" />
+            <Skeleton height={36} width={160} radius="sm" />
+            <Skeleton height={36} width={36} radius="sm" />
+          </>
+        }
+      />
+      <div className="ui-tpl-grid">
+        <div className="ui-tpl-left">
+          <Skeleton className="ui-tpl-thumb-skel ui-tpl-page" radius={6} />
         </div>
         <div className="ui-tpl-info">
           <Skeleton height={12} width="45%" mb={24} />

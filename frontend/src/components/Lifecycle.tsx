@@ -948,8 +948,7 @@ function DeskTemplates({
   const ev = kind === "onboarding" ? "zatrudnienia" : "odejścia";
   const filtering = pAg !== null || pDep !== null;
   const autoLabel = (v: string | null) => (v ? (data.auto_options.find((o) => o.value === v)?.label ?? v) : null);
-  // telefon: od wielkiej litery („Dzień 0”); komputer na razie bez zmian
-  const dueChip = (d: number) => (phone ? dueShort(d) : dueShort(d).replace(/^Dzień/, "dzień"));
+  const dueChip = dueShort;
   // grupy wg terminu: kolejność w grupie = kolejność zapisana (strzałki w panelu)
   const groups: { label: string; test: (d: number) => boolean }[] = [
     { label: kind === "onboarding" ? "Przed zatrudnieniem" : "Przed odejściem", test: (d) => d < 0 },
@@ -1375,7 +1374,7 @@ function DeskTemplates({
             <DueWheelField value={cur.due_days} kind={kind} onChange={(d) => upd(sel, { due_days: d })} onOpenChange={setDueOpen} />
           ) : (
           <Input.Wrapper label="Termin" description={dueText(cur.due_days, kind)} inputWrapperOrder={["label", "input", "description", "error"]}>
-            {/* − wartość + : przyciski obok pola, w polu termin z jednostką („+7 dni”, „dzień 0”) */}
+            {/* − wartość + : przyciski obok pola, w polu termin z jednostką („+7 dni”, „Dzień 0”) */}
             <div className="ui-cl-step">
               <ActionIcon variant="default" className="ui-cl-step-btn" aria-label="Dzień wcześniej" disabled={cur.due_days <= -365} onClick={() => upd(sel, { due_days: cur.due_days - 1 })}>
                 <IconMinus size={16} />
@@ -1386,7 +1385,7 @@ function DeskTemplates({
                 max={365}
                 allowDecimal={false}
                 hideControls
-                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "dzień " : ""}
+                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "Dzień " : ""}
                 suffix={cur.due_days === 0 ? "" : Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
                 classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
                 value={cur.due_days}

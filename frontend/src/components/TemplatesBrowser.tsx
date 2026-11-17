@@ -9,7 +9,7 @@ import { useElementSize } from "@mantine/hooks";
 import { api, DOWNLOAD_FORMAT_LABELS, errorText, formatDate, formatDateTime, LANGUAGES, withAcct, type DocTemplate } from "../api";
 import { useUrlOpen } from "../lib/urlState";
 import { MasterDetail } from "./MasterDetail";
-import { PageTitle, RowMenu, SectionHead } from "./Mobile";
+import { PageTitle, RowMenu, SectionHead, WrapRow } from "./Mobile";
 
 interface Usage {
   template_id: number;
@@ -226,10 +226,17 @@ function TemplateDetail({ t, usage, usageLoading, onBack, page }: { t: DocTempla
           <PageTitle title={t.name} meta={`Wersja ${t.version} · Zmieniony ${formatDate(t.updated_at.slice(0, 10))}`} actions={actions} />
         </>
       )}
-      {!page && onBack && (
-        <Button variant="subtle" size="compact-sm" leftSection={<IconArrowLeft size={16} />} onClick={onBack} mb="md" ml={-8}>
-          Wszystkie szablony
-        </Button>
+      {/* szeroko (lista obok): ten sam układ co strona – nazwa z akcjami u góry, podgląd obok opisu, ostatnie pod spodem */}
+      {!page && (
+        <WrapRow className="ui-tpl-headrow">
+          <div style={{ minWidth: 0 }}>
+            <h2 className="ui-dsec-title">{t.name}</h2>
+            <Text size="sm" c="dimmed">
+              Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))}
+            </Text>
+          </div>
+          <div className="ui-tpl-headacts">{actions}</div>
+        </WrapRow>
       )}
       <div className="ui-tpl-grid">
       <div className="ui-tpl-left">
@@ -279,20 +286,9 @@ function TemplateDetail({ t, usage, usageLoading, onBack, page }: { t: DocTempla
         </section>
       </div>
       <div className="ui-tpl-info">
-        {page ? (
-          <Text size="sm" c="dimmed" mb="md">
-            Plik {t.original_filename}
-          </Text>
-        ) : (
-          <>
-            <div className="ui-tpl-dhead">
-              <h2 className="ui-dsec-title">{t.name}</h2>
-            </div>
-            <Text size="sm" c="dimmed" mb="md">
-              Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))} · plik {t.original_filename}
-            </Text>
-          </>
-        )}
+        <Text size="sm" c="dimmed" mb="md">
+          Plik {t.original_filename}
+        </Text>
         {t.description && <Text mb="md">{t.description}</Text>}
         <dl className="ui-tpl-kv">
           <dt>Język</dt>
@@ -314,26 +310,6 @@ function TemplateDetail({ t, usage, usageLoading, onBack, page }: { t: DocTempla
           <dt>Użycie</dt>
           <dd>{usageLoading ? <Skeleton height={12} width={180} mt={4} /> : usage?.count ? `${usage.count} ${plural(usage.count, "dokument", "dokumenty", "dokumentów")} · ostatnio ${ago(usage.last_used_at!)}` : "Jeszcze nieużyty"}</dd>
         </dl>
-        {!page && (
-        <div className="ui-tpl-actions">
-          <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
-            Edytuj ustawienia i pola
-          </Button>
-          {/* „⋯” trzyma się ostatniego przycisku – nie zostaje samo w nowej linii */}
-          <span className="ui-tpl-actions-end">
-          <Button variant="default" onClick={() => navigate(`/szablony/${t.id}#plik`)}>
-            Wgraj nową wersję
-          </Button>
-          <RowMenu
-            label={t.name}
-            items={[
-              { label: "Pobierz plik .docx", onClick: () => window.open(withAcct(`/api/templates/${t.id}/file`), "_blank") },
-              { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
-            ]}
-          />
-          </span>
-        </div>
-        )}
       </div>
       </div>
     </div>
@@ -344,27 +320,33 @@ function TemplateDetail({ t, usage, usageLoading, onBack, page }: { t: DocTempla
 function TemplateDetailSkeleton() {
   return (
     <div className="ui-tpl-detail" aria-busy="true" aria-label="Ładowanie">
+      <div className="ui-tpl-headrow">
+        <div>
+          <Skeleton height={20} width={220} mb={8} />
+          <Skeleton height={12} width={160} />
+        </div>
+        <div className="ui-tpl-headacts">
+          <Skeleton height={36} width={180} radius="sm" />
+          <Skeleton height={36} width={160} radius="sm" />
+          <Skeleton height={36} width={36} radius="sm" />
+        </div>
+      </div>
       <div className="ui-tpl-grid">
         <div className="ui-tpl-left">
-          <Skeleton className="ui-tpl-thumb-skel" radius={6} />
-          <div>
-            <Skeleton height={14} width="70%" mb={12} />
+          <Skeleton className="ui-tpl-thumb-skel ui-tpl-page" radius={6} />
+          <div className="ui-tpl-recent-sec">
+            <Skeleton height={14} width={180} mb={12} />
             <Skeleton height={44} radius="md" />
           </div>
         </div>
-        <div>
-          <Skeleton height={20} width="55%" mb={8} />
-          <Skeleton height={12} width="75%" mb={24} />
+        <div className="ui-tpl-info">
+          <Skeleton height={12} width="45%" mb={24} />
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 16, marginBottom: 16 }}>
-              <Skeleton height={12} width="60%" />
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 24, marginBottom: 16 }}>
+              <Skeleton height={12} width="70%" />
               <Skeleton height={12} width={`${75 - (i % 3) * 15}%`} />
             </div>
           ))}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
-            <Skeleton height={36} width={190} radius="sm" />
-            <Skeleton height={36} width={170} radius="sm" />
-          </div>
         </div>
       </div>
     </div>

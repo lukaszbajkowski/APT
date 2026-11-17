@@ -36,7 +36,8 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   dzielą wiersz po równo, „⋯” zostaje kwadratowy; przełącznik pod tytułem (klasa `.ui-under-title` na wierszu) i przełącznik
   na kartce (`WrapRow` / `.ui-paper-headrow`) – na całą szerokość, części po równo. Zawinięcie wykrywa `useWrapFlag`
   (`data-wrapped`), bez progów szerokości. Wyjątek: Checklisty i edycja szablonu przechodzą razem, przy jednym progu
-  (obszar ≤ 1075 px – najwcześniejsze zawinięcie zmierzone na tych dwóch ekranach; `@container cl` / `tpe` w `app.css`).
+  (obszar ≤ 769 px – chwila, w której akcje schodzą pod tytuł w edycji szablonu, najwcześniej z tych dwóch ekranów;
+  `@container cl` / `tpe` w `app.css`).
 - Interfejs wybiera **rodzaj urządzenia**, nie szerokość okna (`lib/device.ts`): telefon (dotyk, krótszy bok < 600 px)
   dostaje interfejs telefonu także w poziomie; tablet i komputer – komputerowy (wąskie okno komputera = ten sam
   interfejs, węższy). W komponentach `useIsPhone()`, w CSS `:where(:root[data-device="phone"])`, klasy

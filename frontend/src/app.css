@@ -1849,16 +1849,16 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > .mantine-InputWrapper-root{flex:1 1 0;min-width:0}
 .ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > form{flex:1 1 0;min-width:0;width:auto !important}
 /* Checklisty i edycja szablonu: przejście na „całą szerokość” w jednej chwili dla nagłówka, przełącznika pod tytułem
-   i przełącznika na kartce, na obu ekranach. Próg = najwcześniejsze zawinięcie zmierzone na tych ekranach
-   (przełącznik na kartce Checklist, obszar 1075 px); węższy obszar – wszystko naraz na całą szerokość. */
-@container cl (max-width:1075px){
+   i przełącznika na kartce, na obu ekranach. Próg = chwila, w której akcje schodzą pod tytuł najwcześniej z tych dwóch
+   ekranów (edycja szablonu: obszar 769 px); węższy obszar – wszystko naraz na całą szerokość. */
+@container cl (max-width:769px){
   .ui-inbox-head{flex-wrap:wrap}
   .ui-inbox-head > .mantine-Group-root:last-child{width:100%}
   .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}
   .ui-under-title > .mantine-SegmentedControl-root,.ui-paper-headrow > .mantine-SegmentedControl-root{display:flex;width:100%;margin-left:0}
   .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control,.ui-paper-headrow > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:1 1 0}
 }
-@container tpe (max-width:1075px){
+@container tpe (max-width:769px){
   .ui-inbox-head{flex-wrap:wrap}
   .ui-inbox-head > .mantine-Group-root:last-child{width:100%}
   .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}

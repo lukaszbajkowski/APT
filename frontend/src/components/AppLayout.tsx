@@ -272,8 +272,10 @@ function AppLayoutInner() {
   }, [location.pathname, navType]);
   const t = useT();
   const lang = useLang();
-  // pasek boczny: same ikony poniżej 1280 px albo z wyboru (zapamiętane w przeglądarce)
-  const narrow = useMediaQuery("(max-width: 80em)", false, { getInitialValueInEffect: false });
+  // pasek boczny: same ikony poniżej 1440 px albo z wyboru (zapamiętane w przeglądarce). Próg jest wyżej niż wszystkie
+  // progi układu ekranów liczone przy pełnym menu (najwyższy: ok. 1420 px okna) – inaczej zwinięcie menu poszerza
+  // treść i ekran przeskakuje z wąskiego z powrotem na szeroki, a potem znowu na wąski
+  const narrow = useMediaQuery("(max-width: 1439.98px)", false, { getInitialValueInEffect: false });
   const [railPref, setRailPref] = useState<"auto" | "rail" | "full">(() => {
     try {
       return (localStorage.getItem("apt-nav-rail") as "rail" | "full" | null) ?? "auto";
@@ -673,7 +675,7 @@ function AccountMenu({
 }: {
   compact?: boolean;
   rail?: boolean;
-  /** komputer: menu boczne – automatycznie (ikony poniżej 1280 px), zawsze pełne albo zawsze ikony */
+  /** komputer: menu boczne – automatycznie (ikony poniżej 1440 px), zawsze pełne albo zawsze ikony */
   navPref?: { value: "auto" | "rail" | "full"; onChange: (v: "auto" | "rail" | "full") => void };
 }): ReactNode {
   const { me, logout, hasRole, accounts, switchAccount, addAccount } = useAuth();

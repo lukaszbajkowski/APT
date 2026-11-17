@@ -1130,7 +1130,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-inbox-head > .mantine-Group-root{flex-wrap:nowrap}
 .ui-filterbar > *{min-width:0}
 .ui-filterbar .mantine-InputBase-input,.ui-filterbar button.mantine-Input-input{white-space:nowrap}
-/* pasek boczny zwinięty do ikon (komputer < 1280 px albo z wyboru) */
+/* pasek boczny zwinięty do ikon (komputer < 1440 px albo z wyboru) */
 .ui-nav{transition:width .2s ease}
 .ui-rail-brand{display:flex;justify-content:center;padding:6px 0 14px}
 .ui-rail-item{position:relative;width:44px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--mantine-color-dimmed);transition:background-color .15s,color .15s}

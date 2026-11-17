@@ -38,6 +38,10 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   (`data-wrapped`), bez progów szerokości. Wyjątek: Checklisty i edycja szablonu przechodzą razem, przy jednym progu
   (obszar ≤ 769 px – chwila, w której akcje schodzą pod tytuł w edycji szablonu, najwcześniej z tych dwóch ekranów;
   `@container cl` / `tpe` w `app.css`).
+- Menu boczne „Automatycznie” zwija się do ikon poniżej 1440 px okna. Próg układu ekranu liczony od szerokości obszaru
+  (container query, `useElementSize`) nie może przekraczać ~1120 px obszaru (1440 − menu 256 − marginesy 64) – inaczej
+  zwinięcie menu poszerza treść i ekran przeskakuje szeroki → wąski → szeroki → wąski. Sprawdzenie: przesuwanie
+  szerokości okna przy menu „Automatycznie”.
 - Interfejs wybiera **rodzaj urządzenia**, nie szerokość okna (`lib/device.ts`): telefon (dotyk, krótszy bok < 600 px)
   dostaje interfejs telefonu także w poziomie; tablet i komputer – komputerowy (wąskie okno komputera = ten sam
   interfejs, węższy). W komponentach `useIsPhone()`, w CSS `:where(:root[data-device="phone"])`, klasy

@@ -119,6 +119,12 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
     </>
   );
 
+  if (single && current)
+    return (
+      <div ref={box} className="ui-tpl-single">
+        <TemplateDetail key={current.id} t={current} usage={use.get(current.id)} usageLoading={usage.isLoading} onBack={() => setOpenId(null)} page />
+      </div>
+    );
   return (
     <div ref={box} className={single ? "ui-tpl-single" : undefined}>
     <MasterDetail
@@ -170,7 +176,7 @@ function Chips({ items }: { items: { key: string; text: string; warn?: boolean }
   );
 }
 
-function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; usage?: Usage; usageLoading?: boolean; onBack?: () => void }) {
+function TemplateDetail({ t, usage, usageLoading, onBack, page }: { t: DocTemplate; usage?: Usage; usageLoading?: boolean; onBack?: () => void; page?: boolean }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [thumbOk, setThumbOk] = useState(true);
@@ -190,9 +196,37 @@ function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; us
     },
     onError: (e) => notifications.show({ color: "red", message: errorText(e) }),
   });
+  const actions = (
+    <>
+      <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
+        Edytuj ustawienia i pola
+      </Button>
+      <Button variant="default" onClick={() => navigate(`/szablony/${t.id}#plik`)}>
+        Wgraj nową wersję
+      </Button>
+      <RowMenu
+        label={t.name}
+        items={[
+          { label: "Pobierz plik .docx", onClick: () => window.open(withAcct(`/api/templates/${t.id}/file`), "_blank") },
+          { label: t.is_active ? "Wyłącz szablon" : "Włącz szablon", onClick: () => toggle.mutate() },
+        ]}
+      />
+    </>
+  );
   return (
-    <div className="ui-tpl-detail">
-      {onBack && (
+    <div className="ui-tpl-detail" data-page={page || undefined}>
+      {/* wąskie okno: szczegóły jako zwykła strona (jak edycja szablonu) – powrót, nazwa z akcjami w nagłówku, bez przewijanej ramki */}
+      {page && (
+        <>
+          {onBack && (
+            <UnstyledButton className="ui-back-link" onClick={onBack}>
+              <IconArrowLeft size={14} aria-hidden /> Szablony dokumentów
+            </UnstyledButton>
+          )}
+          <PageTitle title={t.name} meta={`Wersja ${t.version} · Zmieniony ${formatDate(t.updated_at.slice(0, 10))}`} actions={actions} />
+        </>
+      )}
+      {!page && onBack && (
         <Button variant="subtle" size="compact-sm" leftSection={<IconArrowLeft size={16} />} onClick={onBack} mb="md" ml={-8}>
           Wszystkie szablony
         </Button>
@@ -244,13 +278,21 @@ function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; us
           )}
         </section>
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div className="ui-tpl-dhead">
-          <h2 className="ui-dsec-title">{t.name}</h2>
-        </div>
-        <Text size="sm" c="dimmed" mb="md">
-          Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))} · plik {t.original_filename}
-        </Text>
+      <div className="ui-tpl-info">
+        {page ? (
+          <Text size="sm" c="dimmed" mb="md">
+            Plik {t.original_filename}
+          </Text>
+        ) : (
+          <>
+            <div className="ui-tpl-dhead">
+              <h2 className="ui-dsec-title">{t.name}</h2>
+            </div>
+            <Text size="sm" c="dimmed" mb="md">
+              Wersja {t.version} · zmieniony {formatDate(t.updated_at.slice(0, 10))} · plik {t.original_filename}
+            </Text>
+          </>
+        )}
         {t.description && <Text mb="md">{t.description}</Text>}
         <dl className="ui-tpl-kv">
           <dt>Język</dt>
@@ -272,6 +314,7 @@ function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; us
           <dt>Użycie</dt>
           <dd>{usageLoading ? <Skeleton height={12} width={180} mt={4} /> : usage?.count ? `${usage.count} ${plural(usage.count, "dokument", "dokumenty", "dokumentów")} · ostatnio ${ago(usage.last_used_at!)}` : "Jeszcze nieużyty"}</dd>
         </dl>
+        {!page && (
         <div className="ui-tpl-actions">
           <Button variant="default" onClick={() => navigate(`/szablony/${t.id}`)}>
             Edytuj ustawienia i pola
@@ -290,6 +333,7 @@ function TemplateDetail({ t, usage, usageLoading, onBack }: { t: DocTemplate; us
           />
           </span>
         </div>
+        )}
       </div>
       </div>
     </div>

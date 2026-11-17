@@ -1954,3 +1954,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 }
 @keyframes ui-cl-due-down{from{transform:translateY(60%);opacity:0}to{transform:none;opacity:1}}
 @keyframes ui-cl-due-up{from{transform:translateY(-60%);opacity:0}to{transform:none;opacity:1}}
+/* przenoszone zadanie zachowuje swoje tło (tło grupy, a wybrane – z odcieniem zaznaczenia), tylko unosi się z cieniem */
+.ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{background:var(--apt-subtle)}
+.ui-cl-paper .ui-cl-row[data-lifted][data-on] .ui-cl-pick{background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,var(--apt-subtle))}
+.ui-cl-phone .ui-cl-row[data-lifted]{background:var(--apt-subtle)}

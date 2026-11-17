@@ -378,10 +378,10 @@ export function TemplateEditDesktop({
             <section className="ui-dsec">
               <SectionHead title="Ogólne" />
               <Group grow align="flex-start">
-                <TextInput label="Nazwa" required placeholder="np. Deklaracja Medicover" value={draft.name} onChange={(e) => set({ name: e.currentTarget.value })} />
+                <TextInput label="Nazwa" required placeholder="Np. Deklaracja Medicover" value={draft.name} onChange={(e) => set({ name: e.currentTarget.value })} />
                 <Select label="Język dokumentu" data={LANGUAGE_OPTIONS} allowDeselect={false} value={draft.language} onChange={(v) => v && set({ language: v })} />
               </Group>
-              <Textarea label="Opis" placeholder="np. Do zgłoszenia pracownika do prywatnej opieki medycznej" autosize minRows={2} value={draft.description} onChange={(e) => set({ description: e.currentTarget.value })} />
+              <Textarea label="Opis" placeholder="Np. Do zgłoszenia pracownika do prywatnej opieki medycznej" autosize minRows={2} value={draft.description} onChange={(e) => set({ description: e.currentTarget.value })} />
               <div>
                 <Text size="sm" fw={500} mb={4}>
                   Pobieranie
@@ -628,7 +628,7 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
   const formats = useFieldFormats();
   return (
     <>
-      <TextInput size={size} label="Etykieta w formularzu" placeholder="np. Miasto zamieszkania" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
+      <TextInput size={size} label="Etykieta w formularzu" placeholder="Np. Miasto zamieszkania" value={field.label} onChange={(e) => onChange({ ...field, label: e.currentTarget.value })} />
       <Autocomplete
         size={size}
         label="Grupa"
@@ -661,7 +661,7 @@ export function FieldForm({ field, onChange, size, groups = [] }: { field: Templ
         <TextInput
           size={size}
           label="Maska"
-          placeholder="np. 99-999"
+          placeholder="Np. 99-999"
           description="9 = cyfra, A = litera, * = dowolny znak"
           value={field.pattern ?? ""}
           onChange={(e) => onChange({ ...field, pattern: e.currentTarget.value })}
@@ -1569,7 +1569,7 @@ export function GroupDialog({
         },
       }}
     >
-      <TextInput label="Nazwa grupy" placeholder="np. Adres zamieszkania" value={name} onChange={(e) => setName(e.currentTarget.value)} error={clash ? "Taka grupa już jest – wybierz ją w polu „Grupa” albo użyj innej nazwy." : undefined} data-autofocus />
+      <TextInput label="Nazwa grupy" placeholder="Np. Adres zamieszkania" value={name} onChange={(e) => setName(e.currentTarget.value)} error={clash ? "Taka grupa już jest – wybierz ją w polu „Grupa” albo użyj innej nazwy." : undefined} data-autofocus />
       <Checkbox.Group label="Pola w grupie" description="Zaznaczone pola zostaną ustawione kolejno, w miejscu pierwszego z nich." value={keys} onChange={setKeys} mt="md">
         <div className="ui-group-pick">
           {fields.map((f) => (

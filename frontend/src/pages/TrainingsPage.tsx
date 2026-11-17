@@ -718,7 +718,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
           <TextInput label="Nazwa" value={f.name} onChange={(e) => setF({ ...f, name: e.currentTarget.value })} />
           <NumberInput
             label="Okres ważności (miesiące)"
-            placeholder="bezterminowe / wpisywane ręcznie"
+            placeholder="Bezterminowe / wpisywane ręcznie"
             min={1}
             max={600}
             allowDecimal={false}

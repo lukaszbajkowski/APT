@@ -15,11 +15,11 @@ import { useIsPhone } from "../lib/device";
 
 const KIND_OPTIONS = (Object.keys(NOTICE_KINDS) as NoticeKind[]).map((k) => ({ value: k, label: NOTICE_KINDS[k].label }));
 const TITLE_HINT: Record<NoticeKind, string> = {
-  planned: "np. Przerwa techniczna w sobotę wieczorem",
-  deploy: "np. Nowa funkcja: podpisywanie dokumentów w telefonie",
-  repair: "np. Naprawiamy wysyłkę powiadomień",
-  incident: "np. Logowanie chwilowo nie działa",
-  info: "np. Zmiana adresu pomocy technicznej",
+  planned: "Np. Przerwa techniczna w sobotę wieczorem",
+  deploy: "Np. Nowa funkcja: podpisywanie dokumentów w telefonie",
+  repair: "Np. Naprawiamy wysyłkę powiadomień",
+  incident: "Np. Logowanie chwilowo nie działa",
+  info: "Np. Zmiana adresu pomocy technicznej",
 };
 
 /** ISO ↔ wartość pola datetime-local w wybranej strefie (domyślnie czas polski – w nim działa firma). */
@@ -320,7 +320,7 @@ export function ServiceNoticesPage() {
           <Textarea
             label="Wyjaśnienie dla użytkowników"
             description="Co się dzieje, czego nie da się zrobić i co zrobić w tym czasie."
-            placeholder="np. Aktualizujemy system. W tym czasie nie da się logować ani podpisywać dokumentów."
+            placeholder="Np. Aktualizujemy system. W tym czasie nie da się logować ani podpisywać dokumentów."
             value={draft.body}
             onChange={(e) => set("body", e.currentTarget.value)}
             maxLength={1000}

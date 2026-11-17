@@ -242,7 +242,7 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
               key={r.key}
               leading={<span className="ui-row-icon" data-tone="warn" aria-hidden><r.icon size={22} /></span>}
               title={cap(r.label)}
-              description={r.hint ?? (r.sample ? `np. ${r.sample}` : undefined)}
+              description={r.hint ?? (r.sample ? `Np. ${r.sample}` : undefined)}
               trailing={<span className="ui-thread-count" aria-label={`Liczba: ${r.count}`}>{r.count}</span>}
               to={r.url}
             />
@@ -291,7 +291,7 @@ function TodayCard({ d, full }: { d: Dashboard; full: boolean }) {
                   {r.count} · {r.label}
                 </Text>
                 <Text size="sm" c="dimmed" lineClamp={2}>
-                  {r.hint ?? (r.sample ? `np. ${r.sample}` : "")}
+                  {r.hint ?? (r.sample ? `Np. ${r.sample}` : "")}
                 </Text>
               </div>
               {mobile ? (

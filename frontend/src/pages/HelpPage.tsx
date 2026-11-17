@@ -202,10 +202,10 @@ function EditDialog({ info, onClose }: { info: SiteInfo; onClose: () => void }) 
         <Text size="sm" c="dimmed">
           Strona jest publiczna – widać ją pod ekranem logowania i w menu konta. Nie wpisuj tu danych pracowników ani haseł.
         </Text>
-        <TextInput label="Kontakt – kto" placeholder="np. Dział kadr APT" value={v.contact_name} onChange={(e) => set("contact_name", e.currentTarget.value)} maxLength={120} />
-        <TextInput label="Telefon" placeholder="np. +48 600 100 200" value={v.contact_phone} onChange={(e) => set("contact_phone", e.currentTarget.value)} maxLength={40} error={phoneBad ? "Tylko cyfry, spacje, +, ( ) i -" : undefined} />
-        <TextInput label="E-mail" type="email" placeholder="np. kadry@firma.pl" value={v.contact_email} onChange={(e) => set("contact_email", e.currentTarget.value)} maxLength={200} error={emailBad ? "Niepoprawny adres e-mail" : undefined} />
-        <TextInput label="Godziny" placeholder="np. pn–pt 8:00–16:00" value={v.contact_hours} onChange={(e) => set("contact_hours", e.currentTarget.value)} maxLength={120} />
+        <TextInput label="Kontakt – kto" placeholder="Np. Dział kadr APT" value={v.contact_name} onChange={(e) => set("contact_name", e.currentTarget.value)} maxLength={120} />
+        <TextInput label="Telefon" placeholder="Np. +48 600 100 200" value={v.contact_phone} onChange={(e) => set("contact_phone", e.currentTarget.value)} maxLength={40} error={phoneBad ? "Tylko cyfry, spacje, +, ( ) i -" : undefined} />
+        <TextInput label="E-mail" type="email" placeholder="Np. kadry@firma.pl" value={v.contact_email} onChange={(e) => set("contact_email", e.currentTarget.value)} maxLength={200} error={emailBad ? "Niepoprawny adres e-mail" : undefined} />
+        <TextInput label="Godziny" placeholder="Np. pn–pt 8:00–16:00" value={v.contact_hours} onChange={(e) => set("contact_hours", e.currentTarget.value)} maxLength={120} />
         <Textarea
           label="Informacja o przetwarzaniu danych (RODO)"
           description="Akapity oddzielaj pustą linią. Linia zaczynająca się od „## ” to nagłówek. Treść powinien zatwierdzić prawnik lub inspektor ochrony danych."

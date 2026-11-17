@@ -878,7 +878,7 @@ export function EmployeesPage() {
             </Button>
             {staff && (
               <RowMenu
-                label="eksport z numerami PESEL"
+                label="Eksport z numerami PESEL"
                 items={[
                   { label: "Excel z numerami PESEL", onClick: () => exportXlsx(true) },
                   { label: "PDF z numerami PESEL", onClick: () => exportXlsx(true, "pdf") },

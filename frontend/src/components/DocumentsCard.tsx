@@ -117,7 +117,7 @@ function EmailDocument({ doc, size, opened, onClose }: { doc: GeneratedDoc; size
           <TextInput
             label="Adres e-mail"
             description="Zostaw puste, aby wysłać na potwierdzony e-mail pracownika."
-            placeholder="np. osoba@example.com"
+            placeholder="Np. osoba@example.com"
             value={to}
             onChange={(e) => setTo(e.currentTarget.value)}
           />
@@ -207,7 +207,7 @@ function DeleteDocument({ doc, employee, opened, onClose }: { doc: GeneratedDoc;
           <Textarea
             label="Powód usunięcia"
             description="Zapisywany w dzienniku zdarzeń."
-            placeholder="np. wygenerowany dla złej osoby, błędne dane w formularzu"
+            placeholder="Np. wygenerowany dla złej osoby, błędne dane w formularzu"
             autosize
             minRows={2}
             value={reason}

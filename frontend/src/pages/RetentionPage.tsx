@@ -202,7 +202,7 @@ export function RetentionPage() {
                 autosize
                 minRows={2}
                 maxLength={500}
-                placeholder="np. postępowanie przed sądem pracy, kontrola PIP"
+                placeholder="Np. postępowanie przed sądem pracy, kontrola PIP"
                 value={holdReason}
                 onChange={(e) => setHoldReason(e.currentTarget.value)}
               />

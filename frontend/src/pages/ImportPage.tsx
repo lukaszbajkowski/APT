@@ -261,7 +261,7 @@ export function ImportPage() {
 
       <Stepper active={step} size="sm" allowNextStepsSelect={false} onStepClick={(s) => s < step && step < 3 && setStep(s)}>
         {/* ---------- 1. plik ---------- */}
-        <Stepper.Step label="Plik" description="xlsx, numbers, csv">
+        <Stepper.Step label="Plik" description="XLSX, Numbers, CSV">
           <Paper withBorder p="xl" mt="md">
             <Stack align="center" gap="md">
               <IconFileSpreadsheet size={48} stroke={1.3} color="var(--mantine-primary-color-filled)" />
@@ -303,7 +303,7 @@ export function ImportPage() {
         </Stepper.Step>
 
         {/* ---------- 2. kolumny ---------- */}
-        <Stepper.Step label="Kolumny" description="co jest gdzie">
+        <Stepper.Step label="Kolumny" description="Co jest gdzie">
           {analysis && (
             <Stack mt="md">
               <Text size="sm">
@@ -378,7 +378,7 @@ export function ImportPage() {
         </Stepper.Step>
 
         {/* ---------- 3. podgląd ---------- */}
-        <Stepper.Step label="Sprawdzenie" description="podgląd i zapis">
+        <Stepper.Step label="Sprawdzenie" description="Podgląd i zapis">
           {preview && (
             <Stack mt="md">
               <SimpleGrid cols={{ base: 1, xs: 3 }}>

@@ -265,7 +265,7 @@ export function TrainingModal({
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <TextInput
                 label="Nazwa szkolenia"
-                placeholder="np. Operator prasy"
+                placeholder="Np. Operator prasy"
                 value={form.name}
                 onChange={(e) => set("name", e.currentTarget.value)}
               />
@@ -334,7 +334,7 @@ export function TrainingModal({
             <DateField
               
               label="Ważne do"
-              placeholder="bezterminowe"
+              placeholder="Bezterminowe"
               value={form.valid_until}
               onChange={(e) => {
                 setValidTouched(true);

@@ -351,9 +351,9 @@ export function TemplateEditPage() {
             </Section>
             <div className="ui-form-group">
               <h2 className="ui-section-title">Ogólne</h2>
-              <TextInput size="md" label="Nazwa" required placeholder="np. Deklaracja Medicover" value={name} onChange={(e) => setName(e.currentTarget.value)} />
+              <TextInput size="md" label="Nazwa" required placeholder="Np. Deklaracja Medicover" value={name} onChange={(e) => setName(e.currentTarget.value)} />
               <Select size="md" label="Język dokumentu" data={LANGUAGE_OPTIONS} allowDeselect={false} value={language} onChange={(v) => v && setLanguage(v)} />
-              <Textarea size="md" label="Opis" placeholder="np. Do zgłoszenia pracownika do prywatnej opieki medycznej" autosize minRows={2} value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
+              <Textarea size="md" label="Opis" placeholder="Np. Do zgłoszenia pracownika do prywatnej opieki medycznej" autosize minRows={2} value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
               <div className="ui-form-field">
                 <span className="ui-form-label">Pobieranie</span>
                 <div className="ui-seg2" role="radiogroup" aria-label="Pobieranie" style={{ gridTemplateColumns: `repeat(${Object.keys(DOWNLOAD_FORMAT_LABELS).length}, minmax(0, 1fr))` }}>

@@ -161,7 +161,7 @@ export function AuditPage() {
         />
         <TextInput
           label="Użytkownik"
-          placeholder="login"
+          placeholder="Login"
           value={username}
           onChange={(e) => {
             setUsername(e.currentTarget.value);

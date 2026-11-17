@@ -29,12 +29,12 @@ function OptionsMobile({ field, onChange }: { field: TemplateField; onChange: (f
               Usuń
             </Button>
           </div>
-          <TextInput size="md" label="Tekst na liście" placeholder="np. przystąpienie" value={o.label} onChange={(e) => set(i, "label", e.currentTarget.value)} />
+          <TextInput size="md" label="Tekst na liście" placeholder="Np. przystąpienie" value={o.label} onChange={(e) => set(i, "label", e.currentTarget.value)} />
           <TextInput
             size="md"
             label="Wartość w szablonie"
             description="Trafia do dokumentu w miejsce znacznika"
-            placeholder="np. przystapienie"
+            placeholder="Np. przystapienie"
             value={o.value}
             onChange={(e) => set(i, "value", e.currentTarget.value)}
             styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
@@ -76,7 +76,7 @@ export function OptionsEditor({ field, onChange }: { field: TemplateField; onCha
         <SimpleGrid key={i} cols={2} spacing="xs">
           <TextInput
             size="xs"
-            placeholder="np. przystapienie"
+            placeholder="Np. przystapienie"
             aria-label="Wartość w szablonie"
             value={o.value}
             onChange={(e) => set(i, "value", e.currentTarget.value)}
@@ -84,7 +84,7 @@ export function OptionsEditor({ field, onChange }: { field: TemplateField; onCha
           />
           <TextInput
             size="xs"
-            placeholder="np. przystąpienie"
+            placeholder="Np. przystąpienie"
             aria-label="Tekst na liście w formularzu"
             value={o.label}
             onChange={(e) => set(i, "label", e.currentTarget.value)}
@@ -187,7 +187,7 @@ export function FieldsEditor({
                   <TextInput
                     size="md"
                     label="Maska"
-                    placeholder="np. 99-999"
+                    placeholder="Np. 99-999"
                     description="9 = cyfra, A = litera, * = dowolny znak"
                     value={f.pattern ?? ""}
                     onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}
@@ -315,7 +315,7 @@ export function FieldsEditor({
                   size="xs"
                   label="Format"
                   aria-label={`Format: ${f.label}`}
-                  placeholder="bez formatu"
+                  placeholder="Bez formatu"
                   clearable
                   data={[
                     ...(fieldFormats.data ?? []).map((p) => ({ value: p.value, label: p.label })),
@@ -330,7 +330,7 @@ export function FieldsEditor({
                   size="xs"
                   label="Maska"
                   aria-label={`Maska: ${f.label}`}
-                  placeholder="np. 99-999"
+                  placeholder="Np. 99-999"
                   description="9 = cyfra, A = litera, * = dowolny znak"
                   value={f.pattern ?? ""}
                   onChange={(e) => update(i, { ...f, pattern: e.currentTarget.value })}

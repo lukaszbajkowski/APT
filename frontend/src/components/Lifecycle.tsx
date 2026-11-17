@@ -17,6 +17,7 @@ import {
   IconMinus,
     IconPlayerSkipForward,
   IconPlus,
+  IconTrash,
 } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, formatDateTime, type DictionaryItem, type Employee } from "../api";
@@ -674,7 +675,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   return (
     <div className="ui-cl-due">
       {/* zwykła etykieta nad polem i pole jak lista wyboru (strzałki po prawej) – widać, że można je zmienić */}
-      <Input.Wrapper label="Termin" description={cap(dueText(value, kind))} inputWrapperOrder={["label", "input", "description"]}>
+      <Input.Wrapper label="Termin">
         <Input
           component="button"
           type="button"
@@ -687,7 +688,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
           rightSectionPointerEvents="none"
           onClick={() => setOpen((o) => !o)}
         >
-          {dueShort(value)}
+          {cap(dueText(value, kind))}
         </Input>
       </Input.Wrapper>
       {open &&
@@ -1311,7 +1312,7 @@ function DeskTemplates({
                       <span className="ui-cl-name">{it.label || "(bez nazwy)"}</span>
                       <span className="ui-cl-meta">
                         {phone
-                          ? [cap(RESPONSIBLE[it.responsible]), it.agency_ids.length || it.department_ids.length ? scopeText(it, agMap, depMap) : null, it.auto ? "automatycznie" : null].filter(Boolean).join(" · ")
+                          ? [cap(RESPONSIBLE[it.responsible]), it.agency_ids.length || it.department_ids.length ? scopeText(it, agMap, depMap) : null, it.auto ? "Automatycznie" : null].filter(Boolean).join(" · ")
                           : dim
                             ? `Nie dostanie – tylko ${limitText(it, agMap, depMap)}`
                             : [cap(RESPONSIBLE[it.responsible]), dueText(it.due_days, kind), limitText(it, agMap, depMap) || null].filter(Boolean).join(" · ")}
@@ -1324,7 +1325,7 @@ function DeskTemplates({
                     ) : (
                       it.auto && (
                         <span className="ui-cl-chip" data-auto="">
-                          automatycznie
+                          Automatycznie
                         </span>
                       )
                     )}
@@ -1398,25 +1399,26 @@ function DeskTemplates({
           </Input.Wrapper>
           )}
         </SimpleGrid>
-        <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
-        <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
+        <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "Wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
+        <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "Wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
         <Select
           label="Odhacz automatycznie, gdy"
           description="Bez tego zadanie odhacza się ręcznie na karcie pracownika."
-          placeholder="ręcznie"
+          placeholder="Ręcznie"
           clearable
           searchable
           data={data.auto_options}
           value={cur.auto}
           onChange={(v) => upd(sel, { auto: v })}
         />
-        <Anchor
-          component="button"
-          type="button"
-          c="red"
-          size="sm"
-          fw={600}
-          w="fit-content"
+        {/* usuwanie wyraźnie: czerwony przycisk z ikoną (na telefonie na całą szerokość), oddzielony od pól */}
+        <Button
+          variant="light"
+          color="red"
+          leftSection={<IconTrash size={16} />}
+          fullWidth={phone}
+          w={phone ? undefined : "fit-content"}
+          mt="xs"
           onClick={() => {
             setItems((l) => l.filter((_, j) => j !== sel));
             setSel(items.length > 1 ? Math.max(0, sel - 1) : null);
@@ -1424,7 +1426,7 @@ function DeskTemplates({
           }}
         >
           Usuń zadanie
-        </Anchor>
+        </Button>
       </section>
     ) : null;
   const personView = (
@@ -1447,7 +1449,7 @@ function DeskTemplates({
                 {it.label || "(bez nazwy)"}
                 <small>
                   {cap(RESPONSIBLE[it.responsible])}
-                  {it.auto ? ` · automatycznie: ${autoLabel(it.auto)}` : ""}
+                  {it.auto ? ` · Automatycznie: ${autoLabel(it.auto)}` : ""}
                 </small>
               </span>
             </li>

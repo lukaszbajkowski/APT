@@ -407,7 +407,7 @@ export function UsersPage() {
             {formError && <Alert color="red">{formError}</Alert>}
             <TextInput
               label="Login"
-              description="małe litery, cyfry, kropka, myślnik; min. 3 znaki"
+              description="Małe litery, cyfry, kropka, myślnik; min. 3 znaki"
               required
               disabled={editing !== "new"}
               value={form.username}
@@ -421,7 +421,7 @@ export function UsersPage() {
             />
             <TextInput
               label="E-mail"
-              description="opcjonalnie – link do ustawienia hasła, reset hasła i powiadomienia o bezpieczeństwie"
+              description="Opcjonalnie – link do ustawienia hasła, reset hasła i powiadomienia o bezpieczeństwie"
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.currentTarget.value })}
@@ -475,7 +475,7 @@ export function UsersPage() {
             {formError && <Alert color="red">{formError}</Alert>}
             <TextInput
               label="Login"
-              description="małe litery, cyfry, kropka, myślnik; min. 3 znaki"
+              description="Małe litery, cyfry, kropka, myślnik; min. 3 znaki"
               required
               disabled={editing !== "new"}
               value={form.username}
@@ -489,7 +489,7 @@ export function UsersPage() {
             />
             <TextInput
               label="E-mail"
-              description="opcjonalnie – link do ustawienia hasła, reset hasła i powiadomienia o bezpieczeństwie"
+              description="Opcjonalnie – link do ustawienia hasła, reset hasła i powiadomienia o bezpieczeństwie"
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.currentTarget.value })}

@@ -315,7 +315,7 @@ function RemoveSignature({ id, what, docId, onDone }: { id: number; what: string
           <Textarea
             label="Powód"
             description="Zapisywany w dzienniku zdarzeń."
-            placeholder="np. podpisała niewłaściwa osoba, zły plik"
+            placeholder="Np. podpisała niewłaściwa osoba, zły plik"
             autosize
             minRows={2}
             value={reason}

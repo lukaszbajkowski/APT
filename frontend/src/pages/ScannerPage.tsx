@@ -267,7 +267,7 @@ export function ScannerPage() {
         <Group align="flex-end" gap="xs" wrap="nowrap">
           <TextInput
             label="Albo wpisz numer z karty"
-            placeholder="np. 000123"
+            placeholder="Np. 000123"
             inputMode="numeric"
             value={manual}
             onChange={(e) => setManual(e.currentTarget.value)}

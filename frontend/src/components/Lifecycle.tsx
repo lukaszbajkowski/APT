@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { createPortal } from "react-dom";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Checkbox, ComboboxChevron, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -634,7 +634,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     if (!open) return;
     const down = (e: PointerEvent) => {
       const t = e.target as Element | null;
-      if (t && !t.closest(".ui-cl-due-pop") && !t.closest(".ui-cl-due-btn")) close(false);
+      if (t && !t.closest(".ui-cl-due-pop") && !t.closest(".ui-cl-due-field")) close(false);
     };
     document.addEventListener("pointerdown", down, true);
     return () => document.removeEventListener("pointerdown", down, true);
@@ -673,20 +673,23 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     );
   return (
     <div className="ui-cl-due">
-      <button
-        ref={btnRef}
-        type="button"
-        className="ui-cl-due-btn"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className="ui-cl-due-text">
-          <span className="ui-cl-due-label">Termin</span>
-          <span className="ui-cl-due-desc">{cap(dueText(value, kind))}</span>
-        </span>
-        <span className="ui-cl-due-pill">{dueShort(value)}</span>
-      </button>
+      {/* zwykła etykieta nad polem i pole jak lista wyboru (strzałki po prawej) – widać, że można je zmienić */}
+      <Input.Wrapper label="Termin" description={cap(dueText(value, kind))} inputWrapperOrder={["label", "input", "description"]}>
+        <Input
+          component="button"
+          type="button"
+          ref={btnRef}
+          className="ui-cl-due-field"
+          data-open={open || undefined}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          rightSection={<ComboboxChevron />}
+          rightSectionPointerEvents="none"
+          onClick={() => setOpen((o) => !o)}
+        >
+          {dueShort(value)}
+        </Input>
+      </Input.Wrapper>
       {open &&
         pos &&
         createPortal(
@@ -945,7 +948,8 @@ function DeskTemplates({
   const ev = kind === "onboarding" ? "zatrudnienia" : "odejścia";
   const filtering = pAg !== null || pDep !== null;
   const autoLabel = (v: string | null) => (v ? (data.auto_options.find((o) => o.value === v)?.label ?? v) : null);
-  const dueChip = dueShort;
+  // telefon: od wielkiej litery („Dzień 0”); komputer na razie bez zmian
+  const dueChip = (d: number) => (phone ? dueShort(d) : dueShort(d).replace(/^Dzień/, "dzień"));
   // grupy wg terminu: kolejność w grupie = kolejność zapisana (strzałki w panelu)
   const groups: { label: string; test: (d: number) => boolean }[] = [
     { label: kind === "onboarding" ? "Przed zatrudnieniem" : "Przed odejściem", test: (d) => d < 0 },
@@ -1382,7 +1386,7 @@ function DeskTemplates({
                 max={365}
                 allowDecimal={false}
                 hideControls
-                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "Dzień " : ""}
+                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "dzień " : ""}
                 suffix={cur.due_days === 0 ? "" : Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
                 classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
                 value={cur.due_days}
@@ -1437,7 +1441,7 @@ function DeskTemplates({
         <ul className="ui-cl-preview">
           {shown.map(({ it, i }) => (
             <li key={i}>
-              <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined}>
+              <span className="ui-cl-chip" data-zero={it.due_days === 0 || undefined} data-sign={it.due_days < 0 ? "before" : it.due_days > 0 ? "after" : undefined}>
                 {dueChip(it.due_days)}
               </span>
               <span>

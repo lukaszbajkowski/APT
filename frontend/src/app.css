@@ -1918,14 +1918,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 :where(:root[data-device="phone"]) .ui-cl-phone:has(.ui-cl-row[data-editing]){padding-bottom:92dvh}
 
 /* termin na telefonie (jak data w Kalendarzu iOS): wiersz z wartością w pigułce + kółko w dymku nad treścią arkusza */
-.ui-cl-due-btn{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:44px;padding:var(--s-1) var(--s-1) var(--s-1) var(--s-3);border:1px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-md);background:var(--mantine-color-body);color:inherit;font:inherit;text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.ui-cl-due-btn:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
-.ui-cl-due-text{display:flex;flex-direction:column;min-width:0}
-.ui-cl-due-label{font-size:15px;line-height:22px;font-weight:600}
-.ui-cl-due-desc{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
-.ui-cl-due-pill{flex:none;padding:var(--s-1) var(--s-3);border-radius:var(--mantine-radius-sm);background:var(--apt-subtle);font-size:15px;line-height:22px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.ui-cl-due-btn[aria-expanded="true"]{border-color:var(--mantine-primary-color-filled)}
-.ui-cl-due-btn[aria-expanded="true"] .ui-cl-due-pill{background:var(--mantine-primary-color-light);color:var(--mantine-primary-color-light-color)}
+.ui-cl-due-field{font-variant-numeric:tabular-nums;text-align:left}
+.ui-cl-due-field[data-open]{border-color:var(--mantine-primary-color-filled)}
 .ui-cl-due-scrim{position:fixed;inset:0;z-index:20}
 .ui-cl-due-pop{position:absolute;z-index:21;padding:var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface);box-shadow:0 12px 32px rgba(0,0,0,.24);transform-origin:top right}
 .ui-cl-due-pop[data-up]{transform-origin:bottom right}
@@ -1946,3 +1940,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 }
 @keyframes ui-cl-due-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
 @keyframes ui-cl-due-fade{from{opacity:0}to{opacity:1}}
+/* „Co dostanie osoba” na telefonie: termin w kolorze – przed (bursztyn), dzień 0 (orzech), po (szałwia) */
+.ui-cl-preview .ui-cl-chip[data-sign="before"]{background:var(--mantine-color-orange-light);color:var(--mantine-color-orange-text)}
+.ui-cl-preview .ui-cl-chip[data-sign="after"]{background:var(--mantine-color-green-light);color:var(--mantine-color-green-text)}

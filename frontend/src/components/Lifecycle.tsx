@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { createPortal } from "react-dom";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Button, Checkbox, ComboboxChevron, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Button, Checkbox, ComboboxChevron, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import {
@@ -14,7 +14,6 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconChevronDown,
-  IconMinus,
     IconPlayerSkipForward,
   IconPlus,
   IconTrash,
@@ -602,16 +601,19 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   useLayoutEffect(() => {
     if (!open) return setPos(null);
     const btn = btnRef.current;
-    const host = btn?.closest<HTMLElement>(".mantine-Drawer-content");
+    // w arkuszu / szufladzie – w jej treści; na komputerze – w panelu zadania (miejsce liczone do krawędzi okna)
+    const drawer = btn?.closest<HTMLElement>(".mantine-Drawer-content");
+    const host = drawer ?? btn?.closest<HTMLElement>(".ui-cl-panel");
     if (!btn || !host) return;
     const b = btn.getBoundingClientRect();
     const h = host.getBoundingClientRect();
-    const below = h.bottom - b.bottom - 8;
-    const up = below < H && b.top - h.top - 8 > below;
-    const top = up ? Math.max(8, b.top - h.top - 6 - H) : Math.min(b.bottom - h.top + 6, h.height - H - 8);
-    // wąski dymek przy prawej krawędzi wiersza (przy pigułce z wartością) – w poziomie nie zasłania całego arkusza
-    const width = Math.min(b.width, 320);
-    setPos({ host, top, left: b.right - h.left - width, width, up });
+    const lo = drawer ? h.top : 0;
+    const hi = drawer ? h.bottom : window.innerHeight;
+    const below = hi - b.bottom - 8;
+    const up = below < H && b.top - lo - 8 > below;
+    const top = up ? Math.max(lo + 8, b.top - 6 - H) - h.top : Math.min(b.bottom + 6, hi - H - 8) - h.top;
+    // dymek na szerokość pola „Termin”
+    setPos({ host, top, left: b.left - h.left, width: b.width, up });
   }, [open, H]);
   // po otwarciu: kółko na bieżącej wartości i fokus na nim
   useLayoutEffect(() => {
@@ -621,6 +623,29 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     t.scrollTop = (value - DUE_MIN) * WHEEL_ROW;
     t.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pos]);
+  // kółko myszy / gładzik: dzień po dniu (zbierane przesunięcie, żeby gładzik nie przeskakiwał o kilkanaście dni)
+  useEffect(() => {
+    const t = trackRef.current;
+    if (!open || !pos || !t) return;
+    let acc = 0;
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+      // ząbek kółka myszy (duże przesunięcie naraz) = jeden dzień
+      if (Math.abs(dy) >= 50) {
+        acc = 0;
+        t.scrollTo({ top: t.scrollTop + Math.sign(dy) * WHEEL_ROW });
+        return;
+      }
+      acc += dy;
+      if (Math.abs(acc) < 40) return;
+      const steps = Math.trunc(acc / 40);
+      acc -= steps * 40;
+      t.scrollTo({ top: t.scrollTop + steps * WHEEL_ROW });
+    };
+    t.addEventListener("wheel", wheel, { passive: false });
+    return () => t.removeEventListener("wheel", wheel);
   }, [open, pos]);
   // zmiana z zewnątrz (np. przeniesienie zadania) przy otwartym kółku
   useEffect(() => {
@@ -1360,45 +1385,18 @@ function DeskTemplates({
         </div>
         )}
         <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus={!phone || undefined} />
-        <SimpleGrid cols={phone ? 1 : 2} spacing="sm">
-          <Select
-            label="Odpowiada"
-            allowDeselect={false}
-            data={[
-              { value: "hr", label: "HR" },
-              { value: "manager", label: "Kierownik" },
-            ]}
-            value={cur.responsible}
-            onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
-          />
-          {phone ? (
-            <DueWheelField value={cur.due_days} kind={kind} onChange={(d) => upd(sel, { due_days: d })} onOpenChange={setDueOpen} />
-          ) : (
-          <Input.Wrapper label="Termin" description={dueText(cur.due_days, kind)} inputWrapperOrder={["label", "input", "description", "error"]}>
-            {/* − wartość + : przyciski obok pola, w polu termin z jednostką („+7 dni”, „Dzień 0”) */}
-            <div className="ui-cl-step">
-              <ActionIcon variant="default" className="ui-cl-step-btn" aria-label="Dzień wcześniej" disabled={cur.due_days <= -365} onClick={() => upd(sel, { due_days: cur.due_days - 1 })}>
-                <IconMinus size={16} />
-              </ActionIcon>
-              <NumberInput
-                aria-label="Termin (dni)"
-                min={-365}
-                max={365}
-                allowDecimal={false}
-                hideControls
-                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "Dzień " : ""}
-                suffix={cur.due_days === 0 ? "" : Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
-                classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
-                value={cur.due_days}
-                onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}
-              />
-              <ActionIcon variant="default" className="ui-cl-step-btn" aria-label="Dzień później" disabled={cur.due_days >= 365} onClick={() => upd(sel, { due_days: cur.due_days + 1 })}>
-                <IconPlus size={16} />
-              </ActionIcon>
-            </div>
-          </Input.Wrapper>
-          )}
-        </SimpleGrid>
+        {/* jak na telefonie: pola jedno pod drugim, termin opisem w polu i kółkiem w dymku */}
+        <Select
+          label="Odpowiada"
+          allowDeselect={false}
+          data={[
+            { value: "hr", label: "HR" },
+            { value: "manager", label: "Kierownik" },
+          ]}
+          value={cur.responsible}
+          onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
+        />
+        <DueWheelField value={cur.due_days} kind={kind} onChange={(d) => upd(sel, { due_days: d })} onOpenChange={setDueOpen} />
         <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "Wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
         <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "Wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
         <Select
@@ -1709,6 +1707,7 @@ function DeskTemplates({
       <Drawer
         opened={narrow && panelOpen && !!cur}
         onClose={() => setPanelOpen(false)}
+        closeOnClickOutside={!dueOpen}
         position="right"
         size={420}
         title="Ustawienia zadania"

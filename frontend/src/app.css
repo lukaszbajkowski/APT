@@ -1165,9 +1165,14 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
   .ui-att-short{white-space:normal}
 }
 @container emp (max-width:620px){
-  .ui-filterbar{grid-template-columns:repeat(2,minmax(0,1fr)) auto!important}
+  /* zasada „zawinięty nagłówek na całą szerokość”: szukanie, przełącznik i filtry wypełniają cały wiersz */
   .ui-emp-search-row{flex-wrap:wrap!important}
   .ui-emp-search-row > .mantine-TextInput-root{flex:1 1 100%!important}
+  .ui-emp-search-row > .mantine-SegmentedControl-root{display:flex;width:100%}
+  .ui-emp-search-row > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:1 1 0}
+  .ui-filterbar{display:flex!important;flex-wrap:wrap}
+  .ui-filterbar > *{flex:1 1 160px}
+  .ui-filterbar > :last-child{flex:none}
 }
 
 /* nagłówek strony (PageTitle) */

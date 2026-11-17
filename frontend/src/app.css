@@ -1869,7 +1869,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpl-detail[data-page]{display:flex;flex-direction:column;gap:var(--s-4);padding:0;overflow:visible;height:auto}
 .ui-tpl-detail[data-page] .ui-tpl-grid{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"page info" "recent recent";margin-top:var(--s-2)}
 .ui-tpl-detail[data-page] .ui-tpl-left{display:contents}
-.ui-tpl-detail[data-page] .ui-tpl-page{grid-area:page;width:100%}
+.ui-tpl-detail[data-page] .ui-tpl-page{grid-area:page;width:100%;align-self:start}
 .ui-tpl-detail[data-page] .ui-tpl-info{grid-area:info;min-width:0}
 .ui-tpl-detail[data-page] .ui-tpl-recent-sec{grid-area:recent}
 @container tpl (max-width:620px){.ui-tpl-detail[data-page] .ui-tpl-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"page" "info" "recent"}.ui-tpl-detail[data-page] .ui-tpl-page{width:180px}}

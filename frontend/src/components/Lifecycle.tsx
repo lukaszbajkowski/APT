@@ -1479,7 +1479,7 @@ function DeskTemplates({
           <div className="ui-paper-headrow">
             <div>
               <Text size="sm" c="dimmed">
-                Tak zobaczy to kadra na karcie nowej osoby
+                {kind === "onboarding" ? "Tak zobaczy to użytkownik na karcie nowej osoby" : "Tak zobaczy to użytkownik na karcie osoby, która odchodzi"}
               </Text>
               <Title order={2} className="ui-cl-ptitle">
                 Checklista {kind === "onboarding" ? "wdrożenia" : "odejścia"}

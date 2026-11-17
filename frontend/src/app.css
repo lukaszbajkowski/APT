@@ -1825,3 +1825,10 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-panel .ui-cl-pbody,.ui-tpe-drawer .ui-cl-pbody{gap:var(--s-5)}
 .ui-cl-paper{padding:var(--s-5) var(--s-4) var(--s-4)}
 .ui-cl-paper > :not(.ui-cl-list){padding-left:var(--s-4);padding-right:var(--s-4)}
+/* zadania na kartce rozmieszczone jak pola w edycji szablonu: bez kreski między nimi, obwódka (wybrane – pełna,
+   najechanie – przerywana) cofnięta o 4 px od krawędzi, więc sąsiednie zadania mają między sobą odstęp */
+.ui-cl-paper .ui-cl-pick{padding:var(--s-3) var(--s-4);background:transparent;border-radius:var(--mantine-radius-sm)}
+.ui-cl-paper .ui-cl-row + .ui-cl-row:not([data-lifted]) .ui-cl-pick{box-shadow:none}
+.ui-cl-paper .ui-cl-row:hover:not([data-on]):not([data-lifted]) .ui-cl-pick{outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-4px}
+.ui-cl-paper .ui-cl-row[data-on] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-4px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,transparent)}
+.ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{background:var(--apt-surface)}

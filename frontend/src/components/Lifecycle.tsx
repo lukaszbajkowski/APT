@@ -592,7 +592,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   const btnRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const emitted = useRef(value);
-  const H = WHEEL_ROW * 5 + 16;
+  const H = WHEEL_ROW * 5 + 8;
   const close = (focus = true) => {
     setOpen(false);
     if (focus) btnRef.current?.focus();
@@ -611,7 +611,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     const hi = drawer ? h.bottom : window.innerHeight;
     const below = hi - b.bottom - 8;
     const up = below < H && b.top - lo - 8 > below;
-    const top = up ? Math.max(lo + 8, b.top - 6 - H) - h.top : Math.min(b.bottom + 6, hi - H - 8) - h.top;
+    const top = up ? Math.max(lo + 8, b.top - 4 - H) - h.top : Math.min(b.bottom + 4, hi - H - 8) - h.top;
     // dymek na szerokość pola „Termin”
     setPos({ host, top, left: b.left - h.left, width: b.width, up });
   }, [open, H]);
@@ -693,8 +693,10 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   const rows: ReactNode[] = [];
   for (let d = DUE_MIN; d <= DUE_MAX; d++)
     rows.push(
+      // ten sam zapis co w polu („17 dni po zatrudnieniu”) – dymek wygląda jak rozwinięta lista wyboru
       <span key={d} data-on={d === value || undefined} aria-hidden onClick={() => goTo(d, true)}>
-        {dueShort(d)}
+        {cap(dueText(d, kind))}
+        {d === value && <IconCheck size={16} />}
       </span>,
     );
   return (

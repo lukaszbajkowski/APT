@@ -1921,14 +1921,16 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-due-field{font-variant-numeric:tabular-nums;text-align:left}
 .ui-cl-due-field[data-open]{border-color:var(--mantine-primary-color-filled)}
 .ui-cl-due-scrim{position:fixed;inset:0;z-index:20}
-.ui-cl-due-pop{position:absolute;z-index:21;padding:var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface);box-shadow:0 12px 32px rgba(0,0,0,.24);transform-origin:top right}
-.ui-cl-due-pop[data-up]{transform-origin:bottom right}
-.ui-cl-due-pop::after{content:"";position:absolute;left:var(--s-2);right:var(--s-2);top:calc(var(--s-2) + 72px);height:36px;border-radius:var(--mantine-radius-sm);background:color-mix(in srgb,var(--mantine-primary-color-filled) 10%,transparent);pointer-events:none}
-.ui-cl-due-track{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-mask:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(transparent,#000 30%,#000 70%,transparent);border-radius:var(--mantine-radius-sm)}
+.ui-cl-due-pop{position:absolute;z-index:21;padding:var(--s-1);border:1px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-md);background:var(--mantine-color-body);box-shadow:var(--mantine-shadow-md);transform-origin:top center}
+.ui-cl-due-pop[data-up]{transform-origin:bottom center}
+.ui-cl-due-pop::after{content:"";position:absolute;left:var(--s-1);right:var(--s-1);top:calc(var(--s-1) + 72px);height:36px;border-radius:var(--mantine-radius-sm);background:var(--mantine-primary-color-light);pointer-events:none}
+.ui-cl-due-track{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-mask:linear-gradient(rgba(0,0,0,.35),#000 35%,#000 65%,rgba(0,0,0,.35));mask:linear-gradient(rgba(0,0,0,.35),#000 35%,#000 65%,rgba(0,0,0,.35));border-radius:var(--mantine-radius-sm)}
 .ui-cl-due-track::-webkit-scrollbar{display:none}
 .ui-cl-due-track:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
-.ui-cl-due-track > span{display:flex;align-items:center;justify-content:center;height:36px;scroll-snap-align:center;font-size:18px;line-height:24px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none}
+.ui-cl-due-track > span{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);height:36px;padding:0 var(--s-2) 0 var(--s-3);scroll-snap-align:center;font-size:15px;line-height:22px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none}
 .ui-cl-due-track > span[data-on]{color:var(--mantine-color-text);font-weight:600}
+.ui-cl-due-track > span:not([data-on]):hover{color:var(--mantine-color-text)}
+.ui-cl-due-track > span svg{flex:none;color:var(--mantine-primary-color-filled)}
 .ui-cl-due-track > .ui-cl-due-pad{height:72px;scroll-snap-align:none;cursor:default}
 /* dymek może wyjść poza treść arkusza (nad listę), więc arkusz go nie przycina */
 .ui-tpe-fsheet:has(.ui-cl-due-pop){overflow:visible}

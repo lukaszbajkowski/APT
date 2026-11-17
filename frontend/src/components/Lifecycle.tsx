@@ -592,6 +592,13 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   const btnRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const emitted = useRef(value);
+  // poprzednia wartość – kierunek wjazdu tekstu w polu
+  const prevVal = useRef(value);
+  const lastVal = useRef(value);
+  if (lastVal.current !== value) {
+    prevVal.current = lastVal.current;
+    lastVal.current = value;
+  }
   const H = WHEEL_ROW * 5 + 8;
   const close = (focus = true) => {
     setOpen(false);
@@ -635,14 +642,14 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
       // ząbek kółka myszy (duże przesunięcie naraz) = jeden dzień
       if (Math.abs(dy) >= 50) {
         acc = 0;
-        t.scrollTo({ top: t.scrollTop + Math.sign(dy) * WHEEL_ROW });
+        goTo(base() + Math.sign(dy), true);
         return;
       }
       acc += dy;
       if (Math.abs(acc) < 40) return;
       const steps = Math.trunc(acc / 40);
       acc -= steps * 40;
-      t.scrollTo({ top: t.scrollTop + steps * WHEEL_ROW });
+      goTo(base() + steps, true);
     };
     t.addEventListener("wheel", wheel, { passive: false });
     return () => t.removeEventListener("wheel", wheel);
@@ -674,13 +681,46 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     body?.addEventListener("scroll", onScroll, { passive: true });
     return () => body?.removeEventListener("scroll", onScroll);
   }, [open]);
+  // płynne przejście (ok. 200 ms, bez przestrzelenia): każda klatka pokonuje stałą część drogi; kolejne ząbki kółka /
+  // strzałki przesuwają tylko cel, więc szybkie kręcenie nie kolejkuje animacji. Ograniczony ruch – od razu.
+  const anim = useRef<{ target: number; raf: number }>({ target: 0, raf: 0 });
   const goTo = (d: number, smooth: boolean) => {
     const t = trackRef.current;
     if (!t) return;
     const c = Math.max(DUE_MIN, Math.min(DUE_MAX, d));
+    anim.current.target = c;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    t.scrollTo({ top: (c - DUE_MIN) * WHEEL_ROW, behavior: smooth && !reduce ? "smooth" : "auto" });
+    if (!smooth || reduce) {
+      cancelAnimationFrame(anim.current.raf);
+      anim.current.raf = 0;
+      t.style.scrollSnapType = "";
+      t.scrollTop = (c - DUE_MIN) * WHEEL_ROW;
+      return;
+    }
+    if (anim.current.raf) return;
+    t.style.scrollSnapType = "none"; // zatrzask przeszkadzałby w ruchu klatka po klatce
+    // pozycja liczona ułamkowo – przeglądarka zaokrągla scrollTop do pikseli i ruch stanąłby tuż przed celem
+    let y = t.scrollTop;
+    const step = () => {
+      const goal = (anim.current.target - DUE_MIN) * WHEEL_ROW;
+      const dy = goal - y;
+      if (Math.abs(dy) < 0.5) {
+        t.scrollTop = goal;
+        t.style.scrollSnapType = "";
+        anim.current.raf = 0;
+        return;
+      }
+      y += dy * 0.24;
+      t.scrollTop = y;
+      anim.current.raf = requestAnimationFrame(step);
+    };
+    anim.current.raf = requestAnimationFrame(step);
   };
+  // następny krok liczony od celu trwającej animacji (nie od wartości w połowie drogi)
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const base = () => (anim.current.raf ? anim.current.target : valueRef.current);
+  useEffect(() => () => cancelAnimationFrame(anim.current.raf), []);
   const onScroll = () => {
     const t = trackRef.current;
     if (!t) return;
@@ -715,7 +755,10 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
           rightSectionPointerEvents="none"
           onClick={() => setOpen((o) => !o)}
         >
-          {cap(dueText(value, kind))}
+          {/* tekst wjeżdża z tej strony, w którą idzie termin */}
+          <span key={value} className="ui-cl-due-val" data-dir={value >= prevVal.current ? "down" : "up"}>
+            {cap(dueText(value, kind))}
+          </span>
         </Input>
       </Input.Wrapper>
       {open &&
@@ -748,7 +791,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
                   const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: 1, ArrowLeft: -1, PageDown: 7, PageUp: -7 }[e.key];
                   if (step) {
                     e.preventDefault();
-                    goTo(value + step, true);
+                    goTo(base() + step, true);
                   } else if (e.key === "Home" || e.key === "End") {
                     e.preventDefault();
                     goTo(e.key === "Home" ? DUE_MIN : DUE_MAX, false);

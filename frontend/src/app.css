@@ -1945,3 +1945,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* „Co dostanie osoba” na telefonie: termin w kolorze – przed (bursztyn), dzień 0 (orzech), po (szałwia) */
 .ui-cl-preview .ui-cl-chip[data-sign="before"]{background:var(--mantine-color-orange-light);color:var(--mantine-color-orange-text)}
 .ui-cl-preview .ui-cl-chip[data-sign="after"]{background:var(--mantine-color-green-light);color:var(--mantine-color-green-text)}
+/* termin: tekst w polu wjeżdża z kierunku zmiany (dzień później – z dołu, wcześniej – z góry) */
+.ui-cl-due-field{overflow:hidden}
+.ui-cl-due-val{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:no-preference){
+  .ui-cl-due-val[data-dir="down"]{animation:ui-cl-due-down .2s cubic-bezier(.2,.8,.2,1)}
+  .ui-cl-due-val[data-dir="up"]{animation:ui-cl-due-up .2s cubic-bezier(.2,.8,.2,1)}
+}
+@keyframes ui-cl-due-down{from{transform:translateY(60%);opacity:0}to{transform:none;opacity:1}}
+@keyframes ui-cl-due-up{from{transform:translateY(-60%);opacity:0}to{transform:none;opacity:1}}

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
@@ -570,6 +571,176 @@ function dueText(days: number, kind: Kind) {
   return days > 0 ? `${d} po ${ev.replace("ia", "iu")}` : `${d} przed ${ev.replace("ia", "iem")}`;
 }
 
+/** termin zapisany krótko, od wielkiej litery: „Dzień 0”, „+7 dni”, „−3 dni” */
+function dueShort(d: number) {
+  return d === 0 ? "Dzień 0" : d > 0 ? `+${d} ${d === 1 ? "dzień" : "dni"}` : `−${-d} ${d === -1 ? "dzień" : "dni"}`;
+}
+
+const DUE_MIN = -365;
+const DUE_MAX = 365;
+const WHEEL_ROW = 36;
+
+/** Termin na telefonie – jak data w Kalendarzu iOS: wiersz z wartością w pigułce, stuknięcie otwiera kółko w dymku
+ *  nad treścią arkusza (arkusz nie rośnie, nic się nie przesuwa). Kółko zatrzaskuje się na każdym dniu; bez gestu:
+ *  stuknięcie sąsiedniej wartości, strzałki, Page Up / Page Down (tydzień). Wartość zapisuje się na bieżąco. */
+function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number; kind: Kind; onChange: (d: number) => void; onOpenChange?: (open: boolean) => void }) {
+  const [open, setOpen] = useState(false);
+  const notify = useRef(onOpenChange);
+  notify.current = onOpenChange;
+  useEffect(() => notify.current?.(open), [open]);
+  const [pos, setPos] = useState<{ host: HTMLElement; top: number; left: number; width: number; up: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const emitted = useRef(value);
+  const H = WHEEL_ROW * 5 + 16;
+  const close = (focus = true) => {
+    setOpen(false);
+    if (focus) btnRef.current?.focus();
+  };
+  // położenie dymku: pod wierszem, a gdy w arkuszu brak miejsca – nad nim; zawsze w całości w arkuszu
+  useLayoutEffect(() => {
+    if (!open) return setPos(null);
+    const btn = btnRef.current;
+    const host = btn?.closest<HTMLElement>(".mantine-Drawer-content");
+    if (!btn || !host) return;
+    const b = btn.getBoundingClientRect();
+    const h = host.getBoundingClientRect();
+    const below = h.bottom - b.bottom - 8;
+    const up = below < H && b.top - h.top - 8 > below;
+    const top = up ? Math.max(8, b.top - h.top - 6 - H) : Math.min(b.bottom - h.top + 6, h.height - H - 8);
+    // wąski dymek przy prawej krawędzi wiersza (przy pigułce z wartością) – w poziomie nie zasłania całego arkusza
+    const width = Math.min(b.width, 320);
+    setPos({ host, top, left: b.right - h.left - width, width, up });
+  }, [open, H]);
+  // po otwarciu: kółko na bieżącej wartości i fokus na nim
+  useLayoutEffect(() => {
+    const t = trackRef.current;
+    if (!open || !pos || !t) return;
+    emitted.current = value;
+    t.scrollTop = (value - DUE_MIN) * WHEEL_ROW;
+    t.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pos]);
+  // zmiana z zewnątrz (np. przeniesienie zadania) przy otwartym kółku
+  useEffect(() => {
+    const t = trackRef.current;
+    if (t && open && value !== emitted.current) {
+      emitted.current = value;
+      t.scrollTop = (value - DUE_MIN) * WHEEL_ROW;
+    }
+  }, [value, open]);
+  // stuknięcie nad arkuszem (poza nim) zamyka sam dymek – arkusz zostaje (Drawer ma wtedy wyłączone zamykanie kliknięciem obok)
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (t && !t.closest(".ui-cl-due-pop") && !t.closest(".ui-cl-due-btn")) close(false);
+    };
+    document.addEventListener("pointerdown", down, true);
+    return () => document.removeEventListener("pointerdown", down, true);
+  }, [open]);
+  useEffect(() => () => notify.current?.(false), []);
+  // przewinięcie arkusza zamyka dymek (zostałby w miejscu, a wiersz by odjechał)
+  useEffect(() => {
+    if (!open) return;
+    const body = btnRef.current?.closest(".ui-tpe-fsheet-body");
+    const onScroll = () => close(false);
+    body?.addEventListener("scroll", onScroll, { passive: true });
+    return () => body?.removeEventListener("scroll", onScroll);
+  }, [open]);
+  const goTo = (d: number, smooth: boolean) => {
+    const t = trackRef.current;
+    if (!t) return;
+    const c = Math.max(DUE_MIN, Math.min(DUE_MAX, d));
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    t.scrollTo({ top: (c - DUE_MIN) * WHEEL_ROW, behavior: smooth && !reduce ? "smooth" : "auto" });
+  };
+  const onScroll = () => {
+    const t = trackRef.current;
+    if (!t) return;
+    const d = Math.max(DUE_MIN, Math.min(DUE_MAX, DUE_MIN + Math.round(t.scrollTop / WHEEL_ROW)));
+    if (d !== emitted.current) {
+      emitted.current = d;
+      onChange(d);
+    }
+  };
+  const rows: ReactNode[] = [];
+  for (let d = DUE_MIN; d <= DUE_MAX; d++)
+    rows.push(
+      <span key={d} data-on={d === value || undefined} aria-hidden onClick={() => goTo(d, true)}>
+        {dueShort(d)}
+      </span>,
+    );
+  return (
+    <div className="ui-cl-due">
+      <button
+        ref={btnRef}
+        type="button"
+        className="ui-cl-due-btn"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="ui-cl-due-text">
+          <span className="ui-cl-due-label">Termin</span>
+          <span className="ui-cl-due-desc">{cap(dueText(value, kind))}</span>
+        </span>
+        <span className="ui-cl-due-pill">{dueShort(value)}</span>
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <>
+            {/* stuknięcie obok tylko zamyka dymek (jak w iOS) – nie trafia w pola pod spodem */}
+            <div className="ui-cl-due-scrim" onClick={() => close()} aria-hidden />
+            <div
+              className="ui-cl-due-pop"
+              role="dialog"
+              aria-label="Termin"
+              data-up={pos.up || undefined}
+              style={{ top: pos.top, left: pos.left, width: pos.width, height: H }}
+            >
+              <div
+                ref={trackRef}
+                className="ui-cl-due-track"
+                tabIndex={0}
+                role="slider"
+                aria-label="Termin"
+                // Esc zamyka tylko dymek – Mantine nie zamknie wtedy arkusza
+                data-mantine-stop-propagation="true"
+                aria-valuemin={DUE_MIN}
+                aria-valuemax={DUE_MAX}
+                aria-valuenow={value}
+                aria-valuetext={`${dueShort(value)}, ${dueText(value, kind)}`}
+                onScroll={onScroll}
+                onKeyDown={(e) => {
+                  const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: 1, ArrowLeft: -1, PageDown: 7, PageUp: -7 }[e.key];
+                  if (step) {
+                    e.preventDefault();
+                    goTo(value + step, true);
+                  } else if (e.key === "Home" || e.key === "End") {
+                    e.preventDefault();
+                    goTo(e.key === "Home" ? DUE_MIN : DUE_MAX, false);
+                  } else if (e.key === "Escape" || e.key === "Enter" || e.key === "Tab") {
+                    // Esc zamyka tylko dymek – arkusz zostaje
+                    if (e.key !== "Tab") e.preventDefault();
+                    e.stopPropagation();
+                    close(e.key !== "Tab");
+                  }
+                }}
+              >
+                <span className="ui-cl-due-pad" />
+                {rows}
+                <span className="ui-cl-due-pad" />
+              </div>
+            </div>
+          </>,
+          pos.host,
+        )}
+    </div>
+  );
+}
+
 function scopeText(it: TemplateItem, ag: Map<number, string>, dep: Map<number, string>) {
   const a = it.agency_ids.length ? it.agency_ids.map((x) => ag.get(x) ?? "?").join(", ") : "wszystkie APT";
   const d = it.department_ids.length ? it.department_ids.map((x) => dep.get(x) ?? "?").join(", ") : "wszystkie wydziały";
@@ -719,6 +890,7 @@ function DeskTemplates({
   const [sel, setSelRaw] = useState<number | null>(items.length ? 0 : null);
   // jeden panel z przełącznikiem: wybrane zadanie albo „co dostanie osoba”
   const [view, setView] = useState<"task" | "person">("task");
+  const [dueOpen, setDueOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   // komputer, wąski obszar (jak edycja szablonu): kartka na całą szerokość, ustawienia zadania w panelu z prawej
   const rootRef = useRef<HTMLDivElement>(null);
@@ -773,7 +945,7 @@ function DeskTemplates({
   const ev = kind === "onboarding" ? "zatrudnienia" : "odejścia";
   const filtering = pAg !== null || pDep !== null;
   const autoLabel = (v: string | null) => (v ? (data.auto_options.find((o) => o.value === v)?.label ?? v) : null);
-  const dueChip = (d: number) => (d === 0 ? "dzień 0" : d > 0 ? `+${d} ${d === 1 ? "dzień" : "dni"}` : `−${-d} ${d === -1 ? "dzień" : "dni"}`);
+  const dueChip = dueShort;
   // grupy wg terminu: kolejność w grupie = kolejność zapisana (strzałki w panelu)
   const groups: { label: string; test: (d: number) => boolean }[] = [
     { label: kind === "onboarding" ? "Przed zatrudnieniem" : "Przed odejściem", test: (d) => d < 0 },
@@ -1183,7 +1355,7 @@ function DeskTemplates({
           </Group>
         </div>
         )}
-        <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus />
+        <TextInput label="Zadanie" placeholder="Np. Szkolenie BHP wstępne" value={cur.label} error={!cur.label.trim() ? "Wpisz nazwę zadania" : undefined} onChange={(e) => upd(sel, { label: e.currentTarget.value })} data-autofocus={!phone || undefined} />
         <SimpleGrid cols={phone ? 1 : 2} spacing="sm">
           <Select
             label="Odpowiada"
@@ -1195,6 +1367,9 @@ function DeskTemplates({
             value={cur.responsible}
             onChange={(v) => v && upd(sel, { responsible: v as TemplateItem["responsible"] })}
           />
+          {phone ? (
+            <DueWheelField value={cur.due_days} kind={kind} onChange={(d) => upd(sel, { due_days: d })} onOpenChange={setDueOpen} />
+          ) : (
           <Input.Wrapper label="Termin" description={dueText(cur.due_days, kind)} inputWrapperOrder={["label", "input", "description", "error"]}>
             {/* − wartość + : przyciski obok pola, w polu termin z jednostką („+7 dni”, „dzień 0”) */}
             <div className="ui-cl-step">
@@ -1207,7 +1382,7 @@ function DeskTemplates({
                 max={365}
                 allowDecimal={false}
                 hideControls
-                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "dzień " : ""}
+                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "Dzień " : ""}
                 suffix={cur.due_days === 0 ? "" : Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
                 classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
                 value={cur.due_days}
@@ -1218,6 +1393,7 @@ function DeskTemplates({
               </ActionIcon>
             </div>
           </Input.Wrapper>
+          )}
         </SimpleGrid>
         <MultiSelect label="Dotyczy APT" placeholder={cur.agency_ids.length ? undefined : "wszystkie APT"} searchable clearable data={agOpts} value={cur.agency_ids.map(String)} onChange={(v) => upd(sel, { agency_ids: v.map(Number) })} />
         <MultiSelect label="Dotyczy wydziałów" placeholder={cur.department_ids.length ? undefined : "wszystkie wydziały"} searchable clearable data={depOpts} value={cur.department_ids.map(String)} onChange={(v) => upd(sel, { department_ids: v.map(Number) })} />
@@ -1396,6 +1572,7 @@ function DeskTemplates({
         <Drawer
           opened={editing && !!cur}
           onClose={() => setEditing(false)}
+          closeOnClickOutside={!dueOpen}
           position="bottom"
           size="auto"
           radius="lg"

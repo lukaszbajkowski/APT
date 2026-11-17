@@ -563,7 +563,7 @@ interface Templates {
 type Kind = "onboarding" | "offboarding";
 
 function dueText(days: number, kind: Kind) {
-  const ev = kind === "onboarding" ? "zatrudnienia" : "zwolnienia";
+  const ev = kind === "onboarding" ? "zatrudnienia" : "odejścia";
   if (days === 0) return `w dniu ${ev}`;
   const n = Math.abs(days);
   const d = `${n} ${n === 1 ? "dzień" : "dni"}`;
@@ -1209,8 +1209,8 @@ function DeskTemplates({
                 max={365}
                 allowDecimal={false}
                 hideControls
-                prefix={cur.due_days > 0 ? "+" : ""}
-                suffix={Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
+                prefix={cur.due_days > 0 ? "+" : cur.due_days === 0 ? "dzień " : ""}
+                suffix={cur.due_days === 0 ? "" : Math.abs(cur.due_days) === 1 ? " dzień" : " dni"}
                 classNames={{ root: "ui-cl-step-field", input: "ui-cl-step-input" }}
                 value={cur.due_days}
                 onChange={(v) => upd(sel, { due_days: Number(v) || 0 })}

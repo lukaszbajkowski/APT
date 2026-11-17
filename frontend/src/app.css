@@ -1315,7 +1315,10 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpl-actions > *{flex:none} /* przyciski nie zwężają się (bez ucinania napisów) – zawijają się do nowej linii */
 /* mało miejsca na szczegóły: podgląd nad opisem, etykiety nad wartościami */
 @container tpl (max-width:620px){.ui-tpl-grid{grid-template-columns:minmax(0,1fr)}.ui-tpl-page{width:180px}}
-@container tpl (max-width:520px){.ui-tpl-kv{grid-template-columns:minmax(0,1fr);gap:var(--s-1)}.ui-tpl-kv dd{margin-bottom:var(--s-2)}.ui-tpl-actions{flex-wrap:wrap}}
+/* mało miejsca: etykieta i wartość dalej w jednej linii (kolumna etykiet tak szeroka jak najdłuższa etykieta);
+   pod siebie dopiero, gdy naprawdę się nie mieszczą */
+@container tpl (max-width:520px){.ui-tpl-kv{grid-template-columns:max-content minmax(0,1fr)}.ui-tpl-actions{flex-wrap:wrap}}
+@container tpl (max-width:340px){.ui-tpl-kv{grid-template-columns:minmax(0,1fr);gap:var(--s-1)}.ui-tpl-kv dd{margin-bottom:var(--s-2)}}
 .ui-tpl-recent{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-tpl-left{display:flex;flex-direction:column;gap:var(--s-6);min-width:0}
 .ui-tpl-recent-row{display:flex;flex-direction:column;padding:var(--s-2) var(--s-3);border-top:1px solid var(--apt-line);font-size:14px;line-height:20px}
@@ -1840,8 +1843,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* zasada: zawinięty nagłówek na całą szerokość (wszystkie ekrany z PageTitle). Gdy akcje zejdą pod tytuł:
    przyciski z napisem dzielą wiersz po równo, „⋯” zostaje kwadratowy; przełącznik pod tytułem (.ui-under-title)
    i przełącznik na kartce – na całą szerokość, części po równo */
-.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child{width:100%}
-.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child{width:100%;flex-wrap:wrap}
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:max-content}
 .ui-page-title:has(> .ui-inbox-head[data-wrapped]) ~ .ui-under-title > .mantine-SegmentedControl-root,
 .ui-paper-headrow[data-wrapped] > .mantine-SegmentedControl-root{display:flex;width:100%;margin-left:0}
 .ui-page-title:has(> .ui-inbox-head[data-wrapped]) ~ .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control,
@@ -1853,15 +1856,15 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
    ekranów (edycja szablonu: obszar 769 px); węższy obszar – wszystko naraz na całą szerokość. */
 @container cl (max-width:769px){
   .ui-inbox-head{flex-wrap:wrap}
-  .ui-inbox-head > .mantine-Group-root:last-child{width:100%}
-  .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}
+  .ui-inbox-head > .mantine-Group-root:last-child{width:100%;flex-wrap:wrap}
+  .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:max-content}
   .ui-under-title > .mantine-SegmentedControl-root,.ui-paper-headrow > .mantine-SegmentedControl-root{display:flex;width:100%;margin-left:0}
   .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control,.ui-paper-headrow > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:1 1 0}
 }
 @container tpe (max-width:769px){
   .ui-inbox-head{flex-wrap:wrap}
-  .ui-inbox-head > .mantine-Group-root:last-child{width:100%}
-  .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}
+  .ui-inbox-head > .mantine-Group-root:last-child{width:100%;flex-wrap:wrap}
+  .ui-inbox-head > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:max-content}
   .ui-under-title > .mantine-SegmentedControl-root,.ui-paper-headrow > .mantine-SegmentedControl-root{display:flex;width:100%;margin-left:0}
   .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control,.ui-paper-headrow > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:1 1 0}
 }
@@ -1874,3 +1877,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tpl-detail[data-page] .ui-tpl-recent-sec{grid-area:recent}
 @container tpl (max-width:620px){.ui-tpl-detail[data-page] .ui-tpl-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"page" "info" "recent"}.ui-tpl-detail[data-page] .ui-tpl-page{width:180px}}
 .ui-tpl-info{min-width:0}
+/* nagłówek strony: nazwa się nie łamie obok licznika – gdy razem się nie mieszczą, licznik schodzi pod nazwę
+   (nazwa łamie się dopiero, gdy sama nie mieści się w szerokości) */
+.ui-page-title .ui-inbox-head > .mantine-Group-root:first-child{flex-wrap:wrap;row-gap:var(--s-1);min-width:0}
+.ui-page-title .ui-inbox-head > .mantine-Group-root:first-child > h1{flex:0 1 auto;min-width:min(100%, max-content);max-width:100%}
+/* „⋯” przy przyciskach: nie zostaje sam w nowej linii, jeśli przyciski się zawiną – trzyma się końca ostatniego wiersza */
+.ui-inbox-head > .mantine-Group-root:last-child > .ui-rowmenu{margin-left:auto}

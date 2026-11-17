@@ -38,6 +38,10 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   (`data-wrapped`), bez progów szerokości. Wyjątek: Checklisty i edycja szablonu przechodzą razem, przy jednym progu
   (obszar ≤ 769 px – chwila, w której akcje schodzą pod tytuł w edycji szablonu, najwcześniej z tych dwóch ekranów;
   `@container cl` / `tpe` w `app.css`).
+  Nazwa i licznik: gdy razem nie mieszczą się w linii, licznik schodzi pod nazwę (nazwa nie łamie się obok licznika).
+  Rozciągnięte przyciski nigdy nie ucinają napisu – zawijają się do nowej linii, „⋯” trzyma się końca.
+  Pary „etykieta – wartość” (np. Język polski) zostają w jednej linii, dopóki się mieszczą; pod siebie dopiero przy bardzo
+  wąskim miejscu.
 - Menu boczne „Automatycznie” zwija się do ikon poniżej 1440 px okna. Próg układu ekranu liczony od szerokości obszaru
   (container query, `useElementSize`) nie może przekraczać ~1120 px obszaru (1440 − menu 256 − marginesy 64) – inaczej
   zwinięcie menu poszerza treść i ekran przeskakuje szeroki → wąski → szeroki → wąski. Sprawdzenie: przesuwanie

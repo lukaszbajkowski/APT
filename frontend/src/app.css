@@ -1896,3 +1896,18 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* nagłówek grupy terminu na kartce: linia pod nazwą i odstęp przed pierwszym zadaniem – jak grupa pól w edycji szablonu */
 .ui-cl-paper .ui-cl-glabel{border-bottom:1px solid var(--apt-line)}
 .ui-cl-paper .ui-cl-glabel + .ui-cl-row{padding-top:var(--s-2)}
+
+/* checklisty na telefonie: każda grupa (przed zatrudnieniem, dzień zatrudnienia…) w ramce jak grupa w edycji szablonu –
+   jasny nagłówek z nazwą i liczbą zadań, linia pod nim, zadania na tym samym tle */
+.ui-cl-phone .ui-cl-list{border:0;border-radius:0;background:transparent}
+.ui-cl-phone .ui-cl-glabel{display:flex;flex-direction:column;margin-top:var(--s-3);padding:var(--s-3) var(--s-4) var(--s-2);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0;background:var(--apt-subtle);color:var(--mantine-color-text);font-size:15px;line-height:22px}
+.ui-cl-phone .ui-cl-list > .ui-cl-glabel:first-child{margin-top:0;border-radius:var(--mantine-radius-md) var(--mantine-radius-md) 0 0}
+.ui-cl-phone .ui-cl-glabel small{font-size:13px;line-height:18px;font-weight:400;color:var(--mantine-color-dimmed)}
+.ui-cl-phone .ui-cl-row{border:1px solid var(--apt-line);border-top:0;background:var(--apt-subtle)}
+.ui-cl-phone .ui-cl-row:not([data-glast]){border-bottom:0}
+.ui-cl-phone .ui-cl-row + .ui-cl-row:not([data-lifted]) .ui-cl-pick{box-shadow:0 -1px 0 var(--apt-line)}
+.ui-cl-phone .ui-cl-row[data-glast]:not([data-lifted]){border-radius:0 0 var(--mantine-radius-md) var(--mantine-radius-md)}
+.ui-cl-phone .ui-cl-row:hover{background:var(--apt-subtle)}
+.ui-cl-phone .ui-cl-row[data-lifted]{border-color:transparent;background:var(--apt-surface)}
+.ui-cl-phone .ui-cl-row[data-moved]{background:var(--mantine-primary-color-light)}
+.ui-cl-phone .ui-cl-row .ui-cl-chip:not([data-zero]):not([data-auto]){background:var(--apt-surface)}

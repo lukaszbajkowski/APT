@@ -1075,13 +1075,11 @@ function DeskTemplates({
         return [
             <div key={`g:${g.label}`} className="ui-cl-glabel" data-g={gi}>
               {g.label}
-              {!phone && (
-                <small>
-                  {filtering && view === "person"
-                    ? `${rows.filter(({ it }) => applies(it)).length} z ${rows.length} ${tasksWord(rows.length)}`
-                    : `${rows.length} ${tasksWord(rows.length)}`}
-                </small>
-              )}
+              <small>
+                {filtering && view === "person"
+                  ? `${rows.filter(({ it }) => applies(it)).length} z ${rows.length} ${tasksWord(rows.length)}`
+                  : `${rows.length} ${tasksWord(rows.length)}`}
+              </small>
             </div>,
             ...rows.map(({ it, i }, ri) => {
               const k = rowKey(it);
@@ -1660,22 +1658,22 @@ function ChecklistPhoneSkeleton() {
       <Skeleton height={48} radius="md" />
       <Skeleton height={12} width="85%" />
       <div className="ui-cl-list">
-        {[1, 2, 3].map((n, g) => (
-          <div key={g}>
-            <div className="ui-cl-glabel">
-              <Skeleton height={12} width={130} />
+        {/* płasko jak prawdziwa lista – te same ramki grup */}
+        {[1, 2, 3].flatMap((n, g) => [
+          <div key={`g${g}`} className="ui-cl-glabel">
+            <Skeleton height={14} width={150} my={4} />
+            <Skeleton height={10} width={60} my={4} />
+          </div>,
+          ...Array.from({ length: n }).map((_, i) => (
+            <div key={`${g}-${i}`} className="ui-cl-row" data-glast={i === n - 1 || undefined} style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ flex: 1 }}>
+                <Skeleton height={14} width="70%" mb={6} />
+                <Skeleton height={10} width="40%" />
+              </span>
+              <Skeleton height={22} width={60} radius="sm" />
             </div>
-            {Array.from({ length: n }).map((_, i) => (
-              <div key={i} className="ui-cl-row" style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <span style={{ flex: 1 }}>
-                  <Skeleton height={14} width="70%" mb={6} />
-                  <Skeleton height={10} width="40%" />
-                </span>
-                <Skeleton height={22} width={60} radius="sm" />
-              </div>
-            ))}
-          </div>
-        ))}
+          )),
+        ])}
       </div>
     </div>
   );

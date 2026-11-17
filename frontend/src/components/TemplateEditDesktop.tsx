@@ -10,7 +10,7 @@ import { DOWNLOAD_FORMAT_LABELS, withAcct, type DocTemplate, type DownloadFormat
 import { Select } from "./AptSelect";
 import { FieldInput, GroupedFields, legacyToGroups, useFieldFormats, type Values } from "./DocumentsCard";
 import { FIELD_TYPES, OptionsEditor } from "./FieldsEditor";
-import { FormDialog, PageTitle, RowMenu, SectionHead } from "./Mobile";
+import { FormDialog, PageTitle, RowMenu, SectionHead, WrapRow } from "./Mobile";
 import { LANGUAGE_OPTIONS } from "../pages/TemplatesPage";
 
 export interface TemplateDraft {
@@ -141,7 +141,7 @@ export function TemplateEditDesktop({
       />
 
       {/* jeden przełącznik pod tytułem (część szablonu); „Nowa grupa” w linii tytułu, Edycja / Podgląd na kartce */}
-      <div className="ui-tpe-topbar">
+      <div className="ui-tpe-topbar ui-under-title">
         <SegmentedControl
           value={tab}
           onChange={setTab}
@@ -180,7 +180,7 @@ export function TemplateEditDesktop({
               {/* płótno: formularz taki, jak zobaczy go kadra; pole łapie się w całości, przyciąga do szczeliny, przewija przy krawędzi */}
               <div ref={listRef} className="ui-tpe-plist ui-tpe-paper" aria-label="Pola formularza">
                 <div className="ui-tpe-paperhead">
-                  <div className="ui-paper-headrow">
+                  <WrapRow className="ui-paper-headrow">
                     <div>
                       <Text size="sm" c="dimmed">
                         Tak zobaczy to użytkownik przy „Nowy dokument”
@@ -188,7 +188,7 @@ export function TemplateEditDesktop({
                       <h2 className="ui-dsec-title">{draft.name || t.name}</h2>
                     </div>
                     {modeSwitch}
-                  </div>
+                  </WrapRow>
                   <Text size="xs" c="dimmed">
                     {touch
                       ? "Dotknij dwa razy etykietę, aby zmienić jej treść. Przytrzymaj pole, aby je przenieść."
@@ -601,7 +601,7 @@ export function FormPreview({ title, fields, active, onPick, plain, corner }: { 
     />;
   return (
     <Paper withBorder={!plain} radius="md" className={plain ? "ui-pv-plain" : "ui-tpe-panel ui-pv"} ref={box}>
-      <div className="ui-paper-headrow">
+      <WrapRow className="ui-paper-headrow">
         <div>
           <Text size="sm" c="dimmed">
             Tak zobaczy to użytkownik przy „Nowy dokument”
@@ -609,7 +609,7 @@ export function FormPreview({ title, fields, active, onPick, plain, corner }: { 
           <h2 className="ui-dsec-title">{title}</h2>
         </div>
         {corner}
-      </div>
+      </WrapRow>
       {render(shown)}
       {hidden.length > 0 && (
         <>

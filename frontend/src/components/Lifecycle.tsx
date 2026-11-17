@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Button, Checkbox, Drawer, Group, Input, Menu,  MultiSelect, NumberInput, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -1470,13 +1470,13 @@ function DeskTemplates({
         />
       )}
       {/* pod tytułem jeden przełącznik (rodzaj); „Dodaj zadanie” w linii tytułu, Edycja / Co dostanie osoba na kartce */}
-      <div className="ui-cl-bar">
+      <div className="ui-cl-bar ui-under-title">
         {switcher}
         {!page && addBtn}
       </div>
       <div className="ui-cl-grid" data-narrow={narrow || undefined}>
         <div className="ui-cl-paper">
-          <div className="ui-paper-headrow">
+          <WrapRow className="ui-paper-headrow">
             <div>
               <Text size="sm" c="dimmed">
                 {kind === "onboarding" ? "Tak zobaczy to użytkownik na karcie nowej osoby" : "Tak zobaczy to użytkownik na karcie osoby, która odchodzi"}
@@ -1495,7 +1495,7 @@ function DeskTemplates({
                 { value: "person", label: "Co dostanie osoba" },
               ]}
             />
-          </div>
+          </WrapRow>
           {view === "task" ? (
             <Text size="xs" c="dimmed">
               Kliknij zadanie, aby je zmienić. Przeciągnij, aby zmienić kolejność – w innej grupie dostanie jej termin.

@@ -32,6 +32,10 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
 - Nagłówek strony: zawsze `PageTitle` z `components/Mobile.tsx` (wzór: lista Pracownicy) – tytuł i licznik
   po lewej, akcje po prawej w tej samej linii, opis pod spodem (≤ 72 znaki szerokości). Bez własnych układów nagłówka.
   Licznik obok tytułu: każdy fragment po „·” od wielkiej litery („Wersja 0.1.0 · Migracja 0047”), ta sama treść co na telefonie.
+  Zawinięty nagłówek na całą szerokość: gdy akcje zejdą pod tytuł (wąskie okno), przyciski z napisem i pole szukania
+  dzielą wiersz po równo, „⋯” zostaje kwadratowy; przełącznik pod tytułem (klasa `.ui-under-title` na wierszu) i przełącznik
+  na kartce (`WrapRow` / `.ui-paper-headrow`) – na całą szerokość, części po równo. Zawinięcie wykrywa `useWrapFlag`
+  (`data-wrapped`), bez progów szerokości.
 - Interfejs wybiera **rodzaj urządzenia**, nie szerokość okna (`lib/device.ts`): telefon (dotyk, krótszy bok < 600 px)
   dostaje interfejs telefonu także w poziomie; tablet i komputer – komputerowy (wąskie okno komputera = ten sam
   interfejs, węższy). W komponentach `useIsPhone()`, w CSS `:where(:root[data-device="phone"])`, klasy

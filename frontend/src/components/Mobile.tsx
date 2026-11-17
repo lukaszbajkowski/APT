@@ -1085,10 +1085,52 @@ export const cap = (s: string | null | undefined) => (s ? s.charAt(0).toUpperCas
 
 /* ——— nagłówek strony (komputer): tytuł z licznikiem po lewej, akcje po prawej, opis pod spodem.
    Ten sam układ na każdej stronie – wzorem jest lista Pracownicy. ——— */
+/**
+ * Wiersz, który może się zawinąć (np. tytuł + akcje): po zawinięciu dostaje data-wrapped – wtedy zawinięta część
+ * rozciąga się na całą szerokość (zasada „zawinięty nagłówek na całą szerokość”, jak filtry na liście Pracownicy).
+ * Sprawdzane przy zmianie szerokości i przy każdym renderze (np. gdy pojawi się nowy przycisk).
+ */
+export function useWrapFlag<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.removeAttribute("data-wrapped");
+    const kids = [...el.children].filter((k) => (k as HTMLElement).offsetParent !== null) as HTMLElement[];
+    if (kids.length < 2) return;
+    const first = kids[0].getBoundingClientRect();
+    const last = kids[kids.length - 1].getBoundingClientRect();
+    el.toggleAttribute("data-wrapped", last.top >= first.bottom - 1);
+  }, []);
+  useLayoutEffect(() => check());
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let w = -1;
+    const ro = new ResizeObserver(([e]) => {
+      if (Math.abs(e.contentRect.width - w) < 1) return;
+      w = e.contentRect.width;
+      check();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [check]);
+  return ref;
+}
+export function WrapRow({ className, children }: { className: string; children: ReactNode }) {
+  const ref = useWrapFlag<HTMLDivElement>();
+  return (
+    <div ref={ref} className={className}>
+      {children}
+    </div>
+  );
+}
+
 export function PageTitle({ title, meta, description, actions }: { title: ReactNode; meta?: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  const head = useWrapFlag<HTMLDivElement>();
   return (
     <div className="ui-page-title">
-      <div className="ui-inbox-head">
+      <div className="ui-inbox-head" ref={head}>
         <Group gap={12} align="baseline">
           <Title order={1}>{title}</Title>
           {meta && (

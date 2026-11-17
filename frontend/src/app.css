@@ -1832,3 +1832,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-paper .ui-cl-row:hover:not([data-on]):not([data-lifted]) .ui-cl-pick{outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-4px}
 .ui-cl-paper .ui-cl-row[data-on] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-4px;background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,transparent)}
 .ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{background:var(--apt-surface)}
+/* zasada: zawinięty nagłówek na całą szerokość (wszystkie ekrany z PageTitle). Gdy akcje zejdą pod tytuł:
+   przyciski z napisem dzielą wiersz po równo, „⋯” zostaje kwadratowy; przełącznik pod tytułem (.ui-under-title)
+   i przełącznik na kartce – na całą szerokość, części po równo */
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child{width:100%}
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > .mantine-Button-root{flex:1 1 0;min-width:0}
+.ui-page-title:has(> .ui-inbox-head[data-wrapped]) ~ .ui-under-title > .mantine-SegmentedControl-root,
+.ui-paper-headrow[data-wrapped] > .mantine-SegmentedControl-root{display:flex;width:100%;margin-left:0}
+.ui-page-title:has(> .ui-inbox-head[data-wrapped]) ~ .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control,
+.ui-paper-headrow[data-wrapped] > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:1 1 0}
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > .mantine-InputWrapper-root{flex:1 1 0;min-width:0}
+.ui-inbox-head[data-wrapped] > .mantine-Group-root:last-child > form{flex:1 1 0;min-width:0;width:auto !important}

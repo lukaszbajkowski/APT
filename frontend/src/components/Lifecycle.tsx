@@ -1082,13 +1082,17 @@ function DeskTemplates({
   const slotRef = useRef<HTMLDivElement>(null);
   const [due0, setDue0] = useState<number | null>(null);
   // przeniesiony wiersz idzie za palcem; miejsce, w które trafi, jest wypełnione tłem (jak w edycji szablonu)
+  // co idzie za palcem: na kartce (komputer) sama karta zadania – wiersz z tłem grupy zostaje w liście jako szczelina
+  // (z zaokrągleniem grupy, bez krawędzi); na telefonie cały wiersz
+  const mover = (row: HTMLElement) => (!phone && row.querySelector<HTMLElement>(".ui-cl-pick")) || row;
   const positionLifted = () => {
     const d = drag.current;
     const el = d && rowEls.current.get(d.key);
     if (!d || !el) return;
-    const natural = el.getBoundingClientRect().top - d.ty;
+    const m = mover(el);
+    const natural = m.getBoundingClientRect().top - d.ty;
     d.ty = d.y - d.grab - natural;
-    el.style.transform = `translateY(${d.ty}px)`;
+    m.style.transform = `translateY(${d.ty}px)`;
     const slot = slotRef.current;
     if (slot) {
       slot.style.top = `${el.offsetTop}px`;
@@ -1103,7 +1107,7 @@ function DeskTemplates({
     const cur = l.find((x) => rowKey(x) === d.key);
     const el = rowEls.current.get(d.key);
     if (!cur || !el) return;
-    const center = d.y - d.grab + el.offsetHeight / 2;
+    const center = d.y - d.grab + mover(el).offsetHeight / 2;
     const others = visual(l).filter((x) => x !== cur);
     let k = 0;
     for (const o of others) {
@@ -1221,7 +1225,7 @@ function DeskTemplates({
     // przechył jak kartka podniesiona z blatu: krawędź wychyla się o ok. 9 px niezależnie od szerokości listy
     const w = Math.max(1, listRef.current?.clientWidth ?? 600);
     listRef.current?.style.setProperty("--cl-tilt", `${(-Math.min(1.5, (Math.atan(9 / w) * 180) / Math.PI)).toFixed(2)}deg`);
-    drag.current = { item: it, key: rowKey(it), grab: clientY - el.getBoundingClientRect().top, y: clientY, y0: clientY, ty: 0 };
+    drag.current = { item: it, key: rowKey(it), grab: clientY - mover(el).getBoundingClientRect().top, y: clientY, y0: clientY, ty: 0 };
     setLifted(rowKey(it));
     setDue0(it.due_days);
     setSelRaw(i);
@@ -1242,7 +1246,7 @@ function DeskTemplates({
       auto.current = null;
       noSelect(false);
       if (elx && d) {
-        elx.style.transform = "";
+        mover(elx).style.transform = "";
         // odłożenie: wiersz dosuwa się na swoje miejsce i prostuje (bez animacji przy ograniczonym ruchu)
         if (motion && Math.abs(d.ty) > 1) {
           elx.setAttribute("data-dropping", "");

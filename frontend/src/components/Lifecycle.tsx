@@ -25,6 +25,7 @@ import { Loading, RowsSkeleton } from "./States";
 import { DateField } from "./DateField";
 import { useConfirm } from "../lib/confirm";
 import { useIsPhone } from "../lib/device";
+import { countListChanges } from "../lib/changes";
 
 // ---------- przebieg zatrudnienia ----------
 
@@ -541,36 +542,6 @@ interface TemplateItem {
   auto: string | null;
   agency_ids: number[];
   department_ids: number[];
-}
-/** Liczba niezapisanych zmian w checkliście: zadania nowe, usunięte, zmienione i przestawione – każde raz.
- *  Przestawione = poza najdłuższym ciągiem zadań w zapisanej kolejności (najmniej przeniesień, które dają obecny układ). */
-function countChanges(now: TemplateItem[], saved: TemplateItem[]) {
-  const byId = new Map(saved.filter((x) => x.id != null).map((x, i) => [x.id as number, { x, i }]));
-  const same = (a: TemplateItem, b: TemplateItem) => JSON.stringify({ ...a, id: 0 }) === JSON.stringify({ ...b, id: 0 });
-  const kept = now.filter((x) => x.id != null && byId.has(x.id));
-  // zmienione zadania liczą się i tak – kolejność sprawdzamy tylko wśród niezmienionych
-  const edited = kept.filter((x) => !same(x, byId.get(x.id as number)!.x));
-  const plain = kept.filter((x) => same(x, byId.get(x.id as number)!.x));
-  const pos = plain.map((x) => byId.get(x.id as number)!.i);
-  // najdłuższy rosnący podciąg pozycji (n jest małe – wystarczy O(n²))
-  const len = pos.map(() => 1);
-  const prev = pos.map(() => -1);
-  for (let i = 0; i < pos.length; i++)
-    for (let j = 0; j < i; j++)
-      if (pos[j] < pos[i] && len[j] + 1 > len[i]) {
-        len[i] = len[j] + 1;
-        prev[i] = j;
-      }
-  const inOrder = new Set<number>();
-  let k = len.length ? len.indexOf(Math.max(...len)) : -1;
-  while (k >= 0) {
-    inOrder.add(k);
-    k = prev[k];
-  }
-  const changed = edited.length + plain.filter((_, i) => !inOrder.has(i)).length;
-  const added = now.length - kept.length;
-  const removed = saved.length - kept.length;
-  return changed + added + removed;
 }
 const tasksWord = (n: number) => (n === 1 ? "zadanie" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "zadania" : "zadań");
 // stały klucz wiersza – nowe zadania nie mają id, a przeciąganie podmienia obiekt (inny termin)
@@ -1528,7 +1499,7 @@ function DeskTemplates({
   );
   // liczba niezapisanych zmian (jak w edycji szablonu): każde zadanie dodane, usunięte, zmienione albo przestawione
   // (zadanie przeniesione i zmienione liczy się raz; przestawienie jednego zadania = 1, nie liczba przesuniętych sąsiadów)
-  const changes = countChanges(items, data[kind]);
+  const changes = countListChanges(items, data[kind], (x) => x.id);
   const saveBar = (
     <div className="ui-tpe-save ui-cl-save">
       {dirty ? (

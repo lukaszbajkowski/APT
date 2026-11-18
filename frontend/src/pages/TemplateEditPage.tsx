@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { countListChanges } from "../lib/changes";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Button, Drawer, FileButton, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
@@ -159,13 +160,12 @@ export function TemplateEditPage() {
     setFields(next);
     setEditIdx(to);
   };
-  // liczba niezapisanych zmian: ustawienia + każde zmienione pole (także kolejność)
+  // liczba niezapisanych zmian: ustawienia + każde pole nowe, usunięte, zmienione lub przestawione (raz)
   const orig = { name: t.name, description: t.description ?? "", language: t.language, active: t.is_active, allowManager: t.allow_manager, strictPdf: t.strict_pdf, formats: t.download_formats };
   const now = { name, description, language, active, allowManager, strictPdf, formats };
   const dirty =
     (Object.keys(orig) as (keyof typeof orig)[]).filter((k) => orig[k] !== now[k]).length +
-    Math.max(fields.length, t.fields.length) -
-    fields.filter((f, i) => JSON.stringify(f) === JSON.stringify(t.fields[i])).length;
+    countListChanges(fields, t.fields, (f) => f.key);
   if (mobile) {
     const sw = (label: string, description: string | undefined, checked: boolean, on: (v: boolean) => void) => (
       <ListRow title={label} description={description} trailing={<Switch size="md" checked={checked} onChange={(e) => on(e.currentTarget.checked)} aria-label={label} />} />

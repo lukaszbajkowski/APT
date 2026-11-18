@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
 import { flushSync } from "react-dom";
@@ -1080,8 +1080,35 @@ export function TouchSortList({
     el.setAttribute("data-settling", "");
     requestAnimationFrame(() => requestAnimationFrame(() => el.removeAttribute("data-settling")));
   };
+  // odłożenie (jak w checklistach): przeniesione pole dojeżdża z miejsca pod palcem na swoje nowe miejsce i prostuje się,
+  // zamiast przeskoczyć. Pozycję pod palcem zapamiętujemy przed zmianą listy, ruch liczymy po niej (FLIP).
+  const dropRef = useRef<{ key: string; top: number; rot: string } | null>(null);
+  useLayoutEffect(() => {
+    const dr = dropRef.current;
+    if (!dr || drag) return;
+    dropRef.current = null;
+    const i = fields.findIndex((f) => f.key === dr.key);
+    const el = rows.current[i];
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const dy = dr.top - el.getBoundingClientRect().top;
+    if (Math.abs(dy) < 1 && dr.rot === "none") return;
+    el.setAttribute("data-dropping", "");
+    const a = el.animate(
+      [
+        { transform: `translateY(${dy}px)`, rotate: dr.rot === "none" ? "0deg" : dr.rot, boxShadow: "0 12px 32px rgba(0,0,0,.28)" },
+        { transform: "none", rotate: "0deg", boxShadow: "0 0 0 rgba(0,0,0,0)" },
+      ],
+      { duration: 200, easing: "cubic-bezier(.22,.9,.3,1)" },
+    );
+    a.onfinish = a.oncancel = () => el.removeAttribute("data-dropping");
+  });
   const end = () => {
     noSelect(false);
+    {
+      const d0 = drag;
+      const el = d0 && rows.current[d0.from];
+      if (d0 && el && fields[d0.from]) dropRef.current = { key: fields[d0.from].key, top: el.getBoundingClientRect().top, rot: getComputedStyle(el).rotate || "none" };
+    }
     settle();
     document.querySelector(".ui-tsl")?.removeAttribute("data-scrolling");
     // uchwyt ⋮⋮ nie zostaje z fokusem (obwódką) po puszczeniu
@@ -1196,21 +1223,6 @@ export function TouchSortList({
   // grupa, do której trafi przeciągane pole (jeśli inna niż jego obecna) – podświetlamy jej wiersze
   const target = drag && !blocks ? (drag.out ? null : groupAt(drag.from, drag.to)) : null;
   const joining = target && target !== (fields[drag?.from ?? -1]?.group ?? null) ? target : null;
-  // przeciągane pole stoi w szczelinie, w którą trafi (nie pod palcem) – nic nie zasłania i nie zostaje pasek tła
-  const slotDy = () => {
-    const st0 = st.current;
-    if (!drag || !st0 || drag.out) return drag?.dy ?? 0;
-    const { from, to } = drag;
-    // dokładnie nad górną krawędzią wiersza pod szczeliną (po jego przesunięciu) – szczelina ma wysokość pola + 2×SPREAD
-    const after = to < from ? to : to + 1;
-    if (to !== from && after < fields.length && after !== from)
-      return st0.tops[after] + shift(after) - (inner.current[from] + 2 * SPREAD) - st0.tops[from];
-    // koniec listy (nie ma wiersza pod szczeliną): tuż pod ostatnim wierszem, po jego przesunięciu
-    const last = to > from && after >= fields.length ? fields.length - 1 : -1;
-    if (last >= 0 && last !== from) return st0.tops[last] + shift(last) + inner.current[last] + (mbs.current[last] ?? 0) - st0.tops[from];
-    const top = to > from ? st0.tops[to] + st0.hs[to] - st0.hs[from] : st0.tops[to];
-    return top - st0.tops[from];
-  };
   // tryb „całe grupy”: między którymi blokami stanie przeciągana grupa
   const blockSpot = (from: number, to: number) => {
     const rest = fields.filter((_, j) => j !== from);
@@ -1398,18 +1410,19 @@ export function TouchSortList({
           data-glifted={(gd && gd.from === blockOf(i) && !!f.group) || undefined}
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
-            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? slotDy() : shift(i)}px)` : undefined,
+            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined,
             transformOrigin: gd && gd.from === blockOf(i) && f.group ? gOrigin(rows.current[i]) : undefined,
             // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
+            // przeciągane pole idzie za palcem (jak w checklistach) – zachowuje swoją wysokość; szczelinę robią sąsiedzi
             height:
               drag?.from === i && st.current
-                ? inner.current[i] + (spreading ? 2 * SPREAD : 0)
+                ? inner.current[i]
                 : gGrow(i)
                   ? inner.current[i] + 2 * SPREAD
                   : undefined,
             // powiększenie nie może przesuwać reszty listy w układzie strony (przesunięcia liczymy sami)
             // powiększenie o 2×SPREAD nie przesuwa reszty listy: od pierwotnego dolnego marginesu odejmujemy tyle samo
-            marginBottom: (drag?.from === i && st.current && spreading) || gGrow(i) ? (mbs.current[i] ?? 0) - 2 * SPREAD : undefined,
+            marginBottom: gGrow(i) ? (mbs.current[i] ?? 0) - 2 * SPREAD : undefined,
           }}
         >
           {!canvas && (

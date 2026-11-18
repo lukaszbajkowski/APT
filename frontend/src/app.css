@@ -1958,3 +1958,17 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{background:var(--apt-subtle)}
 .ui-cl-paper .ui-cl-row[data-lifted][data-on] .ui-cl-pick{background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,var(--apt-subtle))}
 .ui-cl-phone .ui-cl-row[data-lifted]{background:var(--apt-subtle)}
+/* przenoszenie (edycja szablonu): uniesione pole idzie za palcem bez opóźnienia (jak w checklistach);
+   po puszczeniu dojeżdża na miejsce (animacja w kodzie) – w tym czasie nad sąsiadami */
+.ui-tsl-row[data-lifted]{transition:scale .15s,rotate .15s ease-out}
+.ui-tsl-row[data-dropping]{position:relative;z-index:3}
+/* checklisty na telefonie – jak edycja szablonu: miejsce, w które trafi zadanie, to pusta szczelina w liście,
+   uniesione zadanie powiększone i przechylone jak pole szablonu (tło zostaje jak było) */
+/* ramka grupy biegnie dalej po bokach szczeliny */
+.ui-cl-phone .ui-cl-slot{background:transparent;border:0;border-left:1px solid var(--apt-line);border-right:1px solid var(--apt-line)}
+@media (prefers-reduced-motion:no-preference){
+  .ui-cl-phone .ui-cl-row[data-lifted]{scale:1.03}
+}
+@media (prefers-reduced-motion:no-preference){
+  .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted],.ui-tsl:not([data-canvas]) .ui-tsl-row[data-lifted]{transition:scale .15s,rotate .15s ease-out}
+}

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, SHEET_MAX_VH, SHEET_MIN_VH, useSheetResize, cap } from "./Mobile";
+import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, FormDialog, Segments, SwipePager, SectionHead, PageTitle, WrapRow, SheetHandle, useSheetResize, cap } from "./Mobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Button, Checkbox, ComboboxChevron, Drawer, Group, Input, Menu, Skeleton,  MultiSelect, Paper, Progress, SimpleGrid, Stack, SegmentedControl, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -977,25 +977,15 @@ function DeskTemplates({
     ro.observe(el);
     return () => ro.disconnect();
   }, [phone]);
-  // telefon: arkusz zadania jak arkusz pola w edycji szablonu – wysokość ustawiona uchwytem zapamiętana na tym urządzeniu
-  const [sheetH, setSheetH] = useState<number>(() => {
-    try {
-      const v = Number(localStorage.getItem("apt-cl-sheet-h"));
-      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : 60;
-    } catch {
-      return 60;
-    }
-  });
+  // telefon: arkusz zadania jak arkusz pola w edycji szablonu – zawsze otwiera się w połowie ekranu (60%);
+  // uchwytem można go zmienić, ale tylko do zamknięcia
+  const [sheetH, setSheetH] = useState<number>(60);
+  useEffect(() => {
+    if (editing) setSheetH(60);
+  }, [editing]);
   const sheet = useSheetResize(
     () => setEditing(false),
-    (vh) => {
-      setSheetH(vh);
-      try {
-        localStorage.setItem("apt-cl-sheet-h", String(vh));
-      } catch {
-        /* tryb prywatny */
-      }
-    },
+    (vh) => setSheetH(vh),
   );
   // wybrane zadanie przewija się na górę – arkusz zasłania dolną część ekranu
   useEffect(() => {

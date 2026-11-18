@@ -12,7 +12,7 @@ import { api, DOWNLOAD_FORMAT_LABELS, errorText, type DocTemplate, type Download
 import { LANGUAGE_OPTIONS } from "./TemplatesPage";
 import { useNavigate } from "react-router-dom";
 import { UnstyledButton } from "@mantine/core";
-import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SHEET_MAX_VH, SHEET_MIN_VH, SheetHandle, StatusBadge, useSheetResize } from "../components/Mobile";
+import { FormDialog, FormScreen, ListRow, RowMenu, Section, Segments, SheetHandle, StatusBadge, useSheetResize } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 /** Kolejne bloki listy: cała grupa albo pojedyncze pole bez grupy. */
@@ -62,23 +62,14 @@ export function TemplateEditPage() {
   // telefon: zakładka, edytowane pole, podgląd formularza
   const [mtab, setMtab] = useState("fields");
   const [editIdx, setEditIdx] = useState<number | null>(null);
-  // wysokość arkusza edycji pola (% wysokości ekranu) – użytkownik ustawia ją uchwytem, pamiętamy na tym urządzeniu
-  const [sheetH, setSheetH] = useState<number | null>(() => {
-    try {
-      const v = Number(localStorage.getItem("apt-tpe-sheet-h"));
-      return v >= SHEET_MIN_VH && v <= SHEET_MAX_VH ? v : 60;
-    } catch {
-      return 60; // środkowa z trzech wysokości (35 / 60 / 92%)
-    }
-  });
-  const saveSheetH = (vh: number) => {
-    setSheetH(vh);
-    try {
-      localStorage.setItem("apt-tpe-sheet-h", String(vh));
-    } catch {
-      /* tryb prywatny – wysokość tylko do zamknięcia karty */
-    }
-  };
+  // wysokość arkusza edycji pola (% wysokości ekranu): zawsze otwiera się w połowie ekranu (60%, środkowa z 35 / 60 / 92%);
+  // uchwytem można ją zmienić, ale tylko do zamknięcia
+  const [sheetH, setSheetH] = useState<number | null>(60);
+  const sheetOpen = editIdx !== null;
+  useEffect(() => {
+    if (sheetOpen) setSheetH(60);
+  }, [sheetOpen]);
+  const saveSheetH = (vh: number) => setSheetH(vh);
   const sheet = useSheetResize(() => setEditIdx(null), saveSheetH);
   const [previewOpen, setPreviewOpen] = useState(false);
   const navigate = useNavigate();

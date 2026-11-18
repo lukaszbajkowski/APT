@@ -1972,3 +1972,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (prefers-reduced-motion:no-preference){
   .ui-tsl[data-canvas]:not([data-scrolling]) .ui-tsl-row[data-lifted],.ui-tsl:not([data-canvas]) .ui-tsl-row[data-lifted]{transition:scale .15s,rotate .15s ease-out}
 }
+/* checklisty na komputerze – jak edycja szablonu: miejsce, w które trafi zadanie, to pusta szczelina w grupie
+   (bez podświetlenia), uniesione zadanie bez powiększenia, tylko przechył i cień – jak pole na płótnie szablonu */
+.ui-cl-paper .ui-cl-slot{background:var(--apt-subtle);border:0}
+@media (prefers-reduced-motion:no-preference){
+  .ui-cl-paper .ui-cl-row[data-lifted]{scale:1}
+}

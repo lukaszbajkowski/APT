@@ -36,6 +36,7 @@ export function TemplateEditDesktop({
   dirty,
   saving,
   onSave,
+  onDiscard,
   onReplace,
   replacing,
   builtins,
@@ -46,6 +47,8 @@ export function TemplateEditDesktop({
   dirty: number;
   saving: boolean;
   onSave: () => void;
+  /** odrzucenie niezapisanych zmian – powrót do zapisanej wersji (jak w Checklistach) */
+  onDiscard: () => void;
   onReplace: (f: File) => void;
   replacing: boolean;
   builtins: { key: string; label: string }[];
@@ -470,9 +473,16 @@ export function TemplateEditDesktop({
         <Text size="sm" c={dirty ? undefined : "dimmed"} fw={dirty ? 600 : undefined}>
           {dirty ? `Niezapisane zmiany: ${dirty}` : "Wszystko zapisane"}
         </Text>
-        <Button onClick={onSave} loading={saving} disabled={!dirty || !draft.name.trim()}>
-          Zapisz szablon
-        </Button>
+        <Group gap="xs" wrap="nowrap">
+          {dirty > 0 && (
+            <Button variant="default" onClick={onDiscard}>
+              Odrzuć
+            </Button>
+          )}
+          <Button onClick={onSave} loading={saving} disabled={!dirty || !draft.name.trim()}>
+            Zapisz szablon
+          </Button>
+        </Group>
       </div>
     </div>
   );

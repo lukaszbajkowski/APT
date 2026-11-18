@@ -74,7 +74,8 @@ export function TemplateEditPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // wczytanie szablonu – także „Odrzuć” (powrót do zapisanej wersji)
+  const loadSaved = () => {
     const t = template.data;
     if (t) {
       setFields(t.fields);
@@ -86,7 +87,9 @@ export function TemplateEditPage() {
       setStrictPdf(t.strict_pdf);
       setFormats(t.download_formats);
     }
-  }, [template.data]);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(loadSaved, [template.data]);
 
   // telefon: wybrane pole przewija się na górę – arkusz z ustawieniami zasłania dolną część ekranu
   useEffect(() => {
@@ -184,7 +187,7 @@ export function TemplateEditPage() {
           dirty > 0 ? (
             <>
               <Text size="sm" className="ui-ef-pending">
-                {name.trim() ? "Niezapisane zmiany" : "Wpisz nazwę szablonu"}
+                {name.trim() ? `Niezapisane zmiany: ${dirty}` : "Wpisz nazwę szablonu"}
               </Text>
               <Button size="lg" radius="md" onClick={() => save.mutate()} loading={save.isPending} disabled={!name.trim()}>
                 Zapisz
@@ -460,6 +463,7 @@ export function TemplateEditPage() {
         dirty={dirty}
         saving={save.isPending}
         onSave={() => save.mutate()}
+        onDiscard={loadSaved}
         onReplace={(f) => replace.mutate(f)}
         replacing={replace.isPending}
         builtins={builtins.data ?? []}

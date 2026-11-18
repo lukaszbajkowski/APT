@@ -1986,3 +1986,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 }
 /* przenoszone (także zaznaczone) zadanie: unosi się sama karta – bez tła wiersza i jego odstępu nad pierwszym zadaniem grupy */
 .ui-cl-paper .ui-cl-row[data-lifted][data-on],.ui-cl-paper .ui-cl-row[data-lifted]:hover{background:transparent}
+.ui-cl-paper .ui-cl-row[data-dropping] .ui-cl-pick{position:relative;z-index:3;box-shadow:0 6px 16px rgba(0,0,0,.18)}

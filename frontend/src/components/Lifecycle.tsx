@@ -718,6 +718,8 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
     anim.current.raf = requestAnimationFrame(step);
   };
   // następny krok liczony od celu trwającej animacji (nie od wartości w połowie drogi)
+  const grab = useRef<{ y: number; top: number; moved: boolean; s: [number, number][] } | null>(null);
+  const [grabbing, setGrabbing] = useState(false);
   const valueRef = useRef(value);
   valueRef.current = value;
   const base = () => (anim.current.raf ? anim.current.target : valueRef.current);
@@ -735,7 +737,7 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
   for (let d = DUE_MIN; d <= DUE_MAX; d++)
     rows.push(
       // ten sam zapis co w polu („17 dni po zatrudnieniu”) – dymek wygląda jak rozwinięta lista wyboru
-      <span key={d} data-on={d === value || undefined} aria-hidden onClick={() => goTo(d, true)}>
+      <span key={d} data-on={d === value || undefined} aria-hidden onClick={() => !grab.current?.moved && goTo(d, true)}>
         {cap(dueText(d, kind))}
         {d === value && <IconCheck size={16} />}
       </span>,
@@ -788,6 +790,53 @@ function DueWheelField({ value, kind, onChange, onOpenChange }: { value: number;
                 aria-valuenow={value}
                 aria-valuetext={`${dueShort(value)}, ${dueText(value, kind)}`}
                 onScroll={onScroll}
+                data-grabbing={grabbing || undefined}
+                // komputer: złap i przeciągnij myszą jak palcem (dotyk przewija natywnie); po puszczeniu
+                // kółko jedzie dalej z prędkością ruchu i zatrzymuje się na najbliższym dniu
+                onPointerDown={(e) => {
+                  if (e.pointerType !== "mouse" || e.button !== 0) return;
+                  const t = trackRef.current;
+                  if (!t) return;
+                  cancelAnimationFrame(anim.current.raf);
+                  anim.current.raf = 0;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  t.style.scrollSnapType = "none";
+                  grab.current = { y: e.clientY, top: t.scrollTop, moved: false, s: [[e.timeStamp, e.clientY]] };
+                  setGrabbing(true);
+                }}
+                onPointerMove={(e) => {
+                  const g = grab.current;
+                  const t = trackRef.current;
+                  if (!g || !t) return;
+                  const dy = e.clientY - g.y;
+                  if (Math.abs(dy) > 3) g.moved = true;
+                  t.scrollTop = g.top - dy;
+                  g.s.push([e.timeStamp, e.clientY]);
+                  while (g.s.length > 2 && e.timeStamp - g.s[0][0] > 100) g.s.shift();
+                }}
+                onPointerUp={(e) => {
+                  const g = grab.current;
+                  const t = trackRef.current;
+                  setGrabbing(false);
+                  if (!g || !t) return;
+                  // prędkość z ostatnich ~100 ms (px/ms) – szybki ruch przewija dalej, wolny staje na dniu pod paskiem
+                  const [t0, y0] = g.s[0];
+                  const v = e.timeStamp > t0 ? (e.clientY - y0) / (e.timeStamp - t0) : 0;
+                  const fling = Math.abs(v) >= 0.5 ? -v * 240 : 0;
+                  anim.current.raf = 0;
+                  if (!g.moved) {
+                    // zwykłe kliknięcie (przechwycony wskaźnik nie trafia w wiersz) – dzień pod kursorem
+                    const r = t.getBoundingClientRect();
+                    goTo(DUE_MIN + Math.floor((e.clientY - r.top + t.scrollTop - 2 * WHEEL_ROW) / WHEEL_ROW), true);
+                  } else goTo(DUE_MIN + Math.round((t.scrollTop + fling) / WHEEL_ROW), true);
+                  // kliknięcie wiersza po przeciągnięciu nie przeskakuje – flaga gaśnie po zdarzeniu click
+                  setTimeout(() => (grab.current = null), 0);
+                }}
+                onPointerCancel={() => {
+                  setGrabbing(false);
+                  grab.current = null;
+                  goTo(valueRef.current, true);
+                }}
                 onKeyDown={(e) => {
                   const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: 1, ArrowLeft: -1, PageDown: 7, PageUp: -7 }[e.key];
                   if (step) {

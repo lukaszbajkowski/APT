@@ -1996,3 +1996,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (prefers-reduced-motion:no-preference){
   .ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick{rotate:var(--cl-tilt,-1deg)}
 }
+/* termin: kółko można złapać myszą i przeciągnąć */
+@media (pointer:fine){
+  .ui-cl-due-track{cursor:grab}
+  .ui-cl-due-track > span{cursor:inherit}
+  .ui-cl-due-track[data-grabbing]{cursor:grabbing}
+}

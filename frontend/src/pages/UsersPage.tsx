@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Tabs, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -210,25 +210,19 @@ export function UsersPage() {
         </>
       )}
 
-      {!mobile && <Tabs
-        value={showDisabled ? "wylaczeni" : "aktywni"}
-        onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
-      >
-        <Tabs.List>
-          <Tabs.Tab
-            value="aktywni"
-            rightSection={activeCount !== undefined && <Badge size="sm" variant="light">{activeCount}</Badge>}
-          >
-            Aktywni
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="wylaczeni"
-            rightSection={disabledCount !== undefined && <Badge size="sm" variant="light" color="gray">{disabledCount}</Badge>}
-          >
-            Wyłączeni
-          </Tabs.Tab>
-        </Tabs.List>
-      </Tabs>}
+      {!mobile && (
+        <div className="ui-under-title">
+          <SegmentedControl
+            value={showDisabled ? "wylaczeni" : "aktywni"}
+            onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
+            aria-label="Konta"
+            data={[
+              { value: "aktywni", label: `Aktywni${activeCount !== undefined ? ` ${activeCount}` : ""}` },
+              { value: "wylaczeni", label: `Wyłączeni${disabledCount !== undefined ? ` ${disabledCount}` : ""}` },
+            ]}
+          />
+        </div>
+      )}
 
       {users.isLoading && <Loading />}
       {users.error && <ErrorState error={users.error} onRetry={() => users.refetch()} />}

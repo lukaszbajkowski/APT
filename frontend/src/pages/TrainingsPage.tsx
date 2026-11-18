@@ -4,7 +4,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
@@ -853,6 +853,7 @@ export function TrainingsPage() {
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
+  const [ttab, setTtab] = useState("expiring");
   if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
     <Stack>
@@ -887,36 +888,27 @@ export function TrainingsPage() {
           )
         }
       />
-      <Tabs defaultValue="expiring" keepMounted={false}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="expiring">Kończące się (30 dni)</Tabs.Tab>
-          <Tabs.Tab value="progress">W trakcie</Tabs.Tab>
-          <Tabs.Tab value="matrix">Matryca</Tabs.Tab>
-          <Tabs.Tab value="report">Raport</Tabs.Tab>
-          <Tabs.Tab value="requirements">Wymagania stanowisk</Tabs.Tab>
-          {staff && <Tabs.Tab value="types">Rodzaje szkoleń</Tabs.Tab>}
-        </Tabs.List>
-        <Tabs.Panel value="expiring">
-          <Expiring />
-        </Tabs.Panel>
-        <Tabs.Panel value="progress">
-          <InProgress />
-        </Tabs.Panel>
-        <Tabs.Panel value="matrix">
-          <CompetenceMatrix />
-        </Tabs.Panel>
-        <Tabs.Panel value="requirements">
-          <PositionRequirements />
-        </Tabs.Panel>
-        <Tabs.Panel value="report">
-          <TrainingsReport />
-        </Tabs.Panel>
-        {staff && (
-          <Tabs.Panel value="types">
-            <Types />
-          </Tabs.Panel>
-        )}
-      </Tabs>
+      <div className="ui-under-title">
+        <SegmentedControl
+          value={ttab}
+          onChange={setTtab}
+          aria-label="Widok"
+          data={[
+            { value: "expiring", label: "Kończące się (30 dni)" },
+            { value: "progress", label: "W trakcie" },
+            { value: "matrix", label: "Matryca" },
+            { value: "report", label: "Raport" },
+            { value: "requirements", label: "Wymagania stanowisk" },
+            ...(staff ? [{ value: "types", label: "Rodzaje szkoleń" }] : []),
+          ]}
+        />
+      </div>
+      {ttab === "expiring" && <Expiring />}
+      {ttab === "progress" && <InProgress />}
+      {ttab === "matrix" && <CompetenceMatrix />}
+      {ttab === "requirements" && <PositionRequirements />}
+      {ttab === "report" && <TrainingsReport />}
+      {ttab === "types" && staff && <Types />}
     </Stack>
   );
 }

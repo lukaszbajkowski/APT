@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Tabs, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -312,26 +312,20 @@ export function DictionariesPage() {
       <PageTitle
         title="Słowniki"
       />
-      <Tabs defaultValue="agencies" keepMounted={false}>
-        <Tabs.List>
-          <Tabs.Tab value="agencies">APT</Tabs.Tab>
-          <Tabs.Tab value="departments">Wydziały</Tabs.Tab>
-          <Tabs.Tab value="positions">Stanowiska</Tabs.Tab>
-          <Tabs.Tab value="countries">Kraje</Tabs.Tab>
-        </Tabs.List>
-        <Tabs.Panel value="agencies">
-          <DictionaryTab kind="agencies" query={agencies as UseQueryResult<Item[]>} />
-        </Tabs.Panel>
-        <Tabs.Panel value="departments">
-          <DictionaryTab kind="departments" query={departments as UseQueryResult<Item[]>} />
-        </Tabs.Panel>
-        <Tabs.Panel value="positions">
-          <DictionaryTab kind="positions" query={positions as UseQueryResult<Item[]>} />
-        </Tabs.Panel>
-        <Tabs.Panel value="countries">
-          <DictionaryTab kind="countries" query={countries as UseQueryResult<Item[]>} />
-        </Tabs.Panel>
-      </Tabs>
+      <div className="ui-under-title">
+        <SegmentedControl
+          value={tab}
+          onChange={(v) => setTab(v as Kind)}
+          aria-label="Słownik"
+          data={[
+            { value: "agencies", label: "APT" },
+            { value: "departments", label: "Wydziały" },
+            { value: "positions", label: "Stanowiska" },
+            { value: "countries", label: "Kraje" },
+          ]}
+        />
+      </div>
+      <DictionaryTab key={tab} kind={tab} query={{ agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>} />
     </Stack>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Tabs, Text } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Text } from "@mantine/core";
 import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconUser } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
@@ -22,6 +22,7 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   const { hasRole } = useAuth();
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
+  const [tab, setTab] = useState("open");
   if (mobile && settingsOnly) return <ChecklistTemplates />;
   if (mobile)
     return (
@@ -56,20 +57,21 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
           </>
         }
       />
-      <Tabs defaultValue="open" keepMounted={false}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="open">Otwarte zadania</Tabs.Tab>
-          {staff && <Tabs.Tab value="settings">Ustawienia checklist</Tabs.Tab>}
-        </Tabs.List>
-        <Tabs.Panel value="open">
-          <OpenTasks />
-        </Tabs.Panel>
-        {staff && (
-          <Tabs.Panel value="settings">
-            <ChecklistTemplates />
-          </Tabs.Panel>
-        )}
-      </Tabs>
+      {/* przełącznik w pigułce pod tytułem – jak w Checklistach i Wiadomościach */}
+      {staff && (
+        <div className="ui-under-title">
+          <SegmentedControl
+            value={tab}
+            onChange={setTab}
+            aria-label="Widok"
+            data={[
+              { value: "open", label: "Otwarte zadania" },
+              { value: "settings", label: "Ustawienia checklist" },
+            ]}
+          />
+        </div>
+      )}
+      {tab === "settings" && staff ? <ChecklistTemplates /> : <OpenTasks />}
     </Stack>
   );
 }

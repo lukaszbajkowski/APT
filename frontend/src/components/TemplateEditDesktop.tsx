@@ -769,6 +769,8 @@ export function TouchSortList({
     heads?: Record<string, { top: number; h: number; mt: number }>;
   } | null>(null);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number; out?: boolean; side?: -1 | 0 | 1 } | null>(null);
+  // bieżące przesunięcie przeciąganego pola (pod palcem) – poza stanem, żeby ruch nie przerysowywał listy
+  const dyRef = useRef(0);
   const endRef = useRef<HTMLDivElement | null>(null);
   const raf = useRef<number | null>(null);
   // ekran edycji na telefonie przewija własny kontener, nie okno – szukamy najbliższego przewijanego przodka
@@ -1012,7 +1014,12 @@ export function TouchSortList({
     const last = lastZone.current;
     if (last && last.from === s.from && last.to === to && side !== last.side && (zone(f - m, dy - H) === last.side || zone(f + m, dy + H) === last.side)) side = last.side;
     lastZone.current = { from: s.from, to, side };
-    setDrag({ from: s.from, to, dy, out, side });
+    // płynność jak w checklistach: pole idzie za palcem przez bezpośrednią zmianę stylu (bez przerysowania płótna
+    // z prawdziwymi polami w każdej klatce); lista przelicza się tylko, gdy zmienia się miejsce docelowe lub grupa
+    dyRef.current = dy;
+    const el = rows.current[s.from];
+    if (el) el.style.transform = `translateY(${dy}px)`;
+    setDrag((prev) => (prev && prev.from === s.from && prev.to === to && prev.out === out && prev.side === side ? prev : { from: s.from, to, dy, out, side }));
   };
   const autoscroll = () => {
     const s = st.current;
@@ -1078,6 +1085,7 @@ export function TouchSortList({
       hds[g] = { top: el.offsetTop - parseFloat(cs.marginTop), h: el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom), mt: parseFloat(cs.marginTop) };
     }
     st.current = { from: i, startY: clientY, scroll0: scrollTop(), tops, hs, y: clientY, btops, heads: hds };
+    dyRef.current = 0;
     setDrag({ from: i, to: i, dy: 0 });
     navigator.vibrate?.(10);
     raf.current = requestAnimationFrame(autoscroll);
@@ -1420,7 +1428,7 @@ export function TouchSortList({
           data-glifted={(gd && gd.from === blockOf(i) && !!f.group) || undefined}
           data-headed={(withHeads && !!f.group) || undefined}
           style={{
-            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? drag.dy : shift(i)}px)` : undefined,
+            transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.rowY[i] ?? 0}px)` : drag ? `translateY(${drag.from === i ? dyRef.current : shift(i)}px)` : undefined,
             transformOrigin: gd && gd.from === blockOf(i) && f.group ? gOrigin(rows.current[i]) : undefined,
             // przeciągany wiersz zachowuje swoją wysokość, a w poszerzonej szczelinie wypełnia ją całą (ramka grupy się nie przerywa)
             // przeciągane pole idzie za palcem (jak w checklistach) – zachowuje swoją wysokość; szczelinę robią sąsiedzi

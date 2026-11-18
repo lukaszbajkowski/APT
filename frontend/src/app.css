@@ -2002,3 +2002,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   .ui-cl-due-track > span{cursor:inherit}
   .ui-cl-due-track[data-grabbing]{cursor:grabbing}
 }
+/* przenoszona karta: obramowanie na samej krawędzi (jak pole w edycji szablonu) – przy wcięciu 4 px wokół niego
+   zostawał pasek tła karty */
+.ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick,.ui-cl-paper .ui-cl-row[data-lifted][data-on] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px}

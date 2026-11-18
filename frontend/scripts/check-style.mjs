@@ -47,6 +47,9 @@ for (const raw of diff.split("\n")) {
     issues.push(`${at}  kolor na sztywno – użyj zmiennej (--apt-*, --mantine-color-*), inaczej psuje motyw ciemny`);
   if (/(c|color)=["{]\s*["']?(yellow|orange|red)\.\d/.test(s))
     issues.push(`${at}  kolor ostrzeżenia na sztywno (np. yellow.8) – użyj klasy .ui-warn (ma jaśniejszy odcień w ciemnym motywie)`);
+  // bez przewijania w przewijaniu (CLAUDE.md): ograniczona wysokość + własny pasek przewijania w treści strony
+  if (/max-height:\s*\d+px[^}]*overflow(-y)?:\s*(auto|scroll)|overflow(-y)?:\s*(auto|scroll)[^}]*max-height:\s*\d+px/.test(s) || /\bmah=\{\d+\}[^>]*overflow|ScrollArea\.Autosize/.test(s))
+    issues.push(`${at}  przewijanie w przewijaniu – treść ma mieć pełną wysokość i przewijać się razem ze stroną`);
   // etykiety, opisy i placeholdery od wielkiej litery („Np. …”, „Wszystkie APT”); wyjątek: wzory formatu (e-mail, klucz, data)
   for (const m of s.matchAll(/(?:what|title|label|description|placeholder)\s*=\s*\{?\s*f?["`]([a-ząćęłńóśźż][^"`]{2,})/g))
     if (!/@|_|^(dd|gg|rrrr|yyyy)\b/.test(m[1])) issues.push(`${at}  tekst dla użytkownika zaczyna się małą literą: „${m[1].slice(0, 30)}…”`);

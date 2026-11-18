@@ -57,6 +57,12 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   Wiersze list na telefonie: `SwipeRow` (akcje po przesunięciu w lewo, menu po przytrzymaniu); akcje nieodwracalne nie pod
   gestem. Każdy gest ma drugą drogę bez gestu (przycisk, „⋯”, klawiatura). Nowe gesty sprawdzaj symulacją dotyku (CDP)
   na telefonie w pionie, w poziomie i dużym w poziomie.
+- **Bez przewijania w przewijaniu**: na przewijanej stronie żadna sekcja, lista, tabela ani panel nie ma własnego
+  przewijania w pionie (`max-height` + `overflow: auto`, `ScrollArea` z wysokością) – treść ma pełną wysokość i przewija się
+  razem ze stroną; długą listę skraca się wyszukiwaniem, filtrem albo „Pokaż więcej”. Wyjątki: warstwy nad stroną
+  (arkusz od dołu, okno, szuflada, menu, lista wyboru – przewija się ich treść), układy na całą wysokość okna, w których
+  sama strona się nie przewija (Wiadomości, Komunikaty, lista + szczegóły w `MasterDetail`), oraz poziome przewijanie
+  szerokiej tabeli.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)

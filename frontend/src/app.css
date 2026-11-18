@@ -1367,7 +1367,7 @@ a.ui-case-link:hover{text-decoration:underline}
 .ui-tpe-settings .ui-dsec{gap:var(--s-4)}
 .ui-tpe-copy{width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 16px;text-align:left}
 .ui-tpe-copy:hover{background:var(--mantine-color-default-hover)}
-.ui-tpe-cheat{max-height:560px;overflow:auto}
+/* ściąga znaczników: pełna wysokość, przewija się razem ze stroną (bez przewijania w przewijaniu) */
 .ui-tpe-save{position:sticky;bottom:var(--s-4);display:flex;justify-content:space-between;align-items:center;gap:var(--s-4);padding:var(--s-3) var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface);box-shadow:0 -4px 24px rgba(0,0,0,.08);margin-top:var(--s-4);z-index:5}
 @container tpe (max-width:960px){.ui-tpe-row{grid-template-columns:16px minmax(0,1fr) 104px 16px}.ui-tpe-row > :nth-child(3){display:none}}
 .ui-tpe-side{display:flex;flex-direction:column;gap:var(--s-3);position:sticky;top:var(--s-4)}
@@ -1978,3 +1978,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (prefers-reduced-motion:no-preference){
   .ui-cl-paper .ui-cl-row[data-lifted]{scale:1}
 }
+/* przenoszone zadanie zaokrągla rogi jak pole w edycji szablonu (komputer: karta zadania, telefon: wiersz) */
+.ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick,.ui-cl-paper .ui-cl-row[data-dropping] .ui-cl-pick{border-radius:var(--mantine-radius-md)}
+.ui-cl-phone .ui-cl-row[data-lifted],.ui-cl-phone .ui-cl-row[data-dropping]{border-radius:var(--mantine-radius-md)}
+@media (prefers-reduced-motion:no-preference){
+  .ui-cl-paper .ui-cl-pick,.ui-cl-phone .ui-cl-row{transition-property:background-color,rotate,scale,border-radius;transition-duration:.3s,.15s,.15s,.15s}
+}
+/* przenoszone (także zaznaczone) zadanie: unosi się sama karta – bez tła wiersza i jego odstępu nad pierwszym zadaniem grupy */
+.ui-cl-paper .ui-cl-row[data-lifted][data-on],.ui-cl-paper .ui-cl-row[data-lifted]:hover{background:transparent}

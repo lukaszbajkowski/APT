@@ -10,6 +10,8 @@ import { CompactEmpty, PageTitle } from "./Mobile";
 import { ErrorState } from "./States";
 import { useConfirm } from "../lib/confirm";
 import { countListChanges } from "../lib/changes";
+import { TouchSortList } from "./TemplateEditDesktop";
+import type { TemplateField } from "../api";
 
 export interface DictItem {
   id: number;
@@ -145,6 +147,52 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
       .filter(Boolean)
       .join(" · ");
 
+  // stanowiska: przeciąganie jak pola w edycji szablonu (ten sam komponent) – grupa = wydział;
+  // przeniesienie do innej grupy zmienia wydział, poza grupami – stanowisko dla wszystkich wydziałów
+  const deptByName = new Map(departments.map((d) => [d.name, d.id]));
+  const posOrder = [...shown].sort((a, b) => {
+    const da = a.department_id ? deptName(a.department_id) : "";
+    const db = b.department_id ? deptName(b.department_id) : "";
+    return da.localeCompare(db, "pl") || a.name.localeCompare(b.name, "pl");
+  });
+  const asFields = posOrder.map((x) => ({ key: String(x.id), label: x.name, group: x.department_id ? deptName(x.department_id) : null, type: "text", required: false }) as unknown as TemplateField);
+  const posList = (
+    <div className="ui-tpe-plist ui-tpe-paper ui-dict-plist">
+      <TouchSortList
+        fields={asFields}
+        canvas
+        selected={sel !== null ? posOrder.findIndex((x) => x.id === sel) : undefined}
+        onOpen={(i) => pick(posOrder[i].id)}
+        onMove={(from, _to, group) => {
+          const x = posOrder[from];
+          const dep = group ? (deptByName.get(group) ?? null) : null;
+          if (x && (x.department_id ?? null) !== dep) upd(x.id, { department_id: dep });
+          if (x) setSel(x.id);
+        }}
+        describe={() => ""}
+        groupName={(g) => (
+          <span className="ui-tsl-ghead-btn">
+            <span className="ui-tpl-name">{g}</span>
+            <span className="ui-tpl-meta">
+              {((n) => `${n} ${plural(n, cfg.many)}`)(posOrder.filter((x) => x.department_id && deptName(x.department_id) === g).length)}
+            </span>
+          </span>
+        )}
+        renderBody={(f) => {
+          const x = posOrder.find((p) => String(p.id) === f.key)!;
+          return (
+            <div className="ui-dict-prow" data-dim={!x.is_active || undefined}>
+              <span className="ui-cl-text">
+                <span className="ui-cl-name">{x.name.trim() || "Nowa pozycja"}</span>
+                <span className="ui-cl-meta">{x.is_active ? meta(x) : `Wyłączone · ${meta(x)}`}</span>
+              </span>
+              {x.id > 0 && <span className="ui-cl-chip">{uses(x.id)}</span>}
+            </div>
+          );
+        }}
+      />
+    </div>
+  );
   const list = (
     <div className="ui-cl-list" role="group" aria-label={`Pozycje: ${cfg.title}`}>
       {groups.flatMap((g) => [
@@ -282,6 +330,8 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
                   <Skeleton height={48} />
                 </div>
               ))
+            ) : kind === "positions" && shown.length ? (
+              posList
             ) : groups.length ? (
               list
             ) : (

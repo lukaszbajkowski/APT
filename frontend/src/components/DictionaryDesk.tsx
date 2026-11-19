@@ -161,6 +161,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
       <TouchSortList
         fields={asFields}
         canvas
+        fixedGroups
         selected={sel !== null ? posOrder.findIndex((x) => x.id === sel) : undefined}
         onOpen={(i) => pick(posOrder[i].id)}
         onMove={(from, _to, group) => {

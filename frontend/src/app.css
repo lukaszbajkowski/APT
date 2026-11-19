@@ -2023,3 +2023,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-dict-plist{border:0;padding:0;background:transparent}
 .ui-dict-prow{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:var(--s-1) 0}
 .ui-dict-prow[data-dim] .ui-cl-name{color:var(--mantine-color-dimmed)}
+.ui-dict-plist .ui-tsl-ghead{padding-left:var(--s-4);cursor:default;user-select:none;-webkit-user-select:none}

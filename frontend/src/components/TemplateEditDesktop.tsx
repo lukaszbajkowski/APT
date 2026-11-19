@@ -729,6 +729,7 @@ export function TouchSortList({
   selected,
   canvas,
   onLabelEdit,
+  fixedGroups,
 }: {
   fields: TemplateField[];
   onMove: (from: number, to: number, group: string | null) => void;
@@ -749,6 +750,8 @@ export function TouchSortList({
   canvas?: boolean;
   /** płótno: edycja etykiety w miejscu (dwuklik na etykiecie, klik na etykiecie wybranego pola, F2) */
   onLabelEdit?: (i: number) => void;
+  /** grupy na sztywno (np. wydziały w Słownikach): nagłówka grupy nie da się złapać ani przesunąć – przenosi się tylko pola */
+  fixedGroups?: boolean;
 }) {
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   // w trakcie przeciągania nic na stronie się nie zaznacza (ani tekst, ani obrazy)
@@ -1352,11 +1355,11 @@ export function TouchSortList({
             data-gone={(sim && sim.headY[f.group!] === undefined) || undefined}
             data-target={(gNeighbour?.g === f.group && blockList[gd!.from]?.g !== f.group) || (joining === f.group) || undefined}
             style={{ transform: gd ? `translateY(${gShift(blockOf(i))}px)` : sim ? `translateY(${sim.headY[f.group!] ?? 0}px)` : drag ? `translateY(${drag.from > drag.to && drag.to === i ? 0 : shift(i)}px)` : undefined , transformOrigin: gd && blockList[gd.from]?.g === f.group ? gOrigin(heads.current[f.group!]) : undefined }}
-            data-grab={canvas || undefined}
-            onPointerDown={canvas ? (e) => cDown(i, e, f.group!) : undefined}
-            onPointerMove={canvas ? cMove : undefined}
-            onPointerUp={canvas ? cUp : undefined}
-            onPointerCancel={canvas ? cUp : undefined}
+            data-grab={(canvas && !fixedGroups) || undefined}
+            onPointerDown={canvas && !fixedGroups ? (e) => cDown(i, e, f.group!) : undefined}
+            onPointerMove={canvas && !fixedGroups ? cMove : undefined}
+            onPointerUp={canvas && !fixedGroups ? cUp : undefined}
+            onPointerCancel={canvas && !fixedGroups ? cUp : undefined}
             onClickCapture={(e) => {
               if (suppressClick.current) {
                 suppressClick.current = false;

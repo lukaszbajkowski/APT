@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Group, Modal, Stack, Switch, Table, Text, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -8,8 +8,9 @@ import { IconPencil, IconPlus, IconSearch } from "@tabler/icons-react";
 import { api, errorText } from "../api";
 import { options, useAgencies, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
+import { CompactEmpty, FormScreen, ListRow, PageHead, Segments, StatusBadge, SwipePager } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
+import { DictionaryDesk } from "../components/DictionaryDesk";
 
 interface Item {
   id: number;
@@ -299,38 +300,6 @@ export function DictionariesPage() {
       </Stack>
     );
   }
-  return (
-    <Stack className="ui-emp">
-      <PageTitle
-        title="Słowniki"
-        meta={`${CONFIG[tab].title} · ${({ agencies, departments, positions, countries }[tab].data ?? []).length}`}
-        actions={
-          <Button leftSection={<IconPlus size={16} />} onClick={() => setAddSignal((n) => n + 1)}>
-            Dodaj {CONFIG[tab].noun}
-          </Button>
-        }
-      />
-      {/* jak w Pracownikach: wyszukiwarka i przełącznik słownika w jednym wierszu */}
-      <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
-        <TextInput
-          aria-label="Szukaj w słowniku"
-          placeholder={`Szukaj: ${CONFIG[tab].title}`}
-          leftSection={<IconSearch size={16} aria-hidden />}
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          style={{ flex: 1, minWidth: 0 }}
-        />
-        <SegmentedControl
-          value={tab}
-          onChange={(v) => {
-            setTab(v as Kind);
-            setAddSignal(0);
-          }}
-          aria-label="Słownik"
-          data={(Object.keys(CONFIG) as Kind[]).map((k) => ({ value: k, label: CONFIG[k].title }))}
-        />
-      </Group>
-      <DictionaryTab key={tab} kind={tab} query={{ agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>} addSignal={addSignal} search={search} />
-    </Stack>
-  );
+  // komputer: kartka z grupami + panel (jak Checklisty) – components/DictionaryDesk
+  return <DictionaryDesk queries={{ agencies, departments, positions, countries } as Record<Kind, UseQueryResult<Item[]>>} />;
 }

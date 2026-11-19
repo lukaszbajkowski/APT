@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import audit
 from app.deps import Auth, DbSession, StaffAuth
-from app.models import Agency, Country, Department, Position
+from app.models import Agency, Country, Department, Employee, EmployeeStatus, Position
 from app.schemas import DictionaryItemOut
 
 router = APIRouter(prefix="/api", tags=["dictionaries"])
@@ -332,3 +332,23 @@ def update_country(
     _commit_unique(db, "Kraj")
     db.refresh(obj)
     return obj
+
+
+@router.get("/dictionaries/usage")
+def dictionaries_usage(ctx: StaffAuth, db: DbSession) -> dict[str, dict[int, int]]:
+    """Ile aktywnych pracowników ma daną pozycję słownika – ekran Słowniki pokazuje to przy pozycji
+    (używanej pozycji nie warto usuwać, lepiej ją wyłączyć). Same liczby, bez danych osób."""
+    out: dict[str, dict[int, int]] = {}
+    for key, col in (
+        ("agencies", Employee.agency_id),
+        ("departments", Employee.department_id),
+        ("positions", Employee.position_id),
+        ("countries", Employee.country_id),
+    ):
+        rows = db.execute(
+            select(col, func.count())
+            .where(col.is_not(None), Employee.status == EmployeeStatus.active)
+            .group_by(col)
+        ).all()
+        out[key] = {int(k): int(n) for k, n in rows}
+    return out

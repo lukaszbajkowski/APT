@@ -2014,3 +2014,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @container emp (max-width:900px){
   .ui-emp > .ui-under-title > .mantine-SegmentedControl-root{max-width:100%;flex-wrap:wrap}
 }
+/* Słowniki (komputer): wiersze jak zadania w Checklistach; brak e-maila agencji – bursztyn (wymaga działania) */
+.ui-cl-meta[data-warn]{color:var(--mantine-color-orange-text)}
+.ui-dict .ui-cl-paper .ui-cl-pick{grid-template-columns:minmax(0,1fr) auto}
+.ui-dict .ui-cl-row[data-dim] .ui-cl-name{color:var(--mantine-color-dimmed)}
+.ui-dict .ui-cl-paper .ui-cl-list{margin-top:0}

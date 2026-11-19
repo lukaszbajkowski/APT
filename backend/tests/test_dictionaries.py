@@ -69,3 +69,18 @@ def test_position_without_department_unique(client, make_user):
     login(client, "kadry")
     assert client.post("/api/positions", json={"name": "Sprzątanie"}).status_code == 201
     assert client.post("/api/positions", json={"name": "Sprzątanie"}).status_code == 409
+
+
+def test_dictionaries_usage_counts_active_employees(client, make_user):
+    make_user("kadry", Role.hr)
+    login(client, "kadry")
+    a = client.post("/api/agencies", json={"name": "Licznik"}).json()
+    r = client.get("/api/dictionaries/usage")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"agencies", "departments", "positions", "countries"}
+    assert str(a["id"]) not in body["agencies"]  # nikt jeszcze nie ma tej agencji
+    client.post("/api/auth/logout")
+    make_user("kier", Role.manager)
+    login(client, "kier")
+    assert client.get("/api/dictionaries/usage").status_code == 403

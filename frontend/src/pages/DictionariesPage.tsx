@@ -91,17 +91,9 @@ function DictionaryTab({ kind, query, addSignal = 0, search }: { kind: Kind; que
   const rows = (query.data ?? []).filter((i) => i.name.toLowerCase().includes(term));
 
   return (
-    <Stack mt={mobile ? 0 : "md"}>
-      {mobile ? (
-        search === undefined && <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} />
-      ) : (
-        <Group justify="space-between">
-          <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={240} />
-          <Button leftSection={<IconPlus size={16} />} onClick={() => open("new")}>
-            Dodaj {cfg.noun}
-          </Button>
-        </Group>
-      )}
+    <Stack mt={0}>
+      {/* komputer: wyszukiwarka i „Dodaj” są w nagłówku ekranu (jak w Pracownikach) */}
+      {search === undefined && <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" value={filter} onChange={(e) => setFilter(e.currentTarget.value)} />}
       {query.isLoading && <Loading />}
       {query.error && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {query.data && query.data.length === 0 && (mobile ? (
@@ -311,21 +303,34 @@ export function DictionariesPage() {
     <Stack>
       <PageTitle
         title="Słowniki"
+        meta={`${CONFIG[tab].title} · ${({ agencies, departments, positions, countries }[tab].data ?? []).length}`}
+        actions={
+          <Button leftSection={<IconPlus size={16} />} onClick={() => setAddSignal((n) => n + 1)}>
+            Dodaj {CONFIG[tab].noun}
+          </Button>
+        }
       />
-      <div className="ui-under-title">
+      {/* jak w Pracownikach: wyszukiwarka i przełącznik słownika w jednym wierszu */}
+      <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
+        <TextInput
+          aria-label="Szukaj w słowniku"
+          placeholder={`Szukaj: ${CONFIG[tab].title}`}
+          leftSection={<IconSearch size={16} aria-hidden />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          style={{ flex: 1, minWidth: 0 }}
+        />
         <SegmentedControl
           value={tab}
-          onChange={(v) => setTab(v as Kind)}
+          onChange={(v) => {
+            setTab(v as Kind);
+            setAddSignal(0);
+          }}
           aria-label="Słownik"
-          data={[
-            { value: "agencies", label: "APT" },
-            { value: "departments", label: "Wydziały" },
-            { value: "positions", label: "Stanowiska" },
-            { value: "countries", label: "Kraje" },
-          ]}
+          data={(Object.keys(CONFIG) as Kind[]).map((k) => ({ value: k, label: CONFIG[k].title }))}
         />
-      </div>
-      <DictionaryTab key={tab} kind={tab} query={{ agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>} />
+      </Group>
+      <DictionaryTab key={tab} kind={tab} query={{ agencies, departments, positions, countries }[tab] as UseQueryResult<Item[]>} addSignal={addSignal} search={search} />
     </Stack>
   );
 }

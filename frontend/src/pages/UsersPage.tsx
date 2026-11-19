@@ -156,7 +156,8 @@ export function UsersPage() {
   const departmentName = (id: number | null) => departments.data?.find((d) => d.id === id)?.name ?? `#${id}`;
   const activeCount = users.data?.filter((u) => u.is_active).length;
   const disabledCount = users.data?.filter((u) => !u.is_active).length;
-  const visible = users.data?.filter((u) => u.is_active !== showDisabled) ?? [];
+  const term = search.trim().toLowerCase();
+  const visible = users.data?.filter((u) => u.is_active !== showDisabled && (!term || `${u.full_name} ${u.username}`.toLowerCase().includes(term))) ?? [];
 
   // akcje wymagające potwierdzenia: reset hasła, reset 2FA, wyłączenie konta
   const run = async (u: User, kind: "reset" | "unlock" | "toggle" | "mfa" | "link") => {
@@ -188,6 +189,7 @@ export function UsersPage() {
       ) : (
         <PageTitle
           title="Użytkownicy"
+          meta={activeCount !== undefined ? `${activeCount} ${activeCount === 1 ? "aktywne konto" : activeCount % 10 >= 2 && activeCount % 10 <= 4 && (activeCount % 100 < 12 || activeCount % 100 > 14) ? "aktywne konta" : "aktywnych kont"}` : undefined}
           actions={
             <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
               Dodaj użytkownika
@@ -211,7 +213,16 @@ export function UsersPage() {
       )}
 
       {!mobile && (
-        <div className="ui-under-title">
+        // jak w Pracownikach: wyszukiwarka i przełącznik w jednym wierszu
+        <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
+          <TextInput
+            aria-label="Szukaj użytkownika"
+            placeholder="Imię, nazwisko lub login"
+            leftSection={<IconSearch size={16} aria-hidden />}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            style={{ flex: 1, minWidth: 0 }}
+          />
           <SegmentedControl
             value={showDisabled ? "wylaczeni" : "aktywni"}
             onChange={(v) => navigate(v === "wylaczeni" ? "/uzytkownicy/wylaczeni" : "/uzytkownicy")}
@@ -221,14 +232,14 @@ export function UsersPage() {
               { value: "wylaczeni", label: `Wyłączeni${disabledCount !== undefined ? ` ${disabledCount}` : ""}` },
             ]}
           />
-        </div>
+        </Group>
       )}
 
       {users.isLoading && <Loading />}
       {users.error && <ErrorState error={users.error} onRetry={() => users.refetch()} />}
 
       {!mobile && users.data && visible.length === 0 && (
-        <EmptyState compact title={showDisabled ? "Brak wyłączonych kont" : "Brak aktywnych kont"} text={showDisabled ? "Wyłączone konta pojawią się tutaj." : "Dodaj pierwszego użytkownika przyciskiem powyżej."} />
+        <EmptyState compact title={term ? `Brak wyników dla „${search.trim()}”` : showDisabled ? "Brak wyłączonych kont" : "Brak aktywnych kont"} text={term ? "Sprawdź pisownię." : showDisabled ? "Wyłączone konta pojawią się tutaj." : "Dodaj pierwszego użytkownika przyciskiem powyżej."} />
       )}
 
       {mobile && users.data && (

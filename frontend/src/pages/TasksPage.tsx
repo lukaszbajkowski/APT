@@ -23,6 +23,15 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
   const [tab, setTab] = useState("open");
+  const [mine, setMine] = useState(hasRole("manager") ? "mine" : "all");
+  // licznik w nagłówku – ta sama lista co w tabeli (wspólna pamięć zapytań)
+  const tasks = useQuery({
+    queryKey: ["tasks", mine],
+    queryFn: () => api<Task[]>(`/tasks${mine === "mine" ? "?mine=true" : ""}`),
+    enabled: !mobile && !settingsOnly,
+  });
+  const openCount = tasks.data?.length;
+  const lateCount = tasks.data?.filter((t) => t.state === "overdue").length ?? 0;
   if (mobile && settingsOnly) return <ChecklistTemplates />;
   if (mobile)
     return (
@@ -47,19 +56,15 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
       </Stack>
     );
   return (
-    <Stack maw={1300}>
+    <Stack maw={1760}>
       <PageTitle
         title="Zadania"
-        description={
-          <>
-            Checklisty wdrożenia i odejścia. Odhaczasz tutaj albo w kartotece pracownika. Pozycje z ⚡ odhaczą się same (np. po wydruku
-            karty lub wpisaniu szkolenia).
-          </>
-        }
+        meta={tab === "open" && openCount !== undefined ? `Otwartych ${openCount}${lateCount ? ` · Po terminie ${lateCount}` : ""}` : undefined}
+        description="Pozycje z ⚡ odhaczą się same, np. po wydruku karty lub wpisaniu szkolenia."
       />
-      {/* przełącznik w pigułce pod tytułem – jak w Checklistach i Wiadomościach */}
-      {staff && (
-        <div className="ui-under-title">
+      {/* jak w Pracownikach: jeden wiersz pod tytułem – widok po lewej, „Moje / Wszystkie” po prawej */}
+      <Group align="center" justify="space-between" gap={10} className="ui-emp-search-row">
+        {staff ? (
           <SegmentedControl
             value={tab}
             onChange={setTab}
@@ -69,17 +74,32 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
               { value: "settings", label: "Ustawienia checklist" },
             ]}
           />
-        </div>
-      )}
-      {tab === "settings" && staff ? <ChecklistTemplates /> : <OpenTasks />}
+        ) : (
+          <span />
+        )}
+        {tab === "open" && (
+          <SegmentedControl
+            value={mine}
+            onChange={setMine}
+            aria-label="Czyje zadania"
+            data={[
+              { value: "mine", label: hasRole("manager") ? "Moje (kierownik)" : "Moje (HR)" },
+              { value: "all", label: "Wszystkie" },
+            ]}
+          />
+        )}
+      </Group>
+      {tab === "settings" && staff ? <ChecklistTemplates /> : <OpenTasks mine={mine} />}
     </Stack>
   );
 }
 
-function OpenTasks() {
+function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
-  const [mine, setMine] = useState(hasRole("manager") ? "mine" : "all");
+  const [mineOwn, setMine] = useState(hasRole("manager") ? "mine" : "all");
+  // komputer: „Moje / Wszystkie” jest w nagłówku ekranu (jak w Pracownikach) – wartość przychodzi z góry
+  const mine = mineProp ?? mineOwn;
   const q = useQuery({
     queryKey: ["tasks", mine],
     queryFn: () => api<Task[]>(`/tasks${mine === "mine" ? "?mine=true" : ""}`),
@@ -93,7 +113,6 @@ function OpenTasks() {
     },
   });
   const rows = q.data ?? [];
-  const overdue = rows.filter((t) => t.state === "overdue").length;
   const mobile = useIsPhone();
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<Task | null>(null);
@@ -185,23 +204,7 @@ function OpenTasks() {
   }
 
   return (
-    <Stack maw={1100}>
-      <Group justify="space-between">
-        <SegmentedControl
-          value={mine}
-          onChange={setMine}
-          data={[
-            { value: "mine", label: hasRole("manager") ? "Moje (kierownik)" : "Moje (HR)" },
-            { value: "all", label: "Wszystkie" },
-          ]}
-        />
-        {rows.length > 0 && (
-          <Text size="sm" c={overdue ? "orange" : "dimmed"}>
-            Otwartych: {rows.length}
-            {overdue ? ` · po terminie: ${overdue}` : ""}
-          </Text>
-        )}
-      </Group>
+    <Stack>
       {q.isLoading && <Loading />}
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && rows.length === 0 && (

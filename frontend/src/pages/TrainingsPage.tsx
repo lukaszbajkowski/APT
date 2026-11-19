@@ -854,17 +854,16 @@ export function TrainingsPage() {
   const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
   const [ttab, setTtab] = useState("expiring");
+  const exp = useQuery({ queryKey: ["trainings-expiring"], queryFn: () => api<ExpiringTraining[]>("/trainings/expiring"), enabled: !mobile });
+  const prog = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress"), enabled: !mobile });
   if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
     <Stack>
       <PageTitle
         title="Szkolenia"
-        description={
-          <>
-            Szkolenia wpisuje się w kartotece pracownika, kilku osobom naraz – z listy pracowników (zaznacz osoby → „Szkolenie”).
-            Przypomnienie e-mail o kończących się i przekraczających standard wychodzi w poniedziałki.
-          </>
-        }
+        // licznik jak na telefonie: ile kończy się w 30 dni i ile trwa
+        meta={exp.data ? `${exp.data.length ? `Kończy się w 30 dni ${exp.data.length}` : "Nic nie kończy się w 30 dni"}${prog.data?.length ? ` · W trakcie ${prog.data.length}` : ""}` : undefined}
+        description="Przypomnienie o kończących się szkoleniach wychodzi e-mailem w poniedziałki."
         actions={
           staff && (
           <Menu position="bottom-end" width={290}>
@@ -894,12 +893,12 @@ export function TrainingsPage() {
           onChange={setTtab}
           aria-label="Widok"
           data={[
-            { value: "expiring", label: "Kończące się (30 dni)" },
+            { value: "expiring", label: "Kończące się" },
             { value: "progress", label: "W trakcie" },
             { value: "matrix", label: "Matryca" },
             { value: "report", label: "Raport" },
-            { value: "requirements", label: "Wymagania stanowisk" },
-            ...(staff ? [{ value: "types", label: "Rodzaje szkoleń" }] : []),
+            { value: "requirements", label: "Wymagania" },
+            ...(staff ? [{ value: "types", label: "Rodzaje" }] : []),
           ]}
         />
       </div>

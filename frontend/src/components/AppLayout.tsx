@@ -28,6 +28,7 @@ import {
   IconChartBar,
   IconCertificate2,
   IconChecklist,
+  IconListCheck,
   IconChevronDown,
   IconChevronLeft,
   IconHelpCircle,

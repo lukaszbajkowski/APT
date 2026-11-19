@@ -365,7 +365,7 @@ function AppLayoutInner() {
     { to: "/wiadomosci", label: "Wiadomości", icon: IconMessage, show: staff, badge: count.data?.unread ?? 0, group: "Komunikacja" },
     { to: "/komunikaty", label: "Komunikaty", icon: IconSpeakerphone, show: staff, group: "Komunikacja" },
 
-    { to: "/zadania", label: "Zadania", icon: IconChecklist, show: hasRole("admin", "hr", "manager") && !inbox, group: "Kadry" },
+    { to: "/zadania", label: "Zadania", icon: IconListCheck, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
     { to: "/szkolenia", label: "Szkolenia", icon: IconSchool, show: hasRole("admin", "hr", "manager"), group: "Kadry" },
     { to: "/dokumenty-pobytowe", label: "Dokumenty pobytowe", icon: IconCertificate2, show: staff, group: "Kadry" },
     { to: "/braki", label: "Braki w danych", icon: IconClipboardCheck, show: hasRole("admin", "hr", "manager") && !inbox, group: "Kadry" },

@@ -2005,3 +2005,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* przenoszona karta: obramowanie na samej krawędzi (jak pole w edycji szablonu) – przy wcięciu 4 px wokół niego
    zostawał pasek tła karty */
 .ui-cl-paper .ui-cl-row[data-lifted] .ui-cl-pick,.ui-cl-paper .ui-cl-row[data-lifted][data-on] .ui-cl-pick{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px}
+/* Szkolenia, Zadania, Słowniki, Użytkownicy (komputer, wąsko) – jak Pracownicy: przełącznik pod tytułem na całą
+   szerokość; gdy pozycji jest dużo, części zawijają się w kolejne wiersze zamiast wychodzić poza ekran */
+@container emp (max-width:620px){
+  .ui-emp > .ui-under-title > .mantine-SegmentedControl-root{display:flex;flex-wrap:wrap;width:100%}
+  .ui-emp > .ui-under-title > .mantine-SegmentedControl-root .mantine-SegmentedControl-control{flex:0 0 calc(100% / 3)!important}
+}
+@container emp (max-width:900px){
+  .ui-emp > .ui-under-title > .mantine-SegmentedControl-root{max-width:100%;flex-wrap:wrap}
+}

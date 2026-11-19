@@ -56,7 +56,7 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
       </Stack>
     );
   return (
-    <Stack maw={1760}>
+    <Stack maw={1760} className="ui-emp">
       <PageTitle
         title="Zadania"
         meta={tab === "open" && openCount !== undefined ? `Otwartych ${openCount}${lateCount ? ` · Po terminie ${lateCount}` : ""}` : undefined}

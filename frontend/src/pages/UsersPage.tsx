@@ -183,7 +183,7 @@ export function UsersPage() {
   };
 
   return (
-    <Stack>
+    <Stack className="ui-emp">
       {mobile ? (
         <PageHead title="Użytkownicy" subtitle="Konta systemu" action={{ label: "Dodaj użytkownika", icon: <IconPlus size={22} />, onClick: openNew }} />
       ) : (

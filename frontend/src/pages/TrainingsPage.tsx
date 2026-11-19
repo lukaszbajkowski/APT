@@ -858,7 +858,7 @@ export function TrainingsPage() {
   const prog = useQuery({ queryKey: ["trainings-in-progress"], queryFn: () => api<InProgressTraining[]>("/trainings/in-progress"), enabled: !mobile });
   if (mobile) return <TrainingsMobilePage staff={staff} />;
   return (
-    <Stack>
+    <Stack className="ui-emp">
       <PageTitle
         title="Szkolenia"
         // licznik jak na telefonie: ile kończy się w 30 dni i ile trwa

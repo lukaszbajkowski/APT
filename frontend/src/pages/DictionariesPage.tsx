@@ -300,7 +300,7 @@ export function DictionariesPage() {
     );
   }
   return (
-    <Stack>
+    <Stack className="ui-emp">
       <PageTitle
         title="Słowniki"
         meta={`${CONFIG[tab].title} · ${({ agencies, departments, positions, countries }[tab].data ?? []).length}`}

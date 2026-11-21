@@ -4,7 +4,6 @@
 // przyjścia tłumaczenia widać polski tekst.
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Select } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api";
@@ -136,12 +135,6 @@ export function systemLanguage(supported: string[]): string | null {
   return null;
 }
 
-/** Treść komunikatu jako komponent: przetłumaczy się sama, gdy przyjdzie tłumaczenie. */
-function AutoLangNote() {
-  const t = useT();
-  return <>{t("Aplikacja jest w języku Twojego telefonu. Zmienisz go w menu konta → Język.")}</>;
-}
-
 type LangCfg = { enabled: boolean; languages: { code: string; name: string }[] };
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -157,7 +150,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     enabled: wantsAuto,
   });
   const auto = wantsAuto && cfg.data?.enabled ? systemLanguage(cfg.data.languages.map((l) => l.code)) : null;
-  const target = me ? (employee ? norm(employee.user.language) ?? auto : null) : norm(pubLang) ?? auto;
+  // język telefonu nie włącza się sam – najpierw pytamy (LangSuggest poniżej)
+  const target = me ? (employee ? norm(employee.user.language) : null) : norm(pubLang);
   const effective = loading ? null : target;
   configure(effective, !me);
   // strefa czasowa: ręczny wybór z konta albo strefa urządzenia; wykrytą zapisujemy na koncie (e-maile, powiadomienia)
@@ -174,20 +168,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (employee) write(KEY, employee.user.language ?? null);
   }, [employee]);
-  // pracownik: zapamiętaj język telefonu na koncie (powiadomienia i e-maile też w tym języku) i powiedz o tym raz
-  useEffect(() => {
-    if (!employee || employee.user.language || !auto) return;
-    void api("/i18n/language", { method: "PUT", body: { language: auto } })
-      .then(() => {
-        setMe({ ...employee, user: { ...employee.user, language: auto } });
-        notifications.show({
-          color: "teal",
-          autoClose: 8000,
-          message: <AutoLangNote />,
-        });
-      })
-      .catch(() => undefined);
-  }, [employee, auto, setMe]);
   useEffect(() => {
     // Tłumacz przeglądarki (Chrome „Przetłumacz stronę”) podmienia tekst w drzewie strony – w aplikacji React
     // kończy się to awarią przy kolejnym kliknięciu i tłumaczeniem już przetłumaczonego. Gdy język ustawia
@@ -207,7 +187,58 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     write(KEY, l);
     setPub(l);
   }, []);
-  return <Ctx.Provider value={{ lang: effective, setPublicLang }}>{children}</Ctx.Provider>;
+  // pytanie o język telefonu: „Przełącz” albo „Zostań przy polskim” – oba wybory zapamiętujemy
+  // (pracownik – na koncie, bo wtedy też powiadomienia i e-maile; przed logowaniem – w przeglądarce)
+  const choose = (l: string) => {
+    if (employee)
+      void api("/i18n/language", { method: "PUT", body: { language: l } })
+        .then(() => setMe({ ...employee, user: { ...employee.user, language: l } }))
+        .catch(() => undefined);
+    else setPublicLang(l);
+  };
+  return (
+    <Ctx.Provider value={{ lang: effective, setPublicLang }}>
+      {children}
+      {auto && !loading && (!me || employee) && <LangSuggest code={auto} onPick={choose} />}
+    </Ctx.Provider>
+  );
+}
+
+/** Nazwa języka w nim samym („українська”, „English”) – zrozumiała dla osoby, która nie czyta po polsku. */
+function nativeName(code: string) {
+  try {
+    const n = new Intl.DisplayNames([code], { type: "language" }).of(code);
+    return n ? n.charAt(0).toLocaleUpperCase(code) + n.slice(1) : code;
+  } catch {
+    return code;
+  }
+}
+
+/** Pasek u dołu ekranu: „Twój telefon jest po … – przełączyć?” w obu językach, dwa przyciski. */
+function LangSuggest({ code, onPick }: { code: string; onPick: (l: string) => void }) {
+  const name = nativeName(code);
+  let pl = code;
+  try {
+    pl = new Intl.DisplayNames(["pl"], { type: "language" }).of(code) ?? code;
+  } catch {
+    /* stara przeglądarka */
+  }
+  return (
+    <div className="ui-langask" role="dialog" aria-label="Język aplikacji" translate="no">
+      <p>
+        Twój telefon jest ustawiony na język: {pl}. Przełączyć aplikację?
+        <span lang={code}> · {name}?</span>
+      </p>
+      <div className="ui-langask-acts">
+        <button type="button" className="ui-langask-btn" data-primary lang={code} onClick={() => onPick(code)}>
+          {name}
+        </button>
+        <button type="button" className="ui-langask-btn" onClick={() => onPick("pl")}>
+          Zostań przy polskim
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** Funkcja tłumacząca; komponent odświeża się, gdy dojdą tłumaczenia. */

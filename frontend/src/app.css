@@ -2024,3 +2024,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-dict-prow{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:var(--s-1) 0}
 .ui-dict-prow[data-dim] .ui-cl-name{color:var(--mantine-color-dimmed)}
 .ui-dict-plist .ui-tsl-ghead{padding-left:var(--s-4);cursor:default;user-select:none;-webkit-user-select:none}
+/* pytanie o język telefonu – pasek u dołu ekranu, nad dolnym menu; nie zasłania pracy, dwa duże przyciski */
+.ui-langask{position:fixed;left:var(--s-4);right:var(--s-4);bottom:calc(var(--s-4) + var(--apt-safe-bottom, 0px) + var(--apt-tabbar-h, 0px));z-index:300;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--s-3);padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-lg);background:var(--apt-surface);box-shadow:0 12px 32px rgba(0,0,0,.18);font-size:15px;line-height:22px}
+:where(:root[data-device="phone"]) .ui-langask{bottom:calc(72px + var(--apt-safe-bottom, 0px))}
+.ui-langask p{margin:0}
+.ui-langask p span{color:var(--mantine-color-dimmed)}
+.ui-langask-acts{display:flex;flex-wrap:wrap;gap:var(--s-2)}
+.ui-langask-btn{flex:1 1 160px;min-height:44px;padding:0 var(--s-4);border-radius:var(--mantine-radius-md);border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body);color:var(--mantine-color-text);font:inherit;font-weight:600;cursor:pointer}
+.ui-langask-btn[data-primary]{background:var(--mantine-primary-color-filled);border-color:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
+.ui-langask-btn:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}

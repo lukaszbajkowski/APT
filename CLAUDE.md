@@ -103,7 +103,9 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
    każda rola i czy nie widzi akcji, do której serwer jej nie dopuści.
 5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend).
 
-W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”).
+W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”). Nie wymieniaj jako „niesprawdzone” rzeczy,
+których te zasady nie wymagają (np. ciemny motyw przy zmianie odstępów, układu czy logiki) i nie proponuj ich sprawdzenia –
+po prostu je pomijaj.
 
 ## Na później (zapisane na prośbę właściciela)
 

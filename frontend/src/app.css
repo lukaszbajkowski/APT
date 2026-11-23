@@ -1777,7 +1777,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-chip[data-auto]{background:var(--mantine-color-green-light);color:var(--mantine-color-green-text)}
 .ui-cl-side{position:sticky;top:var(--s-4);display:flex;flex-direction:column;gap:var(--s-6)}
 .ui-cl-panel{display:flex;flex-direction:column;gap:var(--s-4);padding:var(--s-4);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
-.ui-cl-pbody{display:flex;flex-direction:column;gap:var(--s-3)}
+.ui-cl-pbody{display:flex;flex-direction:column;gap:var(--s-4)}
 .ui-cl-ptitle.ui-cl-ptitle{font-size:18px;line-height:24px;font-weight:600;margin:0;overflow-wrap:anywhere}
 .ui-cl-preview{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s-2)}
 .ui-cl-preview li{display:grid;grid-template-columns:76px minmax(0,1fr);gap:var(--s-2);align-items:start;font-size:14px;line-height:20px}

@@ -39,6 +39,8 @@ każde odstępstwo – najpierw pytanie.
 - Kartka: wnętrze 12 / 0 / 8, promień md; grupy odsunięte 8 od brzegu (pozycja grupy x = kartka + 9).
 - Grupa i wiersz jak na komputerze, wiersz z treścią nazwa + opis: wysokość 73, tekst 13 od brzegu grupy.
 - Dotknięcie = edycja w arkuszu (60 %), przytrzymanie = przeciąganie; wybrany wiersz przewija się pod pasek.
+- Arkusz: wnętrze 16 z boków, nagłówek (nazwa + podtytuł, ↑ ↓) i pierwsze pole na 95 px od góry arkusza, odstęp
+  między polami 16 (ten sam `.ui-cl-pbody` co panel), „Gotowe” na całą szerokość na dole.
 
 ## Zachowanie
 

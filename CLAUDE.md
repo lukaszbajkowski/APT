@@ -106,7 +106,9 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
    (ruch, kąty, odstępy, układ, logika) – jeden motyw (`--schemes light`), wszystkie urządzenia.
 4. **Globalnie:** zmiana na komputerze dotyczy wszystkich ról personelu, nie tylko kadr – sprawdź, co widzi
    każda rola i czy nie widzi akcji, do której serwer jej nie dopuści.
-5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend).
+5. **Testy:** `pytest` (backend), `npx tsc --noEmit` i `npx vite build` (frontend). Przed każdym commitem (nie tylko
+   przy zmianach backendu) to samo co CI: `cd backend && ruff check . && ruff format --check .` – CI odrzuca każdy push na
+   main, gdy w backendzie jest choć jedna uwaga.
 
 W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”). Nie wymieniaj jako „niesprawdzone” rzeczy,
 których te zasady nie wymagają (np. ciemny motyw przy zmianie odstępów, układu czy logiki) i nie proponuj ich sprawdzenia –

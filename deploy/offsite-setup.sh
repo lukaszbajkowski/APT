@@ -29,25 +29,16 @@ KEEP="${KEEP:-30}"
 
 HOSTKEY=""
 if [ "$PROTO" = sftp ]; then
-  HOSTKEY="$(ssh-keyscan -p "$PORT" -t ed25519,rsa "$HOST" 2>/dev/null | head -n1 | ssh-keygen -lf - -E sha256 2>/dev/null | awk '{print $2}' | sed 's/^SHA256://')"
-  [ -n "$HOSTKEY" ] && echo "Odcisk klucza serwera SFTP: SHA256:$HOSTKEY"
+  # odcisk klucza serwera SSH – bez niego połączenie nie byłoby sprawdzone, więc bez niego nie zapisujemy konfiguracji
+  echo "Pobieram odcisk klucza serwera SFTP…"
+  HOSTKEY="$( (ssh-keyscan -T 15 -p "$PORT" -t ed25519,rsa "$HOST" 2>/dev/null || true) | head -n1 | (ssh-keygen -lf - -E sha256 2>/dev/null || true) | awk '{print $2}' | sed 's/^SHA256://')"
+  if [ -z "$HOSTKEY" ]; then
+    echo "Nie udało się pobrać klucza serwera $HOST:$PORT (SSH). Sprawdź adres i port oraz czy dostęp przez SSH jest włączony." >&2
+    exit 1
+  fi
+  echo "Odcisk klucza serwera SFTP: SHA256:$HOSTKEY"
 fi
 
-# FTP z certyfikatem na inną nazwę (home.pl: adres serwerNNN.hosting-home.pl, certyfikat *.home.pl):
-# certyfikat sprawdzamy względem nazwy, którą obejmuje (serwerNNN.home.pl), łącząc się z podanym adresem
-TLS_NAME=""
-if [ "$PROTO" = ftp ]; then
-  CERT_CN="$(timeout 20 openssl s_client -starttls ftp -connect "$HOST:$PORT" </dev/null 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed -n 's/.*CN *= *//p')"
-  case "$CERT_CN" in
-    "*."*)
-      DOM="${CERT_CN#\*.}"
-      case "$HOST" in
-        *".$DOM") ;;
-        *) TLS_NAME="${HOST%%.*}.$DOM"; echo "Certyfikat serwera jest na $CERT_CN – sprawdzam go jako $TLS_NAME." ;;
-      esac
-      ;;
-  esac
-fi
 
 q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 umask 077
@@ -58,7 +49,6 @@ OFFSITE_USER=$(q "$USER_NAME")
 OFFSITE_PASS=$(q "$PASS")
 OFFSITE_KEEP_DAYS=$KEEP
 OFFSITE_SSH_HOSTKEY=$(q "$HOSTKEY")
-OFFSITE_TLS_NAME=$(q "$TLS_NAME")
 EOF
 
 NEW_KEY=""

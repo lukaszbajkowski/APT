@@ -2098,3 +2098,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-acc-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
 .ui-acc-row{padding:var(--s-3) var(--s-4)}
 .ui-acc-row + .ui-acc-row{border-top:1px solid var(--apt-line)}
+.ui-dict-empty{padding:var(--s-2) var(--s-4) 0}

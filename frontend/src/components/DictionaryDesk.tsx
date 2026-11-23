@@ -233,6 +233,16 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
           );
         }}
       />
+      {/* wydziały bez stanowisk – bez pustych grup (jak w edycji szablonu), jedna linia pod listą */}
+      {isPos && !term && (() => {
+        const used = new Set(shown.map((x) => x.department_id).filter(Boolean));
+        const empty = departments.filter((d) => d.is_active && !used.has(d.id)).map((d) => d.name);
+        return empty.length ? (
+          <Text size="sm" c="dimmed" className="ui-dict-empty">
+            Bez stanowisk: {empty.join(", ")}. Aby dodać, wybierz wydział w polu „Wydział” stanowiska.
+          </Text>
+        ) : null;
+      })()}
     </div>
   );
   const list = (

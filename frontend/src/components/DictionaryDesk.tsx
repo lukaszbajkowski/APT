@@ -180,6 +180,12 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   const asFields = posOrder.map((x) => ({ key: String(x.id), label: x.name, group: x.department_id ? deptName(x.department_id) : null, type: "text", required: false }) as unknown as TemplateField);
   const posList = (
     <div className="ui-tpe-plist ui-tpe-paper ui-dict-plist">
+      <div className="ui-tpe-paperhead">
+        <h2 className="ui-dsec-title">Stanowiska według wydziałów</h2>
+        <Text size="xs" c="dimmed">
+          {phone ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału." : "Kliknij stanowisko, aby je zmienić. Przeciągnij, aby przenieść do innego wydziału."}
+        </Text>
+      </div>
       <TouchSortList
         fields={asFields}
         canvas
@@ -337,9 +343,11 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         </div>
         <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         {/* podpowiedź nad listą – jak w Checklistach */}
-        <Text size="sm" c="dimmed">
-          {kind === "positions" ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału." : "Dotknij pozycję, aby ją zmienić."}
-        </Text>
+        {kind !== "positions" && (
+          <Text size="sm" c="dimmed">
+            Dotknij pozycję, aby ją zmienić.
+          </Text>
+        )}
         {error && <Text className="ui-ef-pending">{error}</Text>}
         {q.error ? (
           <ErrorState error={q.error} onRetry={() => q.refetch()} />
@@ -434,7 +442,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <div className="ui-cl-grid" data-narrow={narrow || undefined}>
-          <div className="ui-cl-paper">
+          <div className={kind === "positions" && shown.length && !q.isLoading ? "ui-dict-pwrap" : "ui-cl-paper"}>
             {q.isLoading ? (
               [0, 1].map((g) => (
                 <div key={g} style={{ marginBottom: 12 }}>

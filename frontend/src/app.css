@@ -2033,3 +2033,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-langask-btn{flex:1 1 160px;min-height:44px;padding:0 var(--s-4);border-radius:var(--mantine-radius-md);border:1px solid var(--mantine-color-default-border);background:var(--mantine-color-body);color:var(--mantine-color-text);font:inherit;font-weight:600;cursor:pointer}
 .ui-langask-btn[data-primary]{background:var(--mantine-primary-color-filled);border-color:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
 .ui-langask-btn:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
+/* Słowniki na telefonie – jak Checklisty: wybrana pozycja (także stanowisko na płótnie) na górze pod paskiem,
+   ciągła obwódka, pod listą miejsce na arkusz */
+:where(:root[data-device="phone"]) .ui-dict .ui-tsl-row[data-selected]{scroll-margin-top:calc(52px + var(--apt-safe-top) + var(--s-2))}
+:where(:root[data-device="phone"]) .ui-cl-phone.ui-dict:has(.ui-tsl-row[data-selected]){padding-bottom:92dvh}

@@ -74,6 +74,15 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   useEffect(() => {
     if (sheetOpen) setSheetH(60);
   }, [sheetOpen]);
+  // jak Checklisty: wybrana pozycja przewija się na górę – arkusz zasłania dolną część ekranu
+  useEffect(() => {
+    if (!phone || !sheetOpen) return;
+    requestAnimationFrame(() =>
+      document
+        .querySelector(".ui-dict .ui-cl-row[data-editing], .ui-dict .ui-tsl-row[data-selected]")
+        ?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }),
+    );
+  }, [phone, sheetOpen, sel]);
   const sheet = useSheetResize(
     () => setSheetOpen(false),
     (vh) => setSheetH(vh),
@@ -215,7 +224,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
           <small>{g.hint ?? `${g.rows.length} ${plural(g.rows.length, cfg.many)}`}</small>
         </div>,
         ...g.rows.map((x, i) => (
-          <div key={x.id} className="ui-cl-row" data-on={(sel === x.id && (!phone || sheetOpen)) || undefined} data-dim={!x.is_active || undefined} data-glast={i === g.rows.length - 1 || undefined}>
+          <div key={x.id} className="ui-cl-row" data-on={(sel === x.id && (!phone || sheetOpen)) || undefined} data-editing={(phone && sheetOpen && sel === x.id) || undefined} data-dim={!x.is_active || undefined} data-glast={i === g.rows.length - 1 || undefined}>
             <button type="button" className="ui-cl-pick ui-dict-pick" onClick={() => pick(x.id)} aria-pressed={sel === x.id}>
               <span className="ui-cl-text">
                 <span className="ui-cl-name">{x.name.trim() || "Nowa pozycja"}</span>
@@ -327,7 +336,10 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
           </UnstyledButton>
         </div>
         <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
-        {kind === "positions" && <Text size="sm" c="dimmed">Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału.</Text>}
+        {/* podpowiedź nad listą – jak w Checklistach */}
+        <Text size="sm" c="dimmed">
+          {kind === "positions" ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału." : "Dotknij pozycję, aby ją zmienić."}
+        </Text>
         {error && <Text className="ui-ef-pending">{error}</Text>}
         {q.error ? (
           <ErrorState error={q.error} onRetry={() => q.refetch()} />

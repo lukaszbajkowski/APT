@@ -38,7 +38,7 @@ każde odstępstwo – najpierw pytanie.
 ## Wymiary – telefon
 
 - Podpowiedź („Dotknij…, przytrzymaj…”) jako zwykły tekst `sm` szary **nad** kartką; kartka bez nagłówka.
-- Margines ekranu 16 px (kartka 16 px od brzegu ekranu, jak w edycji szablonu).
+- Margines ekranu 16 px – na telefonie cała aplikacja (`--app-shell-padding`).
 - Kartka: wnętrze 12 / 0 / 8, promień md; grupy odsunięte 8 od brzegu (pozycja grupy x = kartka + 9).
 - Grupa i wiersz jak na komputerze, wiersz z treścią nazwa + opis: wysokość 73, tekst 13 od brzegu grupy.
 - Dotknięcie = edycja w arkuszu (60 %), przytrzymanie = przeciąganie; wybrany wiersz przewija się pod pasek.

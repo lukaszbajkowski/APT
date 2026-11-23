@@ -950,6 +950,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 }
 /* komputer: margines strony 32 px, na dużym monitorze 48 px */
 :where(:root:not([data-device="phone"])) .mantine-AppShell-root { --app-shell-padding: var(--s-6) !important; }
+/* telefon: margines ekranu 16 px na wszystkich stronach (jak edycja szablonu i formularze) */
+:where(:root[data-device="phone"]) .mantine-AppShell-root { --app-shell-padding: var(--s-4) !important; }
 @media (min-width: 100em) { .mantine-AppShell-root { --app-shell-padding: var(--s-7) !important; } }
 /* tabele: tekst 14/20, wiersz zwarty, nagłówek kolumny 13 półgruby szary */
 :where(:root:not([data-device="phone"])) .mantine-Table-table { font-size: var(--t-table); line-height: var(--t-table-lh); }
@@ -2072,5 +2074,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (orientation: landscape) and (prefers-reduced-motion: no-preference) {
   :where(:root[data-device="phone"]) :is(.tabbar,.mantine-AppShell-footer){transition:transform .2s ease,visibility .2s}
 }
-/* Słowniki i Checklisty na telefonie: margines ekranu 16 px jak w edycji szablonu (strona ma 12 – dokładamy 4) */
-:where(:root[data-device="phone"]) .ui-cl-phone{margin-left:var(--s-1);margin-right:var(--s-1)}
+/* telefon: elementy na całą szerokość (przewijane strony, pasek filtrów) dopasowane do marginesu ekranu 16 px */
+:where(:root[data-device="phone"]) .ui-pager{margin-left:calc(-1 * var(--s-4));margin-right:calc(-1 * var(--s-4))}
+:where(:root[data-device="phone"]) .ui-pager-page{padding-left:var(--s-4);padding-right:var(--s-4)}
+:where(:root[data-device="phone"]) .ui-chips{margin-left:calc(-1 * var(--s-4));margin-right:calc(-1 * var(--s-4));padding-left:var(--s-4);padding-right:var(--s-4)}

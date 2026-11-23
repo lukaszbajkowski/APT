@@ -2117,3 +2117,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tasks .ui-tk-row[data-on] .ui-cl-pick{outline:none;background:transparent}
 .ui-tasks .ui-tk-row:hover:not([data-on]) .ui-cl-pick{outline:none}
 .ui-tasks .ui-tk-row:hover:not([data-on]){outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-2px}
+/* Zadania na telefonie: wiersz w SwipeRow – ta sama treść (pole + zadanie), tło grupy pod przesuwaną częścią */
+.ui-tk-row > .ui-swipe,.ui-tk-row > [class*="ui-swipe"]{flex:1;min-width:0}
+.ui-tk-swipe{display:flex;align-items:center;background:var(--apt-subtle)}
+.ui-tk-swipe > .ui-tk-check{flex:none;padding-left:var(--s-4)}
+.ui-tk-swipe > .ui-cl-pick{flex:1;min-width:0;grid-template-columns:minmax(0,1fr) auto;padding-left:var(--s-3)}

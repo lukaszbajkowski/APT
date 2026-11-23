@@ -3,13 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Anchor, Button, Checkbox, Drawer, Group, Progress, SegmentedControl, Skeleton, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconSearch } from "@tabler/icons-react";
+import { IconCheck, IconSearch, IconUser } from "@tabler/icons-react";
 
 import { api, errorText, formatDate } from "../api";
 import { useAuth } from "../auth";
 import { ChecklistTemplates, RESPONSIBLE, type ChecklistItem } from "../components/Lifecycle";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, PageTitle, Segments, SheetHandle, useSheetResize, WrapRow } from "../components/Mobile";
+import { CompactEmpty, PageTitle, Segments, SheetHandle, SwipeRow, useSheetResize, WrapRow } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 interface Task extends ChecklistItem {
@@ -176,6 +176,23 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
   };
   const meta = (t: Task) => (by === "due" ? [t.employee, kindLabel(t.kind), RESPONSIBLE[t.responsible]] : [kindLabel(t.kind), RESPONSIBLE[t.responsible]]).join(" · ");
 
+  // telefon: przesunięcie wiersza w lewo = „Odhacz” (druga droga: pole zaznaczenia i przycisk w arkuszu);
+  // przytrzymanie – menu z „Otwórz kartę”
+  const wrapSwipe = (t: Task, body: React.ReactNode) =>
+    phone ? (
+      <SwipeRow
+        menuTitle={t.label}
+        menuSubtitle={t.employee}
+        actions={[
+          ...(t.can_edit ? [{ label: "Odhacz", tone: "accent" as const, icon: <IconCheck size={20} />, onClick: () => setDone.mutate({ id: t.id, done: true }) }] : []),
+          { label: "Otwórz kartę", icon: <IconUser size={20} />, menuOnly: true, onClick: () => navigate(`/pracownicy/${t.employee_id}`) },
+        ]}
+      >
+        <div className="ui-tk-swipe">{body}</div>
+      </SwipeRow>
+    ) : (
+      body
+    );
   const list = (
     <div className="ui-cl-list" role="group" aria-label="Otwarte zadania">
       {groups.flatMap((g) => {
@@ -188,25 +205,30 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
           </div>,
           ...rows.map((t, i) => (
             <div key={t.id} className="ui-cl-row ui-tk-row" data-on={(sel === t.id && (!phone || sheetOpen)) || undefined} data-glast={(open && i === rows.length - 1) || undefined}>
-              <Checkbox
-                className="ui-tk-check"
-                aria-label={`Odhacz: ${t.label}`}
-                disabled={!t.can_edit || setDone.isPending}
-                checked={false}
-                onChange={() => setDone.mutate({ id: t.id, done: true })}
-              />
-              <button type="button" className="ui-cl-pick" onClick={() => pick(t)} aria-pressed={sel === t.id}>
-                <span className="ui-cl-text">
-                  <span className="ui-cl-name">
-                    {t.label}
-                    {t.auto ? " ⚡" : ""}
-                  </span>
-                  <span className="ui-cl-meta">{meta(t)}</span>
-                </span>
-                <span className="ui-tk-due" data-warn={t.state === "overdue" || undefined}>
-                  {t.due_date ? formatDate(t.due_date) : "bez terminu"}
-                </span>
-              </button>
+              {wrapSwipe(
+                t,
+                <>
+                  <Checkbox
+                    className="ui-tk-check"
+                    aria-label={`Odhacz: ${t.label}`}
+                    disabled={!t.can_edit || setDone.isPending}
+                    checked={false}
+                    onChange={() => setDone.mutate({ id: t.id, done: true })}
+                  />
+                  <button type="button" className="ui-cl-pick" onClick={() => pick(t)} aria-pressed={sel === t.id}>
+                    <span className="ui-cl-text">
+                      <span className="ui-cl-name">
+                        {t.label}
+                        {t.auto ? " ⚡" : ""}
+                      </span>
+                      <span className="ui-cl-meta">{meta(t)}</span>
+                    </span>
+                    <span className="ui-tk-due" data-warn={t.state === "overdue" || undefined}>
+                      {t.due_date ? formatDate(t.due_date) : "bez terminu"}
+                    </span>
+                  </button>
+                </>,
+              )}
             </div>
           )),
           ...(open
@@ -261,9 +283,18 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
         </div>
         <Segments value={mine} onChange={setMine} items={[{ value: "mine", label: hasRole("manager") ? "Moje" : "Moje (HR)" }, { value: "all", label: "Wszystkie" }]} />
         <TextInput aria-label="Szukaj zadania" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+        <Segments
+          value={kind}
+          onChange={(v) => setKind(v as typeof kind)}
+          items={[
+            { value: "all", label: "Wszystkie" },
+            { value: "onboarding", label: "Wdrożenie" },
+            { value: "offboarding", label: "Odejście" },
+          ]}
+        />
         {byControl(true)}
         <Text size="sm" c="dimmed">
-          Zaznacz pole, aby odhaczyć. Dotknij zadanie, aby zobaczyć szczegóły.
+          Przesuń zadanie w lewo albo zaznacz pole, aby odhaczyć. Dotknij, aby zobaczyć szczegóły.
         </Text>
         {q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : q.isLoading ? <Skeleton height={200} radius="md" /> : groups.length ? <div className="ui-tpe-paper ui-cl-phpaper">{list}</div> : empty}
         <Drawer

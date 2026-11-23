@@ -2099,26 +2099,16 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-acc-row{padding:var(--s-3) var(--s-4)}
 .ui-acc-row + .ui-acc-row{border-top:1px solid var(--apt-line)}
 .ui-dict-empty{padding:var(--s-2) var(--s-4) 0}
-/* Zadania – lista jak edytor listy (Słowniki / Checklisty): pole odhaczenia przed wierszem, termin po prawej */
-.ui-tk-row{display:flex;align-items:center}
-.ui-tk-row > .ui-tk-check{flex:none;padding-left:var(--s-4)}
-.ui-tk-row > .ui-cl-pick{flex:1;min-width:0;grid-template-columns:minmax(0,1fr) auto}
-.ui-tasks .ui-cl-paper .ui-tk-row > .ui-cl-pick{padding-left:var(--s-3)}
-.ui-tasks .ui-cl-phpaper .ui-tk-row > .ui-cl-pick{padding-left:var(--s-3)}
-.ui-tk-due{font-size:13px;line-height:18px;font-weight:600;white-space:nowrap;color:var(--mantine-color-dimmed)}
-.ui-tk-due[data-warn]{color:var(--mantine-color-orange-text)}
+/* Zadania: wiersz = zadanie z Checklist (.ui-cl-row / .ui-cl-pick / .ui-cl-cb / .ui-cl-chip); pole odhaczenia to przycisk
+   położony dokładnie na kwadracie .ui-cl-cb, termin po terminie w znaczniku na bursztynowo */
+.ui-tk-row{position:relative}
+.ui-tk-cb{position:absolute;left:var(--tk-cb-x,var(--s-4));top:50%;width:18px;height:18px;margin-top:-9px;padding:0;border:1.5px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-xs);background:var(--apt-surface);cursor:pointer;z-index:1}
+.ui-tk-cb::before{content:"";position:absolute;inset:-13px}
+.ui-tk-cb:hover{border-color:var(--mantine-primary-color-filled)}
+.ui-tk-cb:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
+.ui-cl-chip[data-late]{color:var(--mantine-color-orange-text)}
 .ui-tasks .ui-cl-glabel[data-warn]{color:var(--mantine-color-orange-text)}
 .ui-tk-more .ui-cl-name{color:var(--mantine-primary-color-filled)}
 .ui-tk-person{display:flex;gap:var(--s-3);align-items:center}
 .ui-tk-progress{display:flex;flex-direction:column;gap:var(--s-1)}
 .ui-tasks .ui-tpe-paperhead{padding-left:0;padding-right:0}
-/* wybrane zadanie: obwódka na cały wiersz (razem z polem odhaczenia), jak wybrane pole w szablonie */
-.ui-tasks .ui-tk-row[data-on]{outline:2px solid var(--mantine-primary-color-filled);outline-offset:-2px;border-radius:var(--mantine-radius-sm);background:color-mix(in srgb,var(--mantine-primary-color-filled) 7%,var(--apt-subtle))}
-.ui-tasks .ui-tk-row[data-on] .ui-cl-pick{outline:none;background:transparent}
-.ui-tasks .ui-tk-row:hover:not([data-on]) .ui-cl-pick{outline:none}
-.ui-tasks .ui-tk-row:hover:not([data-on]){outline:1px dashed color-mix(in srgb,var(--mantine-color-text) 35%,transparent);outline-offset:-2px}
-/* Zadania na telefonie: wiersz w SwipeRow – ta sama treść (pole + zadanie), tło grupy pod przesuwaną częścią */
-.ui-tk-row > .ui-swipe,.ui-tk-row > [class*="ui-swipe"]{flex:1;min-width:0}
-.ui-tk-swipe{display:flex;align-items:center;background:var(--apt-subtle)}
-.ui-tk-swipe > .ui-tk-check{flex:none;padding-left:var(--s-4)}
-.ui-tk-swipe > .ui-cl-pick{flex:1;min-width:0;grid-template-columns:minmax(0,1fr) auto;padding-left:var(--s-3)}

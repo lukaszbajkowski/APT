@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Anchor, Button, Checkbox, Drawer, Group, Progress, SegmentedControl, Skeleton, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { Anchor, Button, Drawer, Group, Progress, SegmentedControl, Skeleton, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconSearch, IconUser } from "@tabler/icons-react";
 
@@ -73,6 +73,7 @@ const WEEK = 7 * 24 * 3600 * 1000;
 const kindLabel = (k: Task["kind"]) => (k === "onboarding" ? "Wdrożenie" : "Odejście");
 const plural = (n: number, f: [string, string, string]) => (n === 1 ? f[0] : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? f[1] : f[2]);
 const SHOW = 8;
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 
 function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
   const qc = useQueryClient();
@@ -174,7 +175,8 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
     if (phone) setSheetOpen(true);
     else if (narrow) setPanelOpen(true);
   };
-  const meta = (t: Task) => (by === "due" ? [t.employee, kindLabel(t.kind), RESPONSIBLE[t.responsible]] : [kindLabel(t.kind), RESPONSIBLE[t.responsible]]).join(" · ");
+  const meta = (t: Task) =>
+    [by === "due" ? t.employee : null, kindLabel(t.kind), cap(RESPONSIBLE[t.responsible]), t.auto ? "Automatycznie" : null].filter(Boolean).join(" · ");
 
   // telefon: przesunięcie wiersza w lewo = „Odhacz” (druga droga: pole zaznaczenia i przycisk w arkuszu);
   // przytrzymanie – menu z „Otwórz kartę”
@@ -188,7 +190,7 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
           { label: "Otwórz kartę", icon: <IconUser size={20} />, menuOnly: true, onClick: () => navigate(`/pracownicy/${t.employee_id}`) },
         ]}
       >
-        <div className="ui-tk-swipe">{body}</div>
+        {body}
       </SwipeRow>
     ) : (
       body
@@ -207,27 +209,21 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
             <div key={t.id} className="ui-cl-row ui-tk-row" data-on={(sel === t.id && (!phone || sheetOpen)) || undefined} data-glast={(open && i === rows.length - 1) || undefined}>
               {wrapSwipe(
                 t,
-                <>
-                  <Checkbox
-                    className="ui-tk-check"
-                    aria-label={`Odhacz: ${t.label}`}
-                    disabled={!t.can_edit || setDone.isPending}
-                    checked={false}
-                    onChange={() => setDone.mutate({ id: t.id, done: true })}
-                  />
-                  <button type="button" className="ui-cl-pick" onClick={() => pick(t)} aria-pressed={sel === t.id}>
-                    <span className="ui-cl-text">
-                      <span className="ui-cl-name">
-                        {t.label}
-                        {t.auto ? " ⚡" : ""}
-                      </span>
-                      <span className="ui-cl-meta">{meta(t)}</span>
-                    </span>
-                    <span className="ui-tk-due" data-warn={t.state === "overdue" || undefined}>
-                      {t.due_date ? formatDate(t.due_date) : "bez terminu"}
-                    </span>
-                  </button>
-                </>,
+                // wiersz jak zadanie w Checklistach: pole (komputer), nazwa, opis, znacznik po prawej
+                <button type="button" className="ui-cl-pick" onClick={() => pick(t)} aria-pressed={sel === t.id}>
+                  {!phone && <span className="ui-cl-cb" aria-hidden />}
+                  <span className="ui-cl-text">
+                    <span className="ui-cl-name">{t.label}</span>
+                    <span className="ui-cl-meta">{meta(t)}</span>
+                  </span>
+                  <span className="ui-cl-chip" data-late={t.state === "overdue" || undefined}>
+                    {t.due_date ? formatDate(t.due_date) : "Bez terminu"}
+                  </span>
+                </button>,
+              )}
+              {/* pole odhaczenia w miejscu kwadratu z Checklist (komputer) – osobny przycisk, nie w środku wiersza */}
+              {!phone && t.can_edit && (
+                <button type="button" className="ui-tk-cb" aria-label={`Odhacz: ${t.label}`} disabled={setDone.isPending} onClick={() => setDone.mutate({ id: t.id, done: true })} />
               )}
             </div>
           )),
@@ -294,7 +290,7 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
         />
         {byControl(true)}
         <Text size="sm" c="dimmed">
-          Przesuń zadanie w lewo albo zaznacz pole, aby odhaczyć. Dotknij, aby zobaczyć szczegóły.
+          Dotknij zadanie, aby zobaczyć szczegóły. Przesuń w lewo, aby odhaczyć.
         </Text>
         {q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : q.isLoading ? <Skeleton height={200} radius="md" /> : groups.length ? <div className="ui-tpe-paper ui-cl-phpaper">{list}</div> : empty}
         <Drawer
@@ -372,7 +368,7 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
                 {byControl()}
               </WrapRow>
               <Text size="xs" c="dimmed">
-                Zaznacz pole, aby odhaczyć. Kliknij zadanie, aby zobaczyć szczegóły. Pozycje z ⚡ odhaczą się same.
+                Zaznacz pole, aby odhaczyć. Kliknij zadanie, aby zobaczyć szczegóły. „Automatycznie” – odhaczy się samo.
               </Text>
             </div>
             {q.isLoading ? <Loading rows={4} /> : groups.length ? list : empty}
@@ -432,7 +428,7 @@ function TaskPanel({ t, phone, titled, onDone, busy }: { t: Task; phone: boolean
         </Text>
         {t.auto && (
           <Text size="sm" c="dimmed">
-            ⚡ Odhaczy się samo{t.auto_label ? `: ${t.auto_label}` : "."}
+            Odhaczy się automatycznie{t.auto_label ? `: ${t.auto_label}` : "."}
           </Text>
         )}
       </div>

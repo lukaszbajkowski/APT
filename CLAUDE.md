@@ -9,6 +9,11 @@ Zasady Vercela są pisane pod interfejs angielski. W APT obowiązują wyjątki �
 - **Teksty**: przez `t()` / `T()` – tłumaczenia są o 30–40% dłuższe, więc etykiet nie ucinamy, tylko zawijamy.
 - **Daty i liczby**: helpery z `frontend/src/api.ts` (`formatDate`, `formatDateTime`) zamiast surowych `toLocaleString`.
 - **Spójność ponad nowość**: najpierw gotowe bloki z `frontend/src/components/Mobile.tsx` i istniejące klasy `.ui-*`.
+- **Zawsze zaakceptowane elementy** (zasada właściciela): gdy w aplikacji jest już sprawdzony wzór tej samej rzeczy (wiersz
+  listy, pole zaznaczenia, wybór, grupa, panel, arkusz, pasek zapisu…), użyj dokładnie jego – tych samych klas i znaczników
+  (np. wiersz zadania = `.ui-cl-row` / `.ui-cl-pick` / `.ui-cl-cb` / `.ui-cl-chip` z Checklist), bez własnych odmian
+  i nowych klas wyglądu. Nowy element tylko wtedy, gdy wzoru nie ma – i wtedy najpierw makieta. Po zrobieniu zmierz
+  i porównaj z wzorem (położenie, wysokość, odstępy).
 
 Pozostałe reguły (dostępność, fokus, formularze, animacje i `prefers-reduced-motion`, stany hover, motyw ciemny) stosuj w całości.
 

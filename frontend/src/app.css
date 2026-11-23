@@ -2072,3 +2072,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (orientation: landscape) and (prefers-reduced-motion: no-preference) {
   :where(:root[data-device="phone"]) :is(.tabbar,.mantine-AppShell-footer){transition:transform .2s ease,visibility .2s}
 }
+/* Słowniki i Checklisty na telefonie: margines ekranu 16 px jak w edycji szablonu (strona ma 12 – dokładamy 4) */
+:where(:root[data-device="phone"]) .ui-cl-phone{margin-left:var(--s-1);margin-right:var(--s-1)}

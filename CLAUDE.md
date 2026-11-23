@@ -63,6 +63,9 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   (arkusz od dołu, okno, szuflada, menu, lista wyboru – przewija się ich treść), układy na całą wysokość okna, w których
   sama strona się nie przewija (Wiadomości, Komunikaty, lista + szczegóły w `MasterDetail`), oraz poziome przewijanie
   szerokiej tabeli.
+- **Edytor listy** (lista w grupach z przeciąganiem + panel / arkusz wybranej pozycji – edycja szablonu, Słowniki,
+  Checklisty): wymiary i zasady w `docs/wzorzec-edytor-listy.md`. Przy tworzeniu nowego takiego ekranu albo przeróbce
+  istniejącego najpierw zapytaj właściciela, czy robimy go jak edycję szablonu; po zgodzie trzymaj się pliku co do piksela.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)

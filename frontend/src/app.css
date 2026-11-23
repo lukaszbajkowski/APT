@@ -1830,7 +1830,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* checklisty na komputerze: wymiary jak w edycji szablonu (panel 420 / 32, kartka 24·16, odstęp pod przełącznikiem 24) */
 .ui-cl-grid{grid-template-columns:minmax(0,1fr) 420px;margin-top:var(--s-2)}
 .ui-cl-panel{padding:var(--s-6)}
-.ui-cl-panel .ui-cl-pbody,.ui-tpe-drawer .ui-cl-pbody{gap:var(--s-5)}
+.ui-cl-panel .ui-cl-pbody,.ui-tpe-drawer .ui-cl-pbody{gap:var(--s-4)}
 .ui-cl-paper{padding:var(--s-5) var(--s-4) var(--s-4)}
 .ui-cl-paper > :not(.ui-cl-list){padding-left:var(--s-4);padding-right:var(--s-4)}
 /* zadania na kartce rozmieszczone jak pola w edycji szablonu: bez kreski między nimi, obwódka (wybrane – pełna,

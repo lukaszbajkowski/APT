@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { Button, Drawer, Group, Menu, SegmentedControl, Skeleton, Switch, Text, TextInput } from "@mantine/core";
+import { Button, Drawer, Group, Menu, SegmentedControl, Skeleton, Switch, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDots, IconPlus, IconSearch, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconDots, IconPlus, IconSearch, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText } from "../api";
 import { Select } from "./AptSelect";
-import { CompactEmpty, PageTitle } from "./Mobile";
+import { CompactEmpty, PageTitle, SheetHandle, useSheetResize } from "./Mobile";
+import { useIsPhone } from "../lib/device";
 import { ErrorState } from "./States";
 import { useConfirm } from "../lib/confirm";
 import { countListChanges } from "../lib/changes";
@@ -66,6 +67,17 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   const departments = queries.departments.data ?? [];
   const deptName = (id?: number | null) => (id ? (departments.find((d) => d.id === id)?.name ?? "Inny wydział") : "Wszystkie wydziały");
 
+  // telefon (jak Checklisty): słownik w tytule, pozycja w arkuszu od dołu (zawsze w połowie ekranu), pasek „Zapisz”
+  const phone = useIsPhone();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetH, setSheetH] = useState(60);
+  useEffect(() => {
+    if (sheetOpen) setSheetH(60);
+  }, [sheetOpen]);
+  const sheet = useSheetResize(
+    () => setSheetOpen(false),
+    (vh) => setSheetH(vh),
+  );
   // wąsko: panel w szufladzie z prawej (jak Checklisty)
   const rootRef = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
@@ -87,7 +99,8 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   };
   const pick = (id: number) => {
     setSel(id);
-    if (narrow) setPanelOpen(true);
+    if (phone) setSheetOpen(true);
+    else if (narrow) setPanelOpen(true);
   };
   const add = () => {
     const it: DictItem = { id: seq--, name: "", is_active: true, code: null, iso_code: null, email: null, department_id: null };
@@ -162,7 +175,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         fields={asFields}
         canvas
         fixedGroups
-        selected={sel !== null ? posOrder.findIndex((x) => x.id === sel) : undefined}
+        selected={sel !== null && (!phone || sheetOpen) ? posOrder.findIndex((x) => x.id === sel) : undefined}
         onOpen={(i) => pick(posOrder[i].id)}
         onMove={(from, _to, group) => {
           const x = posOrder[from];
@@ -202,7 +215,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
           <small>{g.hint ?? `${g.rows.length} ${plural(g.rows.length, cfg.many)}`}</small>
         </div>,
         ...g.rows.map((x, i) => (
-          <div key={x.id} className="ui-cl-row" data-on={sel === x.id || undefined} data-dim={!x.is_active || undefined} data-glast={i === g.rows.length - 1 || undefined}>
+          <div key={x.id} className="ui-cl-row" data-on={(sel === x.id && (!phone || sheetOpen)) || undefined} data-dim={!x.is_active || undefined} data-glast={i === g.rows.length - 1 || undefined}>
             <button type="button" className="ui-cl-pick ui-dict-pick" onClick={() => pick(x.id)} aria-pressed={sel === x.id}>
               <span className="ui-cl-text">
                 <span className="ui-cl-name">{x.name.trim() || "Nowa pozycja"}</span>
@@ -220,8 +233,8 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
 
   const editor = cur ? (
     <section className="ui-cl-pbody" aria-label="Wybrana pozycja">
-      {!narrow && <h2 className="ui-dsec-title">{cur.name.trim() || `Nowe: ${cfg.noun}`}</h2>}
-      <TextInput label="Nazwa" required value={cur.name} error={!cur.name.trim() ? "Wpisz nazwę" : undefined} onChange={(e) => upd(cur.id, { name: e.currentTarget.value })} data-autofocus />
+      {!narrow && !phone && <h2 className="ui-dsec-title">{cur.name.trim() || `Nowe: ${cfg.noun}`}</h2>}
+      <TextInput label="Nazwa" required value={cur.name} error={!cur.name.trim() ? "Wpisz nazwę" : undefined} onChange={(e) => upd(cur.id, { name: e.currentTarget.value })} data-autofocus={!phone || undefined} />
       {cfg.codeKey && (
         <TextInput
           label={cfg.codeLabel}
@@ -272,6 +285,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
             setItems((l) => l.filter((x) => x.id !== cur.id));
             setSel(saved[0]?.id ?? null);
             setPanelOpen(false);
+            setSheetOpen(false);
           }}
         >
           Usuń nową pozycję
@@ -283,6 +297,93 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
       Wybierz pozycję z listy, aby ją zmienić.
     </Text>
   );
+
+  if (phone) {
+    const kinds = Object.keys(DICT) as DictKind[];
+    return (
+      <div className="ui-cl ui-cl-phone ui-dict">
+        <div className="ui-head">
+          <div className="ui-head-text">
+            <Menu position="bottom-start" width={240}>
+              <Menu.Target>
+                <UnstyledButton className="ui-cl-kindbtn" aria-label={`Słownik: ${cfg.title}`}>
+                  <h1 className="ui-head-title">{cfg.title}</h1>
+                  <IconChevronDown size={22} aria-hidden />
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {kinds.map((k) => (
+                  <Menu.Item key={k} onClick={() => void pickKind(k)} rightSection={k === kind ? <IconCheck size={18} /> : undefined}>
+                    {DICT[k].title}
+                    {queries[k].data ? ` · ${queries[k].data!.length}` : ""}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+            <span className="ui-head-sub">Słownik{q.data ? ` · ${q.data.length} ${plural(q.data.length, cfg.many)}` : ""}</span>
+          </div>
+          <UnstyledButton className="ui-head-action" aria-label={`Dodaj ${cfg.noun}`} onClick={add}>
+            <IconPlus size={22} />
+          </UnstyledButton>
+        </div>
+        <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
+        {kind === "positions" && <Text size="sm" c="dimmed">Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału.</Text>}
+        {error && <Text className="ui-ef-pending">{error}</Text>}
+        {q.error ? (
+          <ErrorState error={q.error} onRetry={() => q.refetch()} />
+        ) : q.isLoading ? (
+          <Skeleton height={160} radius="md" />
+        ) : kind === "positions" && shown.length ? (
+          posList
+        ) : groups.length ? (
+          list
+        ) : (
+          <CompactEmpty title={term ? `Brak wyników dla „${search.trim()}”` : "Słownik jest pusty"} text={term ? "Sprawdź pisownię albo zajrzyj do innego słownika." : "Dodaj pierwszą pozycję przyciskiem „+”."} />
+        )}
+        {dirty && (
+          <div className="ui-selbar ui-savebar">
+            <Text size="sm" className="ui-ef-pending">
+              {emptyName ? "Uzupełnij nazwy" : `Niezapisane zmiany: ${changes}`}
+            </Text>
+            <Button size="lg" radius="md" onClick={() => save.mutate()} loading={save.isPending} disabled={emptyName}>
+              Zapisz
+            </Button>
+          </div>
+        )}
+        <Drawer
+          opened={sheetOpen && !!cur}
+          onClose={() => setSheetOpen(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          overlayProps={{ backgroundOpacity: 0.08 }}
+          classNames={{ content: "ui-sheet ui-tpe-fsheet ui-sheet-sized" }}
+          styles={{ content: { "--sheet-h": `${sheetH}dvh` } as React.CSSProperties }}
+          aria-label={cur?.name || cfg.noun}
+        >
+          {cur && (
+            <>
+              <SheetHandle onClose={() => setSheetOpen(false)} sheet={sheet}>
+                <div className="ui-sheet-head ui-tpe-fsheet-head">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="ui-sheet-title">{cur.name.trim() || `Nowe: ${cfg.noun}`}</div>
+                    <div className="ui-row-desc">{meta(cur)}</div>
+                  </div>
+                </div>
+              </SheetHandle>
+              <div className="ui-tpe-fsheet-body" ref={sheet.bodyRef}>
+                {editor}
+              </div>
+              <Button size="md" fullWidth mt="sm" className="ui-tpe-fsheet-done" onClick={() => setSheetOpen(false)}>
+                Gotowe
+              </Button>
+            </>
+          )}
+        </Drawer>
+      </div>
+    );
+  }
 
   return (
     <div className="ui-cl ui-emp ui-dict" ref={rootRef}>

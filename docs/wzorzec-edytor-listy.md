@@ -50,6 +50,8 @@ każde odstępstwo – najpierw pytanie.
 
 - Przeciągnięcie do innej grupy zmienia cechę pozycji (wydział, termin, aktywne / nieużywane) – zawsze z drugą drogą
   bez gestu w panelu (pole wyboru, przełącznik, ↑ ↓).
+- Pozycja bez grupy (pole bez grupy, stanowisko bez wydziału) leży na kartce poza grupami, bez tła i ramki grupy –
+  na komputerze 17 px od brzegu kartki, na telefonie 1 px; pole w panelu ma opis, co znaczy brak grupy.
 - Zmiany lokalnie, zapis paskiem; „Odrzuć” wraca do zapisanego.
 - Bez przewijania w przewijaniu – kartka ma pełną wysokość.
 

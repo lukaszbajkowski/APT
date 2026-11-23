@@ -284,7 +284,8 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
       {kind === "positions" && (
         <Select
           label="Wydział"
-          placeholder="Wszystkie wydziały"
+          description="Stanowisko bez wydziału jest wspólne dla wszystkich wydziałów – leży na liście poza grupami, jak pole bez grupy w szablonie."
+          placeholder="Bez wydziału"
           clearable
           data={departments.filter((d) => d.is_active || d.id === cur.department_id).map((d) => ({ value: String(d.id), label: d.name }))}
           value={cur.department_id ? String(cur.department_id) : null}

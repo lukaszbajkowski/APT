@@ -33,6 +33,22 @@ if [ "$PROTO" = sftp ]; then
   [ -n "$HOSTKEY" ] && echo "Odcisk klucza serwera SFTP: SHA256:$HOSTKEY"
 fi
 
+# FTP z certyfikatem na inną nazwę (home.pl: adres serwerNNN.hosting-home.pl, certyfikat *.home.pl):
+# certyfikat sprawdzamy względem nazwy, którą obejmuje (serwerNNN.home.pl), łącząc się z podanym adresem
+TLS_NAME=""
+if [ "$PROTO" = ftp ]; then
+  CERT_CN="$(timeout 20 openssl s_client -starttls ftp -connect "$HOST:$PORT" </dev/null 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | sed -n 's/.*CN *= *//p')"
+  case "$CERT_CN" in
+    "*."*)
+      DOM="${CERT_CN#\*.}"
+      case "$HOST" in
+        *".$DOM") ;;
+        *) TLS_NAME="${HOST%%.*}.$DOM"; echo "Certyfikat serwera jest na $CERT_CN – sprawdzam go jako $TLS_NAME." ;;
+      esac
+      ;;
+  esac
+fi
+
 q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 umask 077
 cat > "$CONF.new" <<EOF
@@ -42,6 +58,7 @@ OFFSITE_USER=$(q "$USER_NAME")
 OFFSITE_PASS=$(q "$PASS")
 OFFSITE_KEEP_DAYS=$KEEP
 OFFSITE_SSH_HOSTKEY=$(q "$HOSTKEY")
+OFFSITE_TLS_NAME=$(q "$TLS_NAME")
 EOF
 
 NEW_KEY=""

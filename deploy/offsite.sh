@@ -27,6 +27,20 @@ OFFSITE_KEEP_DAYS="${OFFSITE_KEEP_DAYS:-30}"
 URL="${OFFSITE_URL%/}/"
 PROTO="${URL%%://*}"
 
+# Serwer, którego certyfikat ma inną nazwę niż adres (np. home.pl: adres serwerNNN.hosting-home.pl, certyfikat *.home.pl):
+# OFFSITE_TLS_NAME=serwerNNN.home.pl – łączymy się z prawdziwym adresem, a certyfikat sprawdzamy względem tej nazwy
+# (dalej pełne sprawdzenie certyfikatu, bez wyłączania zabezpieczeń).
+CONNECT_TO=""
+if [ -n "${OFFSITE_TLS_NAME:-}" ]; then
+  _rest="${URL#*://}"
+  _hostport="${_rest%%/*}"
+  _host="${_hostport%%:*}"
+  _port="${_hostport##*:}"
+  [ "$_port" = "$_hostport" ] && { [ "$PROTO" = sftp ] && _port=22 || _port=21; }
+  CONNECT_TO="$OFFSITE_TLS_NAME:$_port:$_host:$_port"
+  URL="$PROTO://$OFFSITE_TLS_NAME:$_port/${_rest#*/}"
+fi
+
 # Hasło przekazujemy przez plik konfiguracyjny curla (nie widać go na liście procesów).
 CURL_CFG="$(mktemp)"
 trap 'rm -f "$CURL_CFG"' EXIT
@@ -49,6 +63,7 @@ chmod 600 "$CURL_CFG"
   fi
   [ "${OFFSITE_TLS_INSECURE:-false}" = "true" ] && echo "insecure"
   [ -n "${OFFSITE_CACERT:-}" ] && echo "cacert = \"$OFFSITE_CACERT\""
+  [ -n "$CONNECT_TO" ] && echo "connect-to = \"$CONNECT_TO\""
 } > "$CURL_CFG"
 
 rcurl() { curl -K "$CURL_CFG" "$@"; }

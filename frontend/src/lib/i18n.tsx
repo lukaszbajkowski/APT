@@ -214,26 +214,28 @@ function nativeName(code: string) {
   }
 }
 
-/** Pasek u dołu ekranu: „Twój telefon jest po … – przełączyć?” w obu językach, dwa przyciski. */
+const ASK = "Twój telefon jest ustawiony na inny język. Przełączyć aplikację na ten język?";
+
+/** Pasek u dołu ekranu: pytanie w języku telefonu, przycisk z nazwą języka w nim samym i „Zostań przy polskim”. */
 function LangSuggest({ code, onPick }: { code: string; onPick: (l: string) => void }) {
   const name = nativeName(code);
-  let pl = code;
-  try {
-    pl = new Intl.DisplayNames(["pl"], { type: "language" }).of(code) ?? code;
-  } catch {
-    /* stara przeglądarka */
-  }
+  // pytanie tłumaczymy od razu na język telefonu (aplikacja jest jeszcze po polsku); bez tłumacza – po polsku
+  const tr = useQuery({
+    queryKey: ["i18n-ask", code],
+    queryFn: () => api<{ translations: Record<string, string> }>("/i18n/public", { method: "POST", body: { lang: code, strings: [ASK] } }),
+    staleTime: Infinity,
+    retry: false,
+  });
+  if (tr.isLoading) return null;
+  const text = tr.data?.translations[ASK] ?? ASK;
   return (
-    <div className="ui-langask" role="dialog" aria-label="Język aplikacji" translate="no">
-      <p>
-        Twój telefon jest ustawiony na język: {pl}. Przełączyć aplikację?
-        <span lang={code}> · {name}?</span>
-      </p>
+    <div className="ui-langask" role="dialog" aria-label={name} translate="no">
+      <p lang={tr.data?.translations[ASK] ? code : "pl"}>{text}</p>
       <div className="ui-langask-acts">
         <button type="button" className="ui-langask-btn" data-primary lang={code} onClick={() => onPick(code)}>
           {name}
         </button>
-        <button type="button" className="ui-langask-btn" onClick={() => onPick("pl")}>
+        <button type="button" className="ui-langask-btn" lang="pl" onClick={() => onPick("pl")}>
           Zostań przy polskim
         </button>
       </div>

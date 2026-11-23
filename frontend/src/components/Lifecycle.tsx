@@ -1142,6 +1142,9 @@ function DeskTemplates({
     const natural = m.getBoundingClientRect().top - d.ty;
     d.ty = d.y - d.grab - natural;
     m.style.transform = `translateY(${d.ty}px)`;
+    // etykieta „Trafi do” wystaje ponad wiersz – przy górnym pasku (telefon) przenosimy ją pod wiersz, żeby nie znikała
+    const bar = document.querySelector<HTMLElement>(".mantine-AppShell-header")?.getBoundingClientRect().bottom ?? 0;
+    el.toggleAttribute("data-label-below", m.getBoundingClientRect().top < bar + 16);
     const slot = slotRef.current;
     if (slot) {
       slot.style.top = `${el.offsetTop}px`;

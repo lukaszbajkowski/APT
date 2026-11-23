@@ -2078,3 +2078,23 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 :where(:root[data-device="phone"]) .ui-pager{margin-left:calc(-1 * var(--s-4));margin-right:calc(-1 * var(--s-4))}
 :where(:root[data-device="phone"]) .ui-pager-page{padding-left:var(--s-4);padding-right:var(--s-4)}
 :where(:root[data-device="phone"]) .ui-chips{margin-left:calc(-1 * var(--s-4));margin-right:calc(-1 * var(--s-4));padding-left:var(--s-4);padding-right:var(--s-4)}
+/* Dziś: filtr spraw w wąskim obszarze (menu rozwinięte w wąskim oknie) – przewija się w bok zamiast wychodzić poza ekran */
+.ui-today-bar{min-width:0}
+.ui-today-bar > .mantine-SegmentedControl-root{max-width:100%;overflow-x:auto;scrollbar-width:none;flex-shrink:1}
+.ui-today-bar > .mantine-SegmentedControl-root::-webkit-scrollbar{display:none}
+/* szeroka tabela w wąskim obszarze przewija się w bok – cień przy krawędzi pokazuje, że jest dalej (cień znika na końcu) */
+.mantine-TableScrollContainer-scrollContainer .mantine-ScrollArea-viewport{
+  background:
+    linear-gradient(to right, var(--tsc-bg, var(--apt-ground)) 30%, transparent) left center / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--tsc-bg, var(--apt-ground)) 30%, transparent) right center / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), transparent) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), transparent) right center / 12px 100% no-repeat scroll;
+}
+.mantine-Paper-root .mantine-TableScrollContainer-scrollContainer .mantine-ScrollArea-viewport,.ui-surface .mantine-TableScrollContainer-scrollContainer .mantine-ScrollArea-viewport{--tsc-bg:var(--apt-surface)}
+/* konto personelu (komputer): sekcje na tle zamiast kart – nagłówek, opis, treść */
+.ui-acc-sec{display:flex;flex-direction:column;gap:var(--s-3);align-items:flex-start}
+.ui-acc-sec > *{max-width:100%}
+.ui-acc-sec > .mantine-InputWrapper-root,.ui-acc-sec > .mantine-Stack-root,.ui-acc-sec > .ui-acc-list,.ui-acc-sec > .mantine-Alert-root{align-self:stretch}
+.ui-acc-list{border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-surface)}
+.ui-acc-row{padding:var(--s-3) var(--s-4)}
+.ui-acc-row + .ui-acc-row{border-top:1px solid var(--apt-line)}

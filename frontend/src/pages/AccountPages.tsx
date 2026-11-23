@@ -4,7 +4,7 @@ import { TimezoneSetting } from "../components/TimezoneSetting";
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, CopyButton, Drawer, Group, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Button, CopyButton, Drawer, Group, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconAlertCircle, IconDeviceMobilePlus, IconDevices, IconFingerprint, IconTrash } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, MFA_PATH, type Me } from "../api";
@@ -12,7 +12,7 @@ import { useAuth } from "../auth";
 import { useT } from "../lib/i18n";
 import { AuthShell } from "../components/AuthShell";
 import { createPasskey, getPasskey, inAppBrowser, passkeyErrorText, passkeysSupported } from "../lib/passkey";
-import { EmptyState, Loading } from "../components/States";
+import { Loading } from "../components/States";
 import { DateField } from "../components/DateField";
 import { useConfirm } from "../lib/confirm";
 import { ActionSheet, CompactEmpty, FormDialog, ListRow, PageHead, Section, SheetHandle, PageTitle } from "../components/Mobile";
@@ -499,7 +499,7 @@ export function MyAccountPage() {
     );
 
   return (
-    <Stack maw={640}>
+    <Stack maw={640} gap="xl">
       <PageTitle title={t("Logowanie i powiadomienia")} />
       <InstallApp />
       <PushCard />
@@ -509,10 +509,58 @@ export function MyAccountPage() {
           {error}
         </Alert>
       )}
-      <Card withBorder padding="lg">
-        <Group justify="space-between" mb="sm">
-          <Title order={4}>{t("Twoje klucze")}</Title>
+      <section className="ui-acc-sec">
+        <h2 className="ui-dsec-title">{t("Twoje klucze")}</h2>
+        <Text size="sm" c="dimmed">
+          {t("Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go i wyślą nowe zaproszenie.")}{" "}
+          <Anchor component="button" type="button" size="sm" onClick={() => setOtherOpen(true)}>
+            {t("Jak dodać klucz na innym urządzeniu")}
+          </Anchor>
+        </Text>
+        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
+        <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
+        {/* lista kluczy w ramce („rzeczy”); pusta – krótki opis zamiast osobnego bloku */}
+        {keys.data && keys.data.length > 0 ? (
+          <div className="ui-acc-list">
+            {keys.data.map((k) => (
+              <Group key={k.id} justify="space-between" wrap="nowrap" className="ui-acc-row">
+                <div>
+                  <Text size="sm" fw={600}>
+                    {k.name}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {t("dodany {date}", { date: formatDateTime(k.created_at) })}
+                    {k.last_used_at ? ` · ${t("ostatnio {date}", { date: formatDateTime(k.last_used_at) })}` : ""}
+                  </Text>
+                </div>
+                <Button
+                  variant="subtle"
+                  color="red"
+                  size="xs"
+                  leftSection={<IconTrash size={14} />}
+                  loading={remove.isPending && remove.variables === k.id}
+                  onClick={() => confirm({ title: t("Usunąć klucz?"), message: t("Usunąć ten klucz?"), confirmLabel: t("Usuń"), danger: true }).then((ok) => ok && remove.mutate(k.id))}
+                >
+                  {t("Usuń")}
+                </Button>
+              </Group>
+            ))}
+          </div>
+        ) : keys.data ? (
+          <Text size="sm">{t("Nie masz jeszcze klucza dostępu.")}</Text>
+        ) : null}
+        {/* potwierdzenie tożsamości przed przyciskiem, który odblokowuje */}
+        {reauth && (
+          <Stack gap="xs">
+            <PasswordInput label={t("Obecne hasło")} description={t("Przed dodaniem klucza potwierdź tożsamość.")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
+            {me?.user.mfa_enabled && (
+              <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
+            )}
+          </Stack>
+        )}
+        <Group gap="sm">
           <Button
+            variant="default"
             leftSection={<IconFingerprint size={18} />}
             loading={add.isPending || prepare.isPending}
             disabled={!passkeysSupported() || (!prepared && reauth && !pw)}
@@ -520,54 +568,11 @@ export function MyAccountPage() {
           >
             {prepared ? t("Utwórz klucz na tym urządzeniu") : t("Dodaj klucz")}
           </Button>
+          <Button variant="default" leftSection={<IconDeviceMobilePlus size={18} />} onClick={() => setDeviceOpen(true)}>
+            {t("Dodaj inne urządzenie (kod QR)")}
+          </Button>
         </Group>
-        <Text size="sm" c="dimmed" mb="sm">
-          {t("Logujesz się twarzą, odciskiem palca lub PIN-em urządzenia – bez hasła. Dodaj klucz także na drugim urządzeniu (np. komputerze), żeby nie stracić dostępu po zgubieniu telefonu. Gdy mimo to stracisz dostęp, kadry zresetują go i wyślą nowe zaproszenie.")}{" "}
-          <Anchor component="button" type="button" size="sm" onClick={() => setOtherOpen(true)}>
-            {t("Jak dodać klucz na innym urządzeniu")}
-          </Anchor>
-        </Text>
-        <Button variant="default" leftSection={<IconDeviceMobilePlus size={18} />} mb="sm" onClick={() => setDeviceOpen(true)} style={{ alignSelf: "flex-start" }}>
-          {t("Dodaj inne urządzenie (kod QR)")}
-        </Button>
-        <OtherDeviceSheet opened={otherOpen} onClose={() => setOtherOpen(false)} />
-        <AddDeviceDialog opened={deviceOpen} onClose={() => setDeviceOpen(false)} hasKey={!!keys.data?.length} staff={!hasRole("employee")} mfa={!!me?.user.mfa_enabled} />
-        {reauth && (
-          <Stack gap="xs" mb="sm">
-            <Text size="sm">{t("Przed dodaniem klucza potwierdź tożsamość:")}</Text>
-            <PasswordInput label={t("Obecne hasło")} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
-            {me?.user.mfa_enabled && (
-              <TextInput label={t("Kod z aplikacji")} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.currentTarget.value)} />
-            )}
-          </Stack>
-        )}
-        <Stack gap="xs">
-          {keys.data?.map((k) => (
-            <Group key={k.id} justify="space-between" wrap="nowrap">
-              <div>
-                <Text size="sm" fw={500}>
-                  {k.name}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {t("dodany {date}", { date: formatDateTime(k.created_at) })}
-                  {k.last_used_at ? ` · ${t("ostatnio {date}", { date: formatDateTime(k.last_used_at) })}` : ""}
-                </Text>
-              </div>
-              <Button
-                variant="subtle"
-                color="red"
-                size="xs"
-                leftSection={<IconTrash size={14} />}
-                loading={remove.isPending && remove.variables === k.id}
-                onClick={() => confirm({ title: t("Usunąć klucz?"), message: t("Usunąć ten klucz?"), confirmLabel: t("Usuń"), danger: true }).then((ok) => ok && remove.mutate(k.id))}
-              >
-                {t("Usuń")}
-              </Button>
-            </Group>
-          ))}
-          {keys.data?.length === 0 && <EmptyState compact title={t("Nie masz jeszcze klucza dostępu")} text={t("Klucz pozwala logować się odciskiem palca lub twarzą. Dodaj go przyciskiem powyżej.")} />}
-        </Stack>
-      </Card>
+      </section>
     </Stack>
   );
 }

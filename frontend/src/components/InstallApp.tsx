@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Group, List, Modal, Text, Title } from "@mantine/core";
+import { Button, Card, Group, List, Modal, Text } from "@mantine/core";
 import { IconDeviceMobile, IconDownload } from "@tabler/icons-react";
 
 import { useT } from "../lib/i18n";
@@ -95,10 +95,8 @@ export function InstallApp({ compact = false, rows = false }: { compact?: boolea
   }
 
   return (
-    <Card withBorder padding="lg">
-      <Title order={4} mb={4}>
-        {t("Aplikacja na telefonie")}
-      </Title>
+    <section className="ui-acc-sec">
+      <h2 className="ui-dsec-title">{t("Aplikacja na telefonie")}</h2>
       <Text size="sm" c="dimmed" mb="sm">
         {t("Dodaj aplikację do ekranu głównego – otworzy się na pełnym ekranie, jak zwykła aplikacja, i będzie można włączyć powiadomienia.")}
       </Text>
@@ -106,6 +104,6 @@ export function InstallApp({ compact = false, rows = false }: { compact?: boolea
         {t("Zainstaluj aplikację")}
       </Button>
       {modal}
-    </Card>
+    </section>
   );
 }

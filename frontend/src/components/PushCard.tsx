@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Card, Group, Skeleton, Text, Title } from "@mantine/core";
+import { Alert, Button, Group, Skeleton, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBell, IconBellOff, IconInfoCircle } from "@tabler/icons-react";
 
@@ -118,10 +118,8 @@ export function PushCard({ rows = false }: { rows?: boolean } = {}) {
   }
 
   return (
-    <Card withBorder padding="lg">
-      <Title order={4} mb={4}>
-        {t("Powiadomienia na tym urządzeniu")}
-      </Title>
+    <section className="ui-acc-sec">
+      <h2 className="ui-dsec-title">{t("Powiadomienia na tym urządzeniu")}</h2>
       <Text size="sm" c="dimmed" mb="sm">
         {t("Dostaniesz krótkie powiadomienie na tym urządzeniu (telefonie, tablecie lub komputerze), gdy pojawi się coś dla Ciebie (np. dokument do podpisu albo odpowiedź kadr). Treść jest ogólna – bez nazwisk i szczegółów.")}
       </Text>
@@ -159,6 +157,6 @@ export function PushCard({ rows = false }: { rows?: boolean } = {}) {
           )}
         </Group>
       )}
-    </Card>
+    </section>
   );
 }

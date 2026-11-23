@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, Select, Stack, Text, Title } from "@mantine/core";
+import { Select, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconWorld } from "@tabler/icons-react";
 
@@ -44,8 +44,9 @@ export function TimezoneSetting({ rows }: { rows?: boolean }) {
   const hint = t("Godziny w aplikacji, e-mailach i powiadomieniach są w tej strefie. Terminy firmy podajemy też w czasie polskim.");
   const picker = (
     <Select
-      label={t("Strefa czasowa")}
-      description={hint}
+      label={rows ? t("Strefa czasowa") : undefined}
+      aria-label={t("Strefa czasowa")}
+      description={rows ? hint : undefined}
       data={data}
       value={value}
       onChange={(v) => void choose(v)}
@@ -78,19 +79,13 @@ export function TimezoneSetting({ rows }: { rows?: boolean }) {
       </Section>
     );
   return (
-    <Card withBorder padding="lg">
-      <Stack gap="xs">
-        <Title order={4}>
-          <IconWorld size={18} style={{ verticalAlign: "-3px", marginRight: 6 }} aria-hidden />
-          {t("Strefa czasowa")}
-        </Title>
-        {picker}
-        {!manual && (
-          <Text size="xs" c="dimmed">
-            {t("Wykrywana automatycznie z tego urządzenia.")}
-          </Text>
-        )}
-      </Stack>
-    </Card>
+    <section className="ui-acc-sec">
+      <h2 className="ui-dsec-title">{t("Strefa czasowa")}</h2>
+      <Text size="sm" c="dimmed">
+        {hint}
+        {!manual && ` ${t("Wykrywana automatycznie z tego urządzenia.")}`}
+      </Text>
+      {picker}
+    </section>
   );
 }

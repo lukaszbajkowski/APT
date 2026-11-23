@@ -29,7 +29,8 @@ każde odstępstwo – najpierw pytanie.
 - Grupa: tło `--apt-subtle`, ramka 1 px, promień md; odsunięta 8 od brzegu kartki; nagłówek 16 z lewej, 8 z prawej,
   nazwa 15/22 · 600 + licznik 13/18 szary; linia pod nagłówkiem. Nagłówek grupy 57 px (8 + nazwa + licznik + 8),
   16 px między grupami, pierwsza grupa bez odstępu nad sobą – tak samo na komputerze i telefonie.
-- Wiersz w grupie: tekst 12 / 16 od brzegu (`.ui-tsl-cbody` 12 16), bez linii między wierszami; wybrany – obrys
+- Wiersz w grupie: na całą szerokość grupy, każdy tej samej wysokości (bez dodatkowego odstępu w pierwszym i ostatnim),
+  tekst 12 / 16 od brzegu (`.ui-tsl-cbody` 12 16), bez linii między wierszami; wybrany – obrys
   2 px kolorem głównym; podniesiony (przeciąganie) – tło powierzchni, cień.
 - Panel: wnętrze 32 (`--s-6`), **odstęp między polami 16 (`--s-4`), także nagłówek → pierwsze pole 16**;
   przycisk usuwania na końcu, czerwony lekki.

@@ -2054,3 +2054,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-paper .ui-cl-glabel,.ui-cl-phpaper .ui-cl-list > .ui-cl-glabel{margin-top:var(--s-4);padding-top:var(--s-2);padding-bottom:var(--s-2)}
 .ui-cl-phpaper .ui-cl-list > .ui-cl-glabel{padding-top:calc(var(--s-2) - 1px)}
 .ui-cl-paper .ui-cl-glabel:first-child,.ui-cl-phpaper .ui-cl-list > .ui-cl-glabel:first-child{margin-top:0}
+/* wiersze Checklist na komputerze jak pola w edycji szablonu: na całą szerokość grupy, tekst 16 px od brzegu,
+   ta sama wysokość pierwszego, środkowego i ostatniego wiersza (bez dodatkowych 8 px na końcach grupy) */
+.ui-cl-paper .ui-cl-row,.ui-cl-paper .ui-cl-glabel + .ui-cl-row,.ui-cl-paper .ui-cl-row[data-glast]{padding:0}
+.ui-cl-paper .ui-cl-pick{padding:var(--s-4)}

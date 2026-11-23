@@ -172,18 +172,27 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   // stanowiska: przeciąganie jak pola w edycji szablonu (ten sam komponent) – grupa = wydział;
   // przeniesienie do innej grupy zmienia wydział, poza grupami – stanowisko dla wszystkich wydziałów
   const deptByName = new Map(departments.map((d) => [d.name, d.id]));
+  const isPos = kind === "positions";
+  const ON = "Aktywne", OFF = "Nieużywane";
+  const groupOf = (x: DictItem) => (isPos ? (x.department_id ? deptName(x.department_id) : null) : x.is_active ? ON : OFF);
   const posOrder = [...shown].sort((a, b) => {
-    const da = a.department_id ? deptName(a.department_id) : "";
-    const db = b.department_id ? deptName(b.department_id) : "";
-    return da.localeCompare(db, "pl") || a.name.localeCompare(b.name, "pl");
+    const da = groupOf(a) ?? "";
+    const db = groupOf(b) ?? "";
+    return (isPos ? da.localeCompare(db, "pl") : da === db ? 0 : da === ON ? -1 : 1) || a.name.localeCompare(b.name, "pl");
   });
-  const asFields = posOrder.map((x) => ({ key: String(x.id), label: x.name, group: x.department_id ? deptName(x.department_id) : null, type: "text", required: false }) as unknown as TemplateField);
+  const asFields = posOrder.map((x) => ({ key: String(x.id), label: x.name, group: groupOf(x), type: "text", required: false }) as unknown as TemplateField);
   const posList = (
     <div className="ui-tpe-plist ui-tpe-paper ui-dict-plist">
       <div className="ui-tpe-paperhead">
-        <h2 className="ui-dsec-title">Stanowiska według wydziałów</h2>
+        <h2 className="ui-dsec-title">{isPos ? "Stanowiska według wydziałów" : cfg.title}</h2>
         <Text size="xs" c="dimmed">
-          {phone ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału." : "Kliknij stanowisko, aby je zmienić. Przeciągnij, aby przenieść do innego wydziału."}
+          {isPos
+            ? phone
+              ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału."
+              : "Kliknij stanowisko, aby je zmienić. Przeciągnij, aby przenieść do innego wydziału."
+            : phone
+              ? "Dotknij pozycję, aby ją zmienić. Przytrzymaj, aby przenieść między aktywnymi i nieużywanymi."
+              : "Kliknij pozycję, aby ją zmienić. Przeciągnij, aby przenieść między aktywnymi i nieużywanymi."}
         </Text>
       </div>
       <TouchSortList
@@ -194,8 +203,10 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         onOpen={(i) => pick(posOrder[i].id)}
         onMove={(from, _to, group) => {
           const x = posOrder[from];
-          const dep = group ? (deptByName.get(group) ?? null) : null;
-          if (x && (x.department_id ?? null) !== dep) upd(x.id, { department_id: dep });
+          if (x && isPos) {
+            const dep = group ? (deptByName.get(group) ?? null) : null;
+            if ((x.department_id ?? null) !== dep) upd(x.id, { department_id: dep });
+          } else if (x && group && (group === ON) !== x.is_active) upd(x.id, { is_active: group === ON });
           if (x) setSel(x.id);
         }}
         describe={() => ""}
@@ -203,7 +214,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
           <span className="ui-tsl-ghead-btn">
             <span className="ui-tpl-name">{g}</span>
             <span className="ui-tpl-meta">
-              {((n) => `${n} ${plural(n, cfg.many)}`)(posOrder.filter((x) => x.department_id && deptName(x.department_id) === g).length)}
+              {g === OFF ? "Wyłączone – nie pokazują się przy dodawaniu osób" : ((n) => `${n} ${plural(n, cfg.many)}`)(posOrder.filter((x) => groupOf(x) === g).length)}
             </span>
           </span>
         )}
@@ -213,7 +224,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
             <div className="ui-dict-prow" data-dim={!x.is_active || undefined}>
               <span className="ui-cl-text">
                 <span className="ui-cl-name">{x.name.trim() || "Nowa pozycja"}</span>
-                <span className="ui-cl-meta">{x.is_active ? meta(x) : `Wyłączone · ${meta(x)}`}</span>
+                <span className="ui-cl-meta" data-warn={(kind === "agencies" && !x.email && x.id > 0) || undefined}>{x.is_active || !isPos ? meta(x) : `Wyłączone · ${meta(x)}`}</span>
               </span>
               {x.id > 0 && <span className="ui-cl-chip">{uses(x.id)}</span>}
             </div>
@@ -343,17 +354,12 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         </div>
         <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         {/* podpowiedź nad listą – jak w Checklistach */}
-        {kind !== "positions" && (
-          <Text size="sm" c="dimmed">
-            Dotknij pozycję, aby ją zmienić.
-          </Text>
-        )}
         {error && <Text className="ui-ef-pending">{error}</Text>}
         {q.error ? (
           <ErrorState error={q.error} onRetry={() => q.refetch()} />
         ) : q.isLoading ? (
           <Skeleton height={160} radius="md" />
-        ) : kind === "positions" && shown.length ? (
+        ) : shown.length ? (
           posList
         ) : groups.length ? (
           list
@@ -442,7 +448,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <div className="ui-cl-grid" data-narrow={narrow || undefined}>
-          <div className={kind === "positions" && shown.length && !q.isLoading ? "ui-dict-pwrap" : "ui-cl-paper"}>
+          <div className={shown.length && !q.isLoading ? "ui-dict-pwrap" : "ui-cl-paper"}>
             {q.isLoading ? (
               [0, 1].map((g) => (
                 <div key={g} style={{ marginBottom: 12 }}>
@@ -451,7 +457,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
                   <Skeleton height={48} />
                 </div>
               ))
-            ) : kind === "positions" && shown.length ? (
+            ) : shown.length ? (
               posList
             ) : groups.length ? (
               list

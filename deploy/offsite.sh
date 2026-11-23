@@ -125,9 +125,18 @@ case "$cmd" in
     TMP="$(mktemp -d)"
     trap 'rm -f "$CURL_CFG"; rm -rf "$TMP"' EXIT
     echo "test $(date)" > "$TMP/$probe"
-    rcurl -T "$TMP/$probe" "$URL$probe"
-    rcurl --list-only "$URL" | tr -d '\r' | sed 's#.*/##' | grep -qx "$probe"
-    remote_delete "$probe"
+    # każdy krok z własnym komunikatem – przy błędzie widać, co nie przeszło
+    rcurl -T "$TMP/$probe" "$URL$probe" || { echo "Krok 1/3: nie udało się zapisać pliku testowego w $URL" >&2; exit 1; }
+    echo "Krok 1/3: zapis – OK"
+    LIST="$(rcurl --list-only "$URL" | tr -d '\r')" || { echo "Krok 2/3: nie udało się odczytać listy plików w $URL" >&2; exit 1; }
+    if ! printf '%s\n' "$LIST" | sed 's#.*/##' | grep -qx "$probe"; then
+      echo "Krok 2/3: zapisanego pliku $probe nie widać na liście. Serwer zwrócił:" >&2
+      printf '%s\n' "$LIST" | head -20 >&2
+      exit 1
+    fi
+    echo "Krok 2/3: odczyt listy – OK"
+    remote_delete "$probe" || { echo "Krok 3/3: nie udało się usunąć pliku testowego $probe" >&2; exit 1; }
+    echo "Krok 3/3: usuwanie – OK"
     echo "Połączenie działa: zapis, odczyt i usuwanie plików w $URL"
     ;;
   *)

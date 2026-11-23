@@ -2059,4 +2059,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-cl-paper .ui-cl-row,.ui-cl-paper .ui-cl-glabel + .ui-cl-row,.ui-cl-paper .ui-cl-row[data-glast]{padding:0}
 .ui-cl-paper .ui-cl-pick{padding:var(--s-4)}
 /* przeciąganie przy górnym pasku: etykieta „Trafi do” pod wierszem zamiast nad nim */
-.ui-cl-row[data-label-below] .ui-cl-target{top:auto;bottom:calc(-1 * var(--s-3))}
+.ui-cl-row[data-lifted][data-label-below] .ui-cl-target{top:auto;bottom:calc(-1 * var(--s-3))}
+.ui-tsl-row[data-lifted][data-label-below] .ui-tsl-cbody .ui-tsl-target{top:auto;bottom:var(--s-2)}

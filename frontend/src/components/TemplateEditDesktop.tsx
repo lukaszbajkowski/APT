@@ -1021,7 +1021,12 @@ export function TouchSortList({
     // z prawdziwymi polami w każdej klatce); lista przelicza się tylko, gdy zmienia się miejsce docelowe lub grupa
     dyRef.current = dy;
     const el = rows.current[s.from];
-    if (el) el.style.transform = `translateY(${dy}px)`;
+    if (el) {
+      el.style.transform = `translateY(${dy}px)`;
+      // etykieta „Trafi do” w górnym rogu pola – przy górnym pasku (telefon) przechodzi na dół pola, żeby nie znikała
+      const bar = document.querySelector<HTMLElement>(".mantine-AppShell-header")?.getBoundingClientRect().bottom ?? 0;
+      el.toggleAttribute("data-label-below", el.getBoundingClientRect().top < bar + 32);
+    }
     setDrag((prev) => (prev && prev.from === s.from && prev.to === to && prev.out === out && prev.side === side ? prev : { from: s.from, to, dy, out, side }));
   };
   const autoscroll = () => {

@@ -105,7 +105,8 @@ Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienioneg
 
 W odpowiedzi napisz, co sprawdzone, a czego nie (np. „telefon nieoglądany”). Nie wymieniaj jako „niesprawdzone” rzeczy,
 których te zasady nie wymagają (np. ciemny motyw przy zmianie odstępów, układu czy logiki) i nie proponuj ich sprawdzenia –
-po prostu je pomijaj.
+po prostu je pomijaj. Tego samego nie proponuj w podpowiedziach ani proponowanych kolejnych poleceniach. Sprawdzenie,
+które zasady wymagają, zrób sam od razu, zamiast wypisywać je jako „nieobejrzane” do zlecenia.
 
 ## Na później (zapisane na prośbę właściciela)
 

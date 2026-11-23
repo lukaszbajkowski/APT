@@ -49,6 +49,14 @@ chmod 600 "$CURL_CFG"
   fi
   [ "${OFFSITE_TLS_INSECURE:-false}" = "true" ] && echo "insecure"
   [ -n "${OFFSITE_CACERT:-}" ] && echo "cacert = \"$OFFSITE_CACERT\""
+  # Klucz serwera przypięty za zgodą właściciela (home.pl: certyfikat *.home.pl pod adresem serwerNNN.hosting-home.pl):
+  # offsite-setup.sh sprawdził, że to ważny, zaufany certyfikat dostawcy, i zapisał odcisk jego klucza. curl przyjmie
+  # tylko serwer z dokładnie tym kluczem (pinnedpubkey); pomijamy jedynie porównanie nazwy adresu z certyfikatem.
+  # Po wymianie klucza przez dostawcę wysyłka się nie uda (zgłosi to codzienne sprawdzenie) – wtedy offsite-setup.sh.
+  if [ -n "${OFFSITE_TLS_PIN:-}" ]; then
+    echo "insecure"
+    echo "pinnedpubkey = \"$OFFSITE_TLS_PIN\""
+  fi
 } > "$CURL_CFG"
 
 rcurl() { curl -K "$CURL_CFG" "$@"; }

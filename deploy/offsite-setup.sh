@@ -40,6 +40,34 @@ if [ "$PROTO" = sftp ]; then
 fi
 
 
+# FTP z certyfikatem na inną nazwę niż adres (home.pl: adres serwerNNN.hosting-home.pl, certyfikat *.home.pl):
+# sprawdzamy, że to ważny, zaufany certyfikat dostawcy, pytamy o zgodę i przypinamy klucz serwera
+TLS_PIN=""
+if [ "$PROTO" = ftp ]; then
+  PEM="$(timeout 20 openssl s_client -starttls ftp -connect "$HOST:$PORT" </dev/null 2>/dev/null | openssl x509 2>/dev/null || true)"
+  CERT_CN="$(printf '%s' "$PEM" | openssl x509 -noout -subject 2>/dev/null | sed -n 's/.*CN *= *//p' || true)"
+  case "$CERT_CN" in
+    "*."*)
+      DOM="${CERT_CN#\*.}"
+      case "$HOST" in
+        *".$DOM") ;;
+        *)
+          if timeout 20 openssl s_client -starttls ftp -connect "$HOST:$PORT" -verify_return_error -verify_hostname "x.$DOM" </dev/null >/dev/null 2>&1; then
+            echo "Certyfikat serwera jest na $CERT_CN – ważny i zaufany, ale nie pasuje do adresu $HOST."
+            read -rp "Przypiąć klucz tego serwera (kopie będą wysyłane tylko do serwera z tym kluczem)? [t/N]: " PIN_OK </dev/tty
+            if [[ "${PIN_OK:-}" =~ ^[tTyY] ]]; then
+              TLS_PIN="sha256//$(printf '%s' "$PEM" | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64)"
+              echo "Przypięty klucz: $TLS_PIN"
+            fi
+          else
+            echo "Certyfikat serwera ($CERT_CN) nie przeszedł sprawdzenia łańcucha zaufania – nie przypinam klucza." >&2
+          fi
+          ;;
+      esac
+      ;;
+  esac
+fi
+
 q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 umask 077
 cat > "$CONF.new" <<EOF
@@ -49,6 +77,7 @@ OFFSITE_USER=$(q "$USER_NAME")
 OFFSITE_PASS=$(q "$PASS")
 OFFSITE_KEEP_DAYS=$KEEP
 OFFSITE_SSH_HOSTKEY=$(q "$HOSTKEY")
+OFFSITE_TLS_PIN=$(q "$TLS_PIN")
 EOF
 
 NEW_KEY=""

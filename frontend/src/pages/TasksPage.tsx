@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Anchor, Button, Drawer, Group, Progress, SegmentedControl, Skeleton, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { Anchor, Button, Drawer, Group, Progress, SegmentedControl, Skeleton, Stack, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconSearch, IconUser } from "@tabler/icons-react";
 
@@ -361,16 +361,22 @@ function OpenTasks({ mine: mineProp }: { mine?: string } = {}) {
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <div className="ui-cl-grid" data-narrow={narrow || !groups.length || undefined}>
-          <div className="ui-cl-paper ui-tpe-paper">
-            <div className="ui-tpe-paperhead">
-              <WrapRow className="ui-paper-headrow">
-                <h2 className="ui-dsec-title">Otwarte zadania</h2>
-                {byControl()}
-              </WrapRow>
-              <Text size="xs" c="dimmed">
-                Zaznacz pole, aby odhaczyć. Kliknij zadanie, aby zobaczyć szczegóły. „Automatycznie” – odhaczy się samo.
-              </Text>
-            </div>
+          <div className="ui-cl-paper">
+            {/* nagłówek kartki jak w Checklistach: opis nad tytułem, tytuł, przełącznik w tej samej linii, podpowiedź pod spodem */}
+            <WrapRow className="ui-paper-headrow">
+              <div>
+                <Text size="sm" c="dimmed">
+                  {mine === "mine" ? "Zadania przypisane do Ciebie" : "Zadania wszystkich osób"}
+                </Text>
+                <Title order={2} className="ui-cl-ptitle">
+                  Otwarte zadania
+                </Title>
+              </div>
+              {byControl()}
+            </WrapRow>
+            <Text size="xs" c="dimmed">
+              Zaznacz pole, aby odhaczyć. Kliknij zadanie, aby zobaczyć szczegóły. „Automatycznie” – odhaczy się samo.
+            </Text>
             {q.isLoading ? <Loading rows={4} /> : groups.length ? list : empty}
           </div>
           {!narrow && groups.length > 0 && <aside className="ui-cl-side ui-cl-panel">{editor}</aside>}

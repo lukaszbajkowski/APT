@@ -68,6 +68,15 @@ bez czekania na komendę `/ui-ux-pro-max`. Jego wyniki to rekomendacje: reguły 
   istniejącego najpierw zapytaj właściciela, czy robimy go jak edycję szablonu; po zgodzie trzymaj się pliku co do piksela.
 - Żywa dokumentacja: ekran „Wzornik” (`/wzornik`).
 
+## Samodzielna praca (prośba właściciela)
+
+Gdy na końcu pracy zostaje oczywisty następny krok – poprawka znaleziona przy sprawdzaniu, brakujące sprawdzenie
+(urządzenie, rola, przeciąganie, `ui-check`), dopasowanie do tego samego wzorca w innym miejscu – nie pytaj „poprawić?”,
+tylko zrób go od razu, sprawdź i opisz w odpowiedzi. Pytaj tylko, gdy:
+- trzeba wybrać między różnymi kierunkami wyglądu albo zachowania (wtedy najpierw makieta),
+- zmiana dotyka danych, serwera produkcyjnego, wdrożenia, sekretów lub czegoś nieodwracalnego,
+- powstaje nowy ekran typu „edytor listy” (pytanie z `docs/wzorzec-edytor-listy.md` zostaje).
+
 ## Sprawdzenie przed oddaniem (obowiązkowe przy każdej zmianie wyglądu lub zachowania)
 
 Nie pisz „gotowe”, dopóki nie przejdziesz tej listy dla każdego zmienionego ekranu:

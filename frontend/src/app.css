@@ -2037,3 +2037,29 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
    ciągła obwódka, pod listą miejsce na arkusz */
 :where(:root[data-device="phone"]) .ui-dict .ui-tsl-row[data-selected]{scroll-margin-top:calc(52px + var(--apt-safe-top) + var(--s-2))}
 :where(:root[data-device="phone"]) .ui-cl-phone.ui-dict:has(.ui-tsl-row[data-selected]){padding-bottom:92dvh}
+/* stanowiska (płótno szablonu w Słownikach): grupy w tym samym miejscu i z tymi samymi odstępami co w pozostałych
+   słownikach – bez marginesów płótna szablonu */
+.ui-dict .ui-dict-plist,.ui-dict .ui-dict-plist .ui-tsl{margin:0;padding:0}
+.ui-dict .ui-dict-plist .ui-tsl-ghead,.ui-dict .ui-dict-plist .ui-tsl-row{margin-left:0;margin-right:0}
+.ui-dict .ui-dict-plist .ui-tsl-row[data-glast]{margin-bottom:var(--s-3)}
+.ui-dict .ui-dict-plist .ui-tsl-ghead:first-child{margin-top:0}
+/* wnętrze grup stanowisk jak w pozostałych słownikach: nagłówek (padding, wysokość), wiersz bez dodatkowego odstępu
+   w środku; komputer – wiersz z odstępem 8 px od ramki grupy jak karta zadania na kartce */
+.ui-dict .ui-dict-plist .ui-tsl-ghead{padding:var(--s-3) var(--s-4) var(--s-2);min-height:0}
+.ui-dict .ui-dict-plist .ui-tsl-ghead .ui-tsl-ghead-btn{padding:0}
+.ui-dict .ui-dict-plist .ui-dict-prow{padding:0}
+.ui-dict .ui-dict-plist .ui-tsl-cbody{padding:var(--s-3) var(--s-4)}
+.ui-cl-paper .ui-dict-plist .ui-tsl-row[data-ingroup]{padding:0 var(--s-2)}
+.ui-cl-paper .ui-dict-plist .ui-tsl-row[data-glast]{padding-bottom:var(--s-2)}
+.ui-dict .ui-dict-plist .ui-tsl-ghead{padding:0 var(--s-2) 0 var(--s-4)}
+.ui-dict .ui-dict-plist .ui-tsl-ghead .ui-tsl-ghead-name,.ui-dict .ui-dict-plist .ui-tsl-ghead > .ui-tsl-ghead-btn{padding:var(--s-3) 0 var(--s-2)}
+/* pozycja w słowniku ma tylko tekst i liczbę – bez pustej trzeciej kolumny (i jej odstępu) */
+.ui-dict .ui-cl-pick{grid-template-columns:minmax(0,1fr) auto}
+/* ramki jak w pozostałych słownikach: komputer – bez ramek (grupa to tło), telefon – boki grupy, linia pod nagłówkiem,
+   dół tylko pod ostatnim wierszem */
+.ui-cl-paper .ui-dict-plist .ui-tsl-ghead,.ui-cl-paper .ui-dict-plist .ui-tsl-row{border:0}
+.ui-cl-paper .ui-dict-plist .ui-tsl-ghead{border-bottom:1px solid var(--apt-line)}
+.ui-cl-phone .ui-dict-plist .ui-tsl-ghead{border-bottom:1px solid var(--apt-line)}
+.ui-cl-phone .ui-dict-plist .ui-tsl-row[data-ingroup]{border-top:0;border-bottom:0}
+.ui-cl-phone .ui-dict-plist .ui-tsl-row[data-ingroup] + .ui-tsl-row[data-ingroup] .ui-tsl-cbody{box-shadow:0 -1px 0 var(--apt-line)}
+.ui-cl-phone .ui-dict-plist .ui-tsl-row[data-glast]{border-bottom:1px solid var(--apt-line)}

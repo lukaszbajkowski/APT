@@ -2102,7 +2102,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* Zadania: wiersz = zadanie z Checklist (.ui-cl-row / .ui-cl-pick / .ui-cl-cb / .ui-cl-chip); pole odhaczenia to przycisk
    położony dokładnie na kwadracie .ui-cl-cb, termin po terminie w znaczniku na bursztynowo */
 .ui-tk-row{position:relative}
-.ui-tk-cb{position:absolute;left:var(--tk-cb-x,var(--s-4));top:50%;width:18px;height:18px;margin-top:-9px;padding:0;border:1.5px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-xs);background:var(--apt-surface);cursor:pointer;z-index:1}
+.ui-tk-cb{position:absolute;left:var(--tk-cb-x,var(--s-4));top:calc(50% - 9px);width:18px;height:18px;padding:0;border:1.5px solid var(--mantine-color-default-border);border-radius:var(--mantine-radius-xs);background:var(--apt-surface);cursor:pointer;z-index:1}
 .ui-tk-cb::before{content:"";position:absolute;inset:-13px}
 .ui-tk-cb:hover{border-color:var(--mantine-primary-color-filled)}
 .ui-tk-cb:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}

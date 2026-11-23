@@ -2040,3 +2040,5 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-dict .ui-cl-pick{grid-template-columns:minmax(0,1fr) auto}
 /* stanowiska: kartka jak w edycji szablonu, zamiast kartki słownika (bez karty w karcie) */
 .ui-dict-pwrap{display:contents}
+/* Checklisty na telefonie: grupy na kartce z tym samym odstępem od brzegu co w Słownikach i edycji szablonu */
+.ui-cl-phpaper .ui-cl-list{margin:0 var(--s-2)}

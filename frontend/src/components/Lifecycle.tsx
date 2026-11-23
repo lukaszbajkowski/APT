@@ -1634,10 +1634,16 @@ function DeskTemplates({
         <SwipePager index={view === "person" ? 1 : 0} onIndex={(i) => setView(i ? "person" : "task")}>
           {[
             <div key="task" className="ui-cl-phperson">
-              <Text size="sm" c="dimmed">
-                Dotknij zadanie, aby zmienić jego ustawienia. Przytrzymaj zadanie, aby je przenieść – w innej grupie dostanie jej termin.
-              </Text>
-              {listJSX}
+              {/* kartka jak w edycji szablonu i w Słownikach: nagłówek z podpowiedzią, grupy w środku */}
+              <div className="ui-tpe-paper ui-cl-phpaper">
+                <div className="ui-tpe-paperhead">
+                  <h2 className="ui-dsec-title">Checklista {kind === "onboarding" ? "wdrożenia" : "odejścia"}</h2>
+                  <Text size="xs" c="dimmed">
+                    Dotknij zadanie, aby zmienić jego ustawienia. Przytrzymaj zadanie, aby je przenieść – w innej grupie dostanie jej termin.
+                  </Text>
+                </div>
+                {listJSX}
+              </div>
             </div>,
             <div key="person" className="ui-cl-phperson">
               <Group gap="xs" grow wrap="nowrap">

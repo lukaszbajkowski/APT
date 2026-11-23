@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Badge, Card, Checkbox, Group, SegmentedControl, Stack, Table, Text } from "@mantine/core";
-import { IconAdjustmentsHorizontal, IconCheck, IconCircleCheck, IconDotsVertical, IconUser } from "@tabler/icons-react";
+import { IconCheck, IconCircleCheck, IconDotsVertical, IconUser } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { useAuth } from "../auth";
@@ -20,9 +20,7 @@ interface Task extends ChecklistItem {
 
 export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) {
   const { hasRole } = useAuth();
-  const staff = hasRole("admin", "hr");
   const mobile = useIsPhone();
-  const [tab, setTab] = useState("open");
   const [mine, setMine] = useState(hasRole("manager") ? "mine" : "all");
   // licznik w nagłówku – ta sama lista co w tabeli (wspólna pamięć zapytań)
   const tasks = useQuery({
@@ -39,7 +37,6 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
         <PageHead
           title="Zadania"
           subtitle="Checklisty wdrożenia i odejścia"
-          action={staff ? { label: "Ustawienia checklist", icon: <IconAdjustmentsHorizontal size={20} />, variant: "outline", to: "/checklisty" } : undefined}
         />
         <OpenTasks />
       </Stack>
@@ -59,37 +56,22 @@ export function TasksPage({ settingsOnly = false }: { settingsOnly?: boolean }) 
     <Stack maw={1760} className="ui-emp">
       <PageTitle
         title="Zadania"
-        meta={tab === "open" && openCount !== undefined ? `Otwartych ${openCount}${lateCount ? ` · Po terminie ${lateCount}` : ""}` : undefined}
+        meta={openCount !== undefined ? `Otwartych ${openCount}${lateCount ? ` · Po terminie ${lateCount}` : ""}` : undefined}
         description="Pozycje z ⚡ odhaczą się same, np. po wydruku karty lub wpisaniu szkolenia."
       />
-      {/* jak w Pracownikach: jeden wiersz pod tytułem – widok po lewej, „Moje / Wszystkie” po prawej */}
-      <Group align="center" justify="space-between" gap={10} className="ui-emp-search-row">
-        {staff ? (
-          <SegmentedControl
-            value={tab}
-            onChange={setTab}
-            aria-label="Widok"
-            data={[
-              { value: "open", label: "Otwarte zadania" },
-              { value: "settings", label: "Ustawienia checklist" },
-            ]}
-          />
-        ) : (
-          <span />
-        )}
-        {tab === "open" && (
-          <SegmentedControl
-            value={mine}
-            onChange={setMine}
-            aria-label="Czyje zadania"
-            data={[
-              { value: "mine", label: hasRole("manager") ? "Moje (kierownik)" : "Moje (HR)" },
-              { value: "all", label: "Wszystkie" },
-            ]}
-          />
-        )}
+      {/* ustawienia checklist są w „Checklisty” – tu tylko otwarte zadania, przełącznik „Moje / Wszystkie” */}
+      <Group align="center" justify="flex-end" gap={10} className="ui-emp-search-row">
+        <SegmentedControl
+          value={mine}
+          onChange={setMine}
+          aria-label="Czyje zadania"
+          data={[
+            { value: "mine", label: hasRole("manager") ? "Moje (kierownik)" : "Moje (HR)" },
+            { value: "all", label: "Wszystkie" },
+          ]}
+        />
       </Group>
-      {tab === "settings" && staff ? <ChecklistTemplates /> : <OpenTasks mine={mine} />}
+      <OpenTasks mine={mine} />
     </Stack>
   );
 }

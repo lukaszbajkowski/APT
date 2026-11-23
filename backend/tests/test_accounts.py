@@ -366,7 +366,10 @@ def _login_with(auth: FakeAuthenticator):
 
     c = TestClient(app)
     o = c.post("/api/auth/passkey/options").json()
-    return c.post("/api/auth/passkey/login", json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])})
+    return c.post(
+        "/api/auth/passkey/login",
+        json={"challenge_id": o["challenge_id"], "credential": auth.get(o["options"])},
+    )
 
 
 def test_device_link_adds_second_key_and_keeps_first(hr, emp):
@@ -398,8 +401,18 @@ def test_device_link_adds_second_key_and_keeps_first(hr, emp):
         from app.models import AuditLog, WebauthnCredential
 
         uid = db.scalar(select(User.id).where(User.employee_id == emp))
-        assert db.scalar(select(func.count()).select_from(WebauthnCredential).where(WebauthnCredential.user_id == uid)) == 2
-        assert db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action == "employee_device_added")) == 1
+        assert (
+            db.scalar(
+                select(func.count()).select_from(WebauthnCredential).where(WebauthnCredential.user_id == uid)
+            )
+            == 2
+        )
+        assert (
+            db.scalar(
+                select(func.count()).select_from(AuditLog).where(AuditLog.action == "employee_device_added")
+            )
+            == 1
+        )
 
 
 def test_device_link_needs_active_account_and_staff(hr, emp, client, make_user):
@@ -443,4 +456,9 @@ def test_device_link_is_not_a_password_reset_link(hr, emp):
     token = _device_link(hr, emp).json()["link"].split("token=")[1]
     c = TestClient(app)
     assert c.get("/api/auth/password-reset/check", params={"token": token}).json()["valid"] is False
-    assert c.post("/api/auth/password-reset/confirm", json={"token": token, "new_password": PASSWORD}).status_code == 400
+    assert (
+        c.post(
+            "/api/auth/password-reset/confirm", json={"token": token, "new_password": PASSWORD}
+        ).status_code
+        == 400
+    )

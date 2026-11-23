@@ -270,7 +270,8 @@ def test_planned_change(admin_client):
 
 
 def test_first_change_keeps_earlier_assignment(admin_client):
-    """Pracownik bez wpisów przydziału (np. sprzed tej funkcji): pierwsza zmiana dopisuje okres od zatrudnienia."""
+    """Pracownik bez wpisów przydziału (np. sprzed tej funkcji): pierwsza zmiana dopisuje okres od
+    zatrudnienia."""
     from sqlalchemy import delete
 
     from app.models import Assignment
@@ -281,7 +282,12 @@ def test_first_change_keeps_earlier_assignment(admin_client):
     with SessionLocal() as db:
         db.execute(delete(Assignment).where(Assignment.employee_id == e["id"]))
         db.commit()
-    assert c.patch(f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2026-03-01"}).status_code == 200
+    assert (
+        c.patch(
+            f"/api/employees/{e['id']}", json={"department_id": mag, "effective_date": "2026-03-01"}
+        ).status_code
+        == 200
+    )
     tl = c.get(f"/api/employees/{e['id']}/timeline").json()["assignments"]
     assert [(a["valid_from"], a["department"]) for a in tl] == [
         ("2026-03-01", "Magazyn"),
@@ -292,7 +298,8 @@ def test_first_change_keeps_earlier_assignment(admin_client):
 def test_list_attention(admin_client):
     c = admin_client
     e = _emp(c, hire_date="2026-01-01")
-    from datetime import date as _d, timedelta as _t
+    from datetime import date as _d
+    from datetime import timedelta as _t
 
     soon = (_d.today() + _t(days=10)).isoformat()
     c.post(f"/api/employees/{e['id']}/permits", json={"kind": "wiza", "valid_until": soon})
@@ -313,9 +320,13 @@ def test_attention_filter(admin_client):
 def test_work_queue_cases(admin_client):
     c = admin_client
     e = _emp(c, hire_date="2026-01-01")
-    from datetime import date as _d, timedelta as _t
+    from datetime import date as _d
+    from datetime import timedelta as _t
 
-    c.post(f"/api/employees/{e['id']}/permits", json={"kind": "wiza", "valid_until": (_d.today() + _t(days=10)).isoformat()})
+    c.post(
+        f"/api/employees/{e['id']}/permits",
+        json={"kind": "wiza", "valid_until": (_d.today() + _t(days=10)).isoformat()},
+    )
     r = c.get("/api/work-queue/cases")
     assert r.status_code == 200
     d = r.json()

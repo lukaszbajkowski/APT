@@ -9,7 +9,8 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import delete as sa_delete, func, select
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -239,9 +240,18 @@ def delete_type(type_id: int, ctx: EditAuth, request: Request, db: DbSession) ->
     if used:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail=f"Tego rodzaju użyto w {used} wpisach szkoleń – nie można go usunąć. Wyłącz go zamiast tego (przełącznik „Aktywny”).",
+            detail=f"Tego rodzaju użyto w {used} wpisach szkoleń – nie można go usunąć. Wyłącz go "
+            f"zamiast tego (przełącznik „Aktywny”).",
         )
-    audit(db, request, "training_type_deleted", user=ctx.user, entity_type="training_type", entity_id=t.id, details={"name": t.name})
+    audit(
+        db,
+        request,
+        "training_type_deleted",
+        user=ctx.user,
+        entity_type="training_type",
+        entity_id=t.id,
+        details={"name": t.name},
+    )
     db.expunge(t)
     db.execute(sa_delete(TrainingType).where(TrainingType.id == type_id))
     db.commit()

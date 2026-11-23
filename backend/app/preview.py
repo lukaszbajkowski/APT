@@ -74,6 +74,7 @@ def render_page(data: bytes, ext: str, page: int, viewer: str) -> bytes:
         img = img.resize((MAX_W, int(img.height * MAX_W / img.width)))
     img = watermark(img, viewer)
     buf = io.BytesIO()
-    # zwykła kompresja: optimize=True liczy ~4× dłużej, a plik wychodzi tej samej wielkości (test obciążenia, 11.2026)
+    # zwykła kompresja: optimize=True liczy ~4× dłużej, a plik wychodzi tej samej wielkości (test
+    # obciążenia, 11.2026)
     img.save(buf, "PNG", compress_level=6)
     return buf.getvalue()

@@ -427,11 +427,12 @@ def _notify_account(db: Session, e: Employee, doc: GeneratedDocument, reminder: 
                 notified = "e-mail"
         elif "sms" in contact and sms.enabled():
             sms.send(
-                contact["sms"], (
+                contact["sms"],
+                (
                     f"APT: przypomnienie - dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
                     if reminder
                     else f"APT: nowy dokument do podpisu: {doc.template_name}. Zaloguj sie: {url}"
-                )
+                ),
             )
             notified = "SMS"
     except Exception:  # noqa: BLE001 – brak powiadomienia nie blokuje prośby; dokument i tak jest w koncie
@@ -463,13 +464,18 @@ def remind_signature(document_id: uuid.UUID, ctx: DocAuth, request: Request, db:
     """Przypomnienie o podpisie dla pracownika z kontem – najwyżej raz na 12 godzin na dokument."""
     doc, e = _get(db, ctx, document_id)
     sig = next(
-        (s for s in _sigs(db, doc) if s.role == "pracownika" and s.status == "pending" and s.channel == "konto"),
+        (
+            s
+            for s in _sigs(db, doc)
+            if s.role == "pracownika" and s.status == "pending" and s.channel == "konto"
+        ),
         None,
     )
     if sig is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail="Ten dokument nie czeka na podpis w koncie pracownika. Link do podpisu wyślesz ponownie w „Podpisach”.",
+            detail="Ten dokument nie czeka na podpis w koncie pracownika. Link do podpisu wyślesz "
+            "ponownie w „Podpisach”.",
         )
     last = db.scalar(
         select(AuditLog.ts)
@@ -493,7 +499,8 @@ def remind_signature(document_id: uuid.UUID, ctx: DocAuth, request: Request, db:
     if notified is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail="Nie udało się wysłać przypomnienia: pracownik nie ma e-maila, telefonu ani powiadomień w aplikacji.",
+            detail="Nie udało się wysłać przypomnienia: pracownik nie ma e-maila, telefonu ani "
+            "powiadomień w aplikacji.",
         )
     audit(
         db,

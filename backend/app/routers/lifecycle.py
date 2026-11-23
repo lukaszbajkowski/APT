@@ -287,7 +287,11 @@ def _auto_label(db: Session, auto: str | None) -> str | None:
     model = {"training": TrainingType, "document": DocumentTemplate, "signed": DocumentTemplate}.get(kind)
     obj = db.get(model, int(raw)) if model and raw.isdigit() else None
     name = obj.name if obj else "?"
-    return {"training": f"szkolenie „{name}”", "document": f"dokument „{name}”", "signed": f"podpisany dokument „{name}”"}.get(kind)
+    return {
+        "training": f"szkolenie „{name}”",
+        "document": f"dokument „{name}”",
+        "signed": f"podpisany dokument „{name}”",
+    }.get(kind)
 
 
 def _item_out(db: Session, it: ChecklistItem, e: Employee, user: User) -> ItemOut:

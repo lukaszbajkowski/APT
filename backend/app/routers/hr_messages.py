@@ -203,7 +203,11 @@ def _unread(t: HrThread, staff: bool) -> bool:
 def _unread_count(t: HrThread, staff: bool) -> int:
     """Liczba wiadomości od drugiej strony, których jeszcze nie otwarto."""
     seen = t.staff_seen_at if staff else t.employee_seen_at
-    return sum(1 for m in t.messages if m.kind == "message" and m.from_staff != staff and (seen is None or m.created_at > seen))
+    return sum(
+        1
+        for m in t.messages
+        if m.kind == "message" and m.from_staff != staff and (seen is None or m.created_at > seen)
+    )
 
 
 def _row(t: HrThread, staff: bool) -> ThreadRow:

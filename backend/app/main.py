@@ -8,9 +8,9 @@ from app.config import get_settings
 from app.deps import DbSession
 from app.routers import (
     access_review,
-    app_errors,
     agency_portal,
     agency_reports,
+    app_errors,
     audit_log,
     auth,
     broadcasts,
@@ -33,15 +33,15 @@ from app.routers import (
     quality,
     reports,
     retention,
+    service_notices,
     signatures,
+    site_info,
     system_status,
     training_import,
     trainings,
     translate,
     users,
     work_queue,
-    service_notices,
-    site_info,
 )
 
 _settings = get_settings()
@@ -60,7 +60,8 @@ app.middleware("http")(hardening.sign_rate_limit)
 
 @app.middleware("http")
 async def _record_server_errors(request, call_next):  # type: ignore[no-untyped-def]
-    """Błędy 5xx z API do „Stan systemu → Błędy” – adres jako szablon trasy, bez parametrów i treści zapytania."""
+    """Błędy 5xx z API do „Stan systemu → Błędy” – adres jako szablon trasy, bez parametrów i treści
+    zapytania."""
     from starlette.concurrency import run_in_threadpool
 
     from app import errors
@@ -72,10 +73,19 @@ async def _record_server_errors(request, call_next):  # type: ignore[no-untyped-
     try:
         response = await call_next(request)
     except Exception as exc:  # noqa: BLE001 – zapisujemy i oddajemy dalej (FastAPI zwróci 500)
-        await run_in_threadpool(errors.record, "api", type(exc).__name__, str(exc), f"{request.method} {where()}", 500)
+        await run_in_threadpool(
+            errors.record, "api", type(exc).__name__, str(exc), f"{request.method} {where()}", 500
+        )
         raise
     if response.status_code >= 500 and request.url.path.startswith("/api/"):
-        await run_in_threadpool(errors.record, "api", f"HTTP {response.status_code}", "", f"{request.method} {where()}", response.status_code)
+        await run_in_threadpool(
+            errors.record,
+            "api",
+            f"HTTP {response.status_code}",
+            "",
+            f"{request.method} {where()}",
+            response.status_code,
+        )
     return response
 
 

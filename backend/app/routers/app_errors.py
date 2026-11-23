@@ -21,7 +21,8 @@ class ClientError(BaseModel):
 
 @router.post("/api/client-errors", status_code=status.HTTP_204_NO_CONTENT)
 def report_client_error(body: ClientError, ctx: Auth) -> Response:
-    """Przeglądarka zgłasza błąd JS. Treść jest czyszczona z danych osobowych przed zapisem (app/errors.py)."""
+    """Przeglądarka zgłasza błąd JS. Treść jest czyszczona z danych osobowych przed zapisem
+    (app/errors.py)."""
     if errors.browser_allowed(ctx.user.id):
         role = getattr(ctx.user.role, "value", ctx.user.role)
         errors.record("browser", body.kind, body.message, body.path, None, str(role))
@@ -46,7 +47,11 @@ class AppErrorOut(BaseModel):
 @router.get("/api/system/errors", response_model=list[AppErrorOut])
 def list_errors(ctx: AdminAuth, db: DbSession, days: int = 7) -> list[AppError]:
     since = utcnow() - timedelta(days=max(1, min(days, errors.KEEP_DAYS)))
-    return list(db.scalars(select(AppError).where(AppError.last_at >= since).order_by(AppError.last_at.desc()).limit(100)))
+    return list(
+        db.scalars(
+            select(AppError).where(AppError.last_at >= since).order_by(AppError.last_at.desc()).limit(100)
+        )
+    )
 
 
 @router.delete("/api/system/errors/{error_id}", status_code=status.HTTP_204_NO_CONTENT)

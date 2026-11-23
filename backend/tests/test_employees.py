@@ -161,7 +161,9 @@ def test_sex_locked_by_pesel(hr):
     assert hr.patch(f"/api/employees/{e['id']}", json={"sex": other}).status_code == 400
     assert hr.patch(f"/api/employees/{e['id']}", json={"sex": None}).status_code == 400
     # zapis formularza z tymi samymi danymi przechodzi
-    r = hr.patch(f"/api/employees/{e['id']}", json={"sex": sex, "birth_date": e["birth_date"], "first_name": "Jan"})
+    r = hr.patch(
+        f"/api/employees/{e['id']}", json={"sex": sex, "birth_date": e["birth_date"], "first_name": "Jan"}
+    )
     assert r.status_code == 200, r.text
     assert r.json()["sex"] == sex
 

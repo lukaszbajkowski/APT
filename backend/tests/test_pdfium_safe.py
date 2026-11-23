@@ -1,4 +1,5 @@
-"""pdfium nie jest wielowątkowy: równoległe renderowanie stron (przeglądarka prosi o kilka naraz) wywracało API."""
+"""pdfium nie jest wielowątkowy: równoległe renderowanie stron (przeglądarka prosi o kilka naraz)
+wywracało API."""
 
 from concurrent.futures import ThreadPoolExecutor
 

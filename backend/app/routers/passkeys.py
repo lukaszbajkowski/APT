@@ -406,7 +406,9 @@ def self_device_options(ctx: Auth, db: DbSession, request: Request) -> LoginOpti
     """Wyzwanie do potwierdzenia kluczem dostępu tuż przed utworzeniem linku."""
     has_key = db.scalar(select(WebauthnCredential.id).where(WebauthnCredential.user_id == ctx.user.id))
     if has_key is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Najpierw dodaj klucz dostępu na tym urządzeniu.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Najpierw dodaj klucz dostępu na tym urządzeniu."
+        )
     out = reauth_options(db, request, ctx.user)
     db.commit()
     return LoginOptionsOut(**out)
@@ -429,7 +431,8 @@ class SelfDeviceOut(BaseModel):
 
 @router.post("/passkeys/device-link", response_model=SelfDeviceOut)
 def self_device_link(body: SelfDeviceIn, ctx: Auth, request: Request, db: DbSession) -> SelfDeviceOut:
-    """Jednorazowy link (10 min) do zapisania klucza na innym urządzeniu – po świeżym potwierdzeniu tożsamości,
+    """Jednorazowy link (10 min) do zapisania klucza na innym urządzeniu – po świeżym potwierdzeniu
+    tożsamości,
     żeby nikt nie zrobił tego z cudzej, pozostawionej sesji."""
     user = ctx.user
     if body.challenge_id and body.credential:
@@ -454,12 +457,18 @@ def self_device_link(body: SelfDeviceIn, ctx: Auth, request: Request, db: DbSess
     # tylko jeden ważny link naraz
     db.execute(
         PasswordToken.__table__.update()
-        .where(PasswordToken.user_id == user.id, PasswordToken.purpose == SELF_PURPOSE, PasswordToken.used_at.is_(None))
+        .where(
+            PasswordToken.user_id == user.id,
+            PasswordToken.purpose == SELF_PURPOSE,
+            PasswordToken.used_at.is_(None),
+        )
         .values(used_at=now)
     )
     token = new_token()
     expires = now + timedelta(minutes=SELF_MINUTES)
-    db.add(PasswordToken(user_id=user.id, token_hash=token_hash(token), purpose=SELF_PURPOSE, expires_at=expires))
+    db.add(
+        PasswordToken(user_id=user.id, token_hash=token_hash(token), purpose=SELF_PURPOSE, expires_at=expires)
+    )
     audit(db, request, "device_link_created", user=user, details={"method": method})
     db.commit()
     link = mailer.link("/zaproszenie?token=" + token)
@@ -681,8 +690,10 @@ def device_email(e: Employee, link: str) -> Email:
         preheader=f"Link jest ważny {DEVICE_HOURS} godzin.",
         greeting=f"Dzień dobry {e.first_name},",
         paragraphs=[
-            "kadry wysłały Ci link do dodania klucza logowania na kolejnym urządzeniu (np. komputerze albo nowym telefonie).",
-            "Otwórz link na tym nowym urządzeniu i potwierdź datę urodzenia. Klucze na Twoich obecnych urządzeniach dalej działają.",
+            "kadry wysłały Ci link do dodania klucza logowania na kolejnym urządzeniu (np. komputerze "
+            "albo nowym telefonie).",
+            "Otwórz link na tym nowym urządzeniu i potwierdź datę urodzenia. Klucze na Twoich obecnych "
+            "urządzeniach dalej działają.",
         ],
         button=("Dodaj urządzenie", link),
         notice=f"Link jest ważny {DEVICE_HOURS} godzin i działa tylko raz.",
@@ -905,12 +916,16 @@ def invite_passkey(body: InvitePasskeyIn, request: Request, response: Response, 
     t, user, e = _invite(db, body.token)
     _check_birth(db, request, user, e, _parse_date(body.birth_date))
     device = t.purpose in (DEVICE_PURPOSE, SELF_PURPOSE)
-    _register_credential(db, request, user, body.challenge_id, body.credential, "Nowe urządzenie" if device else "Telefon")
+    _register_credential(
+        db, request, user, body.challenge_id, body.credential, "Nowe urządzenie" if device else "Telefon"
+    )
     t.used_at = utcnow()
     me = _start_session(db, request, response, user, pending=False)
     if t.purpose == SELF_PURPOSE:
         audit(db, request, "device_added", user=user, details={"method": "self_link"})
-        notify.security_notice(user, "dodano klucz dostępu na nowym urządzeniu (link „Dodaj inne urządzenie”)")
+        notify.security_notice(
+            user, "dodano klucz dostępu na nowym urządzeniu (link „Dodaj inne urządzenie”)"
+        )
     elif device:
         audit(db, request, "employee_device_added", user=user, details={"method": "passkey"})
     else:

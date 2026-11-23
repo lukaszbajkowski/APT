@@ -19,8 +19,13 @@ def test_site_info_public_read_admin_write(admin_client, make_user):
     assert c.put("/api/site-info", json={"contact_phone": "<script>"}).status_code == 422
     r = c.put(
         "/api/site-info",
-        json={"contact_name": " Dział kadr ", "contact_email": "kadry@example.com", "contact_phone": "+48 600 100 200",
-              "contact_hours": "pn–pt 8–16", "privacy_text": "## Administrator danych\nAPT sp. z o.o."},
+        json={
+            "contact_name": " Dział kadr ",
+            "contact_email": "kadry@example.com",
+            "contact_phone": "+48 600 100 200",
+            "contact_hours": "pn–pt 8–16",
+            "privacy_text": "## Administrator danych\nAPT sp. z o.o.",
+        },
     )
     assert r.status_code == 200, r.text
     assert r.json()["contact_name"] == "Dział kadr"

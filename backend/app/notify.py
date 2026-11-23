@@ -182,7 +182,9 @@ def permits_email(user: User, items: list[str], expired: int, expiring: int) -> 
     )
 
 
-def sign_request_email(person: str, document: str, url: str, expires: datetime, tz_name: str | None = None) -> Email:
+def sign_request_email(
+    person: str, document: str, url: str, expires: datetime, tz_name: str | None = None
+) -> Email:
     when = tz.when(expires, tz_name)
     return Email(
         subject=f"Prośba o podpis: {document}",
@@ -205,7 +207,9 @@ def account_sign_email(  # noqa: ANN001
     from app import i18n
 
     raw = Email(
-        subject="Przypomnienie: dokument do podpisu: {document}" if reminder else "Nowy dokument do podpisu: {document}",
+        subject="Przypomnienie: dokument do podpisu: {document}"
+        if reminder
+        else "Nowy dokument do podpisu: {document}",
         title="Dokument czeka na Twój podpis",
         preheader="Zaloguj się do konta, aby podpisać „{document}”.",
         greeting="Dzień dobry {first_name},",

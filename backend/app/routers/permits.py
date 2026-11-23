@@ -112,7 +112,9 @@ def add_permit(
 
 
 @router.patch("/permits/{permit_id}", response_model=PermitOut)
-def update_permit(permit_id: int, body: PermitIn, ctx: PermitAuth, request: Request, db: DbSession) -> PermitOut:
+def update_permit(
+    permit_id: int, body: PermitIn, ctx: PermitAuth, request: Request, db: DbSession
+) -> PermitOut:
     x = db.get(WorkPermit, permit_id)
     if x is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono dokumentu.")

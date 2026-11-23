@@ -9,7 +9,9 @@ from tests.conftest import login
 
 
 def test_scrub_removes_personal_data():
-    t = errors.scrub("Nie znaleziono 85010112345 jan.kowalski@firma.pl w /api/x?q=Kowalski&id=7 tel 600700800", 500)
+    t = errors.scrub(
+        "Nie znaleziono 85010112345 jan.kowalski@firma.pl w /api/x?q=Kowalski&id=7 tel 600700800", 500
+    )
     assert "85010112345" not in t and "600700800" not in t
     assert "jan.kowalski" not in t and "Kowalski" not in t
     assert "?…" in t and "…@…" in t
@@ -39,7 +41,9 @@ def test_client_error_grouped_and_admin_only(client, make_user):
 
 
 def test_client_error_requires_login(client):
-    assert client.post("/api/client-errors", json={"kind": "X", "message": "", "path": "/"}).status_code == 401
+    assert (
+        client.post("/api/client-errors", json={"kind": "X", "message": "", "path": "/"}).status_code == 401
+    )
 
 
 def test_server_error_recorded_with_route_template(admin_client):
@@ -56,7 +60,9 @@ def test_server_error_recorded_with_route_template(admin_client):
         assert api and api[0]["path"] == "GET /api/_test/boom/{item_id}"
         assert api[0]["kind"] == "RuntimeError" and "12345678" not in api[0]["message"]
     finally:
-        app.router.routes = [r for r in app.router.routes if getattr(r, "path", "") != "/api/_test/boom/{item_id}"]
+        app.router.routes = [
+            r for r in app.router.routes if getattr(r, "path", "") != "/api/_test/boom/{item_id}"
+        ]
 
 
 def test_browser_rate_limit():

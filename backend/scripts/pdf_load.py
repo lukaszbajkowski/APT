@@ -2,6 +2,7 @@
 uruchom: python scripts/pdf_load.py 1,5,10,20,40  (liczby osób naraz)
  N równoległych „osób” otwiera podgląd i pobiera wszystkie strony;
 w tym samym czasie co 0,5 s sprawdzamy, jak szybko odpowiada zwykły endpoint (lista pracowników)."""
+
 import os
 import statistics
 import sys
@@ -20,7 +21,9 @@ def session() -> httpx.Client:
     """Jedno logowanie na cały test (logowanie ma limit prób); każdy wątek ma własnego klienta z tą sesją."""
     if not _login:
         c = httpx.Client(base_url=BASE, timeout=120)
-        r = c.post("/auth/login", json={"username": "admin", "password": os.environ.get("APT_UI_PASSWORD", "")})
+        r = c.post(
+            "/auth/login", json={"username": "admin", "password": os.environ.get("APT_UI_PASSWORD", "")}
+        )
         r.raise_for_status()
         _login["cookies"] = dict(c.cookies)
         _login["csrf"] = r.json()["csrf_token"]
@@ -101,7 +104,8 @@ if __name__ == "__main__":
     for n in [int(x) for x in (sys.argv[1] if len(sys.argv) > 1 else "1,5,10,20").split(",")]:
         r = run(n, docs)
         print(
-            f"{r['users']:>3} osób | stron {r['pages']:>4} | strona p50 {r['page_p50']:.2f} s, p95 {r['page_p95']:.2f} s"
+            f"{r['users']:>3} osób | stron {r['pages']:>4} | strona p50 {r['page_p50']:.2f} s, p95 "
+            f"{r['page_p95']:.2f} s"
             f" | cały dokument max {r['doc_max']:.1f} s | razem {r['total']:.1f} s"
             f" | lista pracowników w tym czasie: p50 {r['probe_p50']:.2f} s, max {r['probe_max']:.2f} s"
             f" | błędy {r['errors'] or 'brak'}"

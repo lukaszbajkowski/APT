@@ -208,7 +208,9 @@ def test_pending_in_account_shows_and_reminder_is_limited(admin_client):
     # bez prośby nie ma czego przypominać
     r = admin_client.post(f"/api/documents/{doc['id']}/signatures/remind")
     assert r.status_code == 400
-    admin_client.post(f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika", "channel": "link"})
+    admin_client.post(
+        f"/api/documents/{doc['id']}/signatures", json={"role": "pracownika", "channel": "link"}
+    )
     # prośba w koncie (bez terminu) liczy się jako „czeka na podpis” na liście dokumentów
     docs = admin_client.get(f"/api/employees/{e['id']}/documents").json()
     assert next(d for d in docs if d["id"] == doc["id"])["signature_pending"] is True

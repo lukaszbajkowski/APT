@@ -233,10 +233,13 @@ def test_agency_account_access(admin_client, make_user):
     )
     assert r.status_code == 200, r.text
     assert r.json()["state"] == "valid" and r.json()["kind"] == "okresowe" and r.json()["has_file"]
-    assert ac.patch(
-        f"/api/medical-exams/{ex['id']}",
-        json={"kind": "okresowe", "exam_date": str(today), "valid_until": str(today - timedelta(days=1))},
-    ).status_code == 400
+    assert (
+        ac.patch(
+            f"/api/medical-exams/{ex['id']}",
+            json={"kind": "okresowe", "exam_date": str(today), "valid_until": str(today - timedelta(days=1))},
+        ).status_code
+        == 400
+    )
     assert ac.delete(f"/api/medical-exams/{ex['id']}").status_code == 204
 
 

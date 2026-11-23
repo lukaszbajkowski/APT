@@ -153,9 +153,9 @@ def _admin_lang(code: str) -> str:
 def admin_languages(ctx: AdminAuth, db: DbSession) -> list[AdminLang]:
     """Języki, w których są już tłumaczenia (z liczbą wpisów i ręcznych poprawek), plus języki słownika."""
     rows = db.execute(
-        select(UiTranslation.lang, func.count(), func.count().filter(UiTranslation.manual.is_(True))).group_by(
-            UiTranslation.lang
-        )
+        select(
+            UiTranslation.lang, func.count(), func.count().filter(UiTranslation.manual.is_(True))
+        ).group_by(UiTranslation.lang)
     ).all()
     out = {r[0]: AdminLang(code=r[0], count=r[1], manual=r[2]) for r in rows}
     for code in i18n_glossary.LANGS:
@@ -169,16 +169,26 @@ def admin_translations(
 ) -> AdminList:
     lang = _admin_lang(lang)
     limit = max(1, min(limit, 200))
-    stored = {r.source: r for r in db.scalars(select(UiTranslation).where(UiTranslation.lang == lang)) if r.source}
+    stored = {
+        r.source: r for r in db.scalars(select(UiTranslation).where(UiTranslation.lang == lang)) if r.source
+    }
     without = db.scalar(
-        select(func.count()).select_from(UiTranslation).where(UiTranslation.lang == lang, UiTranslation.source.is_(None))
+        select(func.count())
+        .select_from(UiTranslation)
+        .where(UiTranslation.lang == lang, UiTranslation.source.is_(None))
     )
     merged: dict[str, AdminRow] = {}
     for src, text in i18n_glossary.entries(lang).items():
         merged[src] = AdminRow(source=src, text=text, origin="glossary")
     for src, r in stored.items():
         if r.manual:
-            merged[src] = AdminRow(source=src, text=r.text, origin="manual", updated_by_name=r.updated_by_name, updated_at=r.updated_at)
+            merged[src] = AdminRow(
+                source=src,
+                text=r.text,
+                origin="manual",
+                updated_by_name=r.updated_by_name,
+                updated_at=r.updated_at,
+            )
         elif src not in merged:
             merged[src] = AdminRow(source=src, text=r.text, origin="google")
     items = list(merged.values())
@@ -211,9 +221,21 @@ def admin_fix(body: FixIn, ctx: AdminAuth, request: Request, db: DbSession) -> A
     row.manual = True
     row.updated_by_name = ctx.user.full_name
     row.updated_at = utcnow()
-    audit(db, request, "ui_translation_fixed", user=ctx.user, details={"lang": lang, "source": body.source[:120]})
+    audit(
+        db,
+        request,
+        "ui_translation_fixed",
+        user=ctx.user,
+        details={"lang": lang, "source": body.source[:120]},
+    )
     db.commit()
-    return AdminRow(source=row.source, text=row.text, origin="manual", updated_by_name=row.updated_by_name, updated_at=row.updated_at)
+    return AdminRow(
+        source=row.source,
+        text=row.text,
+        origin="manual",
+        updated_by_name=row.updated_by_name,
+        updated_at=row.updated_at,
+    )
 
 
 @router.post("/admin/translations/reset", status_code=status.HTTP_204_NO_CONTENT)
@@ -223,7 +245,13 @@ def admin_reset(body: ResetIn, ctx: AdminAuth, request: Request, db: DbSession) 
     row = db.get(UiTranslation, (lang, i18n.key(body.source)))
     if row is not None:
         db.delete(row)
-        audit(db, request, "ui_translation_reset", user=ctx.user, details={"lang": lang, "source": body.source[:120]})
+        audit(
+            db,
+            request,
+            "ui_translation_reset",
+            user=ctx.user,
+            details={"lang": lang, "source": body.source[:120]},
+        )
         db.commit()
 
 

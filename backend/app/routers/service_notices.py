@@ -1,7 +1,8 @@
 """Komunikaty techniczne: administrator ogłasza prace serwisowe, wdrożenia, prace naprawcze i awarie.
 
 Aktywne komunikaty widzą wyłącznie zalogowani (pracownicy i personel) – przed logowaniem nic nie widać.
-Komunikat „blokujący” w trakcie trwania (od–do) pokazuje zalogowanym poza administratorem ekran przerwy technicznej.
+Komunikat „blokujący” w trakcie trwania (od–do) pokazuje zalogowanym poza administratorem ekran przerwy
+technicznej.
 """
 
 from datetime import datetime, timedelta
@@ -18,7 +19,8 @@ from app.models import ServiceNotice
 router = APIRouter(prefix="/api/service-notices", tags=["service-notices"])
 
 Kind = Literal["planned", "deploy", "repair", "incident", "info"]
-# zakończony komunikat bez daty końca znika po tylu dniach od ostatniej zmiany (żeby nie wisiał w nieskończoność)
+# zakończony komunikat bez daty końca znika po tylu dniach od ostatniej zmiany (żeby nie wisiał w
+# nieskończoność)
 STALE_DAYS = 14
 
 
@@ -59,9 +61,18 @@ class NoticeOut(BaseModel):
 def _out(n: ServiceNotice, now: datetime) -> NoticeOut:
     ongoing = (n.starts_at is None or n.starts_at <= now) and (n.ends_at is None or n.ends_at > now)
     return NoticeOut(
-        id=n.id, kind=n.kind, title=n.title, body=n.body, starts_at=n.starts_at, ends_at=n.ends_at,  # type: ignore[arg-type]
-        blocking=n.blocking, published=n.published, ongoing=ongoing, created_by_name=n.created_by_name,
-        created_at=n.created_at, updated_at=n.updated_at,
+        id=n.id,
+        kind=n.kind,
+        title=n.title,
+        body=n.body,
+        starts_at=n.starts_at,
+        ends_at=n.ends_at,  # type: ignore[arg-type]
+        blocking=n.blocking,
+        published=n.published,
+        ongoing=ongoing,
+        created_by_name=n.created_by_name,
+        created_at=n.created_at,
+        updated_at=n.updated_at,
     )
 
 
@@ -113,8 +124,15 @@ def create(body: NoticeIn, ctx: AdminAuth, request: Request, db: DbSession) -> N
     _apply(n, body)
     db.add(n)
     db.flush()
-    audit(db, request, "service_notice_created", user=ctx.user, entity_type="service_notice", entity_id=n.id,
-          details={"kind": n.kind, "blocking": n.blocking})
+    audit(
+        db,
+        request,
+        "service_notice_created",
+        user=ctx.user,
+        entity_type="service_notice",
+        entity_id=n.id,
+        details={"kind": n.kind, "blocking": n.blocking},
+    )
     db.commit()
     db.refresh(n)
     return _out(n, utcnow())
@@ -131,8 +149,15 @@ def _get(db, notice_id: int) -> ServiceNotice:  # noqa: ANN001
 def update(notice_id: int, body: NoticeIn, ctx: AdminAuth, request: Request, db: DbSession) -> NoticeOut:
     n = _get(db, notice_id)
     _apply(n, body)
-    audit(db, request, "service_notice_updated", user=ctx.user, entity_type="service_notice", entity_id=n.id,
-          details={"kind": n.kind, "blocking": n.blocking, "published": n.published})
+    audit(
+        db,
+        request,
+        "service_notice_updated",
+        user=ctx.user,
+        entity_type="service_notice",
+        entity_id=n.id,
+        details={"kind": n.kind, "blocking": n.blocking, "published": n.published},
+    )
     db.commit()
     db.refresh(n)
     return _out(n, utcnow())
@@ -156,5 +181,12 @@ def end_now(notice_id: int, ctx: AdminAuth, request: Request, db: DbSession) -> 
 def delete(notice_id: int, ctx: AdminAuth, request: Request, db: DbSession) -> None:
     n = _get(db, notice_id)
     db.delete(n)
-    audit(db, request, "service_notice_deleted", user=ctx.user, entity_type="service_notice", entity_id=notice_id)
+    audit(
+        db,
+        request,
+        "service_notice_deleted",
+        user=ctx.user,
+        entity_type="service_notice",
+        entity_id=notice_id,
+    )
     db.commit()

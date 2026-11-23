@@ -14,11 +14,19 @@ def test_service_notices_flow(admin_client):
     c = admin_client
     now = utcnow()
     # walidacja: blokujący wymaga końca, koniec po początku
-    assert c.post("/api/service-notices", json={"kind": "repair", "title": "X", "blocking": True}).status_code == 422
+    assert (
+        c.post("/api/service-notices", json={"kind": "repair", "title": "X", "blocking": True}).status_code
+        == 422
+    )
     assert (
         c.post(
             "/api/service-notices",
-            json={"kind": "planned", "title": "X", "starts_at": _iso(now), "ends_at": _iso(now - timedelta(hours=1))},
+            json={
+                "kind": "planned",
+                "title": "X",
+                "starts_at": _iso(now),
+                "ends_at": _iso(now - timedelta(hours=1)),
+            },
         ).status_code
         == 422
     )
@@ -34,7 +42,7 @@ def test_service_notices_flow(admin_client):
         },
     )
     assert r.status_code == 201, r.text
-    nid = r.json()["id"]
+    assert r.json()["id"]
     assert r.json()["ongoing"] is False
     # szkic (nieopublikowany) nie jest widoczny publicznie
     c.post("/api/service-notices", json={"kind": "info", "title": "Szkic", "published": False})
@@ -55,7 +63,12 @@ def test_service_notice_end_and_roles(admin_client, make_user):
     now = utcnow()
     nid = c.post(
         "/api/service-notices",
-        json={"kind": "repair", "title": "Prace naprawcze", "ends_at": _iso(now + timedelta(hours=1)), "blocking": True},
+        json={
+            "kind": "repair",
+            "title": "Prace naprawcze",
+            "ends_at": _iso(now + timedelta(hours=1)),
+            "blocking": True,
+        },
     ).json()["id"]
     cur = c.get("/api/service-notices/current").json()
     assert cur[0]["ongoing"] is True and cur[0]["blocking"] is True

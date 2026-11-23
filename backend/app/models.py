@@ -108,10 +108,13 @@ class User(TimestampMixin, Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # język aplikacji i powiadomień (konto pracownika); puste = polski
     language: Mapped[str | None] = mapped_column(String(12))
-    # strefa czasowa (IANA, np. Europe/Kyiv) – wykryta z urządzenia albo ustawiona ręcznie; puste = czas polski
+    # strefa czasowa (IANA, np. Europe/Kyiv) – wykryta z urządzenia albo ustawiona ręcznie; puste = czas
+    # polski
     timezone: Mapped[str | None] = mapped_column(String(64))
     # ustawiona ręcznie: aplikacja nie nadpisuje jej wykrytą strefą urządzenia
-    timezone_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    timezone_manual: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
 
     # Logowanie dwuetapowe (TOTP). Sekret zaszyfrowany kluczem APT_DATA_KEY.
     # Gdy totp_enabled_at jest puste, a sekret jest ustawiony – konfiguracja w toku.
@@ -706,7 +709,8 @@ class WorkPermit(Base):
 
 class ServiceNotice(Base):
     """Komunikat techniczny administratora: planowane prace, wdrożenie, prace naprawcze, awaria, informacja.
-    Widoczny dla wszystkich (także na ekranie logowania); „blokujący” w czasie od–do pokazuje przerwę techniczną."""
+    Widoczny dla wszystkich (także na ekranie logowania); „blokujący” w czasie od–do pokazuje przerwę
+    techniczną."""
 
     __tablename__ = "service_notices"
 
@@ -968,7 +972,8 @@ class UiTranslation(Base):
 
 
 class SiteInfo(Base):
-    """Pomoc i prywatność (jeden wiersz, id=1): kontakt w sprawie aplikacji i informacja o przetwarzaniu danych.
+    """Pomoc i prywatność (jeden wiersz, id=1): kontakt w sprawie aplikacji i informacja o przetwarzaniu
+    danych.
     Treść wpisuje administrator; strona jest publiczna (widoczna także przed logowaniem)."""
 
     __tablename__ = "site_info"
@@ -987,7 +992,8 @@ class SiteInfo(Base):
 
 class AppError(Base):
     """Błąd aplikacji (API 5xx albo błąd w przeglądarce) – zgrupowany po „odcisku”, bez danych osobowych:
-    adres jako szablon trasy, z treści wycięte ciągi cyfr i adresy e-mail. Wpisy starsze niż 30 dni są usuwane."""
+    adres jako szablon trasy, z treści wycięte ciągi cyfr i adresy e-mail. Wpisy starsze niż 30 dni są
+    usuwane."""
 
     __tablename__ = "app_errors"
 
@@ -1000,5 +1006,9 @@ class AppError(Base):
     status: Mapped[int | None] = mapped_column(Integer)
     role: Mapped[str | None] = mapped_column(String(20))
     count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    first_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    first_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

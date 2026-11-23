@@ -15,7 +15,9 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column("ui_translations", sa.Column("source", sa.Text, nullable=True))
-    op.add_column("ui_translations", sa.Column("manual", sa.Boolean, nullable=False, server_default=sa.false()))
+    op.add_column(
+        "ui_translations", sa.Column("manual", sa.Boolean, nullable=False, server_default=sa.false())
+    )
     op.add_column("ui_translations", sa.Column("updated_by_name", sa.String(200), nullable=True))
     op.add_column("ui_translations", sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True))
 

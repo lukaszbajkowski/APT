@@ -1,14 +1,11 @@
 """Kolejka pracy kadr: jedna lista rzeczy do zrobienia z wielu miejsc aplikacji."""
 
 from datetime import date
-
-from fastapi import APIRouter
-from pydantic import BaseModel
-from sqlalchemy import select
-
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.deps import AuthContext, DbSession, StaffAuth, require_roles
 from app.models import EmployeeRequest, HrThread, Role
@@ -211,48 +208,127 @@ def cases(ctx: CasesAuth, db: DbSession) -> CasesOut:
     staff = user.role in (Role.admin, Role.hr)
     work = staff or user.role == Role.manager  # checklisty i szkolenia
     out: list[CaseOut] = []
-    for t in [] if not staff else db.scalars(
-        select(HrThread).where(HrThread.status == "new", HrThread.staff_archived_at.is_(None)).order_by(HrThread.updated_at)
-    ).unique():
+    for t in (
+        []
+        if not staff
+        else db.scalars(
+            select(HrThread)
+            .where(HrThread.status == "new", HrThread.staff_archived_at.is_(None))
+            .order_by(HrThread.updated_at)
+        ).unique()
+    ):
         e, d = t.employee, t.updated_at.date()
-        out.append(CaseOut(group="reply", key=f"m{t.id}", employee_id=e.id, name=f"{e.last_name} {e.first_name}",
-                           sub=format_number(e.number), what=t.subject, due=d, overdue=(today - d).days >= 2,
-                           when=_ago(d, today), action="Odpowiedz", url=f"/wiadomosci?id={t.id}"))
-    for r in [] if not staff else db.scalars(select(EmployeeRequest).where(EmployeeRequest.status == "pending").order_by(EmployeeRequest.id)).unique():
+        out.append(
+            CaseOut(
+                group="reply",
+                key=f"m{t.id}",
+                employee_id=e.id,
+                name=f"{e.last_name} {e.first_name}",
+                sub=format_number(e.number),
+                what=t.subject,
+                due=d,
+                overdue=(today - d).days >= 2,
+                when=_ago(d, today),
+                action="Odpowiedz",
+                url=f"/wiadomosci?id={t.id}",
+            )
+        )
+    for r in (
+        []
+        if not staff
+        else db.scalars(
+            select(EmployeeRequest).where(EmployeeRequest.status == "pending").order_by(EmployeeRequest.id)
+        ).unique()
+    ):
         start = r.hire_date
-        out.append(CaseOut(group="decide", key=f"r{r.id}", employee_id=None, name=f"{r.last_name} {r.first_name}",
-                           sub=r.agency.name if r.agency else None,
-                           what="Zgłoszenie nowej osoby" + (f" – start {start:%d.%m}" if start else ""),
-                           due=start, overdue=False, when=None, action="Sprawdź", url="/zgloszenia"))
+        out.append(
+            CaseOut(
+                group="decide",
+                key=f"r{r.id}",
+                employee_id=None,
+                name=f"{r.last_name} {r.first_name}",
+                sub=r.agency.name if r.agency else None,
+                what="Zgłoszenie nowej osoby" + (f" – start {start:%d.%m}" if start else ""),
+                due=start,
+                overdue=False,
+                when=None,
+                action="Sprawdź",
+                url="/zgloszenia",
+            )
+        )
     for t in open_tasks(db, user) if work else []:
         if t.state != "overdue":
             continue
-        out.append(CaseOut(group="tasks", key=f"t{t.id}", employee_id=t.employee_id, name=t.employee, sub=t.number,
-                           what=("Wdrożenie: " if t.kind == "onboarding" else "Odejście: ") + t.label,
-                           due=t.due_date, overdue=True, when=f"termin {t.due_date:%d.%m}" if t.due_date else None,
-                           action="Odhacz" if t.can_edit else "Otwórz",
-                           url=f"/pracownicy/{t.employee_id}", task_id=t.id if t.can_edit else None))
+        out.append(
+            CaseOut(
+                group="tasks",
+                key=f"t{t.id}",
+                employee_id=t.employee_id,
+                name=t.employee,
+                sub=t.number,
+                what=("Wdrożenie: " if t.kind == "onboarding" else "Odejście: ") + t.label,
+                due=t.due_date,
+                overdue=True,
+                when=f"termin {t.due_date:%d.%m}" if t.due_date else None,
+                action="Odhacz" if t.can_edit else "Otwórz",
+                url=f"/pracownicy/{t.employee_id}",
+                task_id=t.id if t.can_edit else None,
+            )
+        )
     for x, e in latest_permits(db, user) if staff else []:
         st = permit_state(x.valid_until)
         if st == "valid":
             continue
         late = x.valid_until < today
-        out.append(CaseOut(group="renew", key=f"p{x.id}", employee_id=e.id, name=f"{e.last_name} {e.first_name}",
-                           sub=format_number(e.number), what=KINDS.get(x.kind, x.kind) + (" – nieważny" if late else ""),
-                           due=x.valid_until, overdue=late, when=f"{'od' if late else 'do'} {x.valid_until:%d.%m}",
-                           action="Wpisz nowy", url=f"/pracownicy/{e.id}"))
+        out.append(
+            CaseOut(
+                group="renew",
+                key=f"p{x.id}",
+                employee_id=e.id,
+                name=f"{e.last_name} {e.first_name}",
+                sub=format_number(e.number),
+                what=KINDS.get(x.kind, x.kind) + (" – nieważny" if late else ""),
+                due=x.valid_until,
+                overdue=late,
+                when=f"{'od' if late else 'do'} {x.valid_until:%d.%m}",
+                action="Wpisz nowy",
+                url=f"/pracownicy/{e.id}",
+            )
+        )
     for r in expiring(db, user) if work else []:
         late = r.valid_until < today
-        out.append(CaseOut(group="renew", key=f"s{r.training_id}", employee_id=r.employee_id,
-                           name=f"{r.last_name} {r.first_name}", sub=r.number,
-                           what=f"Szkolenie: {r.name or r.type_name}" + (" – nieważne" if late else ""),
-                           due=r.valid_until, overdue=late, when=f"{'od' if late else 'do'} {r.valid_until:%d.%m}",
-                           action="Wpisz nowe", url=f"/pracownicy/{r.employee_id}"))
+        out.append(
+            CaseOut(
+                group="renew",
+                key=f"s{r.training_id}",
+                employee_id=r.employee_id,
+                name=f"{r.last_name} {r.first_name}",
+                sub=r.number,
+                what=f"Szkolenie: {r.name or r.type_name}" + (" – nieważne" if late else ""),
+                due=r.valid_until,
+                overdue=late,
+                when=f"{'od' if late else 'do'} {r.valid_until:%d.%m}",
+                action="Wpisz nowe",
+                url=f"/pracownicy/{r.employee_id}",
+            )
+        )
     for r in summary(db, user).rows:
         miss = ", ".join(_low(CHECKS.get(m, m).removeprefix("Brak ")) for m in r.missing)
-        out.append(CaseOut(group="data", key=f"q{r.id}", employee_id=r.id, name=f"{r.last_name} {r.first_name}",
-                           sub=r.number, what=f"Brak: {miss}", due=None, overdue=False, when=None,
-                           action="Uzupełnij" if work else "Otwórz", url=f"/pracownicy/{r.id}"))
+        out.append(
+            CaseOut(
+                group="data",
+                key=f"q{r.id}",
+                employee_id=r.id,
+                name=f"{r.last_name} {r.first_name}",
+                sub=r.number,
+                what=f"Brak: {miss}",
+                due=None,
+                overdue=False,
+                when=None,
+                action="Uzupełnij" if work else "Otwórz",
+                url=f"/pracownicy/{r.id}",
+            )
+        )
     # w grupie: najpierw przeterminowane i najstarsze
     order = {"reply": 0, "decide": 1, "tasks": 2, "renew": 3, "data": 4}
     out.sort(key=lambda c: (order[c.group], not c.overdue, c.due or date.max))

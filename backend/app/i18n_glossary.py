@@ -33,7 +33,11 @@ _ROWS: dict[str, tuple[str, str, str]] = {
     "Login": ("Логін", "Логин", "Username"),
     "Hasło": ("Пароль", "Пароль", "Password"),
     "Zaloguj": ("Увійти", "Войти", "Sign in"),
-    "Zaloguj kluczem dostępu": ("Увійти з ключем доступу", "Войти с ключом доступа", "Sign in with a passkey"),
+    "Zaloguj kluczem dostępu": (
+        "Увійти з ключем доступу",
+        "Войти с ключом доступа",
+        "Sign in with a passkey",
+    ),
     "Użyj klucza z innego urządzenia": (
         "Використати ключ з іншого пристрою",
         "Использовать ключ с другого устройства",
@@ -103,7 +107,11 @@ _ROWS: dict[str, tuple[str, str, str]] = {
     "Wybierz godzinę": ("Вибрати час", "Выбрать время", "Choose time"),
     "Wybierz z kalendarza": ("Вибрати в календарі", "Выбрать в календаре", "Choose from calendar"),
     "Godzina 00:00–23:59": ("Час 00:00–23:59", "Время 00:00–23:59", "Time 00:00–23:59"),
-    "Data poza dozwolonym zakresem.": ("Дата поза дозволеним діапазоном.", "Дата вне допустимого диапазона.", "Date outside the allowed range."),
+    "Data poza dozwolonym zakresem.": (
+        "Дата поза дозволеним діапазоном.",
+        "Дата вне допустимого диапазона.",
+        "Date outside the allowed range.",
+    ),
     "Nieprawidłowa data – wpisz dzień, miesiąc i rok (np. 05.11.2026).": (
         "Неправильна дата – введіть день, місяць і рік (напр. 05.11.2026).",
         "Неверная дата – введите день, месяц и год (напр. 05.11.2026).",
@@ -111,7 +119,11 @@ _ROWS: dict[str, tuple[str, str, str]] = {
     ),
     # komunikat techniczny: kiedy (szablony z polami)
     "Planowane prace": ("Планові роботи", "Плановые работы", "Planned maintenance"),
-    "Wdrożenie nowej funkcji": ("Впровадження нової функції", "Внедрение новой функции", "New feature rollout"),
+    "Wdrożenie nowej funkcji": (
+        "Впровадження нової функції",
+        "Внедрение новой функции",
+        "New feature rollout",
+    ),
     "Prace naprawcze": ("Ремонтні роботи", "Ремонтные работы", "Repair work"),
     "Awaria": ("Збій", "Сбой", "Outage"),
     "Informacja": ("Інформація", "Информация", "Information"),
@@ -119,7 +131,11 @@ _ROWS: dict[str, tuple[str, str, str]] = {
     "dziś, {time}": ("сьогодні, {time}", "сегодня, {time}", "today, {time}"),
     "jutro, {time}": ("завтра, {time}", "завтра, {time}", "tomorrow, {time}"),
     "wczoraj, {time}": ("вчора, {time}", "вчера, {time}", "yesterday, {time}"),
-    "{time} czasu polskiego": ("{time} за польським часом", "{time} по польскому времени", "{time} Polish time"),
+    "{time} czasu polskiego": (
+        "{time} за польським часом",
+        "{time} по польскому времени",
+        "{time} Polish time",
+    ),
     "Trwa": ("Триває", "Идёт", "In progress"),
     "Trwa · do {when}": ("Триває · до {when}", "Идёт · до {when}", "In progress · until {when}"),
     "Od {when}": ("З {when}", "С {when}", "From {when}"),

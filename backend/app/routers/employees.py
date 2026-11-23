@@ -457,7 +457,8 @@ class ListFilters:
                         cast(Employee.number, String) == digits if token.isdigit() else false(),
                     )
                 )
-        # wielokrotny wybór: osoba pasuje, gdy należy do którejkolwiek z wybranych agencji / wydziałów / stanowisk
+        # wielokrotny wybór: osoba pasuje, gdy należy do którejkolwiek z wybranych agencji / wydziałów /
+        # stanowisk
         if self.agency_id:
             conditions.append(Employee.agency_id.in_(self.agency_id))
         if self.department_id:
@@ -515,7 +516,9 @@ def list_employees(
     )
 
 
-def attention_reasons(db: Session, visible: list[Employee], today: date | None = None) -> dict[int, list[str]]:
+def attention_reasons(
+    db: Session, visible: list[Employee], today: date | None = None
+) -> dict[int, list[str]]:
     """Powody „Wymaga uwagi” (jedno źródło dla kolumny listy i filtra): braki danych, dokumenty pobytowe
     i badania nieważne albo kończące się, zadania z checklist po terminie (bez spełnionych automatycznie)."""
     from datetime import timedelta
@@ -530,12 +533,16 @@ def attention_reasons(db: Session, visible: list[Employee], today: date | None =
     fmt = lambda d: d.strftime("%d.%m")  # noqa: E731
     permits = dict(
         db.execute(
-            select(WorkPermit.employee_id, func.max(WorkPermit.valid_until)).where(WorkPermit.employee_id.in_(vid)).group_by(WorkPermit.employee_id)
+            select(WorkPermit.employee_id, func.max(WorkPermit.valid_until))
+            .where(WorkPermit.employee_id.in_(vid))
+            .group_by(WorkPermit.employee_id)
         ).all()
     )
     exams = dict(
         db.execute(
-            select(MedicalExam.employee_id, func.max(MedicalExam.valid_until)).where(MedicalExam.employee_id.in_(vid)).group_by(MedicalExam.employee_id)
+            select(MedicalExam.employee_id, func.max(MedicalExam.valid_until))
+            .where(MedicalExam.employee_id.in_(vid))
+            .group_by(MedicalExam.employee_id)
         ).all()
     )
     overdue: dict[int, int] = {}
@@ -581,12 +588,22 @@ def attention_reasons(db: Session, visible: list[Employee], today: date | None =
                 r.append(f"badania do {fmt(u)}")
         n = overdue.get(e.id, 0)
         if n:
-            r.append("1 zadanie po terminie" if n == 1 else f"{n} zadania po terminie" if n < 5 else f"{n} zadań po terminie")
+            r.append(
+                "1 zadanie po terminie"
+                if n == 1
+                else f"{n} zadania po terminie"
+                if n < 5
+                else f"{n} zadań po terminie"
+            )
     return out
 
 
 @router.get("/attention", response_model=dict[int, list[str]])
-def list_attention(ctx: Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))], db: DbSession, ids: Annotated[list[int], Query(max_length=200)]) -> dict[int, list[str]]:
+def list_attention(
+    ctx: Annotated[AuthContext, Depends(require_roles(Role.admin, Role.hr, Role.manager))],
+    db: DbSession,
+    ids: Annotated[list[int], Query(max_length=200)],
+) -> dict[int, list[str]]:
     """„Wymaga uwagi” dla wierszy listy (jedno zapytanie na stronę), w zakresie widoczności."""
     visible = list(db.scalars(apply_scope(select(Employee).where(Employee.id.in_(ids)), ctx.user)).unique())
     return attention_reasons(db, visible)

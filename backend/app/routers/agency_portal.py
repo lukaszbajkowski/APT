@@ -209,7 +209,11 @@ def update_exam(exam_id: int, body: ExamPatch, ctx: ExamEdit, request: Request, 
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Data badania nie może być z przyszłości.")
     if body.valid_until is not None and body.valid_until < body.exam_date:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Ważne do – nie wcześniej niż data badania.")
-    before = {"kind": x.kind, "exam_date": x.exam_date.isoformat(), "valid_until": x.valid_until.isoformat() if x.valid_until else None}
+    before = {
+        "kind": x.kind,
+        "exam_date": x.exam_date.isoformat(),
+        "valid_until": x.valid_until.isoformat() if x.valid_until else None,
+    }
     x.kind, x.exam_date, x.valid_until = body.kind, body.exam_date, body.valid_until
     x.notes = (body.notes or "").strip() or None
     audit(

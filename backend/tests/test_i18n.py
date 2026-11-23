@@ -199,21 +199,40 @@ def test_glossary_beats_google_and_admin_fix_beats_glossary(admin_client):
     rows = c.get("/api/i18n/admin/translations", params={"lang": "en", "q": "Zupełnie"}).json()
     assert rows["items"][0]["origin"] == "google" and rows["items"][0]["source"] == "Zupełnie nowy napis"
     # poprawka administratora wygrywa ze słownikiem
-    assert c.put("/api/i18n/admin/translations", json={"lang": "en", "source": "Język", "text": "App language"}).status_code == 200
-    assert c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"] == "App language"
+    assert (
+        c.put(
+            "/api/i18n/admin/translations", json={"lang": "en", "source": "Język", "text": "App language"}
+        ).status_code
+        == 200
+    )
+    assert (
+        c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"]
+        == "App language"
+    )
     # pola {zmienna} muszą zostać
-    bad = c.put("/api/i18n/admin/translations", json={"lang": "en", "source": "Dzień dobry {imie}", "text": "Hello"})
+    bad = c.put(
+        "/api/i18n/admin/translations", json={"lang": "en", "source": "Dzień dobry {imie}", "text": "Hello"}
+    )
     assert bad.status_code == 422
     # cofnięcie poprawki → znowu słownik
-    assert c.post("/api/i18n/admin/translations/reset", json={"lang": "en", "source": "Język"}).status_code == 204
-    assert c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"] == "Language"
+    assert (
+        c.post("/api/i18n/admin/translations/reset", json={"lang": "en", "source": "Język"}).status_code
+        == 204
+    )
+    assert (
+        c.post("/api/i18n/public", json={"lang": "en", "strings": ["Język"]}).json()["translations"]["Język"]
+        == "Language"
+    )
     langs = {x["code"] for x in c.get("/api/i18n/admin/languages").json()}
     assert {"uk", "ru", "en"} <= langs
 
 
 def test_admin_translations_forbidden_for_others(me):  # noqa: F811
     assert me.get("/api/i18n/admin/translations", params={"lang": "uk"}).status_code == 403
-    assert me.put("/api/i18n/admin/translations", json={"lang": "uk", "source": "a", "text": "b"}).status_code == 403
+    assert (
+        me.put("/api/i18n/admin/translations", json={"lang": "uk", "source": "a", "text": "b"}).status_code
+        == 403
+    )
 
 
 def test_timezone_detected_and_manual(me):  # noqa: F811

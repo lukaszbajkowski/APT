@@ -295,7 +295,8 @@ def update_template(
         for f in body.fields:
             if f.type == "select" and not f.options:
                 raise HTTPException(
-                    status.HTTP_400_BAD_REQUEST, detail=f"Pole „{f.full_label()}” (lista) nie ma opcji do wyboru."
+                    status.HTTP_400_BAD_REQUEST,
+                    detail=f"Pole „{f.full_label()}” (lista) nie ma opcji do wyboru.",
                 )
         t.fields = [f.model_dump() for f in body.fields]
         changes.append("fields")
@@ -390,7 +391,9 @@ class TemplateRecentOut(BaseModel):
 
 
 @router.get("/templates/{template_id}/recent", response_model=list[TemplateRecentOut])
-def template_recent(template_id: int, ctx: AdminAuth, db: DbSession, limit: int = 6) -> list[TemplateRecentOut]:
+def template_recent(
+    template_id: int, ctx: AdminAuth, db: DbSession, limit: int = 6
+) -> list[TemplateRecentOut]:
     """Ostatnio wygenerowane dokumenty z szablonu (szczegóły szablonu u administratora)."""
     from app.models import Employee
 
@@ -403,7 +406,12 @@ def template_recent(template_id: int, ctx: AdminAuth, db: DbSession, limit: int 
         .limit(max(1, min(limit, 20)))
     ).all()
     return [
-        TemplateRecentOut(employee_id=e.id, employee=f"{e.last_name} {e.first_name}", created_at=d.created_at, created_by_name=d.created_by_name)
+        TemplateRecentOut(
+            employee_id=e.id,
+            employee=f"{e.last_name} {e.first_name}",
+            created_at=d.created_at,
+            created_by_name=d.created_by_name,
+        )
         for d, e in rows
     ]
 

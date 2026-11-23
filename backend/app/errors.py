@@ -2,7 +2,8 @@
 
 Bez danych osobowych: adres to szablon trasy („/api/employees/{employee_id}”), bez parametrów zapytania;
 z komunikatu wycinane są ciągi cyfr (PESEL, telefony, numery), adresy e-mail i parametry z adresów.
-Te same błędy grupują się w jeden wpis (licznik, pierwsze i ostatnie wystąpienie); wpisy starsze niż 30 dni znikają.
+Te same błędy grupują się w jeden wpis (licznik, pierwsze i ostatnie wystąpienie); wpisy starsze niż 30
+dni znikają.
 """
 
 import hashlib
@@ -37,8 +38,11 @@ def scrub(text: str | None, limit: int) -> str:
     return t[:limit]
 
 
-def record(source: str, kind: str, message: str, path: str, status: int | None = None, role: str | None = None) -> None:
-    """Zapisuje błąd (albo zwiększa licznik istniejącego). Nigdy nie rzuca – zbieranie błędów nie może ich mnożyć."""
+def record(
+    source: str, kind: str, message: str, path: str, status: int | None = None, role: str | None = None
+) -> None:
+    """Zapisuje błąd (albo zwiększa licznik istniejącego). Nigdy nie rzuca – zbieranie błędów nie może
+    ich mnożyć."""
     kind_s = scrub(kind, 120) or "Błąd"
     msg_s = scrub(message, 500)
     path_s = scrub(path, 200)
@@ -53,7 +57,19 @@ def record(source: str, kind: str, message: str, path: str, status: int | None =
                 if role:
                     row.role = role
             else:
-                db.add(AppError(fingerprint=fp, source=source, kind=kind_s, message=msg_s, path=path_s, status=status, role=role, first_at=now, last_at=now))
+                db.add(
+                    AppError(
+                        fingerprint=fp,
+                        source=source,
+                        kind=kind_s,
+                        message=msg_s,
+                        path=path_s,
+                        status=status,
+                        role=role,
+                        first_at=now,
+                        last_at=now,
+                    )
+                )
                 db.execute(delete(AppError).where(AppError.last_at < now - timedelta(days=KEEP_DAYS)))
             db.commit()
     except Exception:  # noqa: BLE001

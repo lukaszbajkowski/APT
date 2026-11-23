@@ -33,7 +33,8 @@ def city(name: str) -> str:
 
 
 def when(dt: datetime, tz_name: str | None = None, *, short: bool = False) -> str:
-    """Data i godzina dla odbiorcy. Poza Polską: godzina u odbiorcy (miasto strefy) i w nawiasie czas polski."""
+    """Data i godzina dla odbiorcy. Poza Polską: godzina u odbiorcy (miasto strefy) i w nawiasie czas
+    polski."""
     fmt = "%d.%m %H:%M" if short else "%d.%m.%Y, %H:%M"
     home = dt.astimezone(HOME_TZ)
     if not valid(tz_name) or tz_name == HOME:

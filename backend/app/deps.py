@@ -16,7 +16,12 @@ from app.security import token_hash
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 EMPLOYEE_PATHS = (
-    "/api/auth/", "/api/passkeys", "/api/me/", "/api/push/", "/api/translate/", "/api/i18n/",
+    "/api/auth/",
+    "/api/passkeys",
+    "/api/me/",
+    "/api/push/",
+    "/api/translate/",
+    "/api/i18n/",
     # komunikaty techniczne (przerwa, awaria) – pracownik też musi je widzieć
     "/api/service-notices/current",
 )

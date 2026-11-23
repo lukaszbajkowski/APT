@@ -1,7 +1,8 @@
 # Wzorzec „edytor listy” (jak edycja szablonu)
 
 Źródło prawdy: edycja szablonu (`components/TemplateEditDesktop.tsx`, `pages/TemplateEditPage.tsx`).
-Ten sam układ mają dziś Słowniki (`components/DictionaryDesk.tsx`) i Checklisty (`components/Lifecycle.tsx`).
+Ten sam układ mają dziś Słowniki (`components/DictionaryDesk.tsx`), Checklisty (`components/Lifecycle.tsx`)
+i – bez przeciągania, z odhaczaniem i przełącznikiem „Po terminie / Po osobach” – Zadania (`pages/TasksPage.tsx`).
 
 **Kiedy:** ekran, na którym użytkownik układa listę pozycji w grupach (przeciąganie, zmiana grupy) i edytuje
 wybraną pozycję w panelu. **Zanim zaczniesz nowy taki ekran albo przerobisz istniejący – zapytaj właściciela:

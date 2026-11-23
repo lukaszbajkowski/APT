@@ -2111,4 +2111,3 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tk-more .ui-cl-name{color:var(--mantine-primary-color-filled)}
 .ui-tk-person{display:flex;gap:var(--s-3);align-items:center}
 .ui-tk-progress{display:flex;flex-direction:column;gap:var(--s-1)}
-.ui-tasks .ui-tpe-paperhead{padding-left:0;padding-right:0}

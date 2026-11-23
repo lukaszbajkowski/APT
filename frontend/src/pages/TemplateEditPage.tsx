@@ -393,7 +393,6 @@ export function TemplateEditPage() {
           size="auto"
           radius="lg"
           withCloseButton={false}
-          overlayProps={{ backgroundOpacity: 0.08 }}
           classNames={{ content: `ui-sheet ui-tpe-fsheet${sheetH ? " ui-sheet-sized" : ""}` }}
           // wysokość ustawiona palcem (uchwyt) – zapamiętana na kolejne otwarcia
           styles={sheetH ? { content: { "--sheet-h": `${sheetH}dvh` } as React.CSSProperties } : undefined}

@@ -1674,7 +1674,6 @@ function DeskTemplates({
           size="auto"
           radius="lg"
           withCloseButton={false}
-          overlayProps={{ backgroundOpacity: 0.08 }}
           classNames={{ content: "ui-sheet ui-tpe-fsheet ui-sheet-sized" }}
           styles={{ content: { "--sheet-h": `${sheetH}dvh` } as React.CSSProperties }}
           aria-label={cur?.label || "Zadanie"}

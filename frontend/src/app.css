@@ -2042,3 +2042,9 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-dict-pwrap{display:contents}
 /* Checklisty na telefonie: grupy na kartce z tym samym odstępem od brzegu co w Słownikach i edycji szablonu */
 .ui-cl-phpaper .ui-cl-list{margin:0 var(--s-2)}
+/* Checklisty na telefonie: grupy i wiersze jak pola w edycji szablonu (Słowniki używają tego samego komponentu) –
+   linia pod nagłówkiem grupy, wiersze bez linii między sobą, tekst wiersza 12 px od brzegu grupy */
+.ui-cl-phpaper .ui-cl-list > .ui-cl-glabel{margin-top:var(--s-2);border-bottom:1px solid var(--apt-line)}
+.ui-cl-phpaper .ui-cl-list > .ui-cl-glabel:first-child{margin-top:0}
+.ui-cl-phpaper .ui-cl-row + .ui-cl-row:not([data-lifted]) .ui-cl-pick{box-shadow:none}
+.ui-cl-phpaper .ui-cl-pick{padding:var(--s-4) var(--s-3)}

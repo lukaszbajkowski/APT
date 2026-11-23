@@ -183,7 +183,8 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
   const asFields = posOrder.map((x) => ({ key: String(x.id), label: x.name, group: groupOf(x), type: "text", required: false }) as unknown as TemplateField);
   const posList = (
     <div className="ui-tpe-plist ui-tpe-paper ui-dict-plist">
-      <div className="ui-tpe-paperhead">
+      {!phone && (
+        <div className="ui-tpe-paperhead">
         <h2 className="ui-dsec-title">{isPos ? "Stanowiska według wydziałów" : cfg.title}</h2>
         <Text size="xs" c="dimmed">
           {isPos
@@ -195,6 +196,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
               : "Kliknij pozycję, aby ją zmienić. Przeciągnij, aby przenieść między aktywnymi i nieużywanymi."}
         </Text>
       </div>
+      )}
       <TouchSortList
         fields={asFields}
         canvas
@@ -354,6 +356,10 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         </div>
         <TextInput aria-label="Szukaj w słowniku" placeholder="Szukaj" size="md" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         {/* podpowiedź nad listą – jak w Checklistach */}
+        {/* podpowiedź nad kartką – jak w edycji szablonu na telefonie */}
+        <Text size="sm" c="dimmed">
+          {isPos ? "Dotknij stanowisko, aby je zmienić. Przytrzymaj, aby przenieść do innego wydziału." : "Dotknij pozycję, aby ją zmienić. Przytrzymaj, aby przenieść między aktywnymi i nieużywanymi."}
+        </Text>
         {error && <Text className="ui-ef-pending">{error}</Text>}
         {q.error ? (
           <ErrorState error={q.error} onRetry={() => q.refetch()} />

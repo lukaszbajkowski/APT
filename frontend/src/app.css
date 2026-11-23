@@ -2061,3 +2061,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* przeciąganie przy górnym pasku: etykieta „Trafi do” pod wierszem zamiast nad nim */
 .ui-cl-row[data-lifted][data-label-below] .ui-cl-target{top:auto;bottom:calc(-1 * var(--s-3))}
 .ui-tsl-row[data-lifted][data-label-below] .ui-tsl-cbody .ui-tsl-target{top:auto;bottom:var(--s-2)}
+/* telefon w poziomie: w czasie przeciągania (szablon, Słowniki, Checklisty) więcej miejsca na listę – dolne menu
+   chowa się w dół, pasek zapisu zwija się do jednej cienkiej linii z licznikiem (przycisk wraca po upuszczeniu) */
+@media (orientation: landscape) {
+  :where(:root[data-device="phone"]):has(.ui-tsl-row[data-lifted], .ui-cl-row[data-lifted]) .tabbar{transform:translateY(100%);visibility:hidden}
+  :where(:root[data-device="phone"]):has(.ui-tsl-row[data-lifted], .ui-cl-row[data-lifted]) .ui-selbar{bottom:var(--apt-safe-bottom);padding-top:var(--s-1);padding-bottom:var(--s-1)}
+  :where(:root[data-device="phone"]):has(.ui-tsl-row[data-lifted], .ui-cl-row[data-lifted]) :is(.ui-selbar,.ui-savebar-ph) :is(button,a){display:none}
+  :where(:root[data-device="phone"]):has(.ui-tsl-row[data-lifted], .ui-cl-row[data-lifted]) .ui-savebar-ph{padding-top:var(--s-1);padding-bottom:var(--s-1)}
+}
+@media (orientation: landscape) and (prefers-reduced-motion: no-preference) {
+  :where(:root[data-device="phone"]) .tabbar{transition:transform .2s ease,visibility .2s}
+}

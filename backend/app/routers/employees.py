@@ -418,7 +418,7 @@ def _plain(v: Any) -> Any:
 # ---------- lista ----------
 
 SortKey = Literal["name", "-name", "number", "-number", "hire_date", "-hire_date"]
-MissingKey = Literal["photo", "birth_date", "country", "pesel", "agency", "department", "position"]
+MissingKey = Literal["photo", "birth_date", "country", "pesel", "agency", "department", "position", "card"]
 
 
 class ListFilters:
@@ -474,6 +474,17 @@ class ListFilters:
                 conditions.append(Employee.pesel_hash.is_(None))
             elif m == "country":
                 conditions.append(Employee.country_id.is_(None))
+            elif m == "card":
+                # karta nigdy niewydrukowana (wpis „card_printed” w dzienniku) – miernik pilotu
+                conditions.append(
+                    ~select(AuditLog.id)
+                    .where(
+                        AuditLog.action == "card_printed",
+                        AuditLog.entity_type == "employee",
+                        AuditLog.entity_id == cast(Employee.id, String),
+                    )
+                    .exists()
+                )
             else:
                 conditions.append(getattr(Employee, f"{m}_id" if m != "birth_date" else m).is_(None))
         base = select(Employee).where(and_(*conditions)) if conditions else select(Employee)

@@ -110,3 +110,16 @@ def test_validation(setup):
     assert c.post("/api/cards/pdf", json={"employee_ids": []}).status_code == 422
     assert c.post("/api/cards/pdf", json={"employee_ids": [1], "layout": "a3"}).status_code == 422
     assert date.today()  # sanity
+
+
+def test_filter_without_printed_card(setup):
+    """Miernik pilotu: filtr „Bez wydrukowanej karty” znika dla osoby po wydruku jej karty."""
+    c, e1, e2, _ = setup
+
+    def ids():
+        return {x["id"] for x in c.get("/api/employees", params={"missing": "card"}).json()["items"]}
+
+    assert {e1["id"], e2["id"]} <= ids()
+    assert c.post("/api/cards/pdf", json={"employee_ids": [e1["id"]], "layout": "cr80"}).status_code == 200
+    after = ids()
+    assert e1["id"] not in after and e2["id"] in after

@@ -84,7 +84,11 @@ Każdy nowy błąd: sprawdzić, poprawić, oznaczyć jako rozwiązany.
 | Błędy aplikacji niewyjaśnione dłużej niż 2 dni | 0 |
 | Przerwy w działaniu (monitoring) | 0 poza zapowiedzianymi pracami |
 
-Liczby bierzemy z aplikacji: lista pracowników z filtrami, komunikaty („Przeczytało x z y”), raporty, Stan systemu.
+Liczby bierzemy z aplikacji (filtr wydziału i agencji pilotu):
+
+- karty – Pracownicy → „Z brakami” → „Bez wydrukowanej karty” (reszta to osoby z kartą),
+- konta – Konta pracowników: liczniki „Aktywne / Czekają” przy przełączniku i w nagłówku,
+- komunikaty – „Przeczytało x z y” przy komunikacie, braki – „Wymaga uwagi” na liście, błędy i przerwy – Stan systemu.
 
 ## Zbieranie uwag
 

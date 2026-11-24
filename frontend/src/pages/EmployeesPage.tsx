@@ -30,6 +30,7 @@ const MISSING = [
   { value: "agency", label: "Brak APT" },
   { value: "department", label: "Brak wydziału" },
   { value: "position", label: "Brak stanowiska" },
+  { value: "card", label: "Bez wydrukowanej karty" },
 ];
 
 export function EmployeesPage() {

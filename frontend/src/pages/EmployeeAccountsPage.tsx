@@ -45,8 +45,10 @@ export function EmployeeAccountsPage() {
   const all = useQuery({
     queryKey: ["employee-accounts", q, "all"],
     queryFn: () => api<Row[]>(`/employee-accounts?${new URLSearchParams(q.trim() ? { q: q.trim() } : {}).toString()}`),
-    enabled: !!mobile,
   });
+  // liczniki przy przełączniku (jak w Słownikach) – miernik pilotu „pracownicy z założonym kontem”
+  const n = (v: string) => (all.data ? all.data.filter((r) => !v || r.status === v).length : undefined);
+  const lab = (label: string, v: string) => (n(v) !== undefined ? `${label} ${n(v)}` : label);
   if (mobile) {
     const TONE = { active: "ok", pending: "wait", disabled: "neutral" } as const;
     const SHORT = { active: "Aktywne", pending: "Czeka", disabled: "Wyłączone" } as const;
@@ -104,6 +106,7 @@ export function EmployeeAccountsPage() {
     <Stack>
       <PageTitle
         title="Konta pracowników"
+        meta={all.data ? `Aktywne ${n("active")} · Czekają ${n("pending")}` : undefined}
         description={
           <>
             Zaproszenia, reset dostępu i wyłączenie konta wykonasz w karcie pracownika.
@@ -123,10 +126,10 @@ export function EmployeeAccountsPage() {
           value={status}
           onChange={setStatus}
           data={[
-            { value: "", label: "Wszystkie" },
-            { value: "pending", label: "Czekają" },
-            { value: "active", label: "Aktywne" },
-            { value: "disabled", label: "Wyłączone" },
+            { value: "", label: lab("Wszystkie", "") },
+            { value: "pending", label: lab("Czekają", "pending") },
+            { value: "active", label: lab("Aktywne", "active") },
+            { value: "disabled", label: lab("Wyłączone", "disabled") },
           ]}
         />
       </Group>

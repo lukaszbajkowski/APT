@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import jsQR from "jsqr";
-import { Alert, Anchor, Box, Button, Drawer, Group, Paper, Skeleton, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertTriangle, IconCamera, IconScan, IconUser } from "@tabler/icons-react";
+import { Alert, Anchor, Box, Button, Drawer, Group, Paper, Skeleton, Stack, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
+import { IconAlertTriangle, IconBolt, IconCamera, IconKeyboard, IconScan, IconUser } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
@@ -103,6 +103,11 @@ export function ScannerPage() {
   const [manual, setManual] = useState("");
   const [recent, setRecent] = useState<Recent[]>(loadRecent);
   const [sheet, setSheet] = useState(false);
+  const sheetRef = useRef(false);
+  sheetRef.current = sheet;
+  const [typing, setTyping] = useState(false);
+  const [torch, setTorch] = useState(false);
+  const [torchOk, setTorchOk] = useState(false);
   const lastCode = useRef<{ code: string; at: number } | null>(null);
   // czy urządzenie ma aparat – lista urządzeń jest dostępna bez pytania o zgodę (bez nazw, ale z rodzajem)
   const [hasCamera, setHasCamera] = useState<boolean | null>(null);
@@ -156,7 +161,11 @@ export function ScannerPage() {
     [],
   );
 
+  const startingRef = useRef(false);
   const start = useCallback(async () => {
+    // jeden start naraz (samo włączenie po wejściu + przycisk / podwójny efekt w trybie deweloperskim)
+    if (startingRef.current || streamRef.current) return;
+    startingRef.current = true;
     setError(null);
     setLookupError(null);
     setSheet(false);
@@ -168,6 +177,11 @@ export function ScannerPage() {
         audio: false,
       });
       streamRef.current = stream;
+      // latarka tylko tam, gdzie aparat ją ma (Chrome na Androidzie; Safari zwykle nie)
+      const track = stream.getVideoTracks()[0];
+      const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean };
+      setTorchOk(!!caps.torch);
+      setTorch(false);
       const video = videoRef.current!;
       video.srcObject = stream;
       await video.play();
@@ -181,7 +195,7 @@ export function ScannerPage() {
 
       const tick = async () => {
         if (!streamRef.current) return;
-        if (!busyRef.current && video.readyState >= 2) {
+        if (!busyRef.current && !(phoneRef.current && sheetRef.current) && video.readyState >= 2) {
           busyRef.current = true;
           try {
             let value: string | null = null;
@@ -201,13 +215,8 @@ export function ScannerPage() {
             const now = Date.now();
             if (value && !(lastCode.current && lastCode.current.code === value && now - lastCode.current.at < 4000)) {
               lastCode.current = { code: value, at: now };
-              if (phoneRef.current) {
-                stop();
-                busyRef.current = false;
-                await lookup(value);
-                return;
-              }
-              // komputer: aparat skanuje dalej, kolejna karta podmienia wynik
+              // aparat działa dalej: na telefonie pod arkuszem wyniku (wstrzymany, dopóki arkusz jest otwarty),
+              // na komputerze kolejna karta od razu podmienia wynik
               await lookup(value);
             }
           } catch {
@@ -222,14 +231,35 @@ export function ScannerPage() {
       stop();
       setError(cameraError(e));
     } finally {
+      startingRef.current = false;
       setStarting(false);
     }
   }, [lookup, stop]);
 
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torch } as MediaTrackConstraintSet] });
+      setTorch((t) => !t);
+    } catch {
+      setTorchOk(false);
+    }
+  };
+  // telefon: aparat włącza się sam po wejściu, gdy zgoda już jest (bez osobnego „Włącz aparat”)
+  useEffect(() => {
+    if (!mobile || !navigator.permissions?.query) return;
+    navigator.permissions
+      .query({ name: "camera" as PermissionName })
+      .then((p) => p.state === "granted" && void start())
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile]);
+
   function submitManual(e: FormEvent) {
     e.preventDefault();
     if (!manual.trim()) return;
-    stop();
+    setTyping(false);
     lookup(manual);
   }
 
@@ -240,7 +270,7 @@ export function ScannerPage() {
     <Box pos="relative" className="ui-scan-video" style={{ display: scanning ? "block" : "none" }}>
       <video ref={videoRef} playsInline muted />
       <Box className="ui-scan-frame" data-live={live || undefined} />
-      <Text c="white" size="sm" ta="center" pos="absolute" bottom={12} left={0} right={0}>
+      <Text c="white" size="sm" ta="center" className="ui-scan-hint" data-live={live || undefined}>
         Skieruj kod QR w ramkę
       </Text>
     </Box>
@@ -249,7 +279,7 @@ export function ScannerPage() {
     <form onSubmit={submitManual} className="ui-scan-manual">
       <Group align="flex-end" gap="xs" wrap="nowrap">
         <TextInput
-          label={hasCamera === false ? "Numer z karty" : "Albo wpisz numer z karty"}
+          label={hasCamera === false || typing ? "Numer z karty" : "Albo wpisz numer z karty"}
           description={!mobile ? "Czytnik kodów podłączony do komputera wpisze numer sam." : undefined}
           placeholder="Np. 000123"
           inputMode="numeric"
@@ -300,31 +330,56 @@ export function ScannerPage() {
     </section>
   );
 
-  // ——— telefon: aparat na cały ekran, wynik w arkuszu od dołu ———
+  // ——— telefon: aparat na cały ekran (jak w makiecie), na dole „Wpisz numer” i „Latarka”, wynik w arkuszu ———
   if (mobile)
     return (
       <Stack className={live ? "ui-scan-live" : undefined}>
-        <PageTitle title="Skaner kart" description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem." />
+        {!live && <PageTitle title="Skaner kart" description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem." />}
         {video}
+        {live && (
+          <div className="ui-scan-bar">
+            <UnstyledButton className="ui-scan-pill" onClick={() => setTyping(true)}>
+              <IconKeyboard size={20} aria-hidden />
+              Wpisz numer
+            </UnstyledButton>
+            {torchOk && (
+              <UnstyledButton className="ui-scan-pill" data-on={torch || undefined} onClick={toggleTorch} aria-pressed={torch}>
+                <IconBolt size={20} aria-hidden />
+                Latarka
+              </UnstyledButton>
+            )}
+          </div>
+        )}
         {error && (
           <Alert color="red" icon={<IconAlertTriangle size={18} />}>
             {error}
           </Alert>
         )}
-        {scanning ? (
-          <Button variant="default" size="lg" fullWidth onClick={stop} style={{ order: 3 }}>
-            Zatrzymaj aparat
+        {!live && hasCamera !== false && (
+          <Button size="lg" leftSection={<IconCamera size={20} />} onClick={start} loading={starting}>
+            Włącz aparat i skanuj
           </Button>
-        ) : (
-          hasCamera !== false && (
-            <Button size="lg" leftSection={<IconCamera size={20} />} onClick={start} loading={starting}>
-              Włącz aparat i skanuj
-            </Button>
-          )
         )}
         {loading && <Skeleton height={72} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />}
-        {manualForm}
+        {!live && manualForm}
         {!live && recentList}
+        <Drawer
+          opened={typing}
+          onClose={() => setTyping(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          classNames={{ content: "ui-sheet ui-tpe-fsheet" }}
+          aria-label="Wpisz numer z karty"
+        >
+          <SheetHandle onClose={() => setTyping(false)}>
+            <div className="ui-sheet-head ui-tpe-fsheet-head">
+              <div className="ui-sheet-title">Wpisz numer z karty</div>
+            </div>
+          </SheetHandle>
+          <div className="ui-tpe-fsheet-body">{manualForm}</div>
+        </Drawer>
         <Drawer
           opened={sheet && !loading && (!!employee || !!lookupError)}
           onClose={() => setSheet(false)}
@@ -344,14 +399,14 @@ export function ScannerPage() {
             {employee ? <ScanResult employee={employee} /> : failure}
           </Stack>
           <Group grow mt="sm" className="ui-tpe-fsheet-done">
-              {employee && (
-                <Button size="md" variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={18} />}>
-                  Otwórz kartę
-                </Button>
-              )}
-              <Button size="md" leftSection={<IconScan size={18} />} onClick={start}>
-                Skanuj dalej
+            {employee && (
+              <Button size="md" variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={18} />}>
+                Otwórz kartę
               </Button>
+            )}
+            <Button size="md" leftSection={<IconScan size={18} />} onClick={() => (streamRef.current ? setSheet(false) : void start())}>
+              Skanuj dalej
+            </Button>
           </Group>
         </Drawer>
       </Stack>

@@ -2131,3 +2131,19 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-acct-state[data-tone="bad"] .ui-acct-dot{background:var(--mantine-color-red-6)}
 .ui-scan-recent{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px}
 .ui-scan-recent:first-child{border-top:0}
+/* Skaner na telefonie: aparat na cały obszar, na dole dwa przyciski na półprzezroczystym tle (jak w makiecie) */
+.ui-scan-live{gap:0}
+.ui-scan-live .ui-scan-video{border-radius:0;margin:0 calc(-1 * var(--s-4))}
+.ui-scan-bar{position:absolute;left:var(--s-4);right:var(--s-4);bottom:calc(var(--s-6) + var(--apt-nav-h, 0px) * 0);display:flex;gap:var(--s-2);z-index:2}
+.ui-scan-live{position:fixed}
+.ui-scan-live .ui-scan-bar{bottom:var(--s-6)}
+.ui-scan-pill{flex:1;display:flex;align-items:center;justify-content:center;gap:var(--s-2);min-height:48px;border-radius:var(--mantine-radius-md);background:color-mix(in srgb,var(--mantine-color-white) 16%,transparent);color:var(--mantine-color-white);font-weight:600;font-size:15px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.ui-scan-pill[data-on]{background:color-mix(in srgb,var(--mantine-color-white) 85%,transparent);color:var(--mantine-color-black)}
+.ui-scan-pill:focus-visible{outline:2px solid var(--mantine-color-white);outline-offset:2px}
+.ui-scan-hint{position:absolute;left:0;right:0;bottom:var(--s-3)}
+/* telefon, aparat na cały obszar: podpowiedź nad ramką, ramka w środku między podpowiedzią a przyciskami */
+.ui-scan-hint[data-live]{bottom:auto;top:var(--s-4)}
+/* rozmiar ramki z wysokości samego podglądu (w poziomie podgląd jest niski): miejsce na podpowiedź u góry i przyciski u dołu */
+.ui-scan-live .ui-scan-video{container-type:size}
+.ui-scan-frame[data-live]{top:calc(50% - 20px);width:min(68cqw,calc(100cqh - 152px))}
+@media (orientation:landscape){.ui-scan-live .ui-scan-bar{left:50%;right:auto;transform:translateX(-50%);width:min(420px,calc(100% - 32px))}}

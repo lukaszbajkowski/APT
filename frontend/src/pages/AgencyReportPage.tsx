@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Group, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Group, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconDownload, IconMail } from "@tabler/icons-react";
-import { ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge, PageTitle } from "../components/Mobile";
+import { badgeTone, ActionSheet, Chips, CompactEmpty, InfoRow, ListRow, PageHead, PickSheet, Section, StatusBadge, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 
 import { useAuth } from "../auth";
@@ -289,9 +289,9 @@ export function AgencyReportPage() {
                         <Table.Td ta="right">{x.days}</Table.Td>
                         <Table.Td>
                           {x.change && (
-                            <Badge size="sm" variant="light" color={x.change === "przyjęty" ? "teal" : x.change === "odszedł" ? "orange" : "grape"}>
+                            <StatusBadge tone={badgeTone(x.change === "przyjęty" ? "teal" : x.change === "odszedł" ? "orange" : "grape")}>
                               {x.change}
-                            </Badge>
+                            </StatusBadge>
                           )}
                         </Table.Td>
                       </Table.Tr>

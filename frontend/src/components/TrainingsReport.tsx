@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { ErrorState, EmptyState, Loading } from "./States";
 import { DateField } from "./DateField";
+import { StatusBadge, badgeTone } from "./Mobile";
 
 export interface Row {
   training_id: number;
@@ -271,9 +272,9 @@ export function TrainingsReport() {
                           </Text>
                         </Table.Td>
                         <Table.Td ta="right">
-                          <Badge color={st.color} variant="light" size="sm">
+                          <StatusBadge tone={badgeTone(st.color)}>
                             {st.label}
-                          </Badge>
+                          </StatusBadge>
                           <Text size="xs" c={r.status === "overdue" ? "red" : "dimmed"}>
                             {r.days !== null && !r.completed_on
                               ? `dzień ${r.days}${r.standard_days !== null ? ` z ${r.standard_days}` : ""}`

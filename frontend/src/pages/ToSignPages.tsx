@@ -2,9 +2,9 @@ import { DocumentViewer } from "../components/DocumentViewer";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, Image, List, Stack, Tabs, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Checkbox, FileButton, Group, Image, List, Stack, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertCircle, IconCheck, IconDownload, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
+import { IconAlertCircle, IconDownload, IconFileUpload, IconFingerprint, IconSignature } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime, withAcct } from "../api";
 import { useAuth } from "../auth";
@@ -108,9 +108,9 @@ export function ToSignListPage() {
                 <Text size="sm" fw={500}>
                   {s.document}
                 </Text>
-                <Badge color="teal" variant="light" leftSection={<IconCheck size={10} />}>
+                <StatusBadge tone="ok">
                   {s.signed_at ? formatDateTime(s.signed_at) : t("podpisano")}
-                </Badge>
+                </StatusBadge>
               </Group>
             </Card>
           ))}

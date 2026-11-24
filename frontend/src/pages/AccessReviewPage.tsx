@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Button, Group, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Button, Group, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 
 import { notifications } from "@mantine/notifications";
@@ -9,7 +9,7 @@ import { useAuth } from "../auth";
 import { api, errorText, formatDateTime, ROLE_LABELS, type Role } from "../api";
 import { ErrorState, Loading } from "../components/States";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
+import { badgeTone, ActionSheet, Chips, CompactEmpty, ListRow, PageHead, PickSheet, Section, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 import { useConfirm } from "../lib/confirm";
 import { useIsPhone } from "../lib/device";
 
@@ -150,22 +150,22 @@ function UsersTab() {
                 </Table.Td>
                 <Table.Td>
                   <Group gap={4}>
-                    <Badge variant="light" color={r.mfa ? "teal" : "gray"}>
+                    <StatusBadge tone={badgeTone(r.mfa ? "teal" : "gray")}>
                       2FA {r.mfa ? "tak" : "nie"}
-                    </Badge>
+                    </StatusBadge>
                     {r.passkeys > 0 && (
-                      <Badge variant="light" color="teal">
+                      <StatusBadge tone="ok">
                         klucze: {r.passkeys}
-                      </Badge>
+                      </StatusBadge>
                     )}
                   </Group>
                 </Table.Td>
                 <Table.Td>
                   <Group gap={4}>
                     {r.flags.map((f) => (
-                      <Badge key={f} variant="light" color={f === "pełne uprawnienia" ? "blue" : "orange"}>
+                      <StatusBadge key={f} tone={badgeTone(f === "pełne uprawnienia" ? "blue" : "orange")}>
                         {f}
-                      </Badge>
+                      </StatusBadge>
                     ))}
                   </Group>
                 </Table.Td>

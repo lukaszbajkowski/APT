@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Badge, Button, Card, Grid, Group, Paper, Skeleton, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
+import { Alert, Button, Card, Grid, Group, Paper, Skeleton, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import {
   IconCalendarEvent,
   IconChevronRight,
@@ -24,7 +24,7 @@ import { useAuth } from "../auth";
 import { EmployeePhoto } from "../components/EmployeePhoto";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { GettingStarted } from "../components/GettingStarted";
-import { CompactEmpty, ListRow, PageTitle, Section, SectionHead, StatusBadge, cap } from "../components/Mobile";
+import { badgeTone, CompactEmpty, ListRow, PageTitle, Section, SectionHead, StatusBadge, cap } from "../components/Mobile";
 import { TodayInbox, useCases } from "../components/TodayInbox";
 import { useIsPhone } from "../lib/device";
 
@@ -173,9 +173,9 @@ function UpcomingCard() {
               <Text size="sm" fw={600} w={92} style={{ flexShrink: 0 }}>
                 {dayLabel(e.date)}
               </Text>
-              <Badge color={EVENT_COLOR[e.kind] ?? "gray"} variant="light" size="sm" w={92} style={{ flexShrink: 0 }}>
+              <StatusBadge tone={badgeTone(EVENT_COLOR[e.kind] ?? "gray")}>
                 {EVENT_LABEL[e.kind] ?? "termin"}
-              </Badge>
+              </StatusBadge>
               <Text size="sm" style={{ minWidth: 0 }} truncate>
                 <Text component={Link} to={`/pracownicy/${e.employee_id}`} fw={500} className="brand-link" span>
                   {e.employee}

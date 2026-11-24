@@ -3,9 +3,9 @@ import { rangeToggle, SelectionBar } from "../components/SelectionBar";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SavedFilters, describeQuery, useSavedFilters } from "../components/SavedFilters";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ActionIcon, Anchor, Badge, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Anchor, Button, Checkbox, Drawer, Modal, Paper, Group, Pagination, SegmentedControl, Stack, Table, Text, TextInput, Tooltip, UnstyledButton } from "@mantine/core";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
-import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconArchive, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash, IconMessage } from "@tabler/icons-react";
+import { IconCertificate, IconFileSpreadsheet, IconFileText, IconPencil, IconPlus, IconPrinter, IconSearch, IconCheck, IconAlertTriangle, IconChevronRight, IconDots, IconDotsVertical, IconAdjustmentsHorizontal, IconBookmark, IconChecks, IconStar, IconStarOff, IconTrash, IconMessage } from "@tabler/icons-react";
 
 import { api, apiDownload, errorText, formatDate, type Employee, type Page } from "../api";
 import { notifications } from "@mantine/notifications";
@@ -709,7 +709,7 @@ export function EmployeesPage() {
                   <Text size="xs" c="dimmed" ff="monospace">
                     {e.number_display}
                   </Text>
-                  {e.status !== "active" && <StatusBadge active={false} />}
+                  {e.status !== "active" && <EmpStatus active={false} />}
                 </Stack>
               </UnstyledButton>
             </Group>
@@ -812,7 +812,7 @@ export function EmployeesPage() {
                   )}
                   {status !== "active" && (
                     <Table.Td>
-                      <StatusBadge active={e.status === "active"} />
+                      <EmpStatus active={e.status === "active"} />
                     </Table.Td>
                   )}
                 </Table.Tr>
@@ -926,14 +926,6 @@ function AttentionCell({ reasons, compact }: { reasons: string[]; compact: boole
   );
 }
 
-function StatusBadge({ active }: { active: boolean }) {
-  return active ? (
-    <Badge color="green" variant="light" leftSection={<IconCheck size={12} aria-hidden />}>
-      aktywny
-    </Badge>
-  ) : (
-    <Badge color="gray" variant="light" leftSection={<IconArchive size={12} aria-hidden />}>
-      archiwum
-    </Badge>
-  );
+function EmpStatus({ active }: { active: boolean }) {
+  return <Status tone={active ? "ok" : "neutral"}>{active ? "aktywny" : "archiwum"}</Status>;
 }

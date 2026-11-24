@@ -1,10 +1,10 @@
 import { ActionSheet, CompactEmpty, ListRow, Section, StatusBadge, type SheetAction, FormDialog, RowMenu } from "./Mobile";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Collapse, Badge, Anchor, Button, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
+import { Alert, Collapse, Anchor, Button, ActionIcon, Checkbox, Group, Modal, NumberInput, SimpleGrid, Stack, Text, TextInput, Textarea, Title, Tooltip } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconChevronUp, IconBell, IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconLock, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconBell, IconCircleCheck, IconEye, IconFileText, IconFileTypeDocx, IconFileTypePdf, IconMail, IconPlus, IconSignature, IconTrash } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { DocumentViewer } from "./DocumentViewer";
@@ -137,9 +137,9 @@ function DocActions({ doc, size = "compact-xs" }: { doc: GeneratedDoc; size?: "c
   const [viewing, setViewing] = useState(false);
   if (!doc.accessible) {
     return (
-      <Badge variant="light" color="gray" leftSection={<IconLock size={12} />}>
+      <StatusBadge tone="neutral">
         zawiera dane wrażliwe
-      </Badge>
+      </StatusBadge>
     );
   }
   return (

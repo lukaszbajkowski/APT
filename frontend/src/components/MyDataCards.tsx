@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Badge, Button, Card, Group, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Avatar, Button, Card, Group, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCamera, IconMail, IconPhone } from "@tabler/icons-react";
 
@@ -9,6 +9,7 @@ import { api, errorText, formatDate, withAcct, type Employee } from "../api";
 import { useT } from "../lib/i18n";
 import { PhotoEditor } from "./PhotoEditor";
 import { useConfirm } from "../lib/confirm";
+import { StatusBadge, badgeTone } from "./Mobile";
 
 export interface MyEmployee {
   number: string;
@@ -109,7 +110,7 @@ export function ContactEditor({
           <Text size="sm" fw={500}>
             {isMail ? t("E-mail") : t("Telefon")}: {current ?? t("nie podano")}
           </Text>
-          {current && <Badge color={verified ? "green" : "gray"}>{verified ? t("potwierdzony") : t("niepotwierdzony")}</Badge>}
+          {current && <StatusBadge tone={badgeTone(verified ? "green" : "gray")}>{verified ? t("potwierdzony") : t("niepotwierdzony")}</StatusBadge>}
         </Group>
         {current && (
           <Button size="xs" variant="subtle" color="red" loading={remove.isPending} onClick={() => ask({ title: "Usunąć dane?", message: "Usunąć ten wpis z Twoich danych?", confirmLabel: "Usuń", danger: true }).then((ok) => ok && remove.mutate())}>

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
-  Badge,
+  
   Box,
   Button,
   Center,
@@ -25,6 +25,7 @@ import { IconAlertCircle, IconCheck, IconCopy, IconDownload, IconShieldCheck, Ic
 
 import { useAuth } from "../auth";
 import { api, errorText, type Me } from "../api";
+import { StatusBadge } from "../components/Mobile";
 
 interface SetupData {
   secret: string;
@@ -397,9 +398,9 @@ export function MfaPage() {
             <Group gap="xs">
               <Title order={3}>Logowanie dwuetapowe</Title>
               {me.user.mfa_required && (
-                <Badge variant="light" color="orange">
+                <StatusBadge tone="warn">
                   wymagane dla Twojej roli
-                </Badge>
+                </StatusBadge>
               )}
             </Group>
             <Text size="sm" c="dimmed">

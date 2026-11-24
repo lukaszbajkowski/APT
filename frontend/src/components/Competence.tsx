@@ -17,6 +17,7 @@ import {
 import { api, errorText, formatDate, type DictionaryItem, type TrainingType } from "../api";
 import { useAuth } from "../auth";
 import { ErrorState, EmptyState, Loading } from "./States";
+import { StatusBadge, badgeTone } from "./Mobile";
 
 export type ReqState = "ok" | "expiring" | "in_progress" | "expired" | "missing";
 
@@ -229,10 +230,10 @@ export function EmployeeRequirements({ employeeId, plain, onAdd }: { employeeId:
       </Group>
       <Group gap={6}>
         {q.data.map((r) => (
-          <Badge key={r.label} color={REQ_STATE[r.state].color} variant="light" radius="sm" style={{ textTransform: "none", fontWeight: 500 }}>
+          <StatusBadge key={r.label} tone={badgeTone(REQ_STATE[r.state].color)}>
             {r.label}: {REQ_STATE[r.state].label}
             {r.valid_until && r.state !== "missing" ? ` (do ${formatDate(r.valid_until)})` : ""}
-          </Badge>
+          </StatusBadge>
         ))}
       </Group>
     </Paper>
@@ -373,9 +374,9 @@ export function CompetenceMatrix() {
       <Group gap="md">
         {(["ok", "expiring", "in_progress", "expired"] as ReqState[]).map((s) => (
           <Group key={s} gap={4}>
-            <Badge color={REQ_STATE[s].color} variant="light" size="sm">
+            <StatusBadge tone={badgeTone(REQ_STATE[s].color)}>
               {REQ_STATE[s].label}
-            </Badge>
+            </StatusBadge>
           </Group>
         ))}
         <Text size="xs" c="dimmed">
@@ -459,9 +460,9 @@ export function CompetenceMatrix() {
                         {r.name}
                       </Anchor>
                       {r.problems > 0 && (
-                        <Badge color="red" variant="light" size="xs">
+                        <StatusBadge tone="error">
                           braki: {r.problems}
-                        </Badge>
+                        </StatusBadge>
                       )}
                     </Group>
                     <Text size="xs" c="dimmed">

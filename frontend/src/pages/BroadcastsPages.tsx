@@ -15,7 +15,7 @@ import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
 import { MasterDetail } from "../components/MasterDetail";
-import { cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, useSwipeAnywhere, type RowAction } from "../components/Mobile";
+import { badgeTone, cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, useSwipeAnywhere, type RowAction } from "../components/Mobile";
 import { isPhone, useIsPhone } from "../lib/device";
 
 interface FileRef {
@@ -212,9 +212,9 @@ function RecipientsPane({ id, mobile }: { id: number; mobile?: boolean }) {
               <Table.Tr key={r.employee_id}>
                 <Table.Td pl="md">{r.name}</Table.Td>
                 <Table.Td ta="right" pr="md">
-                  <Badge variant="light" color={r.read_at ? "teal" : "gray"}>
+                  <StatusBadge tone={badgeTone(r.read_at ? "teal" : "gray")}>
                     {r.read_at ? formatDateTime(r.read_at) : "nie przeczytał(a)"}
-                  </Badge>
+                  </StatusBadge>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -1109,9 +1109,9 @@ function MyBroadcastsDesktop() {
               {!x.read_at ? (
                 <Badge size="xs" circle aria-label="Nieprzeczytane" />
               ) : (
-                <Badge size="xs" variant="light" color="teal">
+                <StatusBadge tone="ok">
                   {t("Potwierdzone")}
-                </Badge>
+                </StatusBadge>
               )}
             </Group>
           </Box>

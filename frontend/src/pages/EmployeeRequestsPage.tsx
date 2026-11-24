@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
 
 import { useAuth } from "../auth";
 import { ApiError, api, errorText, formatDate, formatDateTime, type EmployeeRequest } from "../api";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, FormDialog, PageTitle } from "../components/Mobile";
+import { badgeTone, CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, FormDialog, PageTitle } from "../components/Mobile";
 import { options, useCountries, useDepartments, usePositions } from "../dictionaries";
 import { ErrorState, EmptyState, Loading } from "../components/States";
 import { DateField } from "../components/DateField";
@@ -392,9 +392,9 @@ export function EmployeeRequestsPage() {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge variant="light" color={STATUS[r.status].color}>
+                      <StatusBadge tone={badgeTone(STATUS[r.status].color)}>
                         {STATUS[r.status].label}
-                      </Badge>
+                      </StatusBadge>
                       {r.status === "rejected" && r.reject_reason && (
                         <Text size="xs" c="dimmed" mt={2}>
                           {r.reject_reason}

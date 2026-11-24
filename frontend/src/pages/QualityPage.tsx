@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton } from "@mantine/core";
+import { Alert, Anchor, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
-import { Chips, CompactEmpty, ListRow, PageHead, cap, PageTitle, PageLoading } from "../components/Mobile";
+import { StatusBadge, Chips, CompactEmpty, ListRow, PageHead, cap, PageTitle, PageLoading } from "../components/Mobile";
 
 import { api, errorText } from "../api";
 import { useIsPhone } from "../lib/device";
@@ -166,9 +166,9 @@ export function QualityPage() {
                     <Table.Td>
                       <Group gap={4}>
                         {r.missing.map((k) => (
-                          <Badge key={k} variant="light" color="orange" size="sm">
+                          <StatusBadge key={k} tone="warn">
                             {SHORT[k] ?? k}
-                          </Badge>
+                          </StatusBadge>
                         ))}
                       </Group>
                     </Table.Td>

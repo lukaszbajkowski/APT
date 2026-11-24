@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Alert, Anchor, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, errorText } from "../api";
-import { CompactEmpty, ListRow, PageHead, Section, PageTitle, PageLoading } from "../components/Mobile";
+import { StatusBadge, CompactEmpty, ListRow, PageHead, Section, PageTitle, PageLoading } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 interface Item {
@@ -64,9 +64,9 @@ export function WorkQueuePage() {
               <Anchor component={Link} to={g.url} fw={600}>
                 {g.label}
               </Anchor>
-              <Badge variant="light" color="orange">
+              <StatusBadge tone="warn">
                 {g.count}
-              </Badge>
+              </StatusBadge>
             </Group>
             <Stack gap={4}>
               {g.items.map((it, i) => (

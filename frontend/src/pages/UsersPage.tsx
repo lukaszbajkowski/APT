@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Badge, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
+import { ActionIcon, Alert, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -324,24 +324,24 @@ export function UsersPage() {
                   </Table.Td>
                   <Table.Td>
                     <Group gap={4}>
-                      {u.is_active ? <Badge color="green">aktywne</Badge> : <Badge color="gray">wyłączone</Badge>}
-                      {isLocked(u) && <Badge color="red">zablokowane</Badge>}
+                      {u.is_active ? <StatusBadge tone="ok">aktywne</StatusBadge> : <StatusBadge tone="neutral">wyłączone</StatusBadge>}
+                      {isLocked(u) && <StatusBadge tone="error">zablokowane</StatusBadge>}
                       {u.mfa_enabled ? (
-                        <Badge color="teal" variant="light">
+                        <StatusBadge tone="ok">
                           2FA
-                        </Badge>
+                        </StatusBadge>
                       ) : (
                         u.mfa_required &&
                         u.is_active && (
-                          <Badge color="orange" variant="light">
+                          <StatusBadge tone="warn">
                             bez 2FA
-                          </Badge>
+                          </StatusBadge>
                         )
                       )}
                       {u.must_change_password && u.is_active && (
-                        <Badge color="yellow" variant="light">
+                        <StatusBadge tone="warn">
                           hasło tymczasowe
-                        </Badge>
+                        </StatusBadge>
                       )}
                     </Group>
                   </Table.Td>

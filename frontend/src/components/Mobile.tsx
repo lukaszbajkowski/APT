@@ -1751,3 +1751,8 @@ export function RowMenu({
     </Menu>
   );
 }
+
+/** Kolor z dawnych map stanu (Mantine) → ton znacznika z palety APT (StatusBadge). */
+export function badgeTone(color: string | undefined): Tone {
+  return ({ teal: "ok", green: "ok", orange: "warn", yellow: "warn", red: "error", blue: "wait" } as Record<string, Tone>)[color ?? ""] ?? "neutral";
+}

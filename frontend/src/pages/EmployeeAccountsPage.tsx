@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Group, SegmentedControl, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Alert, Anchor, Group, SegmentedControl, Stack, Table, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
 import { EmptyState, ErrorState, Loading } from "../components/States";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
+import { badgeTone, CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, PageTitle } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 interface Row {
@@ -161,7 +161,7 @@ export function EmployeeAccountsPage() {
                   </Table.Td>
                   <Table.Td>{r.username}</Table.Td>
                   <Table.Td>
-                    <Badge color={STATUS[r.status].color}>{STATUS[r.status].label}</Badge>
+                    <StatusBadge tone={badgeTone(STATUS[r.status].color)}>{STATUS[r.status].label}</StatusBadge>
                     {r.status === "pending" && r.invite_pending && (
                       <Text size="xs" c="dimmed">
                         zaproszenie wysłane

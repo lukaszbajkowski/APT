@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
-  Badge,
+  
   Box,
   Button,
   Checkbox,
@@ -38,6 +38,7 @@ import {
 import { api, errorText, formatDateTime, type Employee, type GeneratedDoc, withAcct } from "../api";
 import { Loading } from "./States";
 import { useConfirm } from "../lib/confirm";
+import { StatusBadge } from "./Mobile";
 
 interface RoleState {
   role: string;
@@ -108,27 +109,27 @@ export function useRemindSignature() {
 export function SignatureBadge({ doc }: { doc: GeneratedDoc }) {
   if (doc.signed_at)
     return (
-      <Badge size="xs" color="teal" variant="light" leftSection={<IconCheck size={10} />}>
+      <StatusBadge tone="ok">
         podpisany
-      </Badge>
+      </StatusBadge>
     );
   if (doc.signature_pending)
     return (
-      <Badge size="xs" color="orange" variant="light">
+      <StatusBadge tone="warn">
         czeka na podpis
-      </Badge>
+      </StatusBadge>
     );
   if (doc.has_signed_pdf)
     return (
-      <Badge size="xs" color="blue" variant="light">
+      <StatusBadge tone="wait">
         podpisany częściowo
-      </Badge>
+      </StatusBadge>
     );
   if (doc.signature_roles?.length)
     return (
-      <Badge size="xs" color="gray" variant="light">
+      <StatusBadge tone="neutral">
         do podpisu
-      </Badge>
+      </StatusBadge>
     );
   return null;
 }
@@ -412,21 +413,21 @@ export function SignaturesModal({ doc, employee, opened, onClose }: { doc: Gener
                   {r.label}
                 </Text>
                 {r.status === "signed" ? (
-                  <Badge color="teal" variant="light">
+                  <StatusBadge tone="ok">
                     podpisano
-                  </Badge>
+                  </StatusBadge>
                 ) : r.status === "pending" ? (
-                  <Badge color="orange" variant="light">
+                  <StatusBadge tone="warn">
                     czeka
-                  </Badge>
+                  </StatusBadge>
                 ) : r.status === "expired" ? (
-                  <Badge color="gray" variant="light">
+                  <StatusBadge tone="neutral">
                     link wygasł
-                  </Badge>
+                  </StatusBadge>
                 ) : (
-                  <Badge color="gray" variant="outline">
+                  <StatusBadge tone="neutral">
                     niepodpisano
-                  </Badge>
+                  </StatusBadge>
                 )}
               </Group>
               {r.status === "signed" ? (

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDebouncedValue } from "@mantine/hooks";
-import { ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
+import { badgeTone, ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Menu, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Menu, Alert, Anchor, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
@@ -102,9 +102,9 @@ function Expiring({ mobile }: { mobile?: boolean }) {
                 </Table.Td>
                 <Table.Td ta="right">
                   <Text size="sm">{formatDate(r.valid_until)}</Text>
-                  <Badge color={st.color} variant="light" size="sm">
+                  <StatusBadge tone={badgeTone(st.color)}>
                     {st.label}
-                  </Badge>
+                  </StatusBadge>
                 </Table.Td>
               </Table.Tr>
             );
@@ -507,9 +507,9 @@ function InProgress({ mobile }: { mobile?: boolean }) {
                   </Text>
                 </Table.Td>
                 <Table.Td ta="right">
-                  <Badge color={st.color} variant="light" size="sm">
+                  <StatusBadge tone={badgeTone(st.color)}>
                     {st.label}
-                  </Badge>
+                  </StatusBadge>
                   {r.status !== "planned" && (
                     <Text size="xs" c={r.status === "overdue" ? "orange" : "dimmed"}>
                       dzień {r.days}
@@ -773,10 +773,10 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
               ) : (
                 <Group gap={6}>
                   {selectedTemplate.fields.map((x) => (
-                    <Badge key={x.key} variant="light" color={x.required ? "blue" : "gray"}>
+                    <StatusBadge key={x.key} tone={badgeTone(x.required ? "blue" : "gray")}>
                       {x.label}
                       {x.required ? " *" : ""}
-                    </Badge>
+                    </StatusBadge>
                   ))}
                 </Group>
               )}
@@ -820,9 +820,9 @@ function Types() {
                 <Group gap={6}>
                   <Text fw={600}>{t.name}</Text>
                   {!t.is_active && (
-                    <Badge color="gray" variant="light" size="sm">
+                    <StatusBadge tone="neutral">
                       wyłączony
-                    </Badge>
+                    </StatusBadge>
                   )}
                 </Group>
                 <Text size="sm" c="dimmed">

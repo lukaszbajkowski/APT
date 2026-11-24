@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, Group, SimpleGrid, Stack, Text, ThemeIcon, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconId, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
+import { IconChevronRight, IconCircleCheck, IconSpeakerphone, IconCamera, IconFileCheck, IconFingerprint, IconId, IconMessage, IconPhone, IconSignature } from "@tabler/icons-react";
 
 import { api, formatDate } from "../api";
 import { MyDataCards, MyPhotoEditor, type MyEmployee } from "../components/MyDataCards";
@@ -27,9 +27,9 @@ function Tile({ icon: Icon, title, hint, badge, to, onClick }: { icon: typeof Ic
             <Text fw={700}>{title}</Text>
             {badge ? (
               warn ? (
-                <Badge variant="light" color="orange" leftSection={<IconAlertTriangle size={12} aria-hidden />} style={{ textTransform: "none" }}>
+                <StatusBadge tone="warn">
                   {badge}
-                </Badge>
+                </StatusBadge>
               ) : (
                 <Badge aria-label={`${badge} nowe`}>{badge}</Badge>
               )

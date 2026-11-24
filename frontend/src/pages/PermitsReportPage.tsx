@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Card, Stack, Switch, Table, Text } from "@mantine/core";
+import { Alert, Anchor, Card, Stack, Switch, Table, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, formatDate, type PermitRow } from "../api";
 import { PERMIT_STATE } from "../components/Permits";
 import { ErrorState, Loading } from "../components/States";
-import { CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
+import { badgeTone, CompactEmpty, ListRow, PageHead, Segments, StatusBadge, SwipePager, cap, PageTitle } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 import { EmployeeSwipe } from "../components/EmployeeSwipe";
 
@@ -61,9 +61,9 @@ export function PermitsReportPage() {
                   <Table.Td>{r.kind_label}</Table.Td>
                   <Table.Td>{formatDate(r.valid_until)}</Table.Td>
                   <Table.Td>
-                    <Badge variant="light" color={PERMIT_STATE[r.state].color}>
+                    <StatusBadge tone={badgeTone(PERMIT_STATE[r.state].color)}>
                       {r.days_left < 0 ? `po terminie ${-r.days_left} dni` : `za ${r.days_left} dni`}
-                    </Badge>
+                    </StatusBadge>
                   </Table.Td>
                 </Table.Tr>
               ))}

@@ -1,13 +1,13 @@
 import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
+import { Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
 import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
 import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
-import { ViewScreen } from "./Mobile";
+import { StatusBadge, ViewScreen } from "./Mobile";
 import { useIsPhone } from "../lib/device";
 
 /** Nazwa pliku z miejscami łamania po „_”, „.”, „-” – długa nazwa zawija się w całych członach, a nie w środku słowa. */
@@ -173,9 +173,9 @@ export function DocumentViewer({
         <div>
           <h2 className="ui-view-title">{breakableName(title)}</h2>
           {q.data?.signed && (
-            <Badge color="teal" variant="light" mt={6}>
+            <StatusBadge tone="ok">
               {T("wersja podpisana")}
-            </Badge>
+            </StatusBadge>
           )}
         </div>
         {content}
@@ -199,9 +199,9 @@ export function DocumentViewer({
             </Button>
           )}
           {q.data?.signed && (
-            <Badge color="teal" variant="light">
+            <StatusBadge tone="ok">
               {T("wersja podpisana")}
-            </Badge>
+            </StatusBadge>
           )}
         </Group>
       }

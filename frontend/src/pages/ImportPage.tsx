@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { ImportMobile } from "../components/ImportMobile";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Badge, Button, Card, Checkbox, FileButton, Group, List, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Stepper, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Checkbox, FileButton, Group, List, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Stepper, Table, Text, Title } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { IconArrowLeft, IconCheck, IconDownload, IconFileSpreadsheet, IconUpload } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, withAcct } from "../api";
-import { PageTitle } from "../components/Mobile";
+import { StatusBadge, badgeTone, PageTitle } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 interface FieldDef {
@@ -459,9 +459,9 @@ export function ImportPage() {
                           {r.position ? ` / ${r.position}` : ""}
                         </Table.Td>
                         <Table.Td maw={340}>
-                          <Badge color={STATUS[r.status].color} variant="light">
+                          <StatusBadge tone={badgeTone(STATUS[r.status].color)}>
                             {STATUS[r.status].label}
-                          </Badge>
+                          </StatusBadge>
                           {[...r.errors, ...r.warnings].map((m, i) => (
                             <Text key={i} size="xs" c={r.errors.includes(m) ? "red.8" : "dimmed"}>
                               {m}

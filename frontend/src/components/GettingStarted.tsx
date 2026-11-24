@@ -51,7 +51,7 @@ export function GettingStarted({ employees }: { employees: number }) {
             </ThemeIcon>
             <div style={{ flex: 1 }}>
               <Text fw={600}>{s.title}</Text>
-              <Text size="sm" c="dimmed" mb={6}>
+              <Text size="sm" c="dimmed" mb={8}>
                 {s.text}
               </Text>
               <Group gap="xs">

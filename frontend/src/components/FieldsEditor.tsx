@@ -244,7 +244,7 @@ export function FieldsEditor({
           <Paper key={editableKeys ? i : f.key} withBorder p="sm" radius="md">
             <Group justify="space-between" wrap="nowrap" mb={8}>
               {editableKeys ? (
-              <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+              <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
                 <ActionIcon variant="subtle" color="red" onClick={() => remove(i)} aria-label="Usuń pole">
                   <IconTrash size={14} />
                 </ActionIcon>

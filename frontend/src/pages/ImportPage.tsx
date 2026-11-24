@@ -200,7 +200,7 @@ export function ImportPage() {
         summary={preview?.summary}
         rows={(preview?.rows ?? []).map((r) => ({ row: r.row, status: r.status, title: r.name ?? "", errors: r.errors, warnings: r.warnings }))}
         extra={
-          <div className="ui-group" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="ui-group" style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
             <div className="ui-switch-row">
               <span className="ui-row-text">
                 <span className="ui-row-title">Dodaj brakujące do słowników</span>

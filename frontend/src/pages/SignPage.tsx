@@ -212,7 +212,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
   };
 
   return (
-    <Stack gap={6}>
+    <Stack gap={8}>
       <Box
         style={{
           position: "relative",

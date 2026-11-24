@@ -77,7 +77,7 @@ export function TranslationsPage() {
   if (langs.error) return <Alert color="red">{errorText(langs.error)}</Alert>;
 
   return (
-    <Stack gap={20} maw={820}>
+    <Stack gap={24} maw={820}>
       {mobile ? (
         <PageHead
           title="Tłumaczenia"

@@ -446,7 +446,7 @@ export function TemplateEditDesktop({
             </section>
             <section className="ui-dsec">
               <SectionHead title="Ściąga znaczników" />
-              <Text size="sm" c="dimmed" mt={-8}>
+              <Text size="sm" c="dimmed">
                 Wpisz znacznik w Wordzie – kliknij, aby skopiować. Pole wyboru: {"{{ '☒' if wariant == 'rodzinny' else '☐' }}"}. Wyłącz w Wordzie
                 autokorektę cudzysłowów.
               </Text>
@@ -545,7 +545,7 @@ export function TemplateEditSkeleton() {
         <CanvasSkel />
         <Paper withBorder radius="md" className="ui-tpe-panel">
           <Skeleton height={20} width="55%" />
-          <Skeleton height={12} width="35%" mt={6} mb="md" />
+          <Skeleton height={12} width="35%" mt={8} mb="md" />
           <FieldSkel w={45} />
           <FieldSkel w={25} />
           <FieldSkel w={20} />

@@ -1300,7 +1300,7 @@ export function Segments({ value, onChange, items, swipe }: { value: string; onC
 /* ——— nagłówek grupy w liście (np. „Po terminie · 3”) ——— */
 export function GroupLabel({ children, warn }: { children: ReactNode; warn?: boolean }) {
   return (
-    <h2 className="ui-section-title" data-warn={warn || undefined} style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 0 0" }}>
+    <h2 className="ui-section-title" data-warn={warn || undefined} style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 0" }}>
       {warn && <IconAlertTriangle size={14} stroke={2.6} aria-hidden />}
       {children}
     </h2>

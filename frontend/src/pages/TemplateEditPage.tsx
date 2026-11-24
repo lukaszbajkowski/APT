@@ -357,7 +357,7 @@ export function TemplateEditPage() {
                     </UnstyledButton>
                   ))}
                 </div>
-                <Text size="sm" c="dimmed" mt={6}>Podgląd online (PDF) jest dostępny zawsze.</Text>
+                <Text size="sm" c="dimmed" mt={8}>Podgląd online (PDF) jest dostępny zawsze.</Text>
               </div>
             </div>
             <Section title="Dostęp i podpis">

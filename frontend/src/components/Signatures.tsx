@@ -213,7 +213,7 @@ function RoleRequest({ doc, employee, r, st, onDone, force = false }: { doc: Gen
       <Stack gap="xs">
         <Group align="flex-start" gap="md" wrap="nowrap">
           <Box w={130} h={130} style={{ flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: result.qr_svg }} />
-          <Stack gap={6} style={{ minWidth: 0 }}>
+          <Stack gap={8} style={{ minWidth: 0 }}>
             <Text size="sm">
               {result.sent ? "Link wysłany. " : ""}Osoba może też zeskanować kod QR telefonem albo podpisać na tym urządzeniu.
             </Text>

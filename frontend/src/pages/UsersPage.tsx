@@ -214,7 +214,7 @@ export function UsersPage() {
 
       {!mobile && (
         // jak w Pracownikach: wyszukiwarka i przełącznik w jednym wierszu
-        <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
+        <Group align="center" gap={12} wrap="nowrap" className="ui-emp-search-row">
           <TextInput
             aria-label="Szukaj użytkownika"
             placeholder="Imię, nazwisko lub login"

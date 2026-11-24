@@ -58,7 +58,7 @@ function Section({
   return (
     <section className="ui-dsec">
       <SectionHead title={title} extra={<Text className={items.length && warn ? "ui-warn" : undefined} c={items.length && warn ? undefined : "dimmed"}>{items.length}</Text>} />
-      <Text size="sm" c="dimmed" className="ui-page-desc" mt={-8}>
+      <Text size="sm" c="dimmed" className="ui-page-desc">
         {description}
       </Text>
       {items.length === 0 ? (

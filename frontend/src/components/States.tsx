@@ -24,7 +24,7 @@ export function EmptyState({
 }) {
   if (compact && !action && !secondary)
     return (
-      <Stack gap={2} py="xs" role="status">
+      <Stack gap={4} py="xs" role="status">
         <Text size="sm" fw={600}>
           {title}
         </Text>
@@ -127,7 +127,7 @@ export function NetworkBanner() {
   const slow = useSyncExternalStore(slowStore.subscribe, slowStore.get);
   if (!online) {
     return (
-      <Alert color="yellow" variant="light" icon={<IconWifiOff size={18} />} py={6} mb="xs" role="status" aria-live="polite">
+      <Alert color="yellow" variant="light" icon={<IconWifiOff size={18} />} py={8} mb="xs" role="status" aria-live="polite">
         Jesteś offline. Pokazujemy dane z ostatniej wizyty. Zmiany i wysyłka zadziałają po odzyskaniu połączenia.
       </Alert>
     );
@@ -187,7 +187,7 @@ export function DetailSkeleton() {
       <header className="ui-detail-head">
         <Skeleton height={72} width={72} radius="md" />
         <Box className="ui-detail-headtext">
-          <Skeleton height={24} width="40%" mb={10} />
+          <Skeleton height={24} width="40%" mb={12} />
           <Skeleton height={10} width="60%" mb={8} />
           <Skeleton height={10} width="30%" />
         </Box>

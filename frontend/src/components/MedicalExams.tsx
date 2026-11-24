@@ -88,7 +88,7 @@ function AddExam({ employee, opened, onClose, editing }: { employee: Employee; o
             <DateField label="Data badania" required max={today} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
             <DateField label="Ważne do"  min={date} value={validUntil} onChange={(e) => setValidUntil(e.currentTarget.value)} />
           </SimpleGrid>
-          <Group gap={6}>
+          <Group gap={8}>
             <Text size="xs" c="dimmed">
               Szybko:
             </Text>

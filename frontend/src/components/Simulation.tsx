@@ -65,7 +65,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
         />
         {(pickAgency || me.sim_role === "agency") && (
           <Select
-            mt={6}
+            mt={8}
             size="xs"
             aria-label="Agencja do podglądu"
             placeholder="Wybierz APT agencji"
@@ -81,7 +81,7 @@ export function SimulationMenu({ onDone }: { onDone?: () => void }) {
         )}
         {isManager && (
           <Select
-            mt={6}
+            mt={8}
             size="xs"
             aria-label="Wydział kierownika do podglądu"
             placeholder="Wydział kierownika: brak"
@@ -110,7 +110,7 @@ export function SimulationBanner() {
   const agencyName = agencies.data?.find((a) => a.id === me?.sim_agency_id)?.name;
   if (me?.real_role !== "admin" || !me.sim_role) return null;
   return (
-    <Alert color="orange" variant="filled" radius={0} py={6} mb="md" style={{ position: "sticky", top: 0, zIndex: 50 }}>
+    <Alert color="orange" variant="filled" radius={0} py={8} mb="md" style={{ position: "sticky", top: 0, zIndex: 50 }}>
       <Group justify="space-between" wrap="nowrap" gap="sm">
         <Text size="sm" fw={500}>
           Symulujesz uprawnienia: {ROLE_LABELS[me.sim_role as Role]}

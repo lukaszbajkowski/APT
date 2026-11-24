@@ -183,7 +183,7 @@ export function TrainingsReport() {
           />
           <DateField  label="Do" value={f.date_to} onChange={(e) => set("date_to", e.currentTarget.value)} />
           <div>
-            <Text size="sm" fw={500} mb={2}>
+            <Text size="sm" fw={500} mb={4}>
               Pracownicy
             </Text>
             <SegmentedControl

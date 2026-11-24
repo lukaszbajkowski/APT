@@ -52,7 +52,7 @@ function DayTimeFields({
   const time = timeOf(value);
   const join = (d: string, t: string) => (d || t ? `${d}T${t}` : "");
   return (
-    <Stack gap={6} role="group" aria-label={label}>
+    <Stack gap={8} role="group" aria-label={label}>
       <Text size="sm" fw={500}>
         {label}
       </Text>

@@ -353,7 +353,7 @@ export function BroadcastsPage() {
             <Text size="sm" c="dimmed">Pracownik dostaje powiadomienie i e-mail w swoim języku, czyta komunikat w aplikacji i potwierdza przeczytanie.</Text>
             {!hasTarget && <span className="ui-hint-warn">Wybierz agencję, wydział albo „Wszyscy”, żeby przejść dalej.</span>}
             {hasTarget && preview.data?.total === 0 && <span className="ui-hint-warn">Brak aktywnych pracowników w tej grupie – wybierz inną.</span>}
-            <Group grow align="flex-start" gap={10}>
+            <Group grow align="flex-start" gap={12}>
               <Select size="md" label="Agencja" placeholder="Wszystkie" clearable data={opts(agencies.data)} value={agency} onChange={setAgency} />
               <Select size="md" label="Wydział" placeholder="Wszystkie" clearable data={opts(departments.data)} value={dept} onChange={setDept} />
             </Group>
@@ -870,7 +870,7 @@ function MyBroadcastsMobile() {
         <div className="ui-chat-body ui-form-body">
           <Group gap="md" wrap="nowrap" align="flex-start">
             <span className="ui-row-icon" aria-hidden>{kindIcon}</span>
-            <Stack gap={6} style={{ minWidth: 0 }}>
+            <Stack gap={8} style={{ minWidth: 0 }}>
               <Title order={1} size="h3" lh={1.25} style={{ overflowWrap: "anywhere" }}>
                 {m.subject}
               </Title>
@@ -1142,7 +1142,7 @@ function MyBroadcastsDesktop() {
           <Text size="xs" c="dimmed">
             {t("Kadry")} · {formatDateTime(m.sent_at)}
           </Text>
-          <Box mt={6}>
+          <Box mt={8}>
             <KindMark kind={m.kind} done={!!m.read_at} />
           </Box>
         </Box>

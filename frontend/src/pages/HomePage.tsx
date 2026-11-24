@@ -167,7 +167,7 @@ function UpcomingCard() {
         <EmptyState compact title="Nic nie jest zaplanowane"
           text="Brak egzaminów, końców ważności i nowych osób w najbliższym czasie." />
       ) : (
-        <Stack gap={6}>
+        <Stack gap={8}>
           {shown.map((e, i) => (
             <Group key={i} gap="sm" wrap="nowrap">
               <Text size="sm" fw={600} w={92} style={{ flexShrink: 0 }}>

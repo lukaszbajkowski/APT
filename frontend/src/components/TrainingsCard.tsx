@@ -344,7 +344,7 @@ export function TrainingModal({
           </SimpleGrid>
         )}
         {type && (
-          <Text size="xs" c="dimmed" mt={-8}>
+          <Text size="xs" c="dimmed">
             {type.validity_months
               ? `„Ważne do” wylicza się samo: ${type.validity_months} mies. od ${position ? "zakończenia" : "ukończenia"} (można zmienić).`
               : "Puste „Ważne do” = bezterminowe."}

@@ -58,7 +58,7 @@ export function NewPasswordFields({
       {pw.length > 0 && <Progress value={(done / 3) * 100} color={color} size="xs" />}
       <Box aria-live="polite">
         {rules.map((r) => (
-          <Group key={r.label} gap={6} wrap="nowrap" align="flex-start">
+          <Group key={r.label} gap={8} wrap="nowrap" align="flex-start">
             {r.ok ? <IconCheck size={14} color="var(--mantine-color-teal-text)" /> : <IconCircle size={14} color="var(--mantine-color-dimmed)" />}
             <Text size="xs" c={r.ok ? "teal" : touched && pw.length > 0 ? "red" : "dimmed"}>
               {t(r.label)}

@@ -314,7 +314,7 @@ function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: n
         </Text>
       )}
       <ScrollArea style={{ flex: 1 }} type="auto">
-        <Stack gap={6} py="sm" px="lg">
+        <Stack gap={8} py="sm" px="lg">
           {items.map((it) => {
             if (it.kind === "day")
               return (
@@ -343,7 +343,7 @@ function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: n
               <div key={m.id} className="ui-bub" data-mine={mine || undefined}>
                 <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</div>
                 {trx && trx !== "loading" && (
-                  <Box mt={6} pt={6} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
+                  <Box mt={8} pt={8} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
                     <Text size="xs" opacity={0.75}>
                       {T("Tłumaczenie:")} {langName(trx.source)} → {langName(trx.target)}
                     </Text>
@@ -351,7 +351,7 @@ function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: n
                   </Box>
                 )}
                 <div className="ui-bub-meta">
-                  <span style={{ display: "flex", gap: 10 }}>
+                  <span style={{ display: "flex", gap: 12 }}>
                     {cfg.data?.enabled && !cfg.data.exhausted && (
                       trx === "loading" ? (
                         <span>{T("Tłumaczę…")}</span>

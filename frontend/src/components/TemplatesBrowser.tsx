@@ -82,7 +82,7 @@ export function TemplatesBrowser({ templates, loading, onAdd }: { templates: Doc
             <div key={i} className="ui-tpl-item" aria-hidden>
               <Skeleton width={24} height={28} radius={4} />
               <span style={{ flex: 1 }}>
-                <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={6} />
+                <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={8} />
                 <Skeleton height={9} width="40%" />
               </span>
             </div>

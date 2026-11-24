@@ -249,11 +249,11 @@ function SetupFlow({ forced }: { forced: boolean }) {
                 aria-label="Kod QR do aplikacji uwierzytelniającej"
                 dangerouslySetInnerHTML={{ __html: setup.qr_svg }}
               />
-              <Stack gap={6} style={{ flex: 1, minWidth: 220 }}>
+              <Stack gap={8} style={{ flex: 1, minWidth: 220 }}>
                 <Text size="sm" c="dimmed">
                   Nie możesz zeskanować? Dodaj konto ręcznie i wpisz klucz:
                 </Text>
-                <Group gap={6}>
+                <Group gap={8}>
                   <Code fz="sm">
                     {setup.secret}
                   </Code>
@@ -414,7 +414,7 @@ export function MfaPage() {
                 Twoje konto ma dostęp do danych osobowych pracowników (PESEL, zdjęcia, dokumenty), dlatego sam login i hasło nie wystarczą.
                 To jednorazowa konfiguracja, około 3 minut – potem wchodzisz już normalnie.
               </Text>
-              <Text size="sm" mt={6} fw={600}>
+              <Text size="sm" mt={8} fw={600}>
                 Co zrobisz:
               </Text>
               <Text size="sm">

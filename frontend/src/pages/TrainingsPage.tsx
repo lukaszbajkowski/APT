@@ -771,7 +771,7 @@ function TypeModal({ editing, opened, onClose }: { editing: TrainingType | null;
                   Szablon używa tylko danych z kartoteki i szkolenia.
                 </Text>
               ) : (
-                <Group gap={6}>
+                <Group gap={8}>
                   {selectedTemplate.fields.map((x) => (
                     <StatusBadge key={x.key} tone={badgeTone(x.required ? "blue" : "gray")}>
                       {x.label}
@@ -817,7 +817,7 @@ function Types() {
           <Paper key={t.id} withBorder p="sm" radius="md">
             <Group justify="space-between" wrap="nowrap">
               <div style={{ minWidth: 0 }}>
-                <Group gap={6}>
+                <Group gap={8}>
                   <Text fw={600}>{t.name}</Text>
                   {!t.is_active && (
                     <StatusBadge tone="neutral">

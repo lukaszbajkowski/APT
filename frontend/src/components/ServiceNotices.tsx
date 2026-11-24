@@ -276,7 +276,7 @@ function OutageScreen({
           {t("Sprawdź teraz")}
         </Button>
         <Text size="xs" c="dimmed" ta="center" mt={4} className="ui-outage-auto">
-          {checking ? <Loader size={10} mr={6} /> : null}
+          {checking ? <Loader size={10} mr={8} /> : null}
           {t(down ? "Sprawdzamy co 15 sekund" : "Sprawdzamy co 30 sekund")}
         </Text>
       </div>

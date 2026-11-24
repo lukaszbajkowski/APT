@@ -342,7 +342,7 @@ export function EmployeesPage() {
                     </>
                   }
                   trailing={
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontFamily: "var(--mantine-font-family-monospace)", fontSize: 12, color: "var(--mantine-color-dimmed)" }}>{e.number_display}</span>
                       {!selMode && <IconChevronRight size={16} className="ui-row-chevron" aria-hidden />}
                     </span>
@@ -627,7 +627,7 @@ export function EmployeesPage() {
       />
 
       {/* wiersz 1: wyszukiwarka i status; wiersz 2: wszystkie filtry na całą szerokość */}
-      <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
+      <Group align="center" gap={12} wrap="nowrap" className="ui-emp-search-row">
         <TextInput
           aria-label="Szukaj pracownika"
           placeholder="Nazwisko, imię lub nr karty"
@@ -688,7 +688,7 @@ export function EmployeesPage() {
               wrap="nowrap"
               gap="sm"
               px="sm"
-              py={10}
+              py={12}
               className={selected.has(e.id) ? "row-selected" : undefined}
               style={{ borderTop: i ? "1px solid var(--apt-line)" : undefined }}
             >
@@ -705,7 +705,7 @@ export function EmployeesPage() {
                     {[e.department?.name, e.position?.name, e.agency?.name].filter(Boolean).join(" · ") || "—"}
                   </Text>
                 </div>
-                <Stack gap={2} align="flex-end">
+                <Stack gap={4} align="flex-end">
                   <Text size="xs" c="dimmed" ff="monospace">
                     {e.number_display}
                   </Text>
@@ -777,7 +777,7 @@ export function EmployeesPage() {
                     </Table.Td>
                   )}
                   <Table.Td>
-                    <Group gap={10} wrap="nowrap">
+                    <Group gap={12} wrap="nowrap">
                       <span style={{ width: 28, flex: "none" }}>
                         <EmployeePhoto employee={e} width={28} />
                       </span>

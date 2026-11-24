@@ -446,7 +446,7 @@ export function PhotoEditor({
             </Group>
             <Stack gap={4}>
               {enh.notes.map((n, i) => (
-                <Group key={i} gap={6} wrap="nowrap" align="flex-start">
+                <Group key={i} gap={8} wrap="nowrap" align="flex-start">
                   {n.level === "ok" ? <IconCheck size={16} color="var(--mantine-color-green-text)" /> : <IconAlertTriangle size={16} color="var(--mantine-color-orange-text)" />}
                   <Text size="xs">{T(n.text)}</Text>
                 </Group>

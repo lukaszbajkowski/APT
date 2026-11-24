@@ -120,7 +120,7 @@ export function DataLinkCard({ employeeId, contactEmail }: { employeeId: number;
             {result && (
               <Alert color="green" icon={<IconCheck size={18} />}>
                 {result.sent.length ? `Wysłano: ${result.sent.join(", ")}.` : "Link utworzony – nic nie wysłano."}
-                <Text size="xs" mt={6} style={{ wordBreak: "break-all" }}>
+                <Text size="xs" mt={8} style={{ wordBreak: "break-all" }}>
                   {result.link}
                 </Text>
                 <CopyButton value={result.link}>
@@ -182,7 +182,7 @@ export function DataLinkCard({ employeeId, contactEmail }: { employeeId: number;
             <Alert color="green" icon={<IconCheck size={18} />}>
               {result.sent.length ? `Wysłano: ${result.sent.join(", ")}. ` : "Link utworzony – nic nie wysłano. "}
               {s.active ? "Poprzedni link przestał działać." : ""}
-              <Text size="xs" mt={6} style={{ wordBreak: "break-all" }}>
+              <Text size="xs" mt={8} style={{ wordBreak: "break-all" }}>
                 {result.link}
               </Text>
               <CopyButton value={result.link}>

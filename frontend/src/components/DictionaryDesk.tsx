@@ -451,7 +451,7 @@ export function DictionaryDesk({ queries }: { queries: Record<DictKind, UseQuery
         }
       />
       {/* jak w Pracownikach: wyszukiwarka i przełącznik słownika (z liczbami) w jednym wierszu */}
-      <Group align="center" gap={10} wrap="nowrap" className="ui-emp-search-row">
+      <Group align="center" gap={12} wrap="nowrap" className="ui-emp-search-row">
         <TextInput aria-label="Szukaj w słowniku" placeholder={`Szukaj: ${cfg.title.toLowerCase()}`} leftSection={<IconSearch size={16} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} style={{ flex: 1, minWidth: 0 }} />
         <SegmentedControl
           value={kind}

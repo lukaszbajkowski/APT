@@ -82,7 +82,7 @@ function PlannedList({ employee }: { employee: Employee }) {
   });
   if (!q.data?.length) return null;
   return (
-    <Stack gap={6} mb="md">
+    <Stack gap={8} mb="md">
       {q.data.map((p) => (
         <Paper key={p.id} withBorder p="xs" radius="md" bg="var(--mantine-color-blue-light)">
           <Group justify="space-between" wrap="nowrap">
@@ -462,7 +462,7 @@ export function ChecklistsCard({ employee }: { employee: Employee }) {
                 <Progress value={(doneN / items.length) * 100} size="md" aria-label={`Postęp: ${doneN} z ${items.length}`} />
               )}
               {overdue > 0 && (
-                <Group gap={6} c="orange">
+                <Group gap={8} c="orange">
                   <IconAlertTriangle size={16} aria-hidden />
                   <Text size="sm" fw={600} c="orange">
                     {overdue} po terminie
@@ -1898,8 +1898,8 @@ function ChecklistDeskSkeleton({ title }: { title: string }) {
           <div className="ui-cl-list">
             {[1, 2, 3].map((n, g) => (
               <div key={g} className="ui-cl-skelgroup">
-                <Skeleton height={14} width={150} mb={6} />
-                <Skeleton height={10} width={70} mb={14} />
+                <Skeleton height={14} width={150} mb={8} />
+                <Skeleton height={10} width={70} mb={16} />
                 {Array.from({ length: n }).map((_, i) => (
                   <Skeleton key={i} height={52} radius="sm" mb={8} />
                 ))}
@@ -1945,7 +1945,7 @@ function ChecklistPhoneSkeleton() {
           ...Array.from({ length: n }).map((_, i) => (
             <div key={`${g}-${i}`} className="ui-cl-row" data-glast={i === n - 1 || undefined} style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", gap: 12 }}>
               <span style={{ flex: 1 }}>
-                <Skeleton height={14} width="70%" mb={6} />
+                <Skeleton height={14} width="70%" mb={8} />
                 <Skeleton height={10} width="40%" />
               </span>
               <Skeleton height={22} width={60} radius="sm" />

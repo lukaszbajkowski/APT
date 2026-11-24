@@ -236,7 +236,7 @@ function Decide({ r, onClose }: { r: EmployeeRequest; onClose: () => void }) {
             )}
             {duplicate && (
               <Alert color="orange">
-                <Stack gap={6}>
+                <Stack gap={8}>
                   <Text size="sm">
                     W kartotece jest już podobna osoba:{" "}
                     <Anchor component={Link} to={`/pracownicy/${duplicate.id}`} target="_blank" size="sm">
@@ -396,7 +396,7 @@ export function EmployeeRequestsPage() {
                         {STATUS[r.status].label}
                       </StatusBadge>
                       {r.status === "rejected" && r.reject_reason && (
-                        <Text size="xs" c="dimmed" mt={2}>
+                        <Text size="xs" c="dimmed" mt={4}>
                           {r.reject_reason}
                         </Text>
                       )}

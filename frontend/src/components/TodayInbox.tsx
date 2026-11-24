@@ -270,7 +270,7 @@ export function CasesSkeleton({ rows = 6 }: { rows?: number }) {
         <div key={i} className="ui-case">
           <Skeleton width={28} height={28} radius={6} />
           <div>
-            <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={6} />
+            <Skeleton height={12} width={`${70 - (i % 3) * 12}%`} mb={8} />
             <Skeleton height={9} width={56} />
           </div>
           <div className="ui-case-what">

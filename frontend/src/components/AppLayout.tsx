@@ -431,7 +431,7 @@ function AppLayoutInner() {
             <AppShell.Section grow component={ScrollArea} type="never" {...navScroll("rail")}>
               <RailList items={items} path={location.pathname} />
             </AppShell.Section>
-            <AppShell.Section pt={6} className="ui-rail-foot">
+            <AppShell.Section pt={8} className="ui-rail-foot">
               <AccountMenu compact rail navPref={navPref} />
               {!tight && (
                 <Tooltip label="Rozwiń menu" position="right" withArrow>
@@ -446,7 +446,7 @@ function AppLayoutInner() {
           <>
         <AppShell.Section>
           <Link to={hasRole("employee") ? "/moje-konto" : "/"} className="brand-link">
-            <Group gap={10} wrap="nowrap" px={6} pt={4} pb="md">
+            <Group gap={12} wrap="nowrap" px={8} pt={4} pb="md">
               <BrandMark />
               <Box style={{ lineHeight: 1.2, minWidth: 0 }}>
                 <Text fw={750} size="sm" className="brand-title">
@@ -593,7 +593,7 @@ function NavList({
 }) {
   const t = useT();
   return (
-    <Stack gap={2}>
+    <Stack gap={4}>
       {items.map((i, idx, arr) => {
         const active = isActivePath(i.to, path);
         const first = !!i.group && i.group !== arr[idx - 1]?.group;
@@ -641,7 +641,7 @@ function NavList({
 function RailList({ items, path }: { items: NavItem[]; path: string }) {
   const t = useT();
   return (
-    <Stack gap={2} align="center">
+    <Stack gap={4} align="center">
       {items.map((i, idx, arr) => {
         const active = isActivePath(i.to, path);
         const first = !!i.group && i.group !== arr[idx - 1]?.group;
@@ -720,7 +720,7 @@ function AccountMenu({
       </Menu.Target>
       <Menu.Dropdown>
         {compact && (
-          <Box px="sm" py={6}>
+          <Box px="sm" py={8}>
             <Text size="sm" fw={600}>
               {me?.user.full_name}
             </Text>

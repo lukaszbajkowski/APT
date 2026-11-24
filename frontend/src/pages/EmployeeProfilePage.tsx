@@ -79,7 +79,7 @@ function ContactLine({ employeeId, kind, value }: { employeeId: number; kind: "p
   });
   if (!value) return null;
   return (
-    <Group gap={6} wrap="nowrap">
+    <Group gap={8} wrap="nowrap">
       <Text span size="sm">
         {value}
       </Text>
@@ -337,7 +337,7 @@ export function EmployeeProfilePage() {
             <Stack gap="sm" aria-busy="true" aria-label="Ładowanie">
               {[0, 1, 2].map((i) => (
                 <div key={i}>
-                  <Skeleton height={10} width={`${60 - i * 10}%`} mb={6} />
+                  <Skeleton height={10} width={`${60 - i * 10}%`} mb={8} />
                   <Skeleton height={8} width="40%" />
                 </div>
               ))}
@@ -426,7 +426,7 @@ export function EmployeeProfilePage() {
               </ActionIcon>
             )}
           </div>
-          <Stack gap={6} style={{ minWidth: 0 }}>
+          <Stack gap={8} style={{ minWidth: 0 }}>
             <Title order={1} size="h3" lh={1.2}>
               {e.last_name} {e.first_name}
             </Title>
@@ -615,7 +615,7 @@ export function EmployeeProfilePage() {
             {e.retention_until && ` · dane przechowywane do ${formatDate(e.retention_until)}`}
           </Text>
           {canPhoto && !e.has_photo && (
-            <Text size="sm" mt={6}>
+            <Text size="sm" mt={8}>
               <Anchor component="button" fw={600} onClick={() => setPhotoOpen(true)}>
                 Dodaj zdjęcie
               </Anchor>{" "}
@@ -623,7 +623,7 @@ export function EmployeeProfilePage() {
             </Text>
           )}
           {canPhoto && e.has_photo && staff && (
-            <Text size="sm" mt={6}>
+            <Text size="sm" mt={8}>
               <Anchor component="button" onClick={() => setPhotoOpen(true)}>Zmień zdjęcie</Anchor>
               <Text span c="dimmed"> · </Text>
               <Anchor component="button" c="red" onClick={() => askDelete({ title: "Usunąć zdjęcie?", message: "Bez zdjęcia nie wydrukujesz karty.", confirmLabel: "Usuń", danger: true }).then((ok) => ok && deletePhoto.mutate())}>

@@ -101,7 +101,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
     const resultBox = result && (
       <Alert color="green" variant="light" title={result.sent ? (mode === "device" ? "Link wysłany e-mailem" : "Zaproszenie wysłane e-mailem") : mode === "device" ? "Link „dodaj urządzenie”" : "Link do zaproszenia"}>
         {!result.sent && (
-          <Stack gap={6}>
+          <Stack gap={8}>
             <Text size="sm" style={{ overflowWrap: "anywhere" }}>
               {result.link}
             </Text>
@@ -210,7 +210,7 @@ export function EmployeeAccountCard({ employeeId, contactEmail }: { employeeId: 
             <span className="ui-acct-dot" aria-hidden />
             {!a?.exists ? "Bez konta" : !a.active ? "Konto wyłączone" : a.has_passkey ? "Konto aktywne" : "Czeka na aktywację"}
           </div>
-          <Text size="sm" c="dimmed" mt={2}>
+          <Text size="sm" c="dimmed" mt={4}>
             {!a?.exists
               ? "Wyślij zaproszenie – pracownik założy konto sam na telefonie (twarz / odcisk palca)."
               : [

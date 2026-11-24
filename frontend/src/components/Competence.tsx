@@ -87,7 +87,7 @@ function PositionRow({ p, types, staff }: { p: PositionReqs; types: TrainingType
     <Paper withBorder p="sm" radius="md">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Group gap={6}>
+          <Group gap={8}>
             <Text fw={600}>{p.position}</Text>
             {p.department && (
               <Text size="sm" c="dimmed">
@@ -116,7 +116,7 @@ function PositionRow({ p, types, staff }: { p: PositionReqs; types: TrainingType
               </Group>
             </Stack>
           ) : p.requirements.length ? (
-            <Group gap={6} mt={6}>
+            <Group gap={8} mt={8}>
               {p.requirements.map((r) => (
                 <Badge key={r.id} variant="light" radius="sm" style={{ textTransform: "none", fontWeight: 500 }}>
                   {r.label}
@@ -222,13 +222,13 @@ export function EmployeeRequirements({ employeeId, plain, onAdd }: { employeeId:
   }
   return (
     <Paper withBorder p="sm" radius="md" mb="sm" bg={problems ? "var(--mantine-color-orange-light)" : undefined}>
-      <Group gap={6} mb={6}>
+      <Group gap={8} mb={8}>
         {problems ? <IconAlertTriangle size={16} color="var(--mantine-color-orange-text)" /> : <IconCheck size={16} color="var(--mantine-color-teal-text)" />}
         <Text size="sm" fw={600}>
           Wymagane na stanowisku{problems ? ` – braki: ${problems}` : " – komplet"}
         </Text>
       </Group>
-      <Group gap={6}>
+      <Group gap={8}>
         {q.data.map((r) => (
           <StatusBadge key={r.label} tone={badgeTone(REQ_STATE[r.state].color)}>
             {r.label}: {REQ_STATE[r.state].label}
@@ -455,7 +455,7 @@ export function CompetenceMatrix() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    <Group gap={6} wrap="nowrap">
+                    <Group gap={8} wrap="nowrap">
                       <Anchor component={Link} to={`/pracownicy/${r.employee_id}`} size="sm">
                         {r.name}
                       </Anchor>

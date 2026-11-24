@@ -196,7 +196,7 @@ export function MyDataPage() {
             <IconCamera size={16} />
           </ActionIcon>
         </div>
-        <Stack gap={6} style={{ minWidth: 0 }}>
+        <Stack gap={8} style={{ minWidth: 0 }}>
           <Title order={1} size="h3" lh={1.2}>
             {d.first_name} {d.last_name}
           </Title>

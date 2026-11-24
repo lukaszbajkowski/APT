@@ -64,7 +64,7 @@ function Rich({ text }: { text: string }) {
 
 function Row({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <Group gap={10} wrap="nowrap" align="flex-start">
+    <Group gap={12} wrap="nowrap" align="flex-start">
       <span className="ui-help-icon" aria-hidden>
         {icon}
       </span>
@@ -97,7 +97,7 @@ export function HelpPage() {
             variant="subtle"
             color="gray"
             leftSection={<IconArrowLeft size={18} />}
-            px={6}
+            px={8}
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(me ? "/" : "/login"))}
           >
             {T("Wróć")}
@@ -118,7 +118,7 @@ export function HelpPage() {
                 {T("Kontakt w sprawie aplikacji")}
               </Title>
               {hasContact ? (
-                <Stack gap={10}>
+                <Stack gap={12}>
                   {d.contact_name && <Row icon={<IconUser size={18} />}>{d.contact_name}</Row>}
                   {d.contact_phone && (
                     <Row icon={<IconPhone size={18} />}>

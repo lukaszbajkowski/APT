@@ -133,7 +133,7 @@ export function DocumentViewer({
         {protect && hidden && (
           <Portal>
           <Center style={{ position: "fixed", inset: 0, zIndex: 1000, cursor: "pointer" }} onClick={() => setHidden(false)}>
-            <Stack align="center" gap={6} p="lg" style={{ borderRadius: 14, background: "var(--apt-surface)", color: "var(--mantine-color-text)", border: "1px solid var(--apt-line)", boxShadow: "0 8px 28px rgba(0,0,0,.35)", margin: 16 }}>
+            <Stack align="center" gap={8} p="lg" style={{ borderRadius: 14, background: "var(--apt-surface)", color: "var(--mantine-color-text)", border: "1px solid var(--apt-line)", boxShadow: "0 8px 28px rgba(0,0,0,.35)", margin: 16 }}>
               <IconEyeOff size={36} color="var(--mantine-color-dimmed)" />
               <Text fw={700} size="lg">{T("Podgląd ukryty")}</Text>
               <Text size="sm" c="dimmed" ta="center" maw={320}>
@@ -144,8 +144,8 @@ export function DocumentViewer({
           </Portal>
         )}
         {variant !== "attachment" && (
-          <Group justify="center" gap={6} pb="md" px="md" wrap="nowrap" align="flex-start">
-            <IconShieldLock size={16} color="var(--mantine-color-dimmed)" style={{ flex: "none", marginTop: 2 }} />
+          <Group justify="center" gap={8} pb="md" px="md" wrap="nowrap" align="flex-start">
+            <IconShieldLock size={16} color="var(--mantine-color-dimmed)" style={{ flex: "none", marginTop: 4 }} />
             <Text size="sm" c="dimmed">
               {variant === "signed" ? T("Twój podpisany dokument") : T("Tylko podgląd · na stronach widnieje Twoje imię i nazwisko oraz czas otwarcia · otwarcie zapisano w dzienniku")}
             </Text>

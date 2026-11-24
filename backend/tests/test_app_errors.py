@@ -35,8 +35,8 @@ def test_client_error_grouped_and_admin_only(client, make_user):
     e = rows[0]
     assert e["source"] == "browser" and e["count"] == 2 and e["role"] == "hr"
     assert "85010112345" not in e["message"]
-    # „Rozwiązany” usuwa wpis
-    assert client.delete(f"/api/system/errors/{e['id']}").status_code == 204
+    # „Rozwiązany” przenosi wpis do archiwum
+    assert client.post(f"/api/system/errors/{e['id']}/resolve").status_code == 200
     assert client.get("/api/system/errors").json() == []
 
 
@@ -69,3 +69,23 @@ def test_browser_rate_limit():
     errors._rate.clear()
     assert all(errors.browser_allowed(999) for _ in range(30))
     assert not errors.browser_allowed(999)
+
+
+def test_resolved_errors_go_to_archive_and_come_back(client, make_user):
+    """„Rozwiązany” przenosi wpis do archiwum; ten sam błąd wraca do bieżących (reopened), „Przywróć” cofa."""
+    make_user("admin", Role.admin)
+    login(client, "admin")
+    errors.record("api", "RuntimeError", "coś poszło nie tak", "/api/x", 500)
+    rows = client.get("/api/system/errors").json()
+    eid = rows[0]["id"]
+    r = client.post(f"/api/system/errors/{eid}/resolve")
+    assert r.status_code == 200 and r.json()["resolved_by"]
+    assert all(x["id"] != eid for x in client.get("/api/system/errors").json())
+    arch = client.get("/api/system/errors", params={"resolved": True}).json()
+    assert [x["id"] for x in arch] == [eid]
+    assert client.get("/api/system/errors/counts").json() == {"open": 0, "resolved": 1}
+    errors.record("api", "RuntimeError", "coś poszło nie tak", "/api/x", 500)
+    back = client.get("/api/system/errors").json()
+    assert back[0]["id"] == eid and back[0]["reopened"] is True and back[0]["count"] == 2
+    client.post(f"/api/system/errors/{eid}/resolve")
+    assert client.post(f"/api/system/errors/{eid}/reopen").json()["resolved_at"] is None

@@ -54,6 +54,11 @@ def record(
             if row:
                 row.count += 1
                 row.last_at = now
+                if row.resolved_at is not None:
+                    # wrócił po rozwiązaniu – z archiwum do bieżących
+                    row.resolved_at = None
+                    row.resolved_by = None
+                    row.reopened = True
                 if role:
                     row.role = role
             else:

@@ -1012,3 +1012,7 @@ class AppError(Base):
     last_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # „Rozwiązany” – wpis zostaje w archiwum; gdy błąd wróci, wraca do bieżących (reopened)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[str | None] = mapped_column(String(120))
+    reopened: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

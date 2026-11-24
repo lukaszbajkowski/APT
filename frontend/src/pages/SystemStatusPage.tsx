@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Paper, Progress, Stack, Text } from "@mantine/core";
+import { Alert, Button, Paper, Progress, SegmentedControl, Stack, Text, Title } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, errorText, formatDateTime } from "../api";
-import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading } from "../components/Mobile";
+import { ActionSheet, CompactEmpty, ListRow, PageHead, Section, SectionHead, StatusBadge, PageTitle, PageLoading, Segments, WrapRow } from "../components/Mobile";
 import { useState, type ReactNode } from "react";
-import { IconAlertTriangle, IconCheck, IconCircleCheck } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowBackUp, IconCheck, IconCircleCheck } from "@tabler/icons-react";
 import { useIsPhone } from "../lib/device";
 
 function runState(run: Run | null | undefined, staleHours: number) {
@@ -251,50 +251,86 @@ interface AppError {
   count: number;
   first_at: string;
   last_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  reopened: boolean;
 }
 
 /** Błędy aplikacji z ostatnich 7 dni (serwer 5xx i przeglądarka) – zgrupowane, bez danych osobowych.
- *  „Rozwiązany” usuwa wpis; gdy błąd wróci, pojawi się od nowa. */
+ *  „Rozwiązany” przenosi wpis do archiwum (Rozwiązane); gdy błąd wróci, wraca do bieżących. */
 function AppErrors({ mobile }: { mobile?: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["system-errors"], queryFn: () => api<AppError[]>("/system/errors?days=7"), refetchInterval: 60_000 });
+  const [view, setView] = useState<"open" | "resolved">("open");
+  const done = view === "resolved";
+  const q = useQuery({
+    queryKey: ["system-errors", view],
+    queryFn: () => api<AppError[]>(done ? "/system/errors?resolved=true" : "/system/errors?days=7"),
+    refetchInterval: 60_000,
+  });
+  const counts = useQuery({ queryKey: ["system-errors", "counts"], queryFn: () => api<{ open: number; resolved: number }>("/system/errors/counts?days=7"), refetchInterval: 60_000 });
   const [open, setOpen] = useState<AppError | null>(null);
-  const resolve = useMutation({
-    mutationFn: (id: number) => api(`/system/errors/${id}`, { method: "DELETE" }),
+  const act = useMutation({
+    mutationFn: ({ id, to }: { id: number; to: "resolve" | "reopen" }) => api(`/system/errors/${id}/${to}`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["system-errors"] }),
   });
-  if (q.isLoading) return null;
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   const rows = q.data ?? [];
   const where = (e: AppError) => (e.source === "api" ? "Serwer" : "Przeglądarka");
   const what = (e: AppError) => [e.kind, e.message].filter(Boolean).join(": ");
-  const meta = (e: AppError) => `${e.path || "—"} · ${e.count === 1 ? "raz" : `${e.count} razy`} · ostatnio ${when(e.last_at)}${e.role ? ` · rola ${e.role}` : ""}`;
-  const title = rows.length ? `Błędy aplikacji (7 dni) · ${rows.length}` : "Błędy aplikacji (7 dni)";
+  const meta = (e: AppError) =>
+    [
+      e.path || "—",
+      e.count === 1 ? "raz" : `${e.count} razy`,
+      e.resolved_at ? `rozwiązany ${when(e.resolved_at)}${e.resolved_by ? ` przez ${e.resolved_by}` : ""}` : `ostatnio ${when(e.last_at)}`,
+      e.reopened && !e.resolved_at ? "wrócił po rozwiązaniu" : null,
+      e.role ? `rola ${e.role}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  const tone = (e: AppError) => (e.resolved_at ? "neutral" : e.source === "api" ? "error" : "warn");
+  const c = counts.data;
+  const items = [
+    { value: "open", label: `Bieżące${c ? ` ${c.open}` : ""}` },
+    { value: "resolved", label: `Rozwiązane${c ? ` ${c.resolved}` : ""}` },
+  ];
+  const empty = done ? "Nic nie jest oznaczone jako rozwiązane (archiwum trzyma wpisy 30 dni)." : "W ostatnich 7 dniach serwer i przeglądarki nie zgłosiły nowych błędów.";
+  const title = "Błędy aplikacji (7 dni)";
   if (mobile)
     return (
       <Section title={title}>
-        {rows.length === 0 ? (
-          <CompactEmpty title="Brak błędów" text="W ostatnich 7 dniach serwer i przeglądarki nie zgłosiły błędów." />
+        <Segments value={view} onChange={(v) => setView(v as typeof view)} items={items} />
+        {q.isLoading ? null : rows.length === 0 ? (
+          <CompactEmpty title={done ? "Archiwum jest puste" : "Brak błędów"} text={empty} />
         ) : (
-          rows.map((e) => (
-            <ListRow key={e.id} title={what(e)} description={meta(e)} trailing={<StatusBadge tone={e.source === "api" ? "error" : "warn"}>{where(e)}</StatusBadge>} onClick={() => setOpen(e)} />
-          ))
+          rows.map((e) => <ListRow key={e.id} title={what(e)} description={meta(e)} trailing={<StatusBadge tone={tone(e)}>{where(e)}</StatusBadge>} onClick={() => setOpen(e)} />)
         )}
         <ActionSheet
           opened={!!open}
           onClose={() => setOpen(null)}
           title={open ? what(open) : ""}
           subtitle={open ? `${where(open)} · ${meta(open)} · pierwszy raz ${when(open.first_at)}` : undefined}
-          actions={open ? [{ label: "Oznacz jako rozwiązany", description: "Wpis zniknie; gdy błąd wróci, pojawi się od nowa.", icon: <IconCheck size={20} />, onClick: () => resolve.mutate(open.id) }] : []}
+          actions={
+            open
+              ? open.resolved_at
+                ? [{ label: "Przywróć do bieżących", description: "Cofnij oznaczenie jako rozwiązany.", icon: <IconArrowBackUp size={20} />, onClick: () => act.mutate({ id: open.id, to: "reopen" }) }]
+                : [{ label: "Oznacz jako rozwiązany", description: "Wpis trafi do archiwum; gdy błąd wróci, pojawi się znów w bieżących.", icon: <IconCheck size={20} />, onClick: () => act.mutate({ id: open.id, to: "resolve" }) }]
+              : []
+          }
         />
       </Section>
     );
   return (
     <section className="ui-dsec">
-      <SectionHead title={title} />
-      {rows.length === 0 ? (
+      {/* przełącznik w linii nagłówka sekcji – jak na kartce Checklist (WrapRow) */}
+      <WrapRow className="ui-paper-headrow">
+        <Title order={2} className="ui-dsec-title">
+          {title}
+        </Title>
+        <SegmentedControl value={view} onChange={(v) => setView(v as typeof view)} aria-label="Błędy aplikacji" data={items} />
+      </WrapRow>
+      {q.isLoading ? null : rows.length === 0 ? (
         <Text size="sm" c="dimmed">
-          W ostatnich 7 dniach serwer i przeglądarki nie zgłosiły błędów.
+          {empty}
         </Text>
       ) : (
         <Paper withBorder radius="md" className="ui-cases">
@@ -304,9 +340,9 @@ function AppErrors({ mobile }: { mobile?: boolean }) {
                 <span className="ui-err-msg">{what(e)}</span>
                 <span className="ui-cnt-dim">{meta(e)}</span>
               </span>
-              <StatusBadge tone={e.source === "api" ? "error" : "warn"}>{where(e)}</StatusBadge>
-              <Button size="xs" variant="subtle" loading={resolve.isPending && resolve.variables === e.id} onClick={() => resolve.mutate(e.id)}>
-                Rozwiązany
+              <StatusBadge tone={tone(e)}>{where(e)}</StatusBadge>
+              <Button size="xs" variant="subtle" loading={act.isPending && act.variables?.id === e.id} onClick={() => act.mutate({ id: e.id, to: e.resolved_at ? "reopen" : "resolve" })}>
+                {e.resolved_at ? "Przywróć" : "Rozwiązany"}
               </Button>
             </div>
           ))}

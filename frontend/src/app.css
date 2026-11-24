@@ -2114,9 +2114,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* Skaner kart – komputer: aparat | wynik | ostatnio sprawdzone na całą szerokość (3 → 2 → 1 kolumna wg obszaru) */
 .ui-scan-desk{container-type:inline-size;container-name:scan}
 .ui-scan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-6);align-items:start}
-.ui-scan-grid[data-nocam]{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
-@container scan (max-width:1100px){.ui-scan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:2}}
-@container scan (max-width:560px){.ui-scan-grid{grid-template-columns:minmax(0,1fr)}.ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:auto}}
+@container scan (max-width:1100px){.ui-scan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:1 / -1}}
+/* bez aparatu: pole numeru na całą szerokość u góry, pod nim wynik i ostatnio sprawdzone (dwie kolumny) */
+.ui-scan-grid[data-nocam]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ui-scan-grid[data-nocam] > .ui-scan-col:first-child{grid-column:1 / -1}
+.ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(3){grid-column:auto}
+@container scan (max-width:560px){.ui-scan-grid,.ui-scan-grid[data-nocam]{grid-template-columns:minmax(0,1fr)}.ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:auto}}
 /* wąsko: podgląd aparatu nie zabiera całego ekranu – wynik widać bez przewijania */
 @container scan (max-width:1100px){.ui-scan-desk .ui-scan-video,.ui-scan-desk .ui-scan-off{aspect-ratio:auto;height:min(240px,32vh)}}
 .ui-scan-col{display:flex;flex-direction:column;gap:var(--s-4);min-width:0}
@@ -2147,3 +2150,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-scan-live .ui-scan-video{container-type:size}
 .ui-scan-frame[data-live]{top:calc(50% - 20px);width:min(68cqw,calc(100cqh - 152px))}
 @media (orientation:landscape){.ui-scan-live .ui-scan-bar{left:50%;right:auto;transform:translateX(-50%);width:min(420px,calc(100% - 32px))}}
+.ui-scan-grid[data-nocam] .ui-scan-manual{max-width:560px}

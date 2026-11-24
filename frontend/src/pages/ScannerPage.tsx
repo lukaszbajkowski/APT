@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import jsQR from "jsqr";
-import { Alert, Badge, Box, Button, Card, Group, Skeleton, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertTriangle, IconCamera, IconCircleCheck, IconScan, IconUser } from "@tabler/icons-react";
+import { Alert, Anchor, Box, Button, Drawer, Group, Paper, Skeleton, Stack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertTriangle, IconCamera, IconScan, IconUser } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { useMobileHeader, useNavHeightVar, PageTitle } from "../components/Mobile";
+import { InfoRow, PageTitle, SectionHead, SheetHandle, StatusBadge, useMobileHeader, useNavHeightVar } from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
 type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
@@ -25,50 +25,61 @@ function cameraError(e: unknown): string {
   return "Nie udało się uruchomić aparatu.";
 }
 
-function ResultCard({ employee, onNext }: { employee: Employee; onNext: () => void }) {
+/** Wynik skanu – te same elementy co w karcie pracownika: stan (kropka + tekst), zdjęcie, pary „etykieta – wartość”. */
+function ScanResult({ employee }: { employee: Employee }) {
   const active = employee.status === "active";
   return (
-    <Card withBorder padding="lg" style={{ borderColor: `var(--mantine-color-${active ? "green" : "red"}-6)`, borderWidth: 2 }}>
-      <Stack>
-        {active ? (
-          <Badge color="green" size="xl" fullWidth leftSection={<IconCircleCheck size={18} />}>
-            aktywny pracownik
-          </Badge>
-        ) : (
-          <Badge color="red" size="xl" fullWidth leftSection={<IconAlertTriangle size={18} />}>
-            nieaktywny – archiwum
-          </Badge>
-        )}
-        <Group wrap="nowrap" align="flex-start">
-          <EmployeePhoto employee={employee} width={110} />
-          <Stack gap={4} style={{ minWidth: 0 }}>
-            <Title order={3} style={{ wordBreak: "break-word" }}>
-              {employee.last_name} {employee.first_name}
-            </Title>
-            <Text size="sm" c="dimmed">
-              Nr {employee.number_display}
-            </Text>
-            <Text size="sm">{[employee.agency?.name, employee.department?.name].filter(Boolean).join(" · ") || "—"}</Text>
-            {employee.position && <Text size="sm">{employee.position.name}</Text>}
-            {!active && employee.termination_date && (
-              <Text size="sm" c="red">
-                Zwolniony {formatDate(employee.termination_date)}
-              </Text>
-            )}
-          </Stack>
-        </Group>
-        <Group grow>
-          <Button variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={16} />}>
-            Profil
-          </Button>
-          <Button onClick={onNext} leftSection={<IconScan size={16} />}>
-            Skanuj dalej
-          </Button>
-        </Group>
-      </Stack>
-    </Card>
+    <div className="ui-scan-res">
+      <div className="ui-acct-state ui-scan-state" data-tone={active ? "ok" : "bad"}>
+        <span className="ui-acct-dot" aria-hidden />
+        {active ? "Aktywny pracownik" : "Nieaktywny – archiwum"}
+      </div>
+      <Group wrap="nowrap" align="center" gap="md">
+        <EmployeePhoto employee={employee} width={88} />
+        <div style={{ minWidth: 0 }}>
+          <Title order={2} className="ui-dsec-title" style={{ wordBreak: "break-word" }}>
+            {employee.last_name} {employee.first_name}
+          </Title>
+          <Text size="sm" c="dimmed" className="ui-mono">
+            {employee.number_display}
+          </Text>
+        </div>
+      </Group>
+      <Paper withBorder radius="md" className="ui-cases ui-scan-kv">
+        <InfoRow label="Agencja">{employee.agency?.name ?? "—"}</InfoRow>
+        <InfoRow label="Wydział">{employee.department?.name ?? "—"}</InfoRow>
+        <InfoRow label="Stanowisko">{employee.position?.name ?? "—"}</InfoRow>
+        {!active && employee.termination_date && <InfoRow label="Zwolniony">{formatDate(employee.termination_date)}</InfoRow>}
+      </Paper>
+    </div>
   );
 }
+
+/* ostatnio sprawdzone – tylko na tym urządzeniu (bez zapisu na serwerze), dzisiejsze */
+interface Recent {
+  at: number;
+  id?: number;
+  name: string;
+  ok: boolean;
+  note: string;
+}
+const RECENT_KEY = "apt-scan-recent";
+function loadRecent(): Recent[] {
+  try {
+    const day = new Date().toDateString();
+    return (JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as Recent[]).filter((r) => new Date(r.at).toDateString() === day);
+  } catch {
+    return [];
+  }
+}
+function saveRecent(list: Recent[]) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 50)));
+  } catch {
+    /* pamięć przeglądarki może być niedostępna */
+  }
+}
+const hhmm = (t: number) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
 
 export function ScannerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,6 +90,8 @@ export function ScannerPage() {
 
   const [scanning, setScanning] = useState(false);
   const mobile = useIsPhone();
+  const phoneRef = useRef(mobile);
+  phoneRef.current = mobile;
   // telefon, aparat włączony: ekran skanera zajmuje całą przestrzeń między paskiem górnym a menu
   const live = !!mobile && scanning;
   useNavHeightVar();
@@ -88,6 +101,18 @@ export function ScannerPage() {
   const [loading, setLoading] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [manual, setManual] = useState("");
+  const [recent, setRecent] = useState<Recent[]>(loadRecent);
+  const [sheet, setSheet] = useState(false);
+  const lastCode = useRef<{ code: string; at: number } | null>(null);
+  // czy urządzenie ma aparat – lista urządzeń jest dostępna bez pytania o zgodę (bez nazw, ale z rodzajem)
+  const [hasCamera, setHasCamera] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return setHasCamera(false);
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((d) => setHasCamera(d.some((x) => x.kind === "videoinput")))
+      .catch(() => setHasCamera(true));
+  }, []);
 
   const stop = useCallback(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -107,10 +132,23 @@ export function ScannerPage() {
       try {
         const e = await api<Employee>(`/employees/by-number/${encodeURIComponent(code.trim())}`);
         setEmployee(e);
+        setSheet(true);
         navigator.vibrate?.(e.status === "active" ? 80 : [80, 60, 80]);
+        const ok = e.status === "active";
+        setRecent((l) => {
+          const n = [{ at: Date.now(), id: e.id, name: `${e.last_name} ${e.first_name}`, ok, note: ok ? "Aktywny" : "Archiwum" }, ...l];
+          saveRecent(n);
+          return n;
+        });
       } catch (err) {
         setLookupError(errorText(err));
+        setSheet(true);
         navigator.vibrate?.([200]);
+        setRecent((l) => {
+          const n = [{ at: Date.now(), name: `Nr ${code.trim()}`, ok: false, note: "Nie rozpoznano" }, ...l];
+          saveRecent(n);
+          return n;
+        });
       } finally {
         setLoading(false);
       }
@@ -121,7 +159,8 @@ export function ScannerPage() {
   const start = useCallback(async () => {
     setError(null);
     setLookupError(null);
-    setEmployee(null);
+    setSheet(false);
+    if (phoneRef.current) setEmployee(null);
     setStarting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -159,11 +198,17 @@ export function ScannerPage() {
               const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
               value = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" })?.data ?? null;
             }
-            if (value) {
-              stop();
-              busyRef.current = false;
+            const now = Date.now();
+            if (value && !(lastCode.current && lastCode.current.code === value && now - lastCode.current.at < 4000)) {
+              lastCode.current = { code: value, at: now };
+              if (phoneRef.current) {
+                stop();
+                busyRef.current = false;
+                await lookup(value);
+                return;
+              }
+              // komputer: aparat skanuje dalej, kolejna karta podmienia wynik
               await lookup(value);
-              return;
             }
           } catch {
             /* pojedyncza klatka może się nie udać – próbujemy dalej */
@@ -189,95 +234,186 @@ export function ScannerPage() {
   }
 
   useMobileHeader(live ? { title: "Skaner kart", onBack: stop } : null);
+  const today = recent.length;
 
+  const video = (
+    <Box pos="relative" className="ui-scan-video" style={{ display: scanning ? "block" : "none" }}>
+      <video ref={videoRef} playsInline muted />
+      <Box className="ui-scan-frame" data-live={live || undefined} />
+      <Text c="white" size="sm" ta="center" pos="absolute" bottom={12} left={0} right={0}>
+        Skieruj kod QR w ramkę
+      </Text>
+    </Box>
+  );
+  const manualForm = (
+    <form onSubmit={submitManual} className="ui-scan-manual">
+      <Group align="flex-end" gap="xs" wrap="nowrap">
+        <TextInput
+          label={hasCamera === false ? "Numer z karty" : "Albo wpisz numer z karty"}
+          description={!mobile ? "Czytnik kodów podłączony do komputera wpisze numer sam." : undefined}
+          placeholder="Np. 000123"
+          inputMode="numeric"
+          autoFocus={!mobile && hasCamera === false}
+          value={manual}
+          onChange={(e) => setManual(e.currentTarget.value)}
+          style={{ flex: 1 }}
+        />
+        <Button type="submit" variant="default">
+          Sprawdź
+        </Button>
+      </Group>
+    </form>
+  );
+  const failure = lookupError && (
+    <div className="ui-scan-res">
+      <div className="ui-acct-state ui-scan-state" data-tone="bad">
+        <span className="ui-acct-dot" aria-hidden />
+        Nie rozpoznano karty
+      </div>
+      <Text size="sm">{lookupError}</Text>
+    </div>
+  );
+  const recentList = (
+    <section className="ui-dsec">
+      <SectionHead title="Ostatnio sprawdzone" extra={today ? <Text c="dimmed">{today}</Text> : undefined} />
+      {recent.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          Dziś na tym urządzeniu nikogo jeszcze nie sprawdzono.
+        </Text>
+      ) : (
+        <Paper withBorder radius="md" className="ui-cases">
+          {recent.slice(0, 10).map((r) => (
+            <div key={r.at} className="ui-scan-recent">
+              <span className="ui-cnt-dim">{hhmm(r.at)}</span>
+              {r.id ? (
+                <Anchor component={Link} to={`/pracownicy/${r.id}`} size="sm">
+                  {r.name}
+                </Anchor>
+              ) : (
+                <span>{r.name}</span>
+              )}
+              <StatusBadge tone={r.ok ? "ok" : "error"}>{r.note}</StatusBadge>
+            </div>
+          ))}
+        </Paper>
+      )}
+    </section>
+  );
+
+  // ——— telefon: aparat na cały ekran, wynik w arkuszu od dołu ———
+  if (mobile)
+    return (
+      <Stack className={live ? "ui-scan-live" : undefined}>
+        <PageTitle title="Skaner kart" description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem." />
+        {video}
+        {error && (
+          <Alert color="red" icon={<IconAlertTriangle size={18} />}>
+            {error}
+          </Alert>
+        )}
+        {scanning ? (
+          <Button variant="default" size="lg" fullWidth onClick={stop} style={{ order: 3 }}>
+            Zatrzymaj aparat
+          </Button>
+        ) : (
+          hasCamera !== false && (
+            <Button size="lg" leftSection={<IconCamera size={20} />} onClick={start} loading={starting}>
+              Włącz aparat i skanuj
+            </Button>
+          )
+        )}
+        {loading && <Skeleton height={72} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />}
+        {manualForm}
+        {!live && recentList}
+        <Drawer
+          opened={sheet && !loading && (!!employee || !!lookupError)}
+          onClose={() => setSheet(false)}
+          position="bottom"
+          size="auto"
+          radius="lg"
+          withCloseButton={false}
+          classNames={{ content: "ui-sheet ui-tpe-fsheet" }}
+          aria-label="Wynik skanu"
+        >
+          <SheetHandle onClose={() => setSheet(false)}>
+            <div className="ui-sheet-head ui-tpe-fsheet-head">
+              <div className="ui-sheet-title">Wynik</div>
+            </div>
+          </SheetHandle>
+          <Stack gap="md" className="ui-tpe-fsheet-body">
+            {employee ? <ScanResult employee={employee} /> : failure}
+          </Stack>
+          <Group grow mt="sm" className="ui-tpe-fsheet-done">
+              {employee && (
+                <Button size="md" variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={18} />}>
+                  Otwórz kartę
+                </Button>
+              )}
+              <Button size="md" leftSection={<IconScan size={18} />} onClick={start}>
+                Skanuj dalej
+              </Button>
+          </Group>
+        </Drawer>
+      </Stack>
+    );
+
+  // ——— komputer: aparat (albo sam numer) | wynik | ostatnio sprawdzone – na całą szerokość ———
   return (
-    <Stack maw={live ? undefined : 560} className={live ? "ui-scan-live" : undefined}>
+    <Stack maw={1760} className="ui-scan-desk">
       <PageTitle
         title="Skaner kart"
-        description={
-          <>
-            Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem.
-          </>
-        }
+        meta={today ? `Dziś sprawdzono ${today}` : undefined}
+        description={hasCamera === false ? "Wpisz numer z karty albo użyj czytnika kodów – ten komputer nie ma aparatu." : "Zeskanuj kod QR z karty identyfikacyjnej albo wpisz jej numer."}
       />
-
-      <Box
-        pos="relative"
-        className="ui-scan-video"
-        style={{
-          borderRadius: 12,
-          overflow: "hidden",
-          background: "#000",
-          aspectRatio: live ? undefined : "4 / 3",
-          display: scanning ? "block" : "none",
-        }}
-      >
-        <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <Box
-          style={{
-            position: "absolute",
-            ...(live ? { left: "50%", top: "50%", width: "min(68vw, 52vh)", aspectRatio: "1", transform: "translate(-50%, -50%)" } : { inset: "18% 24%" }),
-            border: "3px solid rgba(255,255,255,0.85)",
-            borderRadius: 16,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
-          }}
-        />
-        <Text c="white" size="sm" ta="center" pos="absolute" bottom={10} left={0} right={0}>
-          Skieruj aparat na kod QR na karcie
-        </Text>
-      </Box>
-
-      {error && (
-        <Alert color="red" icon={<IconAlertTriangle size={18} />}>
-          {error}
-        </Alert>
-      )}
-
-      {scanning ? (
-        <Button variant="default" size={live ? "lg" : undefined} fullWidth={live} onClick={stop} style={live ? { order: 3 } : undefined}>
-          Zatrzymaj aparat
-        </Button>
-      ) : (
-        !employee &&
-        !loading && (
-          <Button size="lg" leftSection={<IconCamera size={20} />} onClick={start} loading={starting}>
-            Włącz aparat i skanuj
-          </Button>
-        )
-      )}
-
-      {loading && (
-        <Skeleton height={72} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />
-      )}
-      {lookupError && (
-        <Alert color="red" icon={<IconAlertTriangle size={18} />} title="Nie rozpoznano karty">
-          <Stack gap="xs">
-            <Text size="sm">{lookupError}</Text>
-            <Group>
-              <Button size="xs" onClick={start} leftSection={<IconScan size={14} />}>
-                Skanuj ponownie
-              </Button>
-            </Group>
-          </Stack>
-        </Alert>
-      )}
-      {employee && <ResultCard employee={employee} onNext={start} />}
-
-      <form onSubmit={submitManual} className="ui-scan-manual">
-        <Group align="flex-end" gap="xs" wrap="nowrap">
-          <TextInput
-            label="Albo wpisz numer z karty"
-            placeholder="Np. 000123"
-            inputMode="numeric"
-            value={manual}
-            onChange={(e) => setManual(e.currentTarget.value)}
-            style={{ flex: 1 }}
-          />
-          <Button type="submit" variant="default">
-            Sprawdź
-          </Button>
-        </Group>
-      </form>
+      <div className="ui-scan-grid" data-nocam={hasCamera === false || undefined}>
+        <div className="ui-scan-col">
+          {hasCamera !== false && (
+            <>
+              {video}
+              {!scanning && (
+                <div className="ui-scan-off">
+                  <Button leftSection={<IconCamera size={18} />} onClick={start} loading={starting}>
+                    Włącz aparat
+                  </Button>
+                </div>
+              )}
+              {scanning && (
+                <Button variant="default" onClick={stop}>
+                  Zatrzymaj aparat
+                </Button>
+              )}
+            </>
+          )}
+          {error && (
+            <Alert color="red" icon={<IconAlertTriangle size={18} />}>
+              {error}
+            </Alert>
+          )}
+          {manualForm}
+        </div>
+        <section className="ui-dsec ui-scan-col">
+          <SectionHead title="Wynik" />
+          {loading ? (
+            <Skeleton height={200} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />
+          ) : employee ? (
+            <>
+              <ScanResult employee={employee} />
+              <Group>
+                <Button variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={16} />}>
+                  Otwórz kartę
+                </Button>
+              </Group>
+            </>
+          ) : failure ? (
+            failure
+          ) : (
+            <Text size="sm" c="dimmed">
+              Tu pojawi się wynik – stan, zdjęcie i przydział osoby.
+            </Text>
+          )}
+        </section>
+        <div className="ui-scan-col">{recentList}</div>
+      </div>
     </Stack>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Group, SegmentedControl, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Button, Group, SegmentedControl, Stack, Table, Text, Title, Paper } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 
 import { notifications } from "@mantine/notifications";
@@ -116,8 +116,9 @@ function UsersTab() {
       <Text size="sm" c="dimmed">
         {rows.length} kont funkcyjnych, {attention} wymaga uwagi (konta pracowników są w „Kontach pracowników”).
       </Text>
+      <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
       <Table.ScrollContainer minWidth={560}>
-        <Table verticalSpacing="xs" highlightOnHover>
+        <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Użytkownik</Table.Th>
@@ -181,6 +182,7 @@ function UsersTab() {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      </Paper>
     </Stack>
   );
 }

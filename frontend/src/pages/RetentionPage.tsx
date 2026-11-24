@@ -295,7 +295,7 @@ export function RetentionPage() {
         items={d.due}
         warn
       >
-        <Table verticalSpacing="xs" horizontalSpacing="md">
+        <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
           <Table.Thead>
             <Table.Tr>
               <Table.Th w={40}>
@@ -350,7 +350,7 @@ export function RetentionPage() {
       </Section>
 
       <Section title="Wkrótce" description="Okres przechowywania kończy się w ciągu najbliższych 12 miesięcy." items={d.upcoming}>
-        <Table verticalSpacing="xs" horizontalSpacing="md">
+        <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Pracownik</Table.Th>
@@ -377,7 +377,7 @@ export function RetentionPage() {
         description="Okres minął, ale usunięcie wstrzymano (np. postępowanie sądowe lub kontrola)."
         items={d.held}
       >
-        <Table verticalSpacing="xs" horizontalSpacing="md">
+        <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Pracownik</Table.Th>
@@ -414,7 +414,7 @@ export function RetentionPage() {
           items={d.missing_date}
           warn
         >
-          <Table verticalSpacing="xs" horizontalSpacing="md">
+          <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Tbody>
               {d.missing_date.map((i) => (
                 <Table.Tr key={i.id}>

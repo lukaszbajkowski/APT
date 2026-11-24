@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Group, SegmentedControl, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Alert, Anchor, Group, SegmentedControl, Stack, Table, Text, TextInput, Paper } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 
 import { api, errorText, formatDateTime } from "../api";
@@ -137,8 +137,9 @@ export function EmployeeAccountsPage() {
       {list.isError && <Alert color="red">{errorText(list.error)}</Alert>}
       {list.isLoading && <Loading />}
       {list.data && (
+        <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
         <Table.ScrollContainer minWidth={640}>
-          <Table highlightOnHover>
+          <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Pracownik</Table.Th>
@@ -185,6 +186,7 @@ export function EmployeeAccountsPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        </Paper>
       )}
     </Stack>
   );

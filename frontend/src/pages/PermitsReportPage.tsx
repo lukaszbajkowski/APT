@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Card, Stack, Switch, Table, Text } from "@mantine/core";
+import { Alert, Anchor, Stack, Switch, Table, Text, Paper } from "@mantine/core";
 import { Link } from "react-router-dom";
 
 import { api, formatDate, type PermitRow } from "../api";
@@ -37,8 +37,8 @@ export function PermitsReportPage() {
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <Alert color="teal">Nic nie wymaga uwagi.</Alert>}
       {q.data && q.data.length > 0 && (
-        <Card withBorder padding={0}>
-          <Table highlightOnHover verticalSpacing="xs">
+        <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+          <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Pracownik</Table.Th>
@@ -69,7 +69,7 @@ export function PermitsReportPage() {
               ))}
             </Table.Tbody>
           </Table>
-        </Card>
+        </Paper>
       )}
     </Stack>
   );

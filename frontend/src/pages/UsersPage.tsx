@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Alert, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Text, TextInput, SegmentedControl } from "@mantine/core";
+import { ActionIcon, Alert, Button, Code, CopyButton, Group, Menu, Modal, MultiSelect, Stack, Table, Text, TextInput, SegmentedControl, Paper } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
@@ -273,8 +273,9 @@ export function UsersPage() {
       )}
 
       {!mobile && users.data && visible.length > 0 && (
+        <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
         <Table.ScrollContainer minWidth={560}>
-          <Table striped highlightOnHover verticalSpacing="xs">
+          <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Login</Table.Th>
@@ -387,6 +388,7 @@ export function UsersPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        </Paper>
       )}
 
       <ActionSheet

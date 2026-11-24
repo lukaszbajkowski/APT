@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Alert, Code, Group, Pagination, Stack, Table, Text, TextInput, Paper } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconAdjustmentsHorizontal, IconSearch } from "@tabler/icons-react";
@@ -180,8 +180,9 @@ export function AuditPage() {
           <Text size="sm" c="dimmed">
             Znaleziono: {log.data.total}
           </Text>
+          <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
           <Table.ScrollContainer minWidth={800}>
-            <Table striped verticalSpacing="xs" fz="sm">
+            <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Czas</Table.Th>
@@ -210,6 +211,7 @@ export function AuditPage() {
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+          </Paper>
           {log.data.total > PAGE_SIZE && (
             <Pagination total={Math.ceil(log.data.total / PAGE_SIZE)} value={page} onChange={setPage} />
           )}

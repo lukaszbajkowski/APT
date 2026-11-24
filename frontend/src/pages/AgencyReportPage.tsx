@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Group, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Alert, Anchor, Button, Card, Group, SimpleGrid, Stack, Table, Text, Paper } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconDots, IconDownload, IconMail } from "@tabler/icons-react";
@@ -253,9 +253,9 @@ export function AgencyReportPage() {
           {r.rows.length === 0 ? (
             <EmptyState compact title={`Brak osób w: ${r.label}`} text="W tym okresie nikt nie spełnia tego warunku." />
           ) : (
-            <Card withBorder padding={0}>
+            <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
               <Table.ScrollContainer minWidth={820}>
-                <Table striped verticalSpacing={6} fz="sm">
+                <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Nr</Table.Th>
@@ -299,7 +299,7 @@ export function AgencyReportPage() {
                   </Table.Tbody>
                 </Table>
               </Table.ScrollContainer>
-            </Card>
+            </Paper>
           )}
         </>
       )}

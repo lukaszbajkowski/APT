@@ -433,8 +433,9 @@ export function ImportPage() {
                 />
               </Group>
 
+              <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
               <Table.ScrollContainer minWidth={900}>
-                <Table striped fz="sm" verticalSpacing={6}>
+                <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Wiersz</Table.Th>
@@ -473,6 +474,7 @@ export function ImportPage() {
                   </Table.Tbody>
                 </Table>
               </Table.ScrollContainer>
+              </Paper>
               {rows.length > 500 && (
                 <Text size="sm" c="dimmed">
                   Pokazano 500 z {rows.length} wierszy.

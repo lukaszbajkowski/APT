@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Anchor, Badge, Button, Card, Group, MultiSelect, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text } from "@mantine/core";
+import { Anchor, Badge, Button, Group, MultiSelect, Paper, SegmentedControl, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconFileSpreadsheet, IconFileTypePdf, IconFilterOff } from "@tabler/icons-react";
@@ -240,8 +240,8 @@ export function TrainingsReport() {
             <EmptyState compact title="Brak szkoleń dla wybranych filtrów"
           text="Zmień lub wyczyść filtry, aby zobaczyć więcej." />
           ) : (
-            <Card withBorder padding={0}>
-              <Table striped highlightOnHover verticalSpacing="xs">
+            <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+              <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Pracownik</Table.Th>
@@ -288,7 +288,7 @@ export function TrainingsReport() {
                   })}
                 </Table.Tbody>
               </Table>
-            </Card>
+            </Paper>
           )}
           {data.total > data.rows.length && (
             <Text size="xs" c="dimmed">

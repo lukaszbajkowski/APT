@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Anchor, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton } from "@mantine/core";
+import { Alert, Anchor, Card, Group, SimpleGrid, Stack, Table, Text, UnstyledButton, Paper } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { StatusBadge, Chips, CompactEmpty, ListRow, PageHead, cap, PageTitle, PageLoading } from "../components/Mobile";
 
@@ -143,8 +143,8 @@ export function QualityPage() {
               </Anchor>
             </Text>
           )}
-          <Card withBorder padding={0}>
-            <Table highlightOnHover verticalSpacing="xs">
+          <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+            <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Pracownik</Table.Th>
@@ -176,7 +176,7 @@ export function QualityPage() {
                 ))}
               </Table.Tbody>
             </Table>
-          </Card>
+          </Paper>
         </>
       )}
     </Stack>

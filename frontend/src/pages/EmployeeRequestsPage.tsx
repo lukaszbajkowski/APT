@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Anchor, Button, Card, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Anchor, Button, Checkbox, Group, Modal, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Paper } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
@@ -351,9 +351,9 @@ export function EmployeeRequestsPage() {
         </SwipePager>
       )}
       {!mobile && rows.length > 0 && (
-        <Card withBorder padding={0}>
+        <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
           <Table.ScrollContainer minWidth={720}>
-            <Table verticalSpacing="xs" fz="sm" highlightOnHover>
+            <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Osoba</Table.Th>
@@ -413,7 +413,7 @@ export function EmployeeRequestsPage() {
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-        </Card>
+        </Paper>
       )}
       {isAgency && <NewRequest opened={newOpen} onClose={() => setNewOpen(false)} />}
       {deciding && <Decide r={deciding} onClose={() => setDeciding(null)} />}

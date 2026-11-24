@@ -4,7 +4,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { badgeTone, ActionSheet, Chips, CompactEmpty, DangerAction, DangerZone, FormScreen, GroupLabel, ListRow, PageHead, PickSheet, Section, Segments, SheetHandle, StatusBadge, SwipePager, useMobileHeader, FormDialog, PageTitle } from "../components/Mobile";
 import { MatrixMobile, ReportMobile, RequirementsMobile } from "../components/TrainingsMobile";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ActionIcon, Menu, Alert, Anchor, Button, Card, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Menu, Alert, Anchor, Button, Group, Modal, NumberInput, Paper, SegmentedControl, SimpleGrid, Stack, Switch, Table, Text, TextInput, Drawer, UnstyledButton } from "@mantine/core";
 import { Select } from "../components/AptSelect";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconChevronDown, IconCircleCheck, IconFileSpreadsheet, IconPencil, IconPlus, IconTrash, IconUsers, IconDots, IconReportAnalytics, IconListCheck, IconCategory, IconChevronLeft, IconChevronRight, IconBook, IconSearch, IconX, IconAlertTriangle } from "@tabler/icons-react";
@@ -69,8 +69,8 @@ function Expiring({ mobile }: { mobile?: boolean }) {
       </Alert>
     );
   return (
-    <Card withBorder padding={0}>
-      <Table striped highlightOnHover verticalSpacing="xs">
+    <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+      <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Pracownik</Table.Th>
@@ -111,7 +111,7 @@ function Expiring({ mobile }: { mobile?: boolean }) {
           })}
         </Table.Tbody>
       </Table>
-    </Card>
+    </Paper>
   );
 }
 
@@ -476,8 +476,8 @@ function InProgress({ mobile }: { mobile?: boolean }) {
       </Alert>
     );
   return (
-    <Card withBorder padding={0}>
-      <Table striped highlightOnHover verticalSpacing="xs">
+    <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
+      <Table highlightOnHover verticalSpacing={8} className="ui-emp-table">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Pracownik</Table.Th>
@@ -522,7 +522,7 @@ function InProgress({ mobile }: { mobile?: boolean }) {
           })}
         </Table.Tbody>
       </Table>
-    </Card>
+    </Paper>
   );
 }
 

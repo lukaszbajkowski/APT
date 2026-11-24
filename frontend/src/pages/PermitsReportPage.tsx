@@ -37,8 +37,8 @@ export function PermitsReportPage() {
       {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <Alert color="teal">Nic nie wymaga uwagi.</Alert>}
       {q.data && q.data.length > 0 && (
-        <Card withBorder padding="sm">
-          <Table verticalSpacing={6} fz="sm" highlightOnHover>
+        <Card withBorder padding={0}>
+          <Table highlightOnHover verticalSpacing="xs">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Pracownik</Table.Th>

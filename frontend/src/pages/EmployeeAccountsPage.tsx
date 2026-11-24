@@ -52,6 +52,7 @@ export function EmployeeAccountsPage() {
   if (mobile) {
     const TONE = { active: "ok", pending: "wait", disabled: "neutral" } as const;
     const SHORT = { active: "Aktywne", pending: "Czeka", disabled: "Wyłączone" } as const;
+    // telefon: cztery części nie mieszczą liczb – liczniki są w nagłówku pod tytułem
     const TABS = [
       { value: "", label: "Wszystkie" },
       { value: "pending", label: "Czekają" },
@@ -60,7 +61,7 @@ export function EmployeeAccountsPage() {
     ];
     return (
       <Stack gap={16}>
-        <PageHead title="Konta pracowników" subtitle="Zaproszenie i reset dostępu – w karcie pracownika" />
+        <PageHead title="Konta pracowników" subtitle={all.data ? `Aktywne ${n("active")} · Czekają ${n("pending")}` : "Zaproszenie i reset dostępu – w karcie pracownika"} />
         <TextInput
           aria-label="Szukaj konta"
           placeholder="Nazwisko, imię lub login"

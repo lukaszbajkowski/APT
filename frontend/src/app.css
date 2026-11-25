@@ -2172,3 +2172,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (orientation:landscape){
   :where(:root[data-device="phone"]) .ui-tpe-fsheet .ui-scan-res{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:var(--s-4);align-items:start}
 }
+/* Zadania na telefonie, „Po osobach”: nagłówek osoby zwija jej zadania (strzałka jak grupy w menu bocznym) */
+.ui-cl-phone .ui-tk-fold,.ui-tpe-paper .ui-tk-fold{display:flex;flex-direction:row;align-items:center;gap:var(--s-2);width:100%;text-align:left}
+.ui-tk-foldtext{display:flex;flex-direction:column;flex:1;min-width:0}
+.ui-tk-foldch{flex:none;color:var(--mantine-color-dimmed);transition:transform .2s ease}
+.ui-tk-fold[data-closed] .ui-tk-foldch{transform:rotate(-90deg)}
+.ui-tk-fold[data-closed]{border-radius:var(--mantine-radius-md) !important;border-bottom-color:var(--apt-line)}
+.ui-tk-fold:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.ui-tk-foldch{transition:none}}

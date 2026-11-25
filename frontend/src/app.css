@@ -2112,16 +2112,20 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tk-person{display:flex;gap:var(--s-3);align-items:center}
 .ui-tk-progress{display:flex;flex-direction:column;gap:var(--s-1)}
 /* Skaner kart – komputer, wg miejsca na treść (wariant A), ten sam próg co lista + panel w Checklistach (Lifecycle, obszar < 880 px): obszar ≥ 880 px dwie kolumny – bez aparatu pole numeru na całą
-   szerokość, pod nim wynik | ostatnio; z aparatem aparat | wynik, ostatnio pod spodem. < 880 px jedna kolumna.
+   szerokość, pod nim wynik | ostatnio; z aparatem aparat | wynik, ostatnio pod wynikiem. < 880 px jedna kolumna.
    Zwinięcie menu do ikon nie zmienia układu. */
 .ui-scan-desk{container-type:inline-size;container-name:scan}
 .ui-scan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-6);align-items:start}
-.ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:1 / -1}
+/* z aparatem: aparat | wynik, „Ostatnio sprawdzone” pod wynikiem w prawej kolumnie (nadmiar wysokości idzie do drugiego wiersza) */
+.ui-scan-grid:not([data-nocam]){grid-template-rows:auto 1fr}
+.ui-scan-grid:not([data-nocam]) > .ui-scan-col:first-child{grid-row:1 / span 2}
+.ui-scan-grid:not([data-nocam]) > .ui-scan-col:nth-child(3){grid-column:2;grid-row:2}
 .ui-scan-grid[data-nocam] > .ui-scan-col:first-child{grid-column:1 / -1}
 .ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(3){grid-column:auto}
 @container scan (max-width:879.98px){
  .ui-scan-grid,.ui-scan-grid[data-nocam]{grid-template-columns:minmax(0,1fr)}
- .ui-scan-grid > .ui-scan-col:nth-child(3),.ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(3){grid-column:auto}
+ .ui-scan-grid > .ui-scan-col:nth-child(n),.ui-scan-grid:not([data-nocam]) > .ui-scan-col:nth-child(n),.ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(n){grid-column:auto;grid-row:auto}
+ .ui-scan-grid:not([data-nocam]){grid-template-rows:none}
 }
 /* podgląd aparatu nie zabiera całego ekranu – wynik widać bez przewijania */
 .ui-scan-desk .ui-scan-video,.ui-scan-desk .ui-scan-off{aspect-ratio:auto;height:min(320px,36vh)}

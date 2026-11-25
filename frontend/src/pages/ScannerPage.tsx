@@ -280,7 +280,7 @@ export function ScannerPage() {
       <Group align="flex-end" gap="xs" wrap="nowrap">
         <TextInput
           label={hasCamera === false || typing ? "Numer z karty" : "Albo wpisz numer z karty"}
-          description={!mobile ? "Czytnik kodów podłączony do komputera wpisze numer sam." : undefined}
+          aria-describedby={!mobile ? "scan-hint" : undefined}
           placeholder="Np. 000123"
           inputMode="numeric"
           autoFocus={!mobile && hasCamera === false}
@@ -292,6 +292,11 @@ export function ScannerPage() {
           Sprawdź
         </Button>
       </Group>
+      {!mobile && (
+        <Text id="scan-hint" size="xs" c="dimmed" mt={4}>
+          Czytnik kodów podłączony do komputera wpisze numer sam.
+        </Text>
+      )}
     </form>
   );
   const failure = lookupError && (

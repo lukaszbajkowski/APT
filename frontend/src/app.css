@@ -2111,15 +2111,15 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tk-more .ui-cl-name{color:var(--mantine-primary-color-filled)}
 .ui-tk-person{display:flex;gap:var(--s-3);align-items:center}
 .ui-tk-progress{display:flex;flex-direction:column;gap:var(--s-1)}
-/* Skaner kart – komputer, wg miejsca na treść (wariant A): ≥ 640 px dwie kolumny – bez aparatu pole numeru na całą
-   szerokość, pod nim wynik | ostatnio; z aparatem aparat | wynik, ostatnio pod spodem. < 640 px jedna kolumna.
+/* Skaner kart – komputer, wg miejsca na treść (wariant A), ten sam próg co lista + panel w Checklistach (Lifecycle, obszar < 880 px): obszar ≥ 880 px dwie kolumny – bez aparatu pole numeru na całą
+   szerokość, pod nim wynik | ostatnio; z aparatem aparat | wynik, ostatnio pod spodem. < 880 px jedna kolumna.
    Zwinięcie menu do ikon nie zmienia układu. */
 .ui-scan-desk{container-type:inline-size;container-name:scan}
 .ui-scan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-6);align-items:start}
 .ui-scan-grid > .ui-scan-col:nth-child(3){grid-column:1 / -1}
 .ui-scan-grid[data-nocam] > .ui-scan-col:first-child{grid-column:1 / -1}
 .ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(3){grid-column:auto}
-@container scan (max-width:639.98px){
+@container scan (max-width:879.98px){
  .ui-scan-grid,.ui-scan-grid[data-nocam]{grid-template-columns:minmax(0,1fr)}
  .ui-scan-grid > .ui-scan-col:nth-child(3),.ui-scan-grid[data-nocam] > .ui-scan-col:nth-child(3){grid-column:auto}
 }

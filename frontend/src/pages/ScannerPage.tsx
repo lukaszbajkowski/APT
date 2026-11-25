@@ -409,7 +409,7 @@ export function ScannerPage() {
                 Otwórz kartę
               </Button>
             )}
-            <Button size="md" leftSection={<IconScan size={18} />} onClick={() => (streamRef.current ? setSheet(false) : void start())}>
+            <Button size="md" data-autofocus leftSection={<IconScan size={18} />} onClick={() => (streamRef.current ? setSheet(false) : void start())}>
               Skanuj dalej
             </Button>
           </Group>

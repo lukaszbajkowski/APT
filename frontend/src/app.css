@@ -2157,3 +2157,13 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-scan-live .ui-scan-video{container-type:size}
 .ui-scan-frame[data-live]{top:calc(50% - 20px);width:min(68cqw,calc(100cqh - 152px))}
 @media (orientation:landscape){.ui-scan-live .ui-scan-bar{left:50%;right:auto;transform:translateX(-50%);width:min(420px,calc(100% - 32px))}}
+
+/* Skaner na telefonie w poziomie: aparat na cały ekran – górny i dolny pasek chowają się, powrót przyciskiem „‹” na obrazie */
+.ui-scan-back{display:none}
+@media (orientation:landscape){
+  :where(:root[data-device="phone"]):has(.ui-scan-live) :is(.mantine-AppShell-header,.mantine-AppShell-footer,.tabbar){display:none}
+  :where(:root[data-device="phone"]) .ui-scan-live{top:0;bottom:0;padding-top:0;padding-bottom:0}
+  :where(:root[data-device="phone"]) .ui-scan-back{display:grid;place-items:center;position:absolute;z-index:3;top:var(--s-3);left:calc(var(--s-3) + var(--apt-safe-left));width:44px;height:44px;border-radius:50%;color:var(--mantine-color-white);background:color-mix(in srgb,var(--mantine-color-black) 45%,transparent)}
+  :where(:root[data-device="phone"]) .ui-scan-back:focus-visible{outline:2px solid var(--mantine-color-white);outline-offset:2px}
+  :where(:root[data-device="phone"]) .ui-scan-live .ui-scan-bar{bottom:var(--s-3)}
+}

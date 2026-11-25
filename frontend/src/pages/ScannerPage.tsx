@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom";
 import jsQR from "jsqr";
 import { Alert, Anchor, Box, Button, Drawer, Group, Paper, Skeleton, Stack, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconBolt, IconCamera, IconKeyboard, IconScan, IconUser } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBolt, IconCamera, IconChevronLeft, IconKeyboard, IconScan, IconUser } from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
@@ -341,6 +341,11 @@ export function ScannerPage() {
       <Stack className={live ? "ui-scan-live" : undefined}>
         {!live && <PageTitle title="Skaner kart" description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem." />}
         {video}
+        {live && (
+          <UnstyledButton className="ui-scan-back" onClick={stop} aria-label="Wróć – wyłącz aparat">
+            <IconChevronLeft size={22} aria-hidden />
+          </UnstyledButton>
+        )}
         {live && (
           <div className="ui-scan-bar">
             <UnstyledButton className="ui-scan-pill" onClick={() => setTyping(true)}>

@@ -1,15 +1,53 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { Link } from "react-router-dom";
 import jsQR from "jsqr";
-import { Alert, Anchor, Box, Button, Drawer, Group, Paper, Skeleton, Stack, Text, TextInput, Title, UnstyledButton } from "@mantine/core";
-import { IconAlertTriangle, IconBolt, IconCamera, IconChevronLeft, IconKeyboard, IconScan, IconUser } from "@tabler/icons-react";
+import {
+  Alert,
+  Anchor,
+  Box,
+  Button,
+  Drawer,
+  Group,
+  Paper,
+  Skeleton,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+  UnstyledButton,
+} from "@mantine/core";
+import {
+  IconAlertTriangle,
+  IconBolt,
+  IconCamera,
+  IconChevronLeft,
+  IconKeyboard,
+  IconScan,
+  IconUser,
+} from "@tabler/icons-react";
 
 import { api, errorText, formatDate, type Employee } from "../api";
 import { EmployeePhoto } from "../components/EmployeePhoto";
-import { InfoRow, PageTitle, SectionHead, SheetHandle, StatusBadge, useMobileHeader, useNavHeightVar } from "../components/Mobile";
+import {
+  InfoRow,
+  PageTitle,
+  SectionHead,
+  SheetHandle,
+  StatusBadge,
+  useMobileHeader,
+  useNavHeightVar,
+} from "../components/Mobile";
 import { useIsPhone } from "../lib/device";
 
-type BarcodeDetectorLike = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
+type BarcodeDetectorLike = {
+  detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+};
 declare global {
   interface Window {
     BarcodeDetector?: new (opts: { formats: string[] }) => BarcodeDetectorLike;
@@ -19,9 +57,12 @@ declare global {
 function cameraError(e: unknown): string {
   const name = (e as { name?: string })?.name;
   if (!window.isSecureContext) return "Aparat działa tylko na stronie z HTTPS.";
-  if (name === "NotAllowedError") return "Brak zgody na aparat. Zezwól na dostęp do aparatu w ustawieniach przeglądarki i spróbuj ponownie.";
-  if (name === "NotFoundError" || name === "OverconstrainedError") return "Nie znaleziono aparatu w tym urządzeniu.";
-  if (name === "NotReadableError") return "Aparat jest używany przez inną aplikację.";
+  if (name === "NotAllowedError")
+    return "Brak zgody na aparat. Zezwól na dostęp do aparatu w ustawieniach przeglądarki i spróbuj ponownie.";
+  if (name === "NotFoundError" || name === "OverconstrainedError")
+    return "Nie znaleziono aparatu w tym urządzeniu.";
+  if (name === "NotReadableError")
+    return "Aparat jest używany przez inną aplikację.";
   return "Nie udało się uruchomić aparatu.";
 }
 
@@ -30,26 +71,39 @@ function ScanResult({ employee }: { employee: Employee }) {
   const active = employee.status === "active";
   return (
     <div className="ui-scan-res">
-      <div className="ui-acct-state ui-scan-state" data-tone={active ? "ok" : "bad"}>
-        <span className="ui-acct-dot" aria-hidden />
-        {active ? "Aktywny pracownik" : "Nieaktywny – archiwum"}
-      </div>
-      <Group wrap="nowrap" align="center" gap="md">
-        <EmployeePhoto employee={employee} width={88} />
-        <div style={{ minWidth: 0 }}>
-          <Title order={2} className="ui-dsec-title" style={{ wordBreak: "break-word" }}>
-            {employee.last_name} {employee.first_name}
-          </Title>
-          <Text size="sm" c="dimmed" className="ui-mono">
-            {employee.number_display}
-          </Text>
+      <div className="ui-scan-who">
+        <div
+          className="ui-acct-state ui-scan-state"
+          data-tone={active ? "ok" : "bad"}
+        >
+          <span className="ui-acct-dot" aria-hidden />
+          {active ? "Aktywny pracownik" : "Nieaktywny – archiwum"}
         </div>
-      </Group>
+        <Group wrap="nowrap" align="center" gap="md">
+          <EmployeePhoto employee={employee} width={88} />
+          <div style={{ minWidth: 0 }}>
+            <Title
+              order={2}
+              className="ui-dsec-title"
+              style={{ wordBreak: "break-word" }}
+            >
+              {employee.last_name} {employee.first_name}
+            </Title>
+            <Text size="sm" c="dimmed" className="ui-mono">
+              {employee.number_display}
+            </Text>
+          </div>
+        </Group>
+      </div>
       <Paper withBorder radius="md" className="ui-cases ui-scan-kv">
         <InfoRow label="Agencja">{employee.agency?.name ?? "—"}</InfoRow>
         <InfoRow label="Wydział">{employee.department?.name ?? "—"}</InfoRow>
         <InfoRow label="Stanowisko">{employee.position?.name ?? "—"}</InfoRow>
-        {!active && employee.termination_date && <InfoRow label="Zwolniony">{formatDate(employee.termination_date)}</InfoRow>}
+        {!active && employee.termination_date && (
+          <InfoRow label="Zwolniony">
+            {formatDate(employee.termination_date)}
+          </InfoRow>
+        )}
       </Paper>
     </div>
   );
@@ -67,7 +121,9 @@ const RECENT_KEY = "apt-scan-recent";
 function loadRecent(): Recent[] {
   try {
     const day = new Date().toDateString();
-    return (JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as Recent[]).filter((r) => new Date(r.at).toDateString() === day);
+    return (
+      JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as Recent[]
+    ).filter((r) => new Date(r.at).toDateString() === day);
   } catch {
     return [];
   }
@@ -79,7 +135,11 @@ function saveRecent(list: Recent[]) {
     /* pamięć przeglądarki może być niedostępna */
   }
 }
-const hhmm = (t: number) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+const hhmm = (t: number) =>
+  new Date(t).toLocaleTimeString("pl-PL", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 export function ScannerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -129,37 +189,53 @@ export function ScannerPage() {
 
   useEffect(() => stop, [stop]);
 
-  const lookup = useCallback(
-    async (code: string) => {
-      setLoading(true);
-      setLookupError(null);
-      setEmployee(null);
-      try {
-        const e = await api<Employee>(`/employees/by-number/${encodeURIComponent(code.trim())}`);
-        setEmployee(e);
-        setSheet(true);
-        navigator.vibrate?.(e.status === "active" ? 80 : [80, 60, 80]);
-        const ok = e.status === "active";
-        setRecent((l) => {
-          const n = [{ at: Date.now(), id: e.id, name: `${e.last_name} ${e.first_name}`, ok, note: ok ? "Aktywny" : "Archiwum" }, ...l];
-          saveRecent(n);
-          return n;
-        });
-      } catch (err) {
-        setLookupError(errorText(err));
-        setSheet(true);
-        navigator.vibrate?.([200]);
-        setRecent((l) => {
-          const n = [{ at: Date.now(), name: `Nr ${code.trim()}`, ok: false, note: "Nie rozpoznano" }, ...l];
-          saveRecent(n);
-          return n;
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const lookup = useCallback(async (code: string) => {
+    setLoading(true);
+    setLookupError(null);
+    setEmployee(null);
+    try {
+      const e = await api<Employee>(
+        `/employees/by-number/${encodeURIComponent(code.trim())}`,
+      );
+      setEmployee(e);
+      setSheet(true);
+      navigator.vibrate?.(e.status === "active" ? 80 : [80, 60, 80]);
+      const ok = e.status === "active";
+      setRecent((l) => {
+        const n = [
+          {
+            at: Date.now(),
+            id: e.id,
+            name: `${e.last_name} ${e.first_name}`,
+            ok,
+            note: ok ? "Aktywny" : "Archiwum",
+          },
+          ...l,
+        ];
+        saveRecent(n);
+        return n;
+      });
+    } catch (err) {
+      setLookupError(errorText(err));
+      setSheet(true);
+      navigator.vibrate?.([200]);
+      setRecent((l) => {
+        const n = [
+          {
+            at: Date.now(),
+            name: `Nr ${code.trim()}`,
+            ok: false,
+            note: "Nie rozpoznano",
+          },
+          ...l,
+        ];
+        saveRecent(n);
+        return n;
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const startingRef = useRef(false);
   const start = useCallback(async () => {
@@ -173,7 +249,11 @@ export function ScannerPage() {
     setStarting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
       streamRef.current = stream;
@@ -188,14 +268,25 @@ export function ScannerPage() {
       setScanning(true);
 
       const detector =
-        window.BarcodeDetector && (await (window.BarcodeDetector as unknown as { getSupportedFormats?: () => Promise<string[]> }).getSupportedFormats?.())?.includes("qr_code")
+        window.BarcodeDetector &&
+        (
+          await (
+            window.BarcodeDetector as unknown as {
+              getSupportedFormats?: () => Promise<string[]>;
+            }
+          ).getSupportedFormats?.()
+        )?.includes("qr_code")
           ? new window.BarcodeDetector({ formats: ["qr_code"] })
           : null;
       canvasRef.current ??= document.createElement("canvas");
 
       const tick = async () => {
         if (!streamRef.current) return;
-        if (!busyRef.current && !(phoneRef.current && sheetRef.current) && video.readyState >= 2) {
+        if (
+          !busyRef.current &&
+          !(phoneRef.current && sheetRef.current) &&
+          video.readyState >= 2
+        ) {
           busyRef.current = true;
           try {
             let value: string | null = null;
@@ -207,13 +298,25 @@ export function ScannerPage() {
               const scale = Math.min(1, 640 / video.videoWidth);
               canvas.width = Math.round(video.videoWidth * scale);
               canvas.height = Math.round(video.videoHeight * scale);
-              const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+              const ctx = canvas.getContext("2d", {
+                willReadFrequently: true,
+              })!;
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              value = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" })?.data ?? null;
+              value =
+                jsQR(img.data, img.width, img.height, {
+                  inversionAttempts: "dontInvert",
+                })?.data ?? null;
             }
             const now = Date.now();
-            if (value && !(lastCode.current && lastCode.current.code === value && now - lastCode.current.at < 4000)) {
+            if (
+              value &&
+              !(
+                lastCode.current &&
+                lastCode.current.code === value &&
+                now - lastCode.current.at < 4000
+              )
+            ) {
               lastCode.current = { code: value, at: now };
               // aparat działa dalej: na telefonie pod arkuszem wyniku (wstrzymany, dopóki arkusz jest otwarty),
               // na komputerze kolejna karta od razu podmienia wynik
@@ -240,7 +343,9 @@ export function ScannerPage() {
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
     try {
-      await track.applyConstraints({ advanced: [{ torch: !torch } as MediaTrackConstraintSet] });
+      await track.applyConstraints({
+        advanced: [{ torch: !torch } as MediaTrackConstraintSet],
+      });
       setTorch((t) => !t);
     } catch {
       setTorchOk(false);
@@ -267,10 +372,20 @@ export function ScannerPage() {
   const today = recent.length;
 
   const video = (
-    <Box pos="relative" className="ui-scan-video" style={{ display: scanning ? "block" : "none" }}>
+    <Box
+      pos="relative"
+      className="ui-scan-video"
+      style={{ display: scanning ? "block" : "none" }}
+    >
       <video ref={videoRef} playsInline muted />
       <Box className="ui-scan-frame" data-live={live || undefined} />
-      <Text c="white" size="sm" ta="center" className="ui-scan-hint" data-live={live || undefined}>
+      <Text
+        c="white"
+        size="sm"
+        ta="center"
+        className="ui-scan-hint"
+        data-live={live || undefined}
+      >
         Skieruj kod QR w ramkę
       </Text>
     </Box>
@@ -279,7 +394,11 @@ export function ScannerPage() {
     <form onSubmit={submitManual} className="ui-scan-manual">
       <Group align="flex-end" gap="xs" wrap="nowrap">
         <TextInput
-          label={hasCamera === false || typing ? "Numer z karty" : "Albo wpisz numer z karty"}
+          label={
+            hasCamera === false || typing
+              ? "Numer z karty"
+              : "Albo wpisz numer z karty"
+          }
           aria-describedby={!mobile ? "scan-hint" : undefined}
           placeholder="Np. 000123"
           inputMode="numeric"
@@ -310,7 +429,10 @@ export function ScannerPage() {
   );
   const recentList = (
     <section className="ui-dsec">
-      <SectionHead title="Ostatnio sprawdzone" extra={today ? <Text c="dimmed">{today}</Text> : undefined} />
+      <SectionHead
+        title="Ostatnio sprawdzone"
+        extra={today ? <Text c="dimmed">{today}</Text> : undefined}
+      />
       {recent.length === 0 ? (
         <Text size="sm" c="dimmed">
           Dziś na tym urządzeniu nikogo jeszcze nie sprawdzono.
@@ -339,21 +461,38 @@ export function ScannerPage() {
   if (mobile)
     return (
       <Stack className={live ? "ui-scan-live" : undefined}>
-        {!live && <PageTitle title="Skaner kart" description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem." />}
+        {!live && (
+          <PageTitle
+            title="Skaner kart"
+            description="Zeskanuj kod QR z karty identyfikacyjnej, aby sprawdzić, czy osoba jest aktywnym pracownikiem."
+          />
+        )}
         {video}
         {live && (
-          <UnstyledButton className="ui-scan-back" onClick={stop} aria-label="Wróć – wyłącz aparat">
+          <UnstyledButton
+            className="ui-scan-back"
+            onClick={stop}
+            aria-label="Wróć – wyłącz aparat"
+          >
             <IconChevronLeft size={22} aria-hidden />
           </UnstyledButton>
         )}
         {live && (
           <div className="ui-scan-bar">
-            <UnstyledButton className="ui-scan-pill" onClick={() => setTyping(true)}>
+            <UnstyledButton
+              className="ui-scan-pill"
+              onClick={() => setTyping(true)}
+            >
               <IconKeyboard size={20} aria-hidden />
               Wpisz numer
             </UnstyledButton>
             {torchOk && (
-              <UnstyledButton className="ui-scan-pill" data-on={torch || undefined} onClick={toggleTorch} aria-pressed={torch}>
+              <UnstyledButton
+                className="ui-scan-pill"
+                data-on={torch || undefined}
+                onClick={toggleTorch}
+                aria-pressed={torch}
+              >
                 <IconBolt size={20} aria-hidden />
                 Latarka
               </UnstyledButton>
@@ -366,11 +505,23 @@ export function ScannerPage() {
           </Alert>
         )}
         {!live && hasCamera !== false && (
-          <Button size="lg" leftSection={<IconCamera size={20} />} onClick={start} loading={starting}>
+          <Button
+            size="lg"
+            leftSection={<IconCamera size={20} />}
+            onClick={start}
+            loading={starting}
+          >
             Włącz aparat i skanuj
           </Button>
         )}
-        {loading && <Skeleton height={72} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />}
+        {loading && (
+          <Skeleton
+            height={72}
+            radius="md"
+            aria-busy="true"
+            aria-label="Sprawdzam kartę"
+          />
+        )}
         {!live && manualForm}
         {!live && recentList}
         <Drawer
@@ -410,11 +561,24 @@ export function ScannerPage() {
           </Stack>
           <Group grow mt="sm" className="ui-tpe-fsheet-done">
             {employee && (
-              <Button size="md" variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={18} />}>
+              <Button
+                size="md"
+                variant="default"
+                component={Link}
+                to={`/pracownicy/${employee.id}`}
+                leftSection={<IconUser size={18} />}
+              >
                 Otwórz kartę
               </Button>
             )}
-            <Button size="md" data-autofocus leftSection={<IconScan size={18} />} onClick={() => (streamRef.current ? setSheet(false) : void start())}>
+            <Button
+              size="md"
+              data-autofocus
+              leftSection={<IconScan size={18} />}
+              onClick={() =>
+                streamRef.current ? setSheet(false) : void start()
+              }
+            >
               Skanuj dalej
             </Button>
           </Group>
@@ -428,16 +592,27 @@ export function ScannerPage() {
       <PageTitle
         title="Skaner kart"
         meta={today ? `Dziś sprawdzono ${today}` : undefined}
-        description={hasCamera === false ? "Wpisz numer z karty albo użyj czytnika kodów – ten komputer nie ma aparatu." : "Zeskanuj kod QR z karty identyfikacyjnej albo wpisz jej numer."}
+        description={
+          hasCamera === false
+            ? "Wpisz numer z karty albo użyj czytnika kodów – ten komputer nie ma aparatu."
+            : "Zeskanuj kod QR z karty identyfikacyjnej albo wpisz jej numer."
+        }
       />
-      <div className="ui-scan-grid" data-nocam={hasCamera === false || undefined}>
+      <div
+        className="ui-scan-grid"
+        data-nocam={hasCamera === false || undefined}
+      >
         <div className="ui-scan-col">
           {hasCamera !== false && (
             <>
               {video}
               {!scanning && (
                 <div className="ui-scan-off">
-                  <Button leftSection={<IconCamera size={18} />} onClick={start} loading={starting}>
+                  <Button
+                    leftSection={<IconCamera size={18} />}
+                    onClick={start}
+                    loading={starting}
+                  >
                     Włącz aparat
                   </Button>
                 </div>
@@ -459,12 +634,22 @@ export function ScannerPage() {
         <section className="ui-dsec ui-scan-col">
           <SectionHead title="Wynik" />
           {loading ? (
-            <Skeleton height={200} radius="md" aria-busy="true" aria-label="Sprawdzam kartę" />
+            <Skeleton
+              height={200}
+              radius="md"
+              aria-busy="true"
+              aria-label="Sprawdzam kartę"
+            />
           ) : employee ? (
             <>
               <ScanResult employee={employee} />
               <Group>
-                <Button variant="default" component={Link} to={`/pracownicy/${employee.id}`} leftSection={<IconUser size={16} />}>
+                <Button
+                  variant="default"
+                  component={Link}
+                  to={`/pracownicy/${employee.id}`}
+                  leftSection={<IconUser size={16} />}
+                >
                   Otwórz kartę
                 </Button>
               </Group>

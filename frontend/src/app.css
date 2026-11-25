@@ -2137,6 +2137,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-scan-live .ui-scan-video{aspect-ratio:auto}
 .ui-scan-off{display:grid;place-items:center;aspect-ratio:4/3;border-radius:var(--mantine-radius-md);background:var(--apt-subtle);border:1px dashed var(--apt-line)}
 .ui-scan-res{display:flex;flex-direction:column;gap:var(--s-3)}
+.ui-scan-who{display:flex;flex-direction:column;gap:var(--s-3);min-width:0}
 .ui-acct-state[data-tone="bad"]{color:var(--mantine-color-red-text)}
 .ui-acct-state[data-tone="bad"] .ui-acct-dot{background:var(--mantine-color-red-6)}
 .ui-scan-recent{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding:var(--s-3) var(--s-4);border-top:1px solid var(--apt-line);font-size:14px}
@@ -2166,4 +2167,8 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
   :where(:root[data-device="phone"]) .ui-scan-back{display:grid;place-items:center;position:absolute;z-index:3;top:var(--s-3);left:calc(var(--s-3) + var(--apt-safe-left));width:44px;height:44px;border-radius:50%;color:var(--mantine-color-white);background:color-mix(in srgb,var(--mantine-color-black) 45%,transparent)}
   :where(:root[data-device="phone"]) .ui-scan-back:focus-visible{outline:2px solid var(--mantine-color-white);outline-offset:2px}
   :where(:root[data-device="phone"]) .ui-scan-live .ui-scan-bar{bottom:var(--s-3)}
+}
+/* arkusz wyniku na telefonie w poziomie: stan, zdjęcie i nazwisko po lewej, dane po prawej – wszystko bez przewijania */
+@media (orientation:landscape){
+  :where(:root[data-device="phone"]) .ui-tpe-fsheet .ui-scan-res{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:var(--s-4);align-items:start}
 }

@@ -1079,6 +1079,15 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-inrow[data-unread] .ui-inrow-pv{color:var(--mantine-color-text)}
 .ui-inrow-st{grid-column:1/-1;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
 /* rozmowa */
+.ui-nw-field{flex:none;display:flex;align-items:center;gap:var(--s-3);min-height:52px;padding:var(--s-2) var(--s-5);border-bottom:1px solid var(--apt-line)}
+.ui-nw-label{width:56px;flex:none;font-size:14px;line-height:20px;color:var(--mantine-color-dimmed)}
+.ui-nw-chip{display:inline-flex;align-items:center;gap:var(--s-2);min-height:32px;padding:0 var(--s-1) 0 var(--s-3);border-radius:var(--mantine-radius-sm);background:var(--apt-subtle);font-size:14px;line-height:20px;font-weight:600}
+.ui-nw-no{font-weight:400;color:var(--mantine-color-dimmed)}
+.ui-nw-chipx{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--mantine-radius-sm);color:var(--mantine-color-dimmed)}
+.ui-nw-chipx:hover{background:var(--mantine-color-default-hover)}
+.ui-nw-chipx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
+.ui-nw-count{flex:none}
+.ui-nw-empty{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);padding:var(--s-6);text-align:center}
 .ui-dchat-head{flex:none;display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--apt-line)}
 .ui-chat-name{font-weight:600;font-size:15px;line-height:22px;color:inherit;text-decoration:underline;text-decoration-color:var(--mantine-color-default-border);text-underline-offset:3px}
 .ui-chat-name:hover{text-decoration-color:currentColor}

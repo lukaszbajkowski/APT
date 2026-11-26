@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconArchive, IconArchiveOff, IconMessage, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
+import { IconX, IconArchive, IconArchiveOff, IconMessage, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
 import { api, errorText, shortTime, type Employee } from "../api";
@@ -777,50 +777,97 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
     );
   }
 
+  // komputer (wariant A): wygląda jak otwarta rozmowa – nagłówek z „✕”, wiersze „Do” i „Temat”, na dole ten sam pasek pisania
+  const pickedNo = employee ? (people.data ?? []).find((p) => String(p.employee_id) === employee)?.number : undefined;
   return (
-    <Stack p="md" maw={560}>
-      <Title order={4}>{staff ? "Nowa wiadomość do pracownika" : T("Nowa wiadomość do kadr")}</Title>
-      {staff ? (
-        <>
+    <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
+      <div className="ui-dchat-head">
+        <Text fw={600} style={{ flex: 1 }}>
+          {T("Nowa wiadomość")}
+        </Text>
+        <Tooltip label={T("Anuluj")}>
+          <ActionIcon variant="subtle" color="gray" size="lg" onClick={onCancel} aria-label={T("Anuluj")}>
+            <IconX size={18} />
+          </ActionIcon>
+        </Tooltip>
+      </div>
+      <div className="ui-nw-field">
+        <span className="ui-nw-label">{T("Do")}</span>
+        {!staff ? (
+          <Text size="sm">{T("Kadry")}</Text>
+        ) : employee && picked ? (
+          <span className="ui-nw-chip">
+            {picked}
+            {pickedNo && <span className="ui-mono ui-nw-no">{pickedNo}</span>}
+            <UnstyledButton className="ui-nw-chipx" onClick={() => { setEmployee(null); setSearch(""); }} aria-label={`Zmień odbiorcę – ${picked}`}>
+              <IconX size={14} />
+            </UnstyledButton>
+          </span>
+        ) : (
           <Select
-            label="Pracownik"
-            description="Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości."
+            style={{ flex: 1 }}
+            aria-label="Pracownik"
             placeholder="Wpisz nazwisko"
             searchable
-            data={[
-              ...(preset ? [{ value: preset.id, label: preset.name }] : []),
-              ...(people.data ?? [])
-                .filter((p) => String(p.employee_id) !== preset?.id)
-                .map((p) => ({ value: String(p.employee_id), label: `${p.name} (${p.number})` })),
-            ]}
+            autoFocus
+            data={(people.data ?? []).map((p) => ({ value: String(p.employee_id), label: `${p.name} · ${p.number}` }))}
             value={employee}
-            onChange={setEmployee}
+            onChange={(v) => {
+              setEmployee(v);
+              setPickedName((people.data ?? []).find((p) => String(p.employee_id) === v)?.name ?? null);
+            }}
             searchValue={search}
             onSearchChange={setSearch}
             nothingFoundMessage="Brak pracownika z aktywnym kontem"
             filter={({ options }) => options}
           />
-          <TextInput label="Temat" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
-        </>
-      ) : (
-        <Select label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
-      )}
-      <Group align="flex-end" wrap="nowrap">
-        <Textarea style={{ flex: 1 }} label={T("Treść")} autosize minRows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.currentTarget.value)} />
-        <DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />
-      </Group>
-      {staff && (
-        <Text size="xs" c="dimmed">
-          Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
+        )}
+      </div>
+      <div className="ui-nw-field">
+        <span className="ui-nw-label">{T("Temat")}</span>
+        {staff ? (
+          <>
+            <TextInput style={{ flex: 1 }} aria-label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
+            <Text size="xs" c="dimmed" className="ui-nw-count">
+              {custom.length}/80
+            </Text>
+          </>
+        ) : (
+          <Select style={{ flex: 1 }} aria-label={T("Temat")} placeholder={T("Wybierz")} data={(subjects.data ?? []).map((x) => ({ value: x, label: T(x) }))} value={subject} onChange={setSubject} />
+        )}
+      </div>
+      <div className="ui-nw-empty">
+        <Text size="sm" c="dimmed">
+          {T("Napisz pierwszą wiadomość – pojawi się tu jak w rozmowie.")}
         </Text>
-      )}
-      {error && <Alert color="red">{error}</Alert>}
-      <Group>
+        <Text size="xs" c="dimmed" maw="46ch">
+          {staff
+            ? "Tylko osoby z aktywnym kontem w aplikacji. Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni."
+            : T("Kadry odpowiedzą w tej rozmowie.")}
+        </Text>
+        {error && <Alert color="red">{error}</Alert>}
+      </div>
+      <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12} style={{ borderTop: "1px solid var(--apt-line)" }}>
+        <DictateButton lang={account?.user.language ?? "pl"} value={body} onChange={setBody} />
+        <Textarea
+          style={{ flex: 1 }}
+          aria-label={T("Treść")}
+          placeholder={T("Twoja wiadomość")}
+          autosize
+          minRows={1}
+          maxRows={6}
+          maxLength={2000}
+          value={body}
+          onChange={(e) => setBody(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (ready && !create.isPending) create.mutate();
+            }
+          }}
+        />
         <Button loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
           {T("Wyślij")}
-        </Button>
-        <Button variant="default" onClick={onCancel}>
-          {T("Anuluj")}
         </Button>
       </Group>
     </Stack>

@@ -397,7 +397,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
           {error}
         </Alert>
       )}
-      <Group px="lg" py="sm" align="flex-end" wrap="nowrap" gap={8} style={{ borderTop: "1px solid var(--apt-line)" }}>
+      <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12} style={{ borderTop: "1px solid var(--apt-line)" }}>
         <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
         <Textarea
           style={{ flex: 1 }}

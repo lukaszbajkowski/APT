@@ -42,6 +42,7 @@ import {
   IconFingerprint,
   IconHeartbeat,
   IconTool,
+  IconPalette,
   IconHome,
   IconKey,
   IconListDetails,
@@ -385,6 +386,7 @@ function AppLayoutInner() {
     { to: "/komunikaty-techniczne", label: "Komunikaty techniczne", icon: IconTool, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/tlumaczenia", label: "Tłumaczenia", icon: IconLanguage, show: hasRole("admin"), group: ADMIN_GROUP },
     { to: "/dziennik", label: "Dziennik zdarzeń", icon: IconListDetails, show: hasRole("admin"), group: ADMIN_GROUP },
+    { to: "/wzornik", label: "Wzornik", icon: IconPalette, show: hasRole("admin"), group: ADMIN_GROUP },
   ].filter((i) => i.show);
 
   // dolny pasek na telefonie: najczęstsze miejsca + skaner na środku

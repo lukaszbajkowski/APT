@@ -322,7 +322,7 @@ export function App() {
         <Route
           path="wzornik"
           element={
-            <RequireAuth roles={["admin", "hr"]}>
+            <RequireAuth roles={["admin"]}>
               <PatternsPage />
             </RequireAuth>
           }

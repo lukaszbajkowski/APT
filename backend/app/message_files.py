@@ -1,7 +1,9 @@
 """Pliki w wiadomościach „Napisz do kadr”: sprawdzenie, obróbka zdjęć i zapis szyfrowany.
 
 Zdjęcia (JPG / PNG / WebP / HEIC przekonwertowany przez telefon) – obrót wg EXIF, bez metadanych,
-pomniejszenie do 2000 px (JPEG) i miniatura 480 px do dymka. PDF – bez zmian. Do 15 MB na plik, do 10 plików.
+pomniejszenie do 2000 px (JPEG) i miniatura 480 px do dymka. PDF i pliki biurowe (Word, Excel, PowerPoint,
+OpenDocument, TXT, CSV) – bez zmian; podgląd stron jak przy dokumentach (pliki biurowe przez LibreOffice,
+PDF podglądu zapisywany obok: <id>_p.pdf). Do 15 MB na plik, do 10 plików.
 """
 
 import io
@@ -59,6 +61,9 @@ def prepare(name: str, raw: bytes) -> Prepared:
     base = (name or "plik").replace("/", "_").replace("\\", "_")[:200]
     if raw.startswith(b"%PDF"):
         return Prepared(base, "pdf", "application/pdf", raw)
+    office = _office(base, raw)
+    if office:
+        return office
     try:
         with Image.open(io.BytesIO(raw)) as probe:
             probe.verify()
@@ -66,9 +71,9 @@ def prepare(name: str, raw: bytes) -> Prepared:
         fmt = img.format
         img = ImageOps.exif_transpose(img)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise FileError(f"Pliku „{name}” nie da się wysłać – dozwolone są zdjęcia (JPG, PNG) i PDF.") from exc
+        raise FileError(f"Pliku „{name}” nie da się wysłać. {ALLOWED_TEXT}") from exc
     if fmt not in ("JPEG", "PNG", "WEBP", "MPO"):
-        raise FileError(f"Pliku „{name}” nie da się wysłać – dozwolone są zdjęcia (JPG, PNG) i PDF.")
+        raise FileError(f"Pliku „{name}” nie da się wysłać. {ALLOWED_TEXT}")
     if img.mode not in ("RGB", "L"):
         bg = Image.new("RGB", img.size, (255, 255, 255))
         rgba = img.convert("RGBA")
@@ -80,6 +85,60 @@ def prepare(name: str, raw: bytes) -> Prepared:
     w, h = Image.open(io.BytesIO(data)).size
     stem = base.rsplit(".", 1)[0] if "." in base else base
     return Prepared(f"{stem}.jpg", "jpg", "image/jpeg", data, _jpeg(img, THUMB, 80), w, h)
+
+
+OFFICE = {
+    # rozszerzenie: (typ MIME, sygnatura pliku)
+    "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"PK\x03\x04"),
+    "xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b"PK\x03\x04"),
+    "pptx": ("application/vnd.openxmlformats-officedocument.presentationml.presentation", b"PK\x03\x04"),
+    "odt": ("application/vnd.oasis.opendocument.text", b"PK\x03\x04"),
+    "ods": ("application/vnd.oasis.opendocument.spreadsheet", b"PK\x03\x04"),
+    "doc": ("application/msword", b"\xd0\xcf\x11\xe0"),
+    "xls": ("application/vnd.ms-excel", b"\xd0\xcf\x11\xe0"),
+    "ppt": ("application/vnd.ms-powerpoint", b"\xd0\xcf\x11\xe0"),
+    "rtf": ("application/rtf", b"{\\rtf"),
+    "txt": ("text/plain", b""),
+    "csv": ("text/csv", b""),
+}
+ALLOWED_TEXT = "Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT i CSV."
+
+
+def _office(name: str, raw: bytes) -> Prepared | None:
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext not in OFFICE:
+        return None
+    ctype, sig = OFFICE[ext]
+    if sig and not raw.startswith(sig):
+        raise FileError(f"Plik „{name}” nie wygląda na prawdziwy plik .{ext}.")
+    if not sig:
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                raw.decode("cp1250")
+            except UnicodeDecodeError as exc:
+                raise FileError(f"Plik „{name}” nie jest plikiem tekstowym.") from exc
+        if b"\x00" in raw:
+            raise FileError(f"Plik „{name}” nie jest plikiem tekstowym.")
+    return Prepared(name, ext, ctype, raw)
+
+
+def preview_source(thread_id: int, file_name: str, content_type: str) -> tuple[bytes, str]:
+    """Dane do podglądu stron: PDF i zdjęcia wprost, pliki biurowe – PDF z LibreOffice (zapamiętany obok)."""
+    ext = file_name.rsplit(".", 1)[-1]
+    data = read(thread_id, file_name)
+    if ext in ("pdf", "jpg"):
+        return data, ext
+    from app import templating
+
+    d = thread_dir(thread_id)
+    cached = d / f"{file_name.split('.')[0]}_p.pdf"
+    if cached.exists():
+        return storage.read(cached), "pdf"
+    pdf = templating.to_pdf(data, suffix=ext)
+    storage.write(cached, pdf)
+    return pdf, "pdf"
 
 
 def write(thread_id: int, file_id: int, p: Prepared) -> str:

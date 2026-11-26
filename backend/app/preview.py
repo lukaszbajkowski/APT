@@ -68,11 +68,12 @@ def watermark(img: Image.Image, viewer: str, when: datetime | None = None) -> Im
     return out.convert("RGB")
 
 
-def render_page(data: bytes, ext: str, page: int, viewer: str) -> bytes:
+def render_page(data: bytes, ext: str, page: int, viewer: str, mark: bool = True) -> bytes:
     img = _page_image(data, ext, page)
     if img.width > MAX_W:
         img = img.resize((MAX_W, int(img.height * MAX_W / img.width)))
-    img = watermark(img, viewer)
+    if mark:  # pliki z wiadomości – bez znaku wodnego (korespondencja, nie dokument firmy)
+        img = watermark(img, viewer)
     buf = io.BytesIO()
     # zwykła kompresja: optimize=True liczy ~4× dłużej, a plik wychodzi tej samej wielkości (test
     # obciążenia, 11.2026)

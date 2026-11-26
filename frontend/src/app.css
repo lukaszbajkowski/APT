@@ -2229,6 +2229,11 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 [data-mine] .ui-mf-file{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-paper,var(--mantine-color-body)))}
 .ui-mf-file:hover{background:var(--mantine-color-default-hover)}
 .ui-mf-ic{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:var(--mantine-radius-md);background:var(--mantine-color-body);color:var(--mantine-color-red-text)}
+.ui-mf-ic[data-tone="blue"]{color:var(--mantine-color-blue-text)}
+.ui-mf-ic[data-tone="green"]{color:var(--mantine-color-green-text)}
+.ui-mf-ic[data-tone="orange"]{color:var(--mantine-color-orange-text)}
+.ui-mf-ic[data-tone="gray"]{color:var(--mantine-color-dimmed)}
+.ui-mf-file{text-align:left;width:100%}
 .ui-mf-txt{display:flex;flex-direction:column;min-width:0}
 .ui-mf-name{font-size:14px;line-height:20px;font-weight:600;overflow-wrap:anywhere}
 .ui-mf-size{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}

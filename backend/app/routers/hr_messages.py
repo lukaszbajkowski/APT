@@ -46,6 +46,7 @@ class MsgFileOut(BaseModel):
     name: str
     size: int
     kind: Literal["image", "file"]
+    ext: str = ""
     width: int | None = None
     height: int | None = None
 
@@ -202,6 +203,7 @@ def _out(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
                         name=f.original_name,
                         size=f.size,
                         kind="image" if f.content_type.startswith("image/") else "file",
+                        ext=f.file_name.rsplit(".", 1)[-1],
                         width=f.width,
                         height=f.height,
                     )
@@ -408,15 +410,62 @@ def _file_response(db: DbSession, file_id: int, thumb: bool, can: Callable[[HrTh
     ctype = "image/jpeg" if thumb and f.content_type.startswith("image/") else f.content_type
     from urllib.parse import quote
 
+    viewable = f.content_type.startswith("image/") or f.content_type == "application/pdf"
+    disp = "inline" if viewable else "attachment"
+
     return Response(
         data,
         media_type=ctype,
         headers={
             "Cache-Control": "private, max-age=3600",
-            "Content-Disposition": f"inline; filename*=UTF-8''{quote(f.original_name)}",
+            "Content-Disposition": f"{disp}; filename*=UTF-8''{quote(f.original_name)}",
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+class FilePagesOut(BaseModel):
+    pages: int
+    signed: bool = False
+    title: str
+
+
+def _msg_file(db: DbSession, file_id: int, can: Callable[[HrThread], bool]) -> HrMessageFile:
+    f = db.get(HrMessageFile, file_id)
+    if f is None or not can(f.message.thread):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pliku.")
+    return f
+
+
+def _preview_data(f: HrMessageFile) -> tuple[bytes, str]:
+    from app import templating
+
+    try:
+        return message_files.preview_source(f.message.thread_id, f.file_name, f.content_type)
+    except templating.PdfUnavailable as e:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Podglądu tego pliku nie da się przygotować – pobierz go.",
+        ) from e
+
+
+def _preview_info(db: DbSession, file_id: int, can: Callable[[HrThread], bool]) -> FilePagesOut:
+    from app import preview
+
+    f = _msg_file(db, file_id, can)
+    data, ext = _preview_data(f)
+    return FilePagesOut(pages=preview.page_count(data, ext), title=f.original_name)
+
+
+def _preview_page(db: DbSession, file_id: int, page: int, can: Callable[[HrThread], bool]) -> Response:
+    from app import preview
+
+    f = _msg_file(db, file_id, can)
+    data, ext = _preview_data(f)
+    if not 0 <= page < preview.page_count(data, ext):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
+    png = preview.render_page(data, ext, page, "", mark=False)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
 
 
 def _employee_id(ctx: Auth) -> int:
@@ -566,6 +615,20 @@ def create_thread(body: NewThreadIn, ctx: Auth, request: Request, db: DbSession)
     return _out(t, False, ctx.user.id, eid)
 
 
+def _my_can(eid: int) -> Callable[[HrThread], bool]:
+    return lambda t: t.employee_id == eid or _member(t, eid) is not None
+
+
+@me_router.get("/files/{file_id}/preview", response_model=FilePagesOut)
+def my_file_preview(file_id: int, ctx: Auth, db: DbSession) -> FilePagesOut:
+    return _preview_info(db, file_id, _my_can(_employee_id(ctx)))
+
+
+@me_router.get("/files/{file_id}/preview/page/{page}")
+def my_file_page(file_id: int, page: int, ctx: Auth, db: DbSession) -> Response:
+    return _preview_page(db, file_id, page, _my_can(_employee_id(ctx)))
+
+
 @me_router.get("/files/{file_id}")
 def my_file(file_id: int, ctx: Auth, db: DbSession, thumb: bool = False) -> Response:
     eid = _employee_id(ctx)
@@ -678,6 +741,16 @@ def staff_thread(thread_id: int, ctx: StaffAuth, db: DbSession) -> ThreadOut:
         t.staff_seen_at = utcnow()
         db.commit()
     return _out(t, True)
+
+
+@staff_router.get("/files/{file_id}/preview", response_model=FilePagesOut)
+def staff_file_preview(file_id: int, ctx: StaffAuth, db: DbSession) -> FilePagesOut:
+    return _preview_info(db, file_id, lambda t: True)
+
+
+@staff_router.get("/files/{file_id}/preview/page/{page}")
+def staff_file_page(file_id: int, page: int, ctx: StaffAuth, db: DbSession) -> Response:
+    return _preview_page(db, file_id, page, lambda t: True)
 
 
 @staff_router.get("/files/{file_id}")

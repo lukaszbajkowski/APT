@@ -44,6 +44,8 @@ export function DocumentViewer({
   onClose,
   base,
   downloadUrl,
+  downloadLabel,
+  overlay,
   variant = base ? "signed" : "document",
 }: {
   docId: string;
@@ -54,6 +56,10 @@ export function DocumentViewer({
   /** Własne źródło podglądu (np. podpisany dokument pracownika): `${base}` zwraca informacje, `${base}/page/{i}` strony. */
   base?: string;
   downloadUrl?: string;
+  /** napis przycisku pobierania (domyślnie „Pobierz PDF”) – np. „Pobierz” dla pliku Word z wiadomości */
+  downloadLabel?: string;
+  /** otwierany nad warstwą na cały ekran (rozmowa na telefonie) – okno pełnoekranowe zamiast ekranu z górnym paskiem */
+  overlay?: boolean;
 }) {
   const T = useT();
   const infoUrl = base ?? `/documents/${docId}/preview`;
@@ -69,7 +75,7 @@ export function DocumentViewer({
     staleTime: 0,
   });
   const [hidden, setHidden] = useState(false);
-  const mobile = useIsPhone();
+  const mobile = useIsPhone() && !overlay;
 
   const protect = variant !== "attachment";
   useEffect(() => {
@@ -165,7 +171,7 @@ export function DocumentViewer({
         bar={
           downloadUrl ? (
             <Button component="a" size="lg" radius="md" fullWidth href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={20} />}>
-              {T("Pobierz PDF")}
+              {downloadLabel ?? T("Pobierz PDF")}
             </Button>
           ) : undefined
         }
@@ -195,7 +201,7 @@ export function DocumentViewer({
           <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
           {downloadUrl && (
             <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
-              {T("Pobierz PDF")}
+              {downloadLabel ?? T("Pobierz PDF")}
             </Button>
           )}
           {q.data?.signed && (

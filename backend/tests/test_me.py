@@ -463,5 +463,40 @@ def test_message_files(me, hr, emp):  # noqa: F811
         f"/api/me/messages/{tid}/files",
         files=[("files", ("x.exe", b"MZ\x00\x00", "application/octet-stream"))],
     )
-    assert bad.status_code == 400 and "dozwolone" in bad.json()["detail"]
+    assert bad.status_code == 400 and "dozwolone" in bad.json()["detail"].lower()
     assert me.post(f"/api/me/messages/{tid}/files", data={"body": ""}).status_code == 400
+
+
+def test_message_office_preview(me, hr, emp):  # noqa: F811
+    from app import templating
+
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Plan"}).json()["id"]
+    r = me.post(
+        f"/api/me/messages/{tid}/files",
+        files=[("files", ("plan.txt", "Grafik\nPoniedziałek 8–16".encode(), "text/plain"))],
+    )
+    assert r.status_code == 200, r.text
+    f = r.json()["messages"][-1]["files"][0]
+    assert f["ext"] == "txt" and f["kind"] == "file"
+    # typ MIME pliku Word ma ponad 50 znaków
+    zipped = io.BytesIO()
+    import zipfile
+
+    with zipfile.ZipFile(zipped, "w") as z:
+        z.writestr("word/document.xml", "<w/>")
+    w = me.post(
+        f"/api/me/messages/{tid}/files",
+        files=[("files", ("umowa.docx", zipped.getvalue(), "application/zip"))],
+    )
+    assert w.status_code == 200 and w.json()["messages"][-1]["files"][0]["ext"] == "docx"
+    assert "attachment" in hr.get(f"/api/hr-messages/files/{f['id']}").headers["content-disposition"]
+    fake = me.post(
+        f"/api/me/messages/{tid}/files",
+        files=[("files", ("x.docx", b"not a zip", "application/octet-stream"))],
+    )
+    assert fake.status_code == 400
+    if templating.soffice_path():
+        info = hr.get(f"/api/hr-messages/files/{f['id']}/preview").json()
+        assert info["pages"] == 1 and info["title"] == "plan.txt"
+        page = me.get(f"/api/me/messages/files/{f['id']}/preview/page/0")
+        assert page.status_code == 200 and page.content.startswith(b"\x89PNG")

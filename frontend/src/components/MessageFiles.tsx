@@ -1,8 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Modal, Tooltip, UnstyledButton } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight, IconDownload, IconFileTypePdf, IconPaperclip, IconPlus, IconX } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconDownload,
+  IconFileText,
+  IconFileTypeCsv,
+  IconFileTypeDoc,
+  IconFileTypeDocx,
+  IconFileTypePdf,
+  IconFileTypePpt,
+  IconFileTypeTxt,
+  IconFileTypeXls,
+  IconPaperclip,
+  IconPlus,
+  IconX,
+} from "@tabler/icons-react";
+
+import { DocumentViewer } from "./DocumentViewer";
 
 import { useT } from "../lib/i18n";
+import { useIsPhone } from "../lib/device";
 
 /** Plik w wiadomości (z serwera). */
 export interface MsgFile {
@@ -10,13 +28,28 @@ export interface MsgFile {
   name: string;
   size: number;
   kind: "image" | "file";
+  ext?: string;
   width?: number | null;
   height?: number | null;
 }
 
 export const MAX_FILES = 10;
 const MAX_MB = 15;
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf";
+const OFFICE = ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "rtf", "txt", "csv"];
+const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf", ...OFFICE.map((e) => `.${e}`)].join(",");
+
+/** Ikona i nazwa typu pliku (kafelek w dymku i miniatura przed wysłaniem). */
+function fileType(name: string, ext?: string): { label: string; Icon: typeof IconFileText; tone: string } {
+  const e = (ext || name.split(".").pop() || "").toLowerCase();
+  if (e === "pdf") return { label: "PDF", Icon: IconFileTypePdf, tone: "red" };
+  if (e === "docx") return { label: "Word", Icon: IconFileTypeDocx, tone: "blue" };
+  if (e === "doc" || e === "rtf" || e === "odt") return { label: e === "odt" ? "Dokument" : "Word", Icon: IconFileTypeDoc, tone: "blue" };
+  if (e === "xls" || e === "xlsx" || e === "ods") return { label: "Excel", Icon: IconFileTypeXls, tone: "green" };
+  if (e === "csv") return { label: "CSV", Icon: IconFileTypeCsv, tone: "green" };
+  if (e === "ppt" || e === "pptx") return { label: "PowerPoint", Icon: IconFileTypePpt, tone: "orange" };
+  if (e === "txt") return { label: "Tekst", Icon: IconFileTypeTxt, tone: "gray" };
+  return { label: e.toUpperCase(), Icon: IconFileText, tone: "gray" };
+}
 
 export function fileSize(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -28,7 +61,9 @@ const url = (base: string, id: number, thumb = false) => `/api${base}/files/${id
 /** Załączniki w dymku, jak w komunikatorze: zdjęcia jako obraz (kilka – siatka 2×2 z „+N”), PDF jako kafelek. */
 export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string }) {
   const T = useT();
+  const phone = useIsPhone();
   const [open, setOpen] = useState<number | null>(null);
+  const [doc, setDoc] = useState<MsgFile | null>(null);
   const imgs = files.filter((f) => f.kind === "image");
   const docs = files.filter((f) => f.kind !== "image");
   if (!files.length) return null;
@@ -54,17 +89,34 @@ export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string
           ))}
         </div>
       ) : null}
-      {docs.map((f) => (
-        <a key={f.id} className="ui-mf-file" href={url(base, f.id)} target="_blank" rel="noopener">
-          <span className="ui-mf-ic" aria-hidden>
-            <IconFileTypePdf size={20} />
-          </span>
-          <span className="ui-mf-txt">
-            <span className="ui-mf-name">{f.name}</span>
-            <span className="ui-mf-size">PDF · {fileSize(f.size)}</span>
-          </span>
-        </a>
-      ))}
+      {docs.map((f) => {
+        const ft = fileType(f.name, f.ext);
+        return (
+          <UnstyledButton key={f.id} className="ui-mf-file" onClick={() => setDoc(f)} aria-label={`${T("Otwórz podgląd")}: ${f.name}`}>
+            <span className="ui-mf-ic" data-tone={ft.tone} aria-hidden>
+              <ft.Icon size={20} />
+            </span>
+            <span className="ui-mf-txt">
+              <span className="ui-mf-name">{f.name}</span>
+              <span className="ui-mf-size">
+                {ft.label} · {fileSize(f.size)}
+              </span>
+            </span>
+          </UnstyledButton>
+        );
+      })}
+      {doc && (
+        <DocumentViewer
+          docId={String(doc.id)}
+          opened
+          onClose={() => setDoc(null)}
+          base={`${base}/files/${doc.id}/preview`}
+          downloadUrl={`${base}/files/${doc.id}`}
+          downloadLabel={(doc.ext ?? "") === "pdf" ? T("Pobierz PDF") : T("Pobierz")}
+          overlay={phone}
+          variant="attachment"
+        />
+      )}
       {open !== null && <ImageViewer images={imgs} base={base} start={open} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -137,8 +189,9 @@ export function usePendingFiles() {
     const next = [...files];
     let err: string | null = null;
     for (const f of Array.from(list)) {
-      const ok = f.type === "application/pdf" || f.type.startsWith("image/") || /\.(pdf|jpe?g|png|webp|heic|heif)$/i.test(f.name);
-      if (!ok) err = `Pliku „${f.name}” nie da się wysłać – dozwolone są zdjęcia i PDF.`;
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      const ok = f.type === "application/pdf" || f.type.startsWith("image/") || /^(pdf|jpe?g|png|webp|heic|heif)$/.test(ext) || OFFICE.includes(ext);
+      if (!ok) err = `Pliku „${f.name}” nie da się wysłać. Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT i CSV.`;
       else if (f.size > MAX_MB * 1024 * 1024) err = `Plik „${f.name}” jest za duży (max ${MAX_MB} MB).`;
       else if (next.length >= MAX_FILES) err = `Najwyżej ${MAX_FILES} plików w wiadomości.`;
       else next.push({ file: f, url: f.type.startsWith("image/") ? URL.createObjectURL(f) : null });
@@ -212,7 +265,10 @@ export function PendingFiles({ pending }: { pending: Pending }) {
             <img src={f.url} alt={f.file.name} />
           ) : (
             <span className="ui-mf-thf">
-              <IconFileTypePdf size={20} aria-hidden />
+              {(() => {
+                const ft = fileType(f.file.name);
+                return <ft.Icon size={20} aria-hidden />;
+              })()}
               <span>{f.file.name}</span>
             </span>
           )}

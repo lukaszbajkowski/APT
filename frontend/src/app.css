@@ -1059,7 +1059,8 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-inbox-page{display:flex;flex-direction:column;gap:var(--s-4)}
 .ui-inbox-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s-4);min-height:36px} /* tyle co przycisk – tytuł w tym samym miejscu z akcjami i bez */
 .ui-inbox{display:flex;height:calc(100dvh - 110px);min-height:420px;overflow:hidden}
-.ui-inbox[data-head]{height:calc(100dvh - 164px)}
+.ui-inbox[data-head]{height:calc(100dvh - 116px)}
+@media (min-width:1600px){.ui-inbox[data-head]{height:calc(100dvh - 148px)}}
 .ui-inbox-list{width:380px;flex:none;border-right:1px solid var(--apt-line);min-height:0}
 @media (min-width:1600px){.ui-inbox-list{width:400px}}
 .ui-inbox[data-single] .ui-inbox-list{width:100%;border-right:0}

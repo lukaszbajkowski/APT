@@ -360,3 +360,63 @@ def test_archive_threads_per_side(me, hr, emp):  # noqa: F811
     assert me.get("/api/me/messages").json() == []
     assert len(hr.get("/api/hr-messages", params={"archived": True}).json()) == 1
     assert len(me.get("/api/me/messages", params={"archived": True}).json()) == 1
+
+
+def _second_account(hr):  # noqa: F811
+    eid = _second_employee()
+    c = TestClient(app)
+    r = _activate(c, _invite(hr, eid), FakeAuthenticator())
+    assert r.status_code == 200, r.text
+    c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+    return eid, c
+
+
+def test_message_to_several_separate(me, hr, emp):  # noqa: F811
+    eid2, other = _second_account(hr)
+    r = hr.post(
+        "/api/hr-messages",
+        json={"employee_ids": [emp, eid2], "mode": "separate", "subject": "Odzież", "body": "Piątek 8:00"},
+    )
+    assert r.status_code == 201, r.text
+    rows = [x for x in hr.get("/api/hr-messages").json() if x["subject"] == "Odzież"]
+    assert len(rows) == 2 and all(x["batch_size"] == 2 and not x["is_group"] for x in rows)
+    # każdy widzi tylko swoją rozmowę; odpowiedź jednej osoby nie trafia do drugiej
+    mine = me.get("/api/me/messages").json()
+    assert len(mine) == 1 and mine[0]["batch_size"] is None
+    me.post(f"/api/me/messages/{mine[0]['id']}/messages", json={"body": "Mogę o 11?"})
+    theirs = other.get(f"/api/me/messages/{other.get('/api/me/messages').json()[0]['id']}").json()
+    assert [m["body"] for m in theirs["messages"]] == ["Piątek 8:00"]
+
+
+def test_message_to_several_group(me, hr, emp):  # noqa: F811
+    eid2, other = _second_account(hr)
+    r = hr.post(
+        "/api/hr-messages",
+        json={"employee_ids": [emp, eid2], "mode": "group", "subject": "Zmiana", "body": "Nowy grafik"},
+    )
+    assert r.status_code == 201, r.text
+    t = r.json()
+    assert t["is_group"] and len(t["members"]) == 2 and t["employee_id"] is None
+    tid = t["id"]
+    me.post(f"/api/me/messages/{tid}/messages", json={"body": "Dziękuję"})
+    seen = other.get(f"/api/me/messages/{tid}").json()
+    msgs = [m for m in seen["messages"] if m["kind"] == "message"]
+    assert [m["body"] for m in msgs] == ["Nowy grafik", "Dziękuję"]
+    assert msgs[1]["author_name"] and not msgs[1]["mine"]
+    # nieprzeczytane liczone osobno dla każdego uczestnika
+    assert other.get("/api/me/messages/count").json()["unread"] == 0
+    other.post(f"/api/me/messages/{tid}/messages", json={"body": "Ja też"})
+    assert me.get("/api/me/messages/count").json()["unread"] == 1
+    assert hr.get(f"/api/hr-messages/{tid}").json()["messages"][-1]["author_name"]
+    # osoba spoza grupy nie widzi rozmowy
+    hr.post("/api/hr-messages", json={"employee_ids": [emp], "subject": "Inna", "body": "x"})
+    assert other.get("/api/me/messages/count").status_code == 200
+
+
+def test_message_to_several_needs_accounts(me, hr, emp):  # noqa: F811
+    no_account = _second_employee()
+    r = hr.post(
+        "/api/hr-messages",
+        json={"employee_ids": [emp, no_account], "mode": "group", "subject": "Zmiana", "body": "x"},
+    )
+    assert r.status_code == 400 and "Kowalski Jan" in r.json()["detail"]

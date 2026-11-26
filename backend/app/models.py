@@ -857,14 +857,21 @@ class DataLink(Base):
 
 
 class HrThread(Base):
-    """Wątek „Napisz do kadr”: temat z listy, status (new / in_progress / done)."""
+    """Wątek „Napisz do kadr”: temat z listy, status (new / in_progress / done).
+
+    Rozmowa jednej osoby z kadrami ma employee_id. Rozmowa grupowa (is_group) nie ma employee_id –
+    uczestnicy są w hr_thread_members (każdy ze swoim „przeczytane” i archiwum). batch_id łączy osobne
+    rozmowy z jednej wysyłki do kilku osób."""
 
     __tablename__ = "hr_threads"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    employee_id: Mapped[int] = mapped_column(
-        ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    batch_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    batch_size: Mapped[int | None] = mapped_column(Integer)
+    is_group: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     subject: Mapped[str] = mapped_column(String(80), nullable=False)
     status: Mapped[str] = mapped_column(String(12), default="new", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -878,10 +885,28 @@ class HrThread(Base):
     # archiwum: każda strona archiwizuje osobno; nowa wiadomość lub otwarcie rozmowy czyści oba znaczniki
     staff_archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     employee_archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    employee: Mapped["Employee"] = relationship(lazy="joined")
+    employee: Mapped["Employee | None"] = relationship(lazy="joined")
     messages: Mapped[list["HrMessage"]] = relationship(
         back_populates="thread", order_by="HrMessage.id", cascade="all, delete-orphan"
     )
+    members: Mapped[list["HrThreadMember"]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class HrThreadMember(Base):
+    """Uczestnik rozmowy grupowej: własne „przeczytane do” i archiwum."""
+
+    __tablename__ = "hr_thread_members"
+
+    thread_id: Mapped[int] = mapped_column(ForeignKey("hr_threads.id", ondelete="CASCADE"), primary_key=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    thread: Mapped["HrThread"] = relationship(back_populates="members")
+    employee: Mapped["Employee"] = relationship(lazy="joined")
 
 
 class HrMessage(Base):

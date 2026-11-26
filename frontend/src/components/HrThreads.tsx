@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
 import { notifications } from "@mantine/notifications";
-import { IconX, IconArchive, IconArchiveOff, IconMessage, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
+import { IconUsers, IconX, IconArchive, IconArchiveOff, IconMessage, IconMicrophone, IconPencil, IconSearch } from "@tabler/icons-react";
 
 import { EmptyState } from "./States";
 import { api, errorText, shortTime, type Employee } from "../api";
@@ -34,18 +34,33 @@ export interface ThreadRow {
   employee_name: string | null;
   employee_number: string | null;
   unread_count?: number;
+  is_group?: boolean;
+  member_count?: number;
+  batch_size?: number | null;
 }
 interface Thread {
   id: number;
   subject: string;
   status: ThreadRow["status"];
   archived: boolean;
-  messages: { id: number; from_staff: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
+  messages: { id: number; from_staff: boolean; mine?: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
+  is_group?: boolean;
+  members?: { employee_id: number | null; name: string; number: string | null }[];
+  batch_size?: number | null;
   employee_name: string | null;
   employee_number: string | null;
   employee_id?: number | null;
   other_seen_at?: string | null;
 }
+
+/** Dopisek przy rozmowie do kilku osób: wspólna rozmowa albo jedna z osobnych z tej samej wysyłki. */
+function groupNote(t: { is_group?: boolean; member_count?: number; members?: unknown[]; batch_size?: number | null }, T: (s: string, v?: Record<string, string | number>) => string): string | null {
+  const n = t.member_count ?? t.members?.length ?? 0;
+  if (t.is_group) return T("Rozmowa grupowa · {n} os.", { n });
+  if (t.batch_size) return T("Wysłano do {n} osób", { n: t.batch_size });
+  return null;
+}
+const isMine = (m: { from_staff: boolean; mine?: boolean }, staff: boolean) => m.mine ?? m.from_staff === staff;
 
 export const THREAD_STATUS: Record<ThreadRow["status"], { label: string; color: string }> = {
   new: { label: "Nowa", color: "blue" },
@@ -257,7 +272,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
     }
     items.push({ kind: "msg", m });
   }
-  const lastMineId = [...(t?.messages ?? [])].reverse().find((m) => m.kind === "message" && m.from_staff === staff)?.id;
+  const lastMineId = [...(t?.messages ?? [])].reverse().find((m) => m.kind === "message" && isMine(m, staff))?.id;
   const seen = (m: { id: number; created_at: string }) => !!t?.other_seen_at && m.id === lastMineId && t.other_seen_at >= m.created_at;
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
@@ -282,7 +297,13 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
             </Text>
           )}
           <Text size="sm" c="dimmed">
-            {staff ? [t?.subject, emp.data ? [emp.data.position?.name, emp.data.department?.name, emp.data.agency?.name].filter(Boolean).join(", ") : null].filter(Boolean).join(" · ") : T("Kadry")}
+            {t?.is_group
+              ? staff
+                ? [t.subject, groupNote(t, T)].join(" · ")
+                : [T("Kadry"), ...(t.members ?? []).map((x) => x.name)].join(", ")
+              : staff
+                ? [t?.subject, t ? groupNote(t, T) : null, emp.data ? [emp.data.position?.name, emp.data.department?.name, emp.data.agency?.name].filter(Boolean).join(", ") : null].filter(Boolean).join(" · ")
+                : T("Kadry")}
           </Text>
         </div>
         {t && (
@@ -342,10 +363,15 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
                 </Text>
               );
             }
-            const mine = m.from_staff === staff;
+            const mine = isMine(m, staff);
             const trx = tr[m.id];
             return (
               <div key={m.id} className="ui-bub" data-mine={mine || undefined}>
+                {t?.is_group && !mine && m.author_name && (
+                  <Text size="xs" fw={600}>
+                    {m.author_name}
+                  </Text>
+                )}
                 <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</div>
                 {trx && trx !== "loading" && (
                   <Box mt={8} pt={8} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
@@ -492,7 +518,7 @@ function MobileChat(props: {
   // kolejne zmiany statusu bez wiadomości pomiędzy – pokazujemy tylko ostatnią
   const all = t?.messages ?? [];
   const msgs = all.filter((m, i) => !(m.kind === "status" && all[i + 1]?.kind === "status"));
-  const lastMine = [...msgs].reverse().find((m) => m.kind === "message" && m.from_staff === staff);
+  const lastMine = [...msgs].reverse().find((m) => m.kind === "message" && isMine(m, staff));
   const seen = !!(lastMine && t?.other_seen_at && t.other_seen_at >= lastMine.created_at);
   let day = "";
   const statusActions = staff && t
@@ -535,12 +561,12 @@ function MobileChat(props: {
             const who = staff && m.author_name && m.author_name !== myName ? ` · ${m.author_name}` : "";
             return [sep, <div key={m.id} className="ui-chat-event" role="note"><span>{text} · {hm(m.created_at)}{who}</span></div>];
           }
-          const mine = m.from_staff === staff;
+          const mine = isMine(m, staff);
           const trv = tl?.tr[m.id];
           const idx = msgs.indexOf(m);
           const nx = msgs[idx + 1];
           // podpis tylko pod ostatnim dymkiem z serii tej samej osoby
-          const lastInRun = !nx || nx.kind !== "message" || nx.from_staff !== m.from_staff || dayLabel(nx.created_at, T) !== dl;
+          const lastInRun = !nx || nx.kind !== "message" || nx.from_staff !== m.from_staff || nx.author_name !== m.author_name || dayLabel(nx.created_at, T) !== dl;
           const showMeta = lastInRun || !!trv || (listen?.speakingId === m.id);
           const meta = [mine && staff && m.author_name && m.author_name !== myName ? m.author_name : null, hm(m.created_at), m === lastMine && seen ? T("przeczytane") : null].filter(Boolean).join(" · ");
           const canTr = tl && !tl.exhausted && !mine;
@@ -548,6 +574,7 @@ function MobileChat(props: {
             sep,
             <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined} data-tight={!showMeta || undefined}>
               <div className="ui-chat-bubble">
+                {t?.is_group && !mine && m.author_name && <span className="ui-chat-author">{m.author_name}</span>}
                 {m.body}
                 {trv && trv !== "loading" && (
                   <div className="ui-chat-tr">
@@ -642,9 +669,14 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const qc = useQueryClient();
   const [subject, setSubject] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
-  const [employee, setEmployee] = useState<string | null>(preset?.id ?? null);
+  // odbiorcy (kadry): jedna osoba albo kilka – wtedy osobno do każdego albo wspólna rozmowa
+  const [picks, setPicks] = useState<{ id: string; name: string; number?: string }[]>(preset ? [{ id: preset.id, name: preset.name }] : []);
+  const [mode, setMode] = useState<"separate" | "group">("separate");
+  const employee = picks[0]?.id ?? null;
+  const togglePick = (p: { id: string; name: string; number?: string }) =>
+    setPicks((xs) => (xs.some((x) => x.id === p.id) ? xs.filter((x) => x.id !== p.id) : xs.length >= 50 ? xs : [...xs, p]));
+  const many = picks.length > 1;
   const [search, setSearch] = useState("");
-  const [pickedName, setPickedName] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const [body, setBody] = useDraft(`apt-draft-${staff ? "hr" : "me"}-new${preset ? `-${preset.id}` : ""}`);
   const [step, setStep] = useState<1 | 2>(preset ? 2 : 1);
@@ -658,7 +690,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const create = useMutation({
     mutationFn: () =>
       staff
-        ? api<{ id: number }>("/hr-messages", { method: "POST", body: { employee_id: Number(employee), subject: custom.trim(), body } })
+        ? api<{ id: number }>("/hr-messages", { method: "POST", body: { employee_ids: picks.map((p) => Number(p.id)), mode, subject: custom.trim(), body } })
         : api<{ id: number }>("/me/messages", { method: "POST", body: { subject, body } }),
     onSuccess: (t) => {
       qc.invalidateQueries({ queryKey: ["threads", staff ? "/hr-messages" : "/me/messages"] });
@@ -670,11 +702,27 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   const ready = !!body.trim() && (staff ? !!employee && custom.trim().length >= 3 : !!subject);
   useChatViewport(box, false);
   useNavHeightVar();
-  const picked = employee
-    ? preset && preset.id === employee
-      ? preset.name
-      : (people.data ?? []).find((p) => String(p.employee_id) === employee)?.name ?? pickedName
-    : null;
+  const picked = picks.length === 0 ? null : many ? `${picks.length} os.` : picks[0].name;
+  const sendLabel = many ? T("Wyślij · {n} os.", { n: picks.length }) : T("Wyślij");
+  const modeSwitch = many ? (
+    <div className="ui-nw-mode">
+      <SegmentedControl
+        size="sm"
+        fullWidth={!!mobile}
+        value={mode}
+        onChange={(v) => setMode(v as "separate" | "group")}
+        data={[
+          { value: "separate", label: "Osobno do każdego" },
+          { value: "group", label: "Wspólna rozmowa" },
+        ]}
+      />
+      <Text size="xs" c="dimmed">
+        {mode === "group"
+          ? "Wszyscy uczestnicy widzą wiadomości i nazwiska pozostałych."
+          : "Każdy dostaje osobną rozmowę – odpowiedzi widzą tylko kadry."}
+      </Text>
+    </div>
+  ) : null;
   const twoSteps = staff && !preset;
   const onTresc = !twoSteps || step === 2;
   const goBack = () => (twoSteps && step === 2 ? setStep(1) : onCancel());
@@ -695,18 +743,17 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
             <div className="ui-form-field">
               <span className="ui-form-label">Pracownik</span>
               <TextInput size="md" placeholder="Wpisz nazwisko" leftSection={<IconSearch size={18} aria-hidden />} value={search} onChange={(e) => setSearch(e.currentTarget.value)} aria-label="Szukaj pracownika" />
-              <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości.</span>
+              <span className="ui-form-hint">Tylko osoby z aktywnym kontem w aplikacji – inne nie przeczytałyby wiadomości. Możesz wybrać kilka osób.</span>
               {(() => {
                 const list = (people.data ?? []).slice(0, 8);
-                const rows = employee && picked && !list.some((p) => String(p.employee_id) === employee)
-                  ? [{ employee_id: Number(employee), number: "", name: picked }, ...list]
-                  : list;
+                const extra = picks.filter((x) => !list.some((p) => String(p.employee_id) === x.id)).map((x) => ({ employee_id: Number(x.id), number: x.number ?? "", name: x.name }));
+                const rows = [...extra, ...list];
                 return rows.length > 0 ? (
                   <div className="ui-group">
                     {rows.map((p) => {
-                      const on = String(p.employee_id) === employee;
+                      const on = picks.some((x) => x.id === String(p.employee_id));
                       return (
-                        <UnstyledButton key={p.employee_id} className="ui-pick-row" data-on={on || undefined} aria-pressed={on} onClick={() => { setEmployee(on ? null : String(p.employee_id)); setPickedName(p.name); }}>
+                        <UnstyledButton key={p.employee_id} className="ui-pick-row" data-on={on || undefined} aria-pressed={on} onClick={() => togglePick({ id: String(p.employee_id), name: p.name, number: p.number })}>
                           <span className="ui-thread-avatar" aria-hidden>{initials(p.name)}</span>
                           <span className="ui-row-text">
                             <span className="ui-thread-name">{p.name}</span>
@@ -724,6 +771,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
             </div>
           ) : (
             <>
+              {modeSwitch}
               {staff ? (
                 <>
                   <TextInput size="md" label="Temat" placeholder="Np. Odbiór karty" maxLength={80} value={custom} onChange={(e) => setCustom(e.currentTarget.value)} />
@@ -748,7 +796,9 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
               <span className="ui-count">{body.length}/2000</span>
               {staff && (
                 <span className="ui-form-hint">
-                  Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni.
+                  {many && mode === "group"
+                    ? "Uczestnicy dostaną powiadomienie bez treści. Wspólną rozmowę kończysz sam – nie zamyka się po 3 dniach."
+                    : "Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni."}
                 </span>
               )}
             </>
@@ -757,7 +807,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         </div>
         <div className="ui-chat-compose">
           {!onTresc ? (
-            <Button size="lg" fullWidth radius="md" disabled={!employee} rightSection={<IconChevronRight size={18} />} onClick={() => setStep(2)}>
+            <Button size="lg" fullWidth radius="md" disabled={!picks.length} rightSection={<IconChevronRight size={18} />} onClick={() => setStep(2)}>
               Dalej – treść
             </Button>
           ) : (
@@ -768,7 +818,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
                 </Button>
               )}
               <Button size="lg" fullWidth radius="md" leftSection={<IconArrowRight size={18} />} loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
-                {T("Wyślij")}
+                {sendLabel}
               </Button>
             </>
           )}
@@ -778,7 +828,6 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
   }
 
   // komputer (wariant A): wygląda jak otwarta rozmowa – nagłówek z „✕”, wiersze „Do” i „Temat”, na dole ten sam pasek pisania
-  const pickedNo = employee ? (people.data ?? []).find((p) => String(p.employee_id) === employee)?.number : undefined;
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
       <div className="ui-dchat-head">
@@ -795,34 +844,46 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         <span className="ui-nw-label">{T("Do")}</span>
         {!staff ? (
           <Text size="sm">{T("Kadry")}</Text>
-        ) : employee && picked ? (
-          <span className="ui-nw-chip">
-            {picked}
-            {pickedNo && <span className="ui-mono ui-nw-no">{pickedNo}</span>}
-            <UnstyledButton className="ui-nw-chipx" onClick={() => { setEmployee(null); setSearch(""); }} aria-label={`Zmień odbiorcę – ${picked}`}>
-              <IconX size={14} />
-            </UnstyledButton>
-          </span>
         ) : (
-          <Select
-            style={{ flex: 1 }}
-            aria-label="Pracownik"
-            placeholder="Wpisz nazwisko"
-            searchable
-            autoFocus
-            data={(people.data ?? []).map((p) => ({ value: String(p.employee_id), label: `${p.name} · ${p.number}` }))}
-            value={employee}
-            onChange={(v) => {
-              setEmployee(v);
-              setPickedName((people.data ?? []).find((p) => String(p.employee_id) === v)?.name ?? null);
-            }}
-            searchValue={search}
-            onSearchChange={setSearch}
-            nothingFoundMessage="Brak pracownika z aktywnym kontem"
-            filter={({ options }) => options}
-          />
+          <div className="ui-nw-to">
+            {picks.map((x) => (
+              <span className="ui-nw-chip" key={x.id}>
+                {x.name}
+                {x.number && <span className="ui-mono ui-nw-no">{x.number}</span>}
+                <UnstyledButton className="ui-nw-chipx" onClick={() => togglePick(x)} aria-label={`Usuń odbiorcę – ${x.name}`}>
+                  <IconX size={14} />
+                </UnstyledButton>
+              </span>
+            ))}
+            {picks.length < 50 && (
+              <Select
+                className="ui-nw-add"
+                aria-label="Pracownik"
+                placeholder={picks.length ? "Dodaj osobę" : "Wpisz nazwisko"}
+                searchable
+                autoFocus={!picks.length}
+                data={(people.data ?? [])
+                  .filter((p) => !picks.some((x) => x.id === String(p.employee_id)))
+                  .map((p) => ({ value: String(p.employee_id), label: `${p.name} · ${p.number}` }))}
+                value={null}
+                onChange={(v) => {
+                  const p = (people.data ?? []).find((x) => String(x.employee_id) === v);
+                  if (p) togglePick({ id: v!, name: p.name, number: p.number });
+                  setSearch("");
+                }}
+                searchValue={search}
+                onSearchChange={setSearch}
+                nothingFoundMessage="Brak pracownika z aktywnym kontem"
+                filter={({ options }) => options}
+              />
+            )}
+          </div>
         )}
       </div>
+      {many && <div className="ui-nw-field">
+        <span className="ui-nw-label">{T("Tryb")}</span>
+        {modeSwitch}
+      </div>}
       <div className="ui-nw-field">
         <span className="ui-nw-label">{T("Temat")}</span>
         {staff ? (
@@ -842,7 +903,9 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
         </Text>
         <Text size="xs" c="dimmed" maw="46ch">
           {staff
-            ? "Tylko osoby z aktywnym kontem w aplikacji. Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni."
+            ? many && mode === "group"
+              ? "Tylko osoby z aktywnym kontem w aplikacji. Uczestnicy dostaną powiadomienie bez treści. Wspólną rozmowę kończysz sam – nie zamyka się po 3 dniach."
+              : "Tylko osoby z aktywnym kontem w aplikacji. Pracownik dostanie powiadomienie bez treści (e-mail lub telefon, jeśli ma je włączone). Rozmowa zamknie się sama, jeśli nie odpowie przez 3 dni."
             : T("Kadry odpowiedzą w tej rozmowie.")}
         </Text>
         {error && <Alert color="red">{error}</Alert>}
@@ -867,7 +930,7 @@ function NewThread({ staff, preset, onCreated, onCancel, mobile }: { staff: bool
           }}
         />
         <Button loading={create.isPending} disabled={!ready} onClick={() => create.mutate()}>
-          {T("Wyślij")}
+          {sendLabel}
         </Button>
       </Group>
     </Stack>
@@ -1019,14 +1082,14 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                       return (
                         <SwipeRow key={t.id} actions={rowActions(t)} menuTitle={name} menuSubtitle={t.subject !== name ? t.subject : undefined}>
                         <UnstyledButton className="ui-thread" data-unread={t.unread || undefined} onClick={() => { setOpenId(t.id); setComposing(false); }}>
-                          <span className="ui-thread-avatar" aria-hidden>{initials(staff ? name : T("Kadry"))}</span>
+                          <span className="ui-thread-avatar" aria-hidden>{t.is_group ? <IconUsers size={20} /> : initials(staff ? name : T("Kadry"))}</span>
                           <span className="ui-row-text">
                             <span className="ui-thread-line">
                               <span className="ui-thread-name">{name}</span>
                               <span className="ui-thread-time">{shortTime(t.updated_at)}</span>
                             </span>
                             <span className="ui-thread-line">
-                              <span className="ui-thread-snip">{staff ? `${t.subject} · ${snip}` : snip}</span>
+                              <span className="ui-thread-snip">{[staff ? t.subject : null, groupNote(t, T), snip].filter(Boolean).join(" · ")}</span>
                               {t.unread ? (
                                 <span className="ui-thread-count" aria-label={`${T("Nieprzeczytane")}: ${t.unread_count || 1}`}>{t.unread_count || 1}</span>
                               ) : null}
@@ -1139,7 +1202,9 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
                     {name}
                   </span>
                   <span className="ui-inrow-time">{shortTime(t.updated_at)}</span>
-                  {staff && <span className="ui-inrow-sub">{t.subject}</span>}
+                  {(staff || groupNote(t, T)) && (
+                    <span className="ui-inrow-sub">{[staff ? t.subject : null, groupNote(t, T)].filter(Boolean).join(" · ")}</span>
+                  )}
                   <span className="ui-inrow-pv">{(t.last_from_staff === staff ? T("Ty:") + " " : "") + t.preview}</span>
                   {t.status === "done" && <span className="ui-inrow-st">{T("zakończona")}</span>}
                 </UnstyledButton>

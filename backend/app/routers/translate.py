@@ -58,7 +58,8 @@ def translate_message(body: MessageIn, ctx: Auth, request: Request, db: DbSessio
     if m is None or t is None or m.kind != "message":
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono wiadomości.")
     if ctx.user.role == Role.employee:
-        if ctx.user.employee_id != t.employee_id:
+        member = any(m.employee_id == ctx.user.employee_id for m in t.members)
+        if ctx.user.employee_id != t.employee_id and not member:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono wiadomości.")
     elif ctx.user.role not in (Role.admin, Role.hr):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Brak uprawnień.")

@@ -626,6 +626,7 @@ a:focus-visible, .mantine-Anchor-root:focus-visible, .mantine-Text-root:focus-vi
 .ui-chat-msg { align-self: flex-start; max-width: 80%; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .ui-chat-msg[data-mine] { align-self: flex-end; align-items: flex-end; }
 .ui-chat-bubble { padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--apt-subtle); color: var(--mantine-color-text); font-size: 16px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+.ui-chat-author{display:block;font-size:13px;line-height:18px;font-weight:600;white-space:normal;margin-bottom:2px}
 .ui-chat-msg[data-mine] .ui-chat-bubble { border-radius: 16px 16px 4px 16px; background: var(--mantine-primary-color-filled); color: var(--mantine-primary-color-contrast); }
 .ui-chat-tr { margin-top: 6px; padding-top: 6px; border-top: 1px solid currentColor; display: flex; flex-direction: column; gap: 2px; }
 .ui-chat-tr-label { font-size: 12px; opacity: .8; }
@@ -1087,6 +1088,10 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-nw-chipx:hover{background:var(--mantine-color-default-hover)}
 .ui-nw-chipx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
 .ui-nw-count{flex:none}
+.ui-nw-to{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2)}
+.ui-nw-add{flex:1;min-width:200px}
+.ui-nw-mode{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s-2) var(--s-3);min-width:0}
+:where(:root[data-device="phone"]) .ui-nw-mode{display:flex;flex-direction:column;align-items:stretch}
 .ui-nw-empty{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-2);padding:var(--s-6);text-align:center}
 .ui-dchat-head{flex:none;display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-5);border-bottom:1px solid var(--apt-line)}
 .ui-chat-name{font-weight:600;font-size:15px;line-height:22px;color:inherit;text-decoration:underline;text-decoration-color:var(--mantine-color-default-border);text-underline-offset:3px}

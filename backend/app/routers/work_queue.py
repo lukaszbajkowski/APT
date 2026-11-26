@@ -67,7 +67,9 @@ def queue(ctx: StaffAuth, db: DbSession) -> QueueOut:
             "/wiadomosci",
             [
                 QueueItem(
-                    title=f"{t.employee.last_name} {t.employee.first_name}",
+                    title=f"{t.employee.last_name} {t.employee.first_name}"
+                    if t.employee
+                    else f"Grupa: {t.subject}",
                     detail=t.subject,
                     url="/wiadomosci",
                 )
@@ -218,6 +220,23 @@ def cases(ctx: CasesAuth, db: DbSession) -> CasesOut:
         ).unique()
     ):
         e, d = t.employee, t.updated_at.date()
+        if e is None:  # rozmowa grupowa – bez jednej osoby
+            out.append(
+                CaseOut(
+                    group="reply",
+                    key=f"m{t.id}",
+                    employee_id=None,
+                    name=f"Grupa · {len(t.members)} os.",
+                    sub="",
+                    what=t.subject,
+                    due=d,
+                    overdue=(today - d).days >= 2,
+                    when=_ago(d, today),
+                    action="Odpowiedz",
+                    url=f"/wiadomosci?id={t.id}",
+                )
+            )
+            continue
         out.append(
             CaseOut(
                 group="reply",

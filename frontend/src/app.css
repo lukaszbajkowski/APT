@@ -2180,3 +2180,7 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-tk-fold[data-closed]{border-radius:var(--mantine-radius-md) !important;border-bottom-color:var(--apt-line)}
 .ui-tk-fold:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.ui-tk-foldch{transition:none}}
+/* Stan systemu → Wysyłka e-mail: przycisk testu obok znacznika, wynik pod wierszem na całą szerokość */
+.ui-st-mailact{display:inline-flex;align-items:center;gap:var(--s-2);flex-wrap:wrap;justify-content:flex-end}
+.ui-st-mailres{grid-column:1 / -1}
+.ui-st-mailerr{color:var(--mantine-color-error);font-weight:600}

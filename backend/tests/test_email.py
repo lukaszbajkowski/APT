@@ -159,3 +159,27 @@ def test_html_templates_escape_and_brand():
     assert "<script>" not in html and "Ola &lt;script&gt;" in html
     assert "#1f3a73" in html and "/ustaw-haslo?token=tok" in html
     assert "Kierownik" in notify.invite_email(u, "tok").text()
+
+
+def test_test_mail_endpoint(client: TestClient, make_user, monkeypatch):
+    import smtplib
+
+    sent: list[str] = []
+    monkeypatch.setattr(mailer, "send_now", lambda to, mail: sent.append(to))
+    make_user("adm", Role.admin)
+    make_user("kadry", Role.hr)
+    login(client, "kadry")
+    assert client.post("/api/system/test-mail").status_code == 403
+    login(client, "adm")
+    r = client.post("/api/system/test-mail").json()
+    assert not r["ok"] and "adresu e-mail" in r["error"]
+    _set_email("adm", "adm@example.com")
+    r = client.post("/api/system/test-mail").json()
+    assert r == {"ok": True, "to": "adm@example.com", "error": ""} and sent == ["adm@example.com"]
+
+    def fail(to, mail):
+        raise smtplib.SMTPAuthenticationError(535, b"bad")
+
+    monkeypatch.setattr(mailer, "send_now", fail)
+    r = client.post("/api/system/test-mail").json()
+    assert not r["ok"] and "535" in r["error"] and "APT_SMTP_PASSWORD" in r["error"]

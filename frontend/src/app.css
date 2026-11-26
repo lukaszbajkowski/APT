@@ -2184,3 +2184,4 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-st-mailact{display:inline-flex;align-items:center;gap:var(--s-2);flex-wrap:wrap;justify-content:flex-end}
 .ui-st-mailres{grid-column:1 / -1}
 .ui-st-mailerr{color:var(--mantine-color-error);font-weight:600}
+[data-mantine-color-scheme="dark"] .ui-st-mailerr{color:var(--mantine-color-red-4)}

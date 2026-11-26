@@ -5,18 +5,20 @@ ustawiają status: new → in_progress → done. Nowa wiadomość pracownika otw
 Kadry mogą też same zacząć rozmowę z pracownikiem, który ma aktywne konto (własny temat, status „w toku”).
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
-from app import mailer
+from app import mailer, message_files
 from app.audit import audit
 from app.deps import Auth, DbSession, StaffAuth, utcnow
 from app.emails import Email
-from app.models import Employee, HrMessage, HrThread, HrThreadMember, Role
+from app.models import Employee, HrMessage, HrMessageFile, HrThread, HrThreadMember, Role
 from app.routers.employees import format_number
 
 SUBJECTS = [
@@ -39,8 +41,18 @@ me_router = APIRouter(prefix="/api/me/messages", tags=["me"])
 staff_router = APIRouter(prefix="/api/hr-messages", tags=["hr-messages"])
 
 
+class MsgFileOut(BaseModel):
+    id: int
+    name: str
+    size: int
+    kind: Literal["image", "file"]
+    width: int | None = None
+    height: int | None = None
+
+
 class MessageOut(BaseModel):
     id: int
+    files: list[MsgFileOut] = []
     from_staff: bool
     mine: bool = False
     kind: Literal["message", "status"] = "message"
@@ -184,6 +196,17 @@ def _out(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
                 author_name=_author_name(m, staff, t),
                 body=m.body,
                 created_at=m.created_at,
+                files=[
+                    MsgFileOut(
+                        id=f.id,
+                        name=f.original_name,
+                        size=f.size,
+                        kind="image" if f.content_type.startswith("image/") else "file",
+                        width=f.width,
+                        height=f.height,
+                    )
+                    for f in m.files
+                ],
             )
             for m in t.messages
         ],
@@ -320,7 +343,7 @@ def _row(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
         status=t.status,  # type: ignore[arg-type]
         updated_at=t.updated_at,
         last_from_staff=last.from_staff,
-        preview=last.body[:120],
+        preview=(last.body or _files_label(last))[:120],
         unread=_unread(t, staff, uid, eid),
         unread_count=_unread_count(t, staff, uid, eid),
         archived=_archived(t, staff, eid),
@@ -332,6 +355,67 @@ def _row(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
         is_group=t.is_group,
         member_count=len(t.members),
         batch_size=t.batch_size if staff else None,
+    )
+
+
+def _files_label(m: HrMessage) -> str:
+    imgs = sum(1 for f in m.files if f.content_type.startswith("image/"))
+    other = len(m.files) - imgs
+    parts = []
+    if imgs:
+        parts.append("Zdjęcie" if imgs == 1 else f"Zdjęcia: {imgs}")
+    if other:
+        parts.append(f"Plik: {m.files[-1].original_name}" if other == 1 else f"Pliki: {other}")
+    return ", ".join(parts) or "Załącznik"
+
+
+async def _read_uploads(files: list[UploadFile] | None) -> list[message_files.Prepared]:
+    ups = [f for f in (files or []) if f.filename]
+    if len(ups) > message_files.MAX_FILES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail=f"Najwyżej {message_files.MAX_FILES} plików w wiadomości."
+        )
+    out = []
+    for f in ups:
+        raw = await f.read(message_files.MAX_MB * 1024 * 1024 + 1)
+        try:
+            out.append(message_files.prepare(f.filename or "plik", raw))
+        except message_files.FileError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return out
+
+
+def _attach(db: DbSession, t: HrThread, m: HrMessage, prepared: list[message_files.Prepared]) -> None:
+    for p in prepared:
+        f = HrMessageFile(
+            original_name=p.name,
+            file_name="tmp",
+            content_type=p.content_type,
+            size=len(p.data),
+            width=p.width,
+            height=p.height,
+        )
+        m.files.append(f)
+        db.flush()
+        f.file_name = message_files.write(t.id, f.id, p)
+
+
+def _file_response(db: DbSession, file_id: int, thumb: bool, can: Callable[[HrThread], bool]) -> Response:
+    f = db.get(HrMessageFile, file_id)
+    if f is None or not can(f.message.thread):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pliku.")
+    data = message_files.read(f.message.thread_id, f.file_name, thumb and f.content_type.startswith("image/"))
+    ctype = "image/jpeg" if thumb and f.content_type.startswith("image/") else f.content_type
+    from urllib.parse import quote
+
+    return Response(
+        data,
+        media_type=ctype,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "Content-Disposition": f"inline; filename*=UTF-8''{quote(f.original_name)}",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -482,16 +566,44 @@ def create_thread(body: NewThreadIn, ctx: Auth, request: Request, db: DbSession)
     return _out(t, False, ctx.user.id, eid)
 
 
+@me_router.get("/files/{file_id}")
+def my_file(file_id: int, ctx: Auth, db: DbSession, thumb: bool = False) -> Response:
+    eid = _employee_id(ctx)
+    return _file_response(db, file_id, thumb, lambda t: t.employee_id == eid or _member(t, eid) is not None)
+
+
+@me_router.post("/{thread_id}/files", response_model=ThreadOut)
+async def my_reply_files(
+    thread_id: int,
+    ctx: Auth,
+    request: Request,
+    db: DbSession,
+    body: Annotated[str, Form(max_length=2000)] = "",
+    files: Annotated[list[UploadFile] | None, File()] = None,
+) -> ThreadOut:
+    prepared = await _read_uploads(files)
+    return _my_reply(thread_id, body, prepared, ctx, request, db)
+
+
 @me_router.post("/{thread_id}/messages", response_model=ThreadOut)
 def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSession) -> ThreadOut:
+    return _my_reply(thread_id, body.body, [], ctx, request, db)
+
+
+def _my_reply(
+    thread_id: int, raw: str, prepared: list, ctx: Auth, request: Request, db: DbSession
+) -> ThreadOut:
     eid = _employee_id(ctx)
     t = _own_thread(db, eid, thread_id)
-    text = body.body.strip()
-    if not text:
+    text = raw.strip()
+    if not text and not prepared:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz treść wiadomości.")
     _check_rate(db, eid)
     now = utcnow()
-    t.messages.append(HrMessage(from_staff=False, author_id=ctx.user.id, body=text, created_at=now))
+    msg = HrMessage(from_staff=False, author_id=ctx.user.id, body=text, created_at=now)
+    t.messages.append(msg)
+    db.flush()
+    _attach(db, t, msg, prepared)
     if t.status == "done":
         _change_status(t, "new", ctx.user, False)
     t.updated_at = now
@@ -503,7 +615,7 @@ def my_reply(thread_id: int, body: BodyIn, ctx: Auth, request: Request, db: DbSe
         user=ctx.user,
         entity_type="employee",
         entity_id=eid,
-        details={"thread": t.id},
+        details={"thread": t.id, **({"files": len(prepared)} if prepared else {})},
     )
     db.commit()
     db.refresh(t)
@@ -568,14 +680,41 @@ def staff_thread(thread_id: int, ctx: StaffAuth, db: DbSession) -> ThreadOut:
     return _out(t, True)
 
 
+@staff_router.get("/files/{file_id}")
+def staff_file(file_id: int, ctx: StaffAuth, db: DbSession, thumb: bool = False) -> Response:
+    return _file_response(db, file_id, thumb, lambda t: True)
+
+
+@staff_router.post("/{thread_id}/files", response_model=ThreadOut)
+async def staff_reply_files(
+    thread_id: int,
+    ctx: StaffAuth,
+    request: Request,
+    db: DbSession,
+    body: Annotated[str, Form(max_length=2000)] = "",
+    files: Annotated[list[UploadFile] | None, File()] = None,
+) -> ThreadOut:
+    prepared = await _read_uploads(files)
+    return _staff_reply(thread_id, body, prepared, ctx, request, db)
+
+
 @staff_router.post("/{thread_id}/messages", response_model=ThreadOut)
 def staff_reply(thread_id: int, body: BodyIn, ctx: StaffAuth, request: Request, db: DbSession) -> ThreadOut:
+    return _staff_reply(thread_id, body.body, [], ctx, request, db)
+
+
+def _staff_reply(
+    thread_id: int, raw: str, prepared: list, ctx: StaffAuth, request: Request, db: DbSession
+) -> ThreadOut:
     t = _thread(db, thread_id)
-    text = body.body.strip()
-    if not text:
+    text = raw.strip()
+    if not text and not prepared:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wpisz treść odpowiedzi.")
     now = utcnow()
-    t.messages.append(HrMessage(from_staff=True, author_id=ctx.user.id, body=text, created_at=now))
+    msg = HrMessage(from_staff=True, author_id=ctx.user.id, body=text, created_at=now)
+    t.messages.append(msg)
+    db.flush()
+    _attach(db, t, msg, prepared)
     if t.status in ("new", "done"):  # odpowiedź kadr otwiera także zamkniętą rozmowę
         _change_status(t, "in_progress", ctx.user, True)
     t.updated_at = now
@@ -586,7 +725,7 @@ def staff_reply(thread_id: int, body: BodyIn, ctx: StaffAuth, request: Request, 
         user=ctx.user,
         entity_type="employee",
         entity_id=t.employee_id,
-        details={"thread": t.id},
+        details={"thread": t.id, **({"files": len(prepared)} if prepared else {})},
     )
     db.commit()
     if t.is_group:

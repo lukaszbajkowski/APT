@@ -926,6 +926,29 @@ class HrMessage(Base):
     )
     author: Mapped["User | None"] = relationship(lazy="joined")
     thread: Mapped[HrThread] = relationship(back_populates="messages")
+    files: Mapped[list["HrMessageFile"]] = relationship(
+        back_populates="message", cascade="all, delete-orphan", lazy="selectin", order_by="HrMessageFile.id"
+    )
+
+
+class HrMessageFile(Base):
+    """Zdjęcie albo PDF w wiadomości; plik szyfrowany w katalogu danych: messages/<wątek>/<plik>.
+
+    Zdjęcia są zapisywane po obróbce (obrót wg EXIF, bez metadanych, do 2000 px) z miniaturą <id>_t.jpg."""
+
+    __tablename__ = "hr_message_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("hr_messages.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    file_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    message: Mapped[HrMessage] = relationship(back_populates="files")
 
 
 class WebauthnCredential(Base):

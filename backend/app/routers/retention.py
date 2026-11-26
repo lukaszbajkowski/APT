@@ -140,9 +140,14 @@ def purge(body: PurgeIn, ctx: AdminAuth, request: Request, db: DbSession) -> Pur
             detail=f"Okres przechowywania jeszcze nie minął: {', '.join(not_due[:10])}.",
         )
 
+    from app import message_files
+    from app.models import HrThread
+
     files: list[tuple[int, str | None]] = []
+    thread_ids: list[int] = []
     for e in emps:
         files.append((e.id, e.photo.file_name if e.photo else None))
+        thread_ids += list(db.scalars(select(HrThread.id).where(HrThread.employee_id == e.id)))
         # w dzienniku zostaje tylko numer ewidencyjny i daty – bez danych osobowych
         audit(
             db,
@@ -163,6 +168,8 @@ def purge(body: PurgeIn, ctx: AdminAuth, request: Request, db: DbSession) -> Pur
     # pliki usuwamy dopiero po udanym zapisie w bazie
     for employee_id, photo_file in files:
         _remove_files(employee_id, photo_file)
+    for tid in thread_ids:  # zdjęcia i pliki z rozmów tej osoby z kadrami
+        message_files.remove_thread(tid)
     return PurgeOut(deleted=len(emps))
 
 

@@ -420,3 +420,48 @@ def test_message_to_several_needs_accounts(me, hr, emp):  # noqa: F811
         json={"employee_ids": [emp, no_account], "mode": "group", "subject": "Zmiana", "body": "x"},
     )
     assert r.status_code == 400 and "Kowalski Jan" in r.json()["detail"]
+
+
+def _png(w=640, h=480) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (120, 160, 120)).save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_message_files(me, hr, emp):  # noqa: F811
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Zwolnienie"}).json()["id"]
+    r = me.post(
+        f"/api/me/messages/{tid}/files",
+        files=[
+            ("files", ("L4.png", _png(), "image/png")),
+            ("files", ("skan.pdf", b"%PDF-1.4 test", "application/pdf")),
+        ],
+    )
+    assert r.status_code == 200, r.text
+    m = r.json()["messages"][-1]
+    assert m["body"] == "" and [f["kind"] for f in m["files"]] == ["image", "file"]
+    img, pdf = m["files"]
+    assert img["name"] == "L4.jpg" and img["width"] == 640
+    # kadry widzą plik i miniaturę; wiersz listy opisuje załącznik
+    assert hr.get(f"/api/hr-messages/files/{img['id']}?thumb=1").headers["content-type"] == "image/jpeg"
+    assert hr.get(f"/api/hr-messages/files/{pdf['id']}").content.startswith(b"%PDF")
+    assert hr.get("/api/hr-messages").json()[0]["preview"].startswith("Zdjęcie")
+    # kadry odpowiadają plikiem z opisem
+    r = hr.post(
+        f"/api/hr-messages/{tid}/files",
+        data={"body": "Grafik"},
+        files=[("files", ("g.pdf", b"%PDF-1.4 x", "application/pdf"))],
+    )
+    assert (
+        r.status_code == 200
+        and [x for x in r.json()["messages"] if x["kind"] == "message"][-1]["body"] == "Grafik"
+    )
+    # obca osoba nie pobierze pliku, zły typ jest odrzucany
+    eid2, other = _second_account(hr)
+    assert other.get(f"/api/me/messages/files/{img['id']}").status_code == 404
+    bad = me.post(
+        f"/api/me/messages/{tid}/files",
+        files=[("files", ("x.exe", b"MZ\x00\x00", "application/octet-stream"))],
+    )
+    assert bad.status_code == 400 and "dozwolone" in bad.json()["detail"]
+    assert me.post(f"/api/me/messages/{tid}/files", data={"body": ""}).status_code == 400

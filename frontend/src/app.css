@@ -2205,3 +2205,55 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 /* Wzornik: podgląd przycisku powrotu na obrazie aparatu (ten sam wygląd co .ui-scan-back) */
 .ui-pat-back{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;color:var(--mantine-color-white);background:color-mix(in srgb,var(--mantine-color-black) 45%,transparent)}
 .ui-pat-cam{display:grid;place-items:center;flex:none;width:72px;height:56px;border-radius:var(--mantine-radius-md);background:var(--mantine-color-dark-5)}
+/* ---- Wiadomości: zdjęcia i pliki w rozmowie (styl komunikatora) ---- */
+.ui-mf{display:flex;flex-direction:column;gap:var(--s-1);max-width:min(280px,100%)}
+.ui-bub .ui-mf{margin-bottom:var(--s-2)}
+.ui-bub[data-media]{background:transparent;padding:0;color:var(--mantine-color-text)}
+.ui-bub[data-media] .ui-mf{margin-bottom:var(--s-1)}
+.ui-bub[data-media]{display:flex;flex-direction:column;align-items:flex-start}
+.ui-bub[data-media][data-mine]{align-items:flex-end}
+.ui-bub-text{padding:var(--s-2) var(--s-3);border-radius:14px;background:var(--apt-subtle)}
+.ui-bub[data-mine] .ui-bub-text{background:var(--mantine-primary-color-filled);color:var(--mantine-primary-color-contrast)}
+.ui-bub[data-media] .ui-bub-meta{align-self:stretch;color:var(--mantine-color-dimmed);opacity:1}
+.ui-mf-one{display:block;border-radius:var(--mantine-radius-lg);overflow:hidden;background:var(--apt-subtle);line-height:0}
+.ui-mf-one img{display:block;width:240px;max-width:100%;max-height:320px;object-fit:cover}
+.ui-mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-1);width:240px;max-width:100%;border-radius:var(--mantine-radius-lg);overflow:hidden}
+.ui-mf-grid[data-n="3"] > :first-child{grid-column:1 / -1}
+.ui-mf-cell{position:relative;display:block;line-height:0;background:var(--apt-subtle)}
+.ui-mf-cell img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.ui-mf-grid[data-n="3"] > :first-child img{aspect-ratio:2 / 1}
+.ui-mf-more{position:absolute;inset:0;display:grid;place-items:center;font-size:18px;line-height:24px;font-weight:600;color:var(--mantine-color-white);background:color-mix(in srgb,var(--mantine-color-black) 45%,transparent)}
+.ui-mf-one:focus-visible,.ui-mf-cell:focus-visible,.ui-mf-file:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px}
+.ui-mf-file{display:flex;align-items:center;gap:var(--s-3);min-width:0;padding:var(--s-2) var(--s-3);border-radius:var(--mantine-radius-lg);background:var(--apt-subtle);color:var(--mantine-color-text);text-decoration:none}
+.ui-bub:not([data-media]) .ui-mf-file,.ui-chat-msg .ui-mf-file{border:1px solid var(--apt-line)}
+[data-mine] .ui-mf-file{background:color-mix(in srgb,var(--mantine-primary-color-filled) 14%,var(--apt-paper,var(--mantine-color-body)))}
+.ui-mf-file:hover{background:var(--mantine-color-default-hover)}
+.ui-mf-ic{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:var(--mantine-radius-md);background:var(--mantine-color-body);color:var(--mantine-color-red-text)}
+.ui-mf-txt{display:flex;flex-direction:column;min-width:0}
+.ui-mf-name{font-size:14px;line-height:20px;font-weight:600;overflow-wrap:anywhere}
+.ui-mf-size{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-mf-pending{display:flex;flex-wrap:wrap;gap:var(--s-2);padding:var(--s-3) var(--s-5) 0}
+:where(:root[data-device="phone"]) .ui-mf-pending{padding:var(--s-2) var(--s-3) 0}
+.ui-mf-th{position:relative;width:56px;height:56px;flex:none;border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
+.ui-mf-th img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.ui-mf-thf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:100%;padding:0 var(--s-1);color:var(--mantine-color-dimmed);font-size:13px;line-height:18px;text-align:center}
+.ui-mf-thf span{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ui-mf-thx{position:absolute;top:-6px;right:-6px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--mantine-color-text);color:var(--mantine-color-body)}
+.ui-mf-thx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
+.ui-mf-err{flex-basis:100%;font-size:13px;line-height:18px;color:var(--mantine-color-error)}
+.ui-mf-attach{flex:none}
+.ui-mv{background:var(--mantine-color-black) !important;color:var(--mantine-color-white)}
+.ui-mv-body{display:flex;flex-direction:column;height:100dvh;padding:0 !important}
+.ui-mv-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:calc(var(--s-3) + env(safe-area-inset-top,0px)) calc(var(--s-3) + env(safe-area-inset-right,0px)) var(--s-3) calc(var(--s-3) + env(safe-area-inset-left,0px))}
+.ui-mv-btn{color:var(--mantine-color-white) !important}
+.ui-mv-btn:hover{background:color-mix(in srgb,var(--mantine-color-white) 12%,transparent) !important}
+.ui-mv-dl{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--mantine-radius-md)}
+.ui-mv-dl:focus-visible,.ui-mv-btn:focus-visible{outline:2px solid var(--mantine-color-white);outline-offset:2px}
+.ui-mv-count{font-size:14px;line-height:20px;opacity:.8}
+.ui-mv-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 var(--s-2)}
+.ui-mv-stage img{max-width:100%;max-height:100%;object-fit:contain;user-select:none}
+.ui-mv-prev,.ui-mv-next{position:absolute;top:50%;transform:translateY(-50%)}
+.ui-mv-prev{left:calc(var(--s-3) + env(safe-area-inset-left,0px))}
+.ui-mv-next{right:calc(var(--s-3) + env(safe-area-inset-right,0px))}
+:where(:root[data-device="phone"]) .ui-mv-prev,:where(:root[data-device="phone"]) .ui-mv-next{display:none}
+.ui-mv-cap{padding:var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom,0px));text-align:center;font-size:13px;line-height:18px;opacity:.8;overflow-wrap:anywhere}

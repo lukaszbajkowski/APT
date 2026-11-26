@@ -14,6 +14,7 @@ import { useDraft } from "../lib/draft";
 import { currentTz, differsFromHome, timeIn, tzCity } from "../lib/time";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { MasterDetail, useNarrowArea } from "./MasterDetail";
+import { AttachButton, MsgAttachments, PendingFiles, usePendingFiles, type MsgFile, type Pending } from "./MessageFiles";
 import { EmployeeAside } from "./EmployeeAside";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
@@ -43,7 +44,7 @@ interface Thread {
   subject: string;
   status: ThreadRow["status"];
   archived: boolean;
-  messages: { id: number; from_staff: boolean; mine?: boolean; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
+  messages: { id: number; from_staff: boolean; mine?: boolean; files?: MsgFile[]; kind: "message" | "status"; author_name: string | null; body: string; created_at: string }[];
   is_group?: boolean;
   members?: { employee_id: number | null; name: string; number: string | null }[];
   batch_size?: number | null;
@@ -215,10 +216,15 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
     qc.invalidateQueries({ queryKey: ["threads", base] });
     qc.invalidateQueries({ queryKey: ["hr-count"] });
   };
+  const pending = usePendingFiles();
   const send = useMutation({
-    mutationFn: () => api<Thread>(`${base}/${id}/messages`, { method: "POST", body: { body } }),
+    mutationFn: () =>
+      pending.files.length
+        ? api<Thread>(`${base}/${id}/files`, { method: "POST", form: pending.form(body) })
+        : api<Thread>(`${base}/${id}/messages`, { method: "POST", body: { body } }),
     onSuccess: (nt) => {
       setBody("");
+      pending.clear();
       setError(null);
       refresh(nt);
     },
@@ -237,7 +243,8 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
     },
     onError: (e) => setError(errorText(e)),
   });
-  const submit = () => body.trim() && !send.isPending && send.mutate();
+  const canSend = !!body.trim() || pending.files.length > 0;
+  const submit = () => canSend && !send.isPending && send.mutate();
   if (mobile) {
     return (
       <MobileChat
@@ -248,6 +255,8 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
         setBody={setBody}
         submit={submit}
         sending={send.isPending}
+        pending={pending}
+        base={base}
         error={error}
         speechNote={speechNote}
         clearSpeechNote={() => setSpeechNote(null)}
@@ -275,7 +284,20 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
   const lastMineId = [...(t?.messages ?? [])].reverse().find((m) => m.kind === "message" && isMine(m, staff))?.id;
   const seen = (m: { id: number; created_at: string }) => !!t?.other_seen_at && m.id === lastMineId && t.other_seen_at >= m.created_at;
   return (
-    <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
+    <Stack
+      gap={0}
+      h="100%"
+      style={{ minHeight: 0 }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (e.dataTransfer.files.length) {
+          e.preventDefault();
+          pending.add(e.dataTransfer.files);
+        }
+      }}
+    >
       <div className="ui-dchat-head">
         {showBack && (
           <ActionIcon variant="subtle" color="gray" size="lg" onClick={onBack} aria-label={T("Wróć do wiadomości")} style={{ flex: "none" }}>
@@ -366,13 +388,18 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
             const mine = isMine(m, staff);
             const trx = tr[m.id];
             return (
-              <div key={m.id} className="ui-bub" data-mine={mine || undefined}>
+              <div key={m.id} className="ui-bub" data-mine={mine || undefined} data-media={!!m.files?.length || undefined}>
+                {!!m.files?.length && <MsgAttachments files={m.files} base={base} />}
                 {t?.is_group && !mine && m.author_name && (
                   <Text size="xs" fw={600}>
                     {m.author_name}
                   </Text>
                 )}
-                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.body}</div>
+                {m.body && (
+                  <div className={m.files?.length ? "ui-bub-text" : undefined} style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                    {m.body}
+                  </div>
+                )}
                 {trx && trx !== "loading" && (
                   <Box mt={8} pt={8} style={{ borderTop: "1px solid currentColor", opacity: 0.9 }}>
                     <Text size="xs" opacity={0.75}>
@@ -423,10 +450,20 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
           {error}
         </Alert>
       )}
-      <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12} style={{ borderTop: "1px solid var(--apt-line)" }}>
+      <div style={{ borderTop: "1px solid var(--apt-line)" }}>
+      <PendingFiles pending={pending} />
+      <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12}>
+        <AttachButton pending={pending} />
         <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
         <Textarea
           style={{ flex: 1 }}
+          onPaste={(e) => {
+            const fs = Array.from(e.clipboardData.files);
+            if (fs.length) {
+              e.preventDefault();
+              pending.add(fs);
+            }
+          }}
           aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
           placeholder={staff ? "Twoja odpowiedź" : T("Twoja wiadomość")}
           autosize
@@ -442,10 +479,11 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
             }
           }}
         />
-        <Button loading={send.isPending} disabled={!body.trim()} onClick={submit}>
+        <Button loading={send.isPending} disabled={!canSend} onClick={submit}>
           {T("Wyślij")}
         </Button>
       </Group>
+      </div>
     </Stack>
   );
 }
@@ -497,6 +535,8 @@ function MobileChat(props: {
   setBody: (v: string) => void;
   submit: () => void;
   sending: boolean;
+  pending: Pending;
+  base: string;
   error: string | null;
   speechNote: string | null;
   clearSpeechNote: () => void;
@@ -573,7 +613,8 @@ function MobileChat(props: {
           return [
             sep,
             <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined} data-tight={!showMeta || undefined}>
-              <div className="ui-chat-bubble">
+              {!!m.files?.length && <MsgAttachments files={m.files} base={props.base} />}
+              {(m.body || (t?.is_group && !mine && m.author_name)) && <div className="ui-chat-bubble">
                 {t?.is_group && !mine && m.author_name && <span className="ui-chat-author">{m.author_name}</span>}
                 {m.body}
                 {trv && trv !== "loading" && (
@@ -582,7 +623,7 @@ function MobileChat(props: {
                     {trv.text}
                   </div>
                 )}
-              </div>
+              </div>}
               {showMeta && <span className="ui-chat-meta">
                 {meta}
                 {canTr && (
@@ -621,7 +662,9 @@ function MobileChat(props: {
           {props.error}
         </Alert>
       )}
+      <PendingFiles pending={props.pending} />
       <div className="ui-chat-compose">
+        <AttachButton pending={props.pending} phone />
         <Textarea
           className="ui-chat-input"
           aria-label={staff ? "Treść odpowiedzi" : T("Treść wiadomości")}
@@ -636,7 +679,7 @@ function MobileChat(props: {
           onChange={(e) => props.setBody(e.currentTarget.value)}
         />
         <DictateButton lang={props.lang} value={props.body} onChange={props.setBody} />
-        <ActionIcon size={44} radius="xl" variant="filled" loading={props.sending} disabled={!props.body.trim()} onClick={props.submit} aria-label={T("Wyślij")}>
+        <ActionIcon size={44} radius="xl" variant="filled" loading={props.sending} disabled={!props.body.trim() && !props.pending.files.length} onClick={props.submit} aria-label={T("Wyślij")}>
           <IconArrowRight size={20} stroke={2.2} />
         </ActionIcon>
       </div>

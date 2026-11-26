@@ -13,7 +13,7 @@ import { useUrlOpen, useUrlTab } from "../lib/urlState";
 import { useDraft } from "../lib/draft";
 import { currentTz, differsFromHome, timeIn, tzCity } from "../lib/time";
 import { canDictate, canSpeak, dictate, speak, speechLang, stopSpeaking } from "../lib/speech";
-import { MasterDetail } from "./MasterDetail";
+import { MasterDetail, useNarrowArea } from "./MasterDetail";
 import { EmployeeAside } from "./EmployeeAside";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
@@ -117,7 +117,7 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
   );
 }
 
-function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
+function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: string; id: number; staff: boolean; onBack: () => void; showBack: boolean; mobile?: boolean }) {
   const T = useT();
   const qc = useQueryClient();
   // szkic odpowiedzi zostaje po wyjściu z rozmowy (np. przypadkowe „Wstecz”) aż do wysłania
@@ -262,6 +262,11 @@ function Conversation({ base, id, staff, onBack, mobile }: { base: string; id: n
   return (
     <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
       <div className="ui-dchat-head">
+        {showBack && (
+          <ActionIcon variant="subtle" color="gray" size="lg" onClick={onBack} aria-label={T("Wróć do wiadomości")} style={{ flex: "none" }}>
+            <IconChevronLeft size={20} />
+          </ActionIcon>
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           {staff && t?.employee_id ? (
             <Anchor component={Link} to={`/pracownicy/${t.employee_id}`} className="ui-chat-name">
@@ -901,8 +906,11 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
     if (staff && !mobile && view === "active" && status === "" && deskCounts.data) setStatus(deskCounts.data.new ? "new" : "in_progress");
   }, [staff, mobile, view, status, deskCounts.data]);
   const oldestNew = [...(newRows.data ?? [])].sort((x, y) => (x.updated_at < y.updated_at ? -1 : 1))[0];
-  const showList = !mobile || (openId === null && !composing);
-  const showRight = !mobile || openId !== null || composing;
+  // wąski obszar na komputerze (< 880 px, ten sam próg co Checklisty): lista albo rozmowa, nie obie ściśnięte
+  const [pageRef, narrow] = useNarrowArea(!!mobile);
+  const single = !!mobile || narrow;
+  const showList = !single || (openId === null && !composing);
+  const showRight = !single || openId !== null || composing;
   const back = () => {
     setOpenId(null);
     setComposing(false);
@@ -1010,8 +1018,10 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
   };
   const openRow = rows.find((r) => r.id === openId);
   return (
+    <div ref={pageRef}>
     <MasterDetail
       mobile={!!mobile}
+      single={narrow}
       showList={showList}
       showRight={showRight}
       plainDetail
@@ -1095,7 +1105,7 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
         composing ? (
           <NewThread staff={staff} preset={preset} onCreated={(id) => { setComposing(false); setOpenId(id); }} onCancel={back} mobile={!!mobile} />
         ) : openId !== null ? (
-          <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={!!mobile} mobile={!!mobile} />
+          <Conversation key={openId} base={base} id={openId} staff={staff} onBack={back} showBack={single} mobile={!!mobile} />
         ) : staff && (deskCounts.data?.new ?? 0) > 0 ? (
           <div className="ui-chat-empty">
             <Text fw={600} size="lg">
@@ -1119,5 +1129,6 @@ export function Messenger({ staff, preset }: { staff: boolean; preset?: Preset }
         )
       }
     />
+    </div>
   );
 }

@@ -1062,6 +1062,7 @@ body[data-slide="r"] .ui-group, body[data-slide="r"] .ui-empty { animation: ui-i
 .ui-inbox[data-head]{height:calc(100dvh - 164px)}
 .ui-inbox-list{width:380px;flex:none;border-right:1px solid var(--apt-line);min-height:0}
 @media (min-width:1600px){.ui-inbox-list{width:400px}}
+.ui-inbox[data-single] .ui-inbox-list{width:100%;border-right:0}
 .ui-inbox-aside{display:none;width:320px;flex:none;border-left:1px solid var(--apt-line);overflow:auto;padding:var(--s-4)}
 @media (min-width:1600px){.ui-inbox-aside{display:block}}
 .ui-inbox-tools{padding:var(--s-3);border-bottom:1px solid var(--apt-line);display:flex;flex-direction:column;gap:var(--s-2)}

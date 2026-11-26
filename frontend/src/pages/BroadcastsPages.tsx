@@ -14,7 +14,7 @@ import { useUrlOpen, useUrlTab } from "../lib/urlState";
 import { canSpeak, speak, speechLang, stopSpeaking } from "../lib/speech";
 import { EmptyState, Loading } from "../components/States";
 import { useConfirm } from "../lib/confirm";
-import { MasterDetail } from "../components/MasterDetail";
+import { MasterDetail, useNarrowArea } from "../components/MasterDetail";
 import { badgeTone, cap, RowMenu, CompactEmpty, ListRow, PageHead, Section, Segments, StatusBadge, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, useSwipeAnywhere, type RowAction } from "../components/Mobile";
 import { isPhone, useIsPhone } from "../lib/device";
 
@@ -326,8 +326,10 @@ export function BroadcastsPage() {
   );
   const b = all.find((x) => x.id === openId) ?? null;
   const hasRight = composing || b !== null;
-  const showList = !mobile || !hasRight;
-  const showRight = !mobile || hasRight;
+  const [pageRef, narrow] = useNarrowArea(!!mobile);
+  const single = !!mobile || narrow;
+  const showList = !single || !hasRight;
+  const showRight = !single || hasRight;
   const audience = everyone
     ? "wszyscy aktywni"
     : [agencies.data?.find((x) => String(x.id) === agency)?.name, departments.data?.find((x) => String(x.id) === dept)?.name].filter(Boolean).join(", ");
@@ -528,8 +530,10 @@ export function BroadcastsPage() {
   }
   const bcSeg = archive ? "a" : status === "done" ? "done" : "open";
   return (
+    <div ref={pageRef}>
     <MasterDetail
       mobile={!!mobile}
+      single={narrow}
       showList={showList}
       showRight={showRight}
       head={
@@ -607,7 +611,7 @@ export function BroadcastsPage() {
   ) : composing ? (
     <>
       <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
-        {mobile && (
+        {single && (
           <ActionIcon variant="subtle" onClick={back} aria-label="Wróć">
             <IconArrowLeft size={18} />
           </ActionIcon>
@@ -724,6 +728,11 @@ export function BroadcastsPage() {
   ) : (
     <>
       <div className="ui-dchat-head" style={{ alignItems: "flex-start" }}>
+        {single && (
+          <ActionIcon variant="subtle" color="gray" size="lg" onClick={back} aria-label="Wróć do komunikatów" style={{ flex: "none" }}>
+            <IconArrowLeft size={18} />
+          </ActionIcon>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <Title order={2} className="ui-dsec-title">
             {b.subject}
@@ -787,6 +796,7 @@ export function BroadcastsPage() {
         </>
       }
     />
+    </div>
   );
 }
 
@@ -1016,15 +1026,19 @@ function MyBroadcastsDesktop() {
   });
   const rows = q.data ?? [];
   const m = rows.find((x) => x.id === openId) ?? null;
-  const showList = !mobile || m === null;
-  const showRight = !mobile || m !== null;
+  const [pageRef, narrow] = useNarrowArea(!!mobile);
+  const single = !!mobile || narrow;
+  const showList = !single || m === null;
+  const showRight = !single || m !== null;
   const stop = () => {
     stopSpeaking();
     setSpeaking(null);
   };
   return (
+    <div ref={pageRef}>
     <MasterDetail
       mobile={!!mobile}
+      single={narrow}
       showList={showList}
       showRight={showRight}
       list={
@@ -1130,7 +1144,7 @@ function MyBroadcastsDesktop() {
   ) : (
     <>
       <Group p="sm" gap="xs" wrap="nowrap" style={{ borderBottom: "1px solid var(--apt-line)" }}>
-        {mobile && (
+        {single && (
           <ActionIcon variant="subtle" onClick={() => { stop(); setOpenId(null); }} aria-label={t("Wróć")}>
             <IconArrowLeft size={18} />
           </ActionIcon>
@@ -1211,5 +1225,6 @@ function MyBroadcastsDesktop() {
         </>
       }
     />
+    </div>
   );
 }

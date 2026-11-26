@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Box, Paper, Stack } from "@mantine/core";
 
 /**
@@ -8,6 +8,7 @@ import { Box, Paper, Stack } from "@mantine/core";
  */
 export function MasterDetail({
   mobile,
+  single,
   showList,
   showRight,
   list,
@@ -17,6 +18,8 @@ export function MasterDetail({
   aside,
 }: {
   mobile: boolean;
+  /** wąski obszar na komputerze: widać listę albo szczegóły, na całą szerokość ramki */
+  single?: boolean;
   showList: boolean;
   showRight: boolean;
   list: ReactNode;
@@ -37,7 +40,7 @@ export function MasterDetail({
   return (
     <div className="ui-inbox-page">
       {head}
-      <Paper withBorder radius="md" className="ui-inbox" data-head={head ? true : undefined}>
+      <Paper withBorder radius="md" className="ui-inbox" data-head={head ? true : undefined} data-single={single || undefined}>
         {showList && (
           <Stack gap={0} className="ui-inbox-list">
             {list}
@@ -50,4 +53,19 @@ export function MasterDetail({
       </Paper>
     </div>
   );
+}
+
+/** Wąski obszar treści na komputerze (< 880 px – ten sam próg co Checklisty): lista albo szczegóły, nie obie ściśnięte.
+ *  Ref na element otaczający MasterDetail; na telefonie nie mierzy (tam rządzi `mobile`). */
+export function useNarrowArea(mobile: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || mobile) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 880));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mobile]);
+  return [ref, narrow && !mobile] as const;
 }

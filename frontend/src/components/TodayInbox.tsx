@@ -179,12 +179,12 @@ export function TodayInbox() {
         </Paper>
       )}
       {all.length > 0 && mode === "cases" && (
-        <Paper withBorder radius="md" className="ui-cases">
+        <div className="ui-case-groups">
           {GROUPS.filter((g) => shown.some((c) => c.group === g.key)).map((g) => {
             const items = shown.filter((c) => c.group === g.key);
             const cut = filter === "all" ? items.slice(0, PER_GROUP) : items;
             return (
-              <section key={g.key} aria-label={g.head}>
+              <Paper component="section" withBorder radius="md" className="ui-cases" key={g.key} aria-label={g.head}>
                 <div className="ui-case-head">
                   <span>{g.head}</span>
                   <span>{items.length}</span>
@@ -195,10 +195,10 @@ export function TodayInbox() {
                     Pokaż wszystkie {items.length}
                   </UnstyledButton>
                 )}
-              </section>
+              </Paper>
             );
           })}
-        </Paper>
+        </div>
       )}
       {all.length > 0 && mode === "people" && (
         <Paper withBorder radius="md" className="ui-cases">

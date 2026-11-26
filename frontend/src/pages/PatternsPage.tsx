@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button, Drawer, Group, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
+import { Button, Drawer, Group, Paper, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconEye, IconFileText, IconMessage, IconPencil, IconPlus, IconPrinter, IconSignature } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronLeft, IconDownload, IconEye, IconFileText, IconMessage, IconPencil, IconPlus, IconPrinter, IconSignature } from "@tabler/icons-react";
 
 import { ActionSheet, CompactEmpty, DangerAction, DangerZone, InfoRow, ListRow, Section, SheetHandle, StatusBadge, PageTitle, SwipeRow, useSheetResize, type RowAction } from "../components/Mobile";
 
@@ -13,6 +13,8 @@ export function PatternsPage() {
       <PageTitle title="Wzornik" description="Wspólne elementy ekranów. Przewiń w dół – nazwa ekranu pojawi się w pasku u góry." />
 
       <Foundations />
+
+      <RecentPatterns />
 
       <SimpleGrid cols={2} spacing="sm">
         <Button size="md" leftSection={<IconPrinter size={18} />}>
@@ -243,6 +245,107 @@ function Gestures() {
           Gotowe
         </Button>
       </Drawer>
+    </Stack>
+  );
+}
+
+/** Wzorce z ostatnich ekranów: zwijana grupa (Zadania, telefon), wynik akcji pod wierszem (Stan systemu),
+ *  przycisk powrotu na obrazie aparatu (Skaner, telefon w poziomie). */
+function RecentPatterns() {
+  const [closed, setClosed] = useState<Record<string, boolean>>({ b: true });
+  const [res, setRes] = useState<null | boolean>(null);
+  const groups: [string, string, string, string[]][] = [
+    ["a", "Kovalenko Olena", "3 zadania · 1 po terminie", ["Szkolenie BHP wstępne", "Wydanie odzieży roboczej"]],
+    ["b", "Nowak Piotr", "2 zadania", ["Badania lekarskie wstępne"]],
+  ];
+  return (
+    <Stack gap="sm">
+      <Title order={3}>Zwijana grupa na liście</Title>
+      <Text size="sm" c="dimmed">
+        Nagłówek grupy to przycisk ze strzałką (aria-expanded). Na start rozwinięta pierwsza grupa, stan zapamiętany na
+        urządzeniu. Wzór: Zadania na telefonie, „Po osobach”.
+      </Text>
+      <div className="ui-cl ui-cl-phone">
+        <div className="ui-tpe-paper ui-cl-phpaper">
+          <div className="ui-cl-list" role="group" aria-label="Przykład zwijanych grup">
+            {groups.flatMap(([k, name, sub, rows]) => {
+              const c = !!closed[k];
+              return [
+                <UnstyledButton
+                  key={`g:${k}`}
+                  className="ui-cl-glabel ui-tk-fold"
+                  data-closed={c || undefined}
+                  aria-expanded={!c}
+                  onClick={() => setClosed((o) => ({ ...o, [k]: !c }))}
+                >
+                  <span className="ui-tk-foldtext">
+                    {name}
+                    <small>{sub}</small>
+                  </span>
+                  <IconChevronDown size={20} className="ui-tk-foldch" aria-hidden />
+                </UnstyledButton>,
+                ...(c ? [] : rows).map((r, i) => (
+                  <div key={`${k}:${r}`} className="ui-cl-row ui-tk-row" data-glast={i === rows.length - 1 || undefined}>
+                    <span className="ui-cl-pick">
+                      <span className="ui-cl-text">
+                        <span className="ui-cl-name">{r}</span>
+                        <span className="ui-cl-meta">Wdrożenie · HR</span>
+                      </span>
+                    </span>
+                  </div>
+                )),
+              ];
+            })}
+          </div>
+        </div>
+      </div>
+
+      <Title order={3}>Wynik akcji pod wierszem</Title>
+      <Text size="sm" c="dimmed">
+        Akcja sprawdzająca w wierszu (przycisk obramowany), wynik pod wierszem na całą szerokość: potwierdzenie szałwią,
+        błąd czerwienią z podpowiedzią, co sprawdzić. Na telefonie wiersz otwiera arkusz, wynik w powiadomieniu. Wzór:
+        Stan systemu → „Wyślij testowy e-mail”.
+      </Text>
+      <div className="ui-group ui-phone-only">
+        <ListRow
+          title="Wysyłka e-mail"
+          description="Włączona · nadawca apt@firma.pl"
+          onClick={() => notifications.show({ color: "green", message: "Wysłano testowy e-mail na a.nowak@firma.pl" })}
+        />
+      </div>
+      <Paper withBorder radius="md" className="ui-cases ui-desktop-only">
+        <div className="ui-st-row">
+          <span>Wysyłka e-mail</span>
+          <span />
+          <span className="ui-st-mailact">
+            <Button size="xs" variant="default" onClick={() => setRes((r) => !r)}>
+              Wyślij testowy e-mail
+            </Button>
+            <StatusBadge tone="ok">Włączona</StatusBadge>
+          </span>
+          {res !== null && (
+            <Text size="xs" className={res ? "ui-st-mailres ui-ok-text" : "ui-st-mailres ui-st-mailerr"} role="status">
+              {res
+                ? "Wysłano na a.nowak@firma.pl – sprawdź skrzynkę, także spam."
+                : "Serwer poczty odrzucił logowanie (535). Sprawdź APT_SMTP_USER i APT_SMTP_PASSWORD w pliku .env."}
+            </Text>
+          )}
+        </div>
+      </Paper>
+
+      <Title order={3}>Powrót na obrazie aparatu</Title>
+      <Text size="sm" c="dimmed">
+        Telefon w poziomie, aparat na cały ekran (paski menu schowane): okrągły przycisk 44 px w lewym górnym rogu,
+        białe „‹” na półprzezroczystym tle, opis „Wróć – wyłącz aparat”. Drugą drogą jest przycisk wstecz systemu.
+      </Text>
+      <Group gap="sm" align="center">
+        <span className="ui-pat-cam" aria-hidden>
+          <span className="ui-pat-back">
+            <IconChevronLeft size={22} />
+          </span>
+        </span>
+        <Text size="sm">Wzór: Skaner kart.</Text>
+      </Group>
     </Stack>
   );
 }

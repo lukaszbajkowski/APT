@@ -2185,3 +2185,6 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-st-mailres{grid-column:1 / -1}
 .ui-st-mailerr{color:var(--mantine-color-error);font-weight:600}
 [data-mantine-color-scheme="dark"] .ui-st-mailerr{color:var(--mantine-color-red-4)}
+/* Wzornik: podgląd przycisku powrotu na obrazie aparatu (ten sam wygląd co .ui-scan-back) */
+.ui-pat-back{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;color:var(--mantine-color-white);background:color-mix(in srgb,var(--mantine-color-black) 45%,transparent)}
+.ui-pat-cam{display:grid;place-items:center;flex:none;width:72px;height:56px;border-radius:var(--mantine-radius-md);background:var(--mantine-color-dark-5)}

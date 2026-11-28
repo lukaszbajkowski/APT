@@ -2312,7 +2312,20 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-recline[data-cancel] .ui-recline-wave,.ui-recline[data-cancel] .ui-rec-time{opacity:.35}
 .ui-recline[data-cancel] .ui-rec-hint{color:var(--mantine-color-error);font-weight:600}
 .ui-recline[data-cancel] .ui-rec-dot{animation:none;opacity:.4}
-.ui-mic-steps{margin:4px 0 0;padding-left:var(--s-5);font-size:13px;line-height:18px}
-.ui-mic-steps li+li{margin-top:2px}
-.ui-link{font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-text)}
-.ui-link:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:2px}
+/* Dostęp do mikrofonu: arkusz (telefon) / okienko nad mikrofonem (komputer) */
+.ui-mich-body{padding:0 var(--s-2) calc(var(--s-4) + env(safe-area-inset-bottom,0px))}
+.ui-mich-ico{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--mantine-color-orange-text) 14%,transparent);color:var(--mantine-color-orange-text)}
+.ui-mich-actions{display:flex;justify-content:flex-end;gap:var(--s-2)}
+.ui-mich-actions[data-phone]{flex-direction:column-reverse}
+.ui-mich-actions[data-phone] > *{width:100%}
+.ui-mich-grid{display:flex;flex-direction:column;gap:var(--s-4)}
+.ui-mich-addr{position:relative;display:flex;align-items:center;gap:var(--s-2);margin-top:var(--s-5);padding:var(--s-2) var(--s-3);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--apt-subtle)}
+.ui-mich-arrow{position:absolute;left:var(--s-1);top:calc(-1 * var(--s-5));font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-color-orange-text)}
+.ui-mich-pin{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:var(--mantine-radius-sm);background:var(--mantine-color-body);border:2px solid var(--mantine-color-orange-text);color:var(--mantine-color-text)}
+.ui-mich-url{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-mich-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s-2);font-size:15px;line-height:22px}
+.ui-mich-steps li{display:flex;align-items:flex-start;gap:var(--s-3)}
+.ui-mich-n{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:var(--apt-subtle);font-size:13px;line-height:18px;font-weight:600}
+@media (orientation:landscape){
+  :where(:root[data-device="phone"]) .ui-mich-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);align-items:start;gap:var(--s-5)}
+}

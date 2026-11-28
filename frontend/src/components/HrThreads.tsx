@@ -22,7 +22,7 @@ import { useSearchParams } from "react-router-dom";
 import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, type RowAction } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 import { useIsPhone } from "../lib/device";
-import { showMicHelp } from "../lib/micHelp";
+import { MicHelp, type MicHelpState } from "./MicHelp";
 
 export interface ThreadRow {
   id: number;
@@ -100,9 +100,10 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
   const [on, setOn] = useState(false);
   const stop = useRef<(() => void) | null>(null);
   const base = useRef("");
-  const hold = useRef<{ timer: number; x: number; recording: boolean } | null>(null);
+  const hold = useRef<{ timer: number; x: number; recording: boolean; failed?: boolean } | null>(null);
   const rec = useRef<{ mr: MediaRecorder; chunks: Blob[]; stream: MediaStream; started: number; cancel: boolean } | null>(null);
   const [recState, setRecState] = useState<RecUi | null>(null);
+  const [help, setHelp] = useState<MicHelpState>(null);
   const meter = useRef<{ ctx: AudioContext; an: AnalyserNode } | null>(null);
   useEffect(() => onRecUi?.(recState), [recState]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(
@@ -150,7 +151,7 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
         setOn(false);
         stop.current = null;
         if (err === "not-allowed" || err === "service-not-allowed") {
-          showMicHelp(T);
+          setHelp("blocked");
         }
       },
     );
@@ -198,8 +199,10 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
       setRecState({ secs: 0, cancel: false, levels: [] });
       navigator.vibrate?.(15);
     } catch {
-      hold.current = null;
-      showMicHelp(T);
+      // mikrofon zablokowany: puszczenie palca nie może już włączyć dyktowania
+      if (hold.current) hold.current.failed = true;
+      const st = await navigator.permissions?.query({ name: "microphone" as PermissionName }).catch(() => null);
+      setHelp(st?.state === "prompt" ? "ask" : "blocked");
     }
   }
   function finishRec(cancel: boolean) {
@@ -238,6 +241,10 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
           const h = hold.current;
           if (!h) return toggle();
           window.clearTimeout(h.timer);
+          if (h.failed) {
+            hold.current = null;
+            return;
+          }
           if (!h.recording) {
             hold.current = null;
             toggle();
@@ -268,7 +275,8 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
   // nasłuch: fale rozchodzą się od przycisku, słupki „grają” – widać, że aplikacja słucha (tekst wpada do pola)
   return (
     <>
-      <Tooltip label={tip} multiline w={260} disabled={!!recState}>
+      <MicHelp state={help} setState={setHelp}>
+      <Tooltip label={tip} multiline w={260} disabled={!!recState || !!help}>
         <button
           type="button"
           className="ui-mic"
@@ -290,6 +298,7 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
           )}
         </button>
       </Tooltip>
+      </MicHelp>
       {recState &&
         !onRecUi &&
         createPortal(

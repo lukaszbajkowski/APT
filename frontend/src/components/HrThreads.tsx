@@ -150,11 +150,25 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
       (err) => {
         setOn(false);
         stop.current = null;
-        if (err === "not-allowed" || err === "service-not-allowed") {
-          setHelp("blocked");
-        }
+        if (err === "not-allowed" || err === "service-not-allowed") void micProblem(err);
       },
     );
+  }
+  // okno „odblokuj mikrofon” tylko przy faktycznym braku zgody; przy zgodzie – prawdziwa przyczyna
+  async function micProblem(err?: string) {
+    const st = await navigator.permissions?.query({ name: "microphone" as PermissionName }).catch(() => null);
+    if (st?.state === "prompt") return setHelp("ask");
+    if (st?.state === "denied") return setHelp("blocked");
+    const msg =
+      err === "NotFoundError"
+        ? T("Nie znaleziono mikrofonu – podłącz go albo wybierz w ustawieniach systemu.")
+        : err === "NotReadableError"
+          ? T("Mikrofon jest zajęty przez inny program (np. rozmowę wideo). Zamknij go i spróbuj ponownie.")
+          : err === "service-not-allowed" || err === "not-allowed"
+            ? T("Dyktowanie jest teraz niedostępne w tej przeglądarce. Wpisz tekst albo przytrzymaj mikrofon, aby nagrać wiadomość głosową.")
+            : null;
+    if (msg) notifications.show({ color: "yellow", message: msg, autoClose: 8000 });
+    else setHelp("blocked");
   }
   async function startRec() {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -198,11 +212,10 @@ function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: stri
       }
       setRecState({ secs: 0, cancel: false, levels: [] });
       navigator.vibrate?.(15);
-    } catch {
-      // mikrofon zablokowany: puszczenie palca nie może już włączyć dyktowania
+    } catch (e) {
+      // nieudane nagranie: puszczenie palca nie może już włączyć dyktowania
       if (hold.current) hold.current.failed = true;
-      const st = await navigator.permissions?.query({ name: "microphone" as PermissionName }).catch(() => null);
-      setHelp(st?.state === "prompt" ? "ask" : "blocked");
+      void micProblem((e as DOMException)?.name);
     }
   }
   function finishRec(cancel: boolean) {

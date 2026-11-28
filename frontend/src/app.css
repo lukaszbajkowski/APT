@@ -2247,18 +2247,3 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-mf-thx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
 .ui-mf-err{flex-basis:100%;font-size:13px;line-height:18px;color:var(--mantine-color-error)}
 .ui-mf-attach{flex:none}
-.ui-mv{background:var(--mantine-color-black) !important;color:var(--mantine-color-white)}
-.ui-mv-body{display:flex;flex-direction:column;height:100dvh;padding:0 !important}
-.ui-mv-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:calc(var(--s-3) + env(safe-area-inset-top,0px)) calc(var(--s-3) + env(safe-area-inset-right,0px)) var(--s-3) calc(var(--s-3) + env(safe-area-inset-left,0px))}
-.ui-mv-btn{color:var(--mantine-color-white) !important}
-.ui-mv-btn:hover{background:color-mix(in srgb,var(--mantine-color-white) 12%,transparent) !important}
-.ui-mv-dl{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--mantine-radius-md)}
-.ui-mv-dl:focus-visible,.ui-mv-btn:focus-visible{outline:2px solid var(--mantine-color-white);outline-offset:2px}
-.ui-mv-count{font-size:14px;line-height:20px;opacity:.8}
-.ui-mv-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 var(--s-2)}
-.ui-mv-stage img{max-width:100%;max-height:100%;object-fit:contain;user-select:none}
-.ui-mv-prev,.ui-mv-next{position:absolute;top:50%;transform:translateY(-50%)}
-.ui-mv-prev{left:calc(var(--s-3) + env(safe-area-inset-left,0px))}
-.ui-mv-next{right:calc(var(--s-3) + env(safe-area-inset-right,0px))}
-:where(:root[data-device="phone"]) .ui-mv-prev,:where(:root[data-device="phone"]) .ui-mv-next{display:none}
-.ui-mv-cap{padding:var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom,0px));text-align:center;font-size:13px;line-height:18px;opacity:.8;overflow-wrap:anywhere}

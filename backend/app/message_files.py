@@ -191,7 +191,7 @@ def table_of(thread_id: int, file_name: str) -> list[dict]:
         if cached.exists():
             raw = storage.read(cached)
         else:
-            raw = _convert(raw, ext, "xlsx")
+            raw = _convert(normalize_ooxml(raw) if ext == "xlsx" else raw, ext, "xlsx")
             storage.write(cached, raw)
     import openpyxl
 
@@ -274,6 +274,43 @@ def _office(name: str, raw: bytes) -> Prepared | None:
     return Prepared(name, ext, ctype, raw)
 
 
+def normalize_ooxml(raw: bytes) -> bytes:
+    """Naprawia spis części pliku Office zapisanego przez skrypt („ns0:Types” – prefiks przestrzeni nazw).
+
+    LibreOffice takiego spisu nie czyta („source file could not be loaded”). Spis i relacje dostają zwykły
+    zapis (domyślna przestrzeń nazw), reszta pliku bez zmian; poprawny plik wraca nietknięty."""
+    import re
+    import zipfile
+
+    try:
+        src = zipfile.ZipFile(io.BytesIO(raw))
+        names = src.namelist()
+        ct = src.read("[Content_Types].xml").decode("utf-8")
+    except (zipfile.BadZipFile, KeyError, UnicodeDecodeError):
+        return raw
+    if not re.search(r"<\w+:Types\b", ct):
+        return raw
+
+    def fix(t: str) -> str:
+        m = re.search(r'xmlns:(\w+)="(http://schemas\.openxmlformats\.org/package/2006/[^"]+)"', t)
+        if not m:
+            return t
+        p = m.group(1)
+        return t.replace(f"xmlns:{p}=", "xmlns=").replace(f"<{p}:", "<").replace(f"</{p}:", "</")
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for n in names:
+            d = src.read(n)
+            if n == "[Content_Types].xml" or n.endswith(".rels"):
+                try:
+                    d = fix(d.decode("utf-8")).encode("utf-8")
+                except UnicodeDecodeError:
+                    pass
+            z.writestr(n, d)
+    return out.getvalue()
+
+
 def preview_source(thread_id: int, file_name: str, content_type: str) -> tuple[bytes, str]:
     """Dane do podglądu stron: PDF i zdjęcia wprost, pliki biurowe – PDF z LibreOffice (zapamiętany obok)."""
     ext = file_name.rsplit(".", 1)[-1]
@@ -286,6 +323,8 @@ def preview_source(thread_id: int, file_name: str, content_type: str) -> tuple[b
     cached = d / f"{file_name.split('.')[0]}_p.pdf"
     if cached.exists():
         return storage.read(cached), "pdf"
+    if ext in ("docx", "xlsx", "pptx"):
+        data = normalize_ooxml(data)
     pdf = templating.to_pdf(data, suffix=ext)
     storage.write(cached, pdf)
     return pdf, "pdf"

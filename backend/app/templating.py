@@ -7,6 +7,7 @@ Zmienne dzielą się na:
 """
 
 import io
+import logging
 import os
 import re
 import shutil
@@ -452,6 +453,7 @@ def render_docx(template: bytes, context: dict[str, Any]) -> bytes:
 
 # ---------- PDF przez LibreOffice ----------
 
+log = logging.getLogger("apt.templating")
 _soffice_lock = threading.Lock()
 
 
@@ -484,13 +486,24 @@ def to_pdf(docx: bytes, timeout: int = 90, suffix: str = "docx") -> bytes:
             str(src),
         ]
         try:
-            subprocess.run(
+            res = subprocess.run(
                 cmd, check=True, timeout=timeout, capture_output=True, env={**os.environ, "HOME": tmp}
             )
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        except subprocess.TimeoutExpired as exc:
+            log.warning("LibreOffice: przekroczony czas %ss (.%s)", timeout, suffix)
+            raise PdfUnavailable("Konwersja do PDF nie powiodła się. Pobierz plik Word.") from exc
+        except subprocess.CalledProcessError as exc:
+            log.warning("LibreOffice: błąd %s (.%s): %s", exc.returncode, suffix, (exc.stderr or b"")[-800:])
             raise PdfUnavailable("Konwersja do PDF nie powiodła się. Pobierz plik Word.") from exc
         out = Path(tmp) / "dokument.pdf"
         if not out.exists():
+            # LibreOffice kończy się kodem 0 także bez modułu dla tego typu (np. Impress dla .pptx)
+            log.warning(
+                "LibreOffice: brak PDF po konwersji (.%s): %s %s",
+                suffix,
+                res.stdout[-400:],
+                res.stderr[-800:],
+            )
             raise PdfUnavailable("Konwersja do PDF nie powiodła się. Pobierz plik Word.")
         return out.read_bytes()
 

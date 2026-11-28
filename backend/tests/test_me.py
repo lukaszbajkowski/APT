@@ -549,3 +549,30 @@ def test_message_special_formats(me, hr, emp):  # noqa: F811
     sheets = hr.get(f"/api/hr-messages/files/{x['id']}/table").json()["sheets"]
     assert [s["name"] for s in sheets] == ["Grafik", "Urlopy"] and sheets[0]["rows"][1] == ["Pon", "8,5"]
     assert hr.get(f"/api/hr-messages/files/{a['id']}/table").status_code == 400
+
+
+def test_normalize_ooxml_prefixed_package():
+    import zipfile
+
+    from app.message_files import normalize_ooxml
+
+    ns = "http://schemas.openxmlformats.org/package/2006"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(
+            "[Content_Types].xml",
+            f'<ns0:Types xmlns:ns0="{ns}/content-types"><ns0:Default Extension="xml"/></ns0:Types>',
+        )
+        z.writestr("_rels/.rels", f'<ns0:Relationships xmlns:ns0="{ns}/relationships"/>')
+        z.writestr("ppt/presentation.xml", "<x/>")
+    fixed = zipfile.ZipFile(io.BytesIO(normalize_ooxml(buf.getvalue())))
+    assert (
+        fixed.read("[Content_Types].xml").decode().startswith(f'<Types xmlns="{ns}/content-types"><Default')
+    )
+    assert fixed.read("_rels/.rels").decode() == f'<Relationships xmlns="{ns}/relationships"/>'
+    assert fixed.read("ppt/presentation.xml") == b"<x/>"
+    # poprawny plik zostaje nietknięty
+    ok = io.BytesIO()
+    with zipfile.ZipFile(ok, "w") as z:
+        z.writestr("[Content_Types].xml", f'<Types xmlns="{ns}/content-types"/>')
+    assert normalize_ooxml(ok.getvalue()) == ok.getvalue()

@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ActionIcon, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text, UnstyledButton } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight, IconDownload, IconEyeOff, IconShieldLock, IconZoomIn, IconZoomOut } from "@tabler/icons-react";
+import { Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
+import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
+import { AttachmentViewer } from "./AttachmentViewer";
 import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
 import { ErrorState } from "./States";
@@ -46,7 +47,6 @@ export function DocumentViewer({
   downloadUrl,
   downloadLabel,
   overlay,
-  nav,
   variant = base ? "signed" : "document",
 }: {
   docId: string;
@@ -61,8 +61,38 @@ export function DocumentViewer({
   downloadLabel?: string;
   /** otwierany nad warstwą na cały ekran (rozmowa na telefonie) – okno pełnoekranowe zamiast ekranu z górnym paskiem */
   overlay?: boolean;
-  /** przechodzenie między kilkoma plikami (zdjęcia w wiadomości): strzałki w pasku, klawiatura ←/→, przesunięcie palcem */
-  nav?: { index: number; total: number; go: (delta: number) => void };
+}) {
+  // załącznik (komunikat, wiadomość): wspólny podgląd dopasowany do okna z przybliżaniem i jednym paskiem
+  if (variant === "attachment")
+    return opened ? (
+      <AttachmentViewer
+        onClose={onClose}
+        downloadUrl={downloadUrl}
+        downloadLabel={downloadLabel}
+        mode={{ kind: "pages", infoUrl: base ?? `/documents/${docId}/preview`, pageUrl: (i) => (base ? `${base}/page/${i}` : `/documents/${docId}/preview/${i}`) }}
+      />
+    ) : null;
+  return <DocumentViewerInner {...{ docId, opened, onClose, base, downloadUrl, downloadLabel, overlay, variant }} />;
+}
+
+function DocumentViewerInner({
+  docId,
+  opened,
+  onClose,
+  base,
+  downloadUrl,
+  downloadLabel,
+  overlay,
+  variant,
+}: {
+  docId: string;
+  opened: boolean;
+  onClose: () => void;
+  base?: string;
+  downloadUrl?: string;
+  downloadLabel?: string;
+  overlay?: boolean;
+  variant: "document" | "signed" | "attachment";
 }) {
   const T = useT();
   const infoUrl = base ?? `/documents/${docId}/preview`;
@@ -78,9 +108,7 @@ export function DocumentViewer({
     staleTime: 0,
   });
   const [hidden, setHidden] = useState(false);
-  const phone = useIsPhone();
-  // załączniki (komunikaty, wiadomości) zawsze w oknie na cały ekran – dopasowanie do okna i przybliżanie także na telefonie
-  const mobile = phone && !overlay && variant !== "attachment";
+  const mobile = useIsPhone() && !overlay;
 
   const protect = variant !== "attachment";
   useEffect(() => {
@@ -115,50 +143,6 @@ export function DocumentViewer({
   }, [opened, protect]);
 
   const title = q.data?.title ?? T("Podgląd dokumentu");
-  const multi = !!nav && nav.total > 1;
-  // załączniki (wiadomości, komunikaty) w oknie: cała strona / zdjęcie / slajd od razu w oknie, z przybliżaniem
-  const fit = variant === "attachment" && !mobile;
-  const [zoom, setZoom] = useState(1);
-  const zoomTo = (z: number) => setZoom(Math.min(5, Math.max(1, Math.round(z * 100) / 100)));
-  const navKey = nav?.index;
-  useEffect(() => setZoom(1), [navKey, docId]);
-  // na telefonie przybliża się dwoma palcami (albo dwuklikiem) – w pasku zostaje miejsce na nazwę
-  const zoomCtl = fit && !phone ? (
-    <Group gap={4} wrap="nowrap" className="doc-viewer-zoom">
-      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => zoomTo(zoom / 1.25)} disabled={zoom <= 1} aria-label={T("Oddal")}>
-        <IconZoomOut size={20} />
-      </ActionIcon>
-      <UnstyledButton className="doc-viewer-zoomval" onClick={() => setZoom(1)} aria-label={T("Dopasuj do okna")} title={T("Dopasuj do okna")}>
-        {Math.round(zoom * 100)}%
-      </UnstyledButton>
-      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => zoomTo(zoom * 1.25)} disabled={zoom >= 5} aria-label={T("Przybliż")}>
-        <IconZoomIn size={20} />
-      </ActionIcon>
-    </Group>
-  ) : null;
-  useEffect(() => {
-    if (!opened || !multi) return;
-    const k = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") nav!.go(1);
-      if (e.key === "ArrowLeft") nav!.go(-1);
-    };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [opened, multi, nav]);
-  const touch = useRef<{ x: number; y: number; samples: { x: number; t: number }[] } | null>(null);
-  const navCtl = multi ? (
-    <Group gap={4} wrap="nowrap" className="doc-viewer-nav">
-      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => nav!.go(-1)} aria-label={T("Poprzednie")}>
-        <IconChevronLeft size={20} />
-      </ActionIcon>
-      <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-        {nav!.index + 1} / {nav!.total}
-      </Text>
-      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => nav!.go(1)} aria-label={T("Następne")}>
-        <IconChevronRight size={20} />
-      </ActionIcon>
-    </Group>
-  ) : null;
   const content = (
       <Box
         className="doc-viewer"
@@ -166,51 +150,12 @@ export function DocumentViewer({
         onDragStart={(e) => e.preventDefault()}
         onClick={() => (hidden ? setHidden(false) : undefined)}
         style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", position: "relative" }}
-        onTouchStart={(e) => {
-          if (!multi || zoom > 1 || e.touches.length > 1) {
-            touch.current = null;
-            return;
-          }
-          const t0 = e.touches[0];
-          touch.current = { x: t0.clientX, y: t0.clientY, samples: [{ x: t0.clientX, t: e.timeStamp }] };
-        }}
-        onTouchMove={(e) => {
-          const s0 = touch.current;
-          if (!s0) return;
-          s0.samples.push({ x: e.touches[0].clientX, t: e.timeStamp });
-          while (s0.samples.length > 2 && e.timeStamp - s0.samples[0].t > 100) s0.samples.shift();
-        }}
-        onTouchEnd={(e) => {
-          // jak gesty w aplikacji: szybki ruch = prędkość ≥ 0,5 px/ms w chwili puszczenia (próbki z 100 ms) albo
-          // spokojne przeciągnięcie przez ⅓ szerokości; ruch głównie w pionie to przewijanie, nie zmiana zdjęcia
-          const s0 = touch.current;
-          touch.current = null;
-          if (!s0) return;
-          const end = e.changedTouches[0];
-          const dx = end.clientX - s0.x;
-          const dy = end.clientY - s0.y;
-          if (Math.abs(dx) < 24 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-          const first = s0.samples[0];
-          const v = (end.clientX - first.x) / Math.max(1, e.timeStamp - first.t);
-          const fast = Math.abs(v) >= 0.5 && Math.sign(v) === Math.sign(dx);
-          if (fast || Math.abs(dx) > window.innerWidth / 3) nav!.go(dx < 0 ? 1 : -1);
-        }}
       >
         {q.isLoading && (
           <Skeleton height="60dvh" radius="md" aria-busy="true" aria-label="Ładowanie dokumentu" />
         )}
         {q.error && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
-        {q.data && fit && (
-          <FitPages
-            pages={q.data.pages}
-            src={(i) => `/api${pageUrl(i)}`}
-            zoom={zoom}
-            setZoom={zoomTo}
-            hidden={hidden}
-            onClose={onClose}
-          />
-        )}
-        {q.data && !fit && (
+        {q.data && (
           <Stack
             gap="md"
             align="center"
@@ -266,7 +211,6 @@ export function DocumentViewer({
       >
         <div>
           <h2 className="ui-view-title">{breakableName(title)}</h2>
-          {navCtl}
           {q.data?.signed && (
             <StatusBadge tone="ok">
               {T("wersja podpisana")}
@@ -284,18 +228,11 @@ export function DocumentViewer({
       onClose={onClose}
       fullScreen
       zIndex={500}
-      classNames={{ title: "doc-viewer-title", content: fit ? "doc-viewer-content doc-viewer-fitc" : "doc-viewer-content", body: fit ? "doc-viewer-fitb" : undefined }}
+      classNames={{ title: "doc-viewer-title", content: "doc-viewer-content" }}
       title={
         <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
           <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
-          {navCtl}
-          {zoomCtl}
-          {downloadUrl && phone && (
-            <ActionIcon component="a" variant="light" size="lg" href={withAcct(`/api${downloadUrl}`)} aria-label={downloadLabel ?? T("Pobierz PDF")}>
-              <IconDownload size={18} />
-            </ActionIcon>
-          )}
-          {downloadUrl && !phone && (
+          {downloadUrl && (
             <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
               {downloadLabel ?? T("Pobierz PDF")}
             </Button>
@@ -307,85 +244,9 @@ export function DocumentViewer({
           )}
         </Group>
       }
-      styles={{ body: fit ? { background: "var(--apt-subtle)", padding: 0 } : { background: "var(--apt-subtle)", minHeight: "calc(100vh - 60px)" } }}
+      styles={{ body: { background: "var(--apt-subtle)", minHeight: "calc(100vh - 60px)" } }}
     >
       {content}
     </Modal>
-  );
-}
-
-/**
- * Strony załącznika dopasowane do okna (całe zdjęcie / strona / slajd widać od razu), z przybliżaniem:
- * przyciski w pasku, Ctrl + kółko myszy, dwa palce; przybliżoną stronę przesuwa się palcem albo paskami przewijania.
- */
-function FitPages({ pages, src, zoom, setZoom, hidden, onClose }: { pages: number; src: (i: number) => string; zoom: number; setZoom: (z: number) => void; hidden: boolean; onClose: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [nat, setNat] = useState<Record<number, { w: number; h: number }>>({});
-  const pinch = useRef<{ d: number; z: number } | null>(null);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    const wheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      setZoom(zoomRef.current * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
-    };
-    el.addEventListener("wheel", wheel, { passive: false });
-    return () => {
-      ro.disconnect();
-      el.removeEventListener("wheel", wheel);
-    };
-  }, [setZoom]);
-  const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
-  const pad = 16;
-  const dims = (i: number) => {
-    const n = nat[i];
-    if (!size || !n) return undefined;
-    const s = Math.min((size.w - 2 * pad) / n.w, (size.h - 2 * pad) / n.h);
-    return { width: Math.round(n.w * s * zoom), height: Math.round(n.h * s * zoom) };
-  };
-  const dist = (t: React.TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  return (
-    <div
-      ref={box}
-      className="doc-fit"
-      data-zoomed={zoom > 1 || undefined}
-      style={{ filter: hidden ? "blur(28px)" : undefined }}
-      onTouchStart={(e) => {
-        if (e.touches.length === 2) pinch.current = { d: dist(e.touches), z: zoomRef.current };
-      }}
-      onTouchMove={(e) => {
-        if (e.touches.length === 2 && pinch.current) {
-          e.preventDefault();
-          setZoom(pinch.current.z * (dist(e.touches) / pinch.current.d));
-        }
-      }}
-      onTouchEnd={(e) => {
-        if (e.touches.length < 2) pinch.current = null;
-      }}
-      // kliknięcie w tło (poza stroną / zdjęciem) zamyka podgląd; dwuklik na stronie – przybliżenie
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {Array.from({ length: pages }, (_, i) => {
-        const d = dims(i);
-        return (
-          <div key={i} className="doc-fit-page" onDoubleClick={() => setZoom(zoom > 1 ? 1 : 2)} role="img" aria-label={`Strona ${i + 1}`} style={d ?? { width: "60%", aspectRatio: "210 / 297", maxHeight: "100%" }}>
-            <img
-              src={withAcct(src(i))}
-              alt=""
-              draggable={false}
-              onLoad={(e) => {
-                const im = e.currentTarget;
-                setNat((x) => ({ ...x, [i]: { w: im.naturalWidth, h: im.naturalHeight } }));
-              }}
-            />
-          </div>
-        );
-      })}
-    </div>
   );
 }

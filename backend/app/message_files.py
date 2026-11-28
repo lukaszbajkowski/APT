@@ -20,6 +20,25 @@ MAX_FILES = 10
 MAX_MB = 15
 BIG, THUMB = 2000, 480
 Image.MAX_IMAGE_PIXELS = 40_000_000
+try:  # zdjęcia HEIC / HEIF z iPhone'a – zamieniane na JPG
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:  # pragma: no cover – bez biblioteki HEIC jest odrzucany z komunikatem
+    pass
+
+AUDIO = {
+    # rozszerzenie: (typ MIME, sprawdzenie nagłówka)
+    "m4a": "audio/mp4",
+    "mp3": "audio/mpeg",
+    "ogg": "audio/ogg",
+    "opus": "audio/ogg",
+    "wav": "audio/wav",
+    "webm": "audio/webm",
+    "aac": "audio/aac",
+}
+TEXT_MAX = 512 * 1024
+TABLE_ROWS, TABLE_COLS = 2000, 60
 
 
 class FileError(ValueError):
@@ -64,6 +83,9 @@ def prepare(name: str, raw: bytes) -> Prepared:
     office = _office(base, raw)
     if office:
         return office
+    audio = _audio(base, raw)
+    if audio:
+        return audio
     try:
         with Image.open(io.BytesIO(raw)) as probe:
             probe.verify()
@@ -72,7 +94,7 @@ def prepare(name: str, raw: bytes) -> Prepared:
         img = ImageOps.exif_transpose(img)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise FileError(f"Pliku „{name}” nie da się wysłać. {ALLOWED_TEXT}") from exc
-    if fmt not in ("JPEG", "PNG", "WEBP", "MPO"):
+    if fmt not in ("JPEG", "PNG", "WEBP", "MPO", "HEIF"):
         raise FileError(f"Pliku „{name}” nie da się wysłać. {ALLOWED_TEXT}")
     if img.mode not in ("RGB", "L"):
         bg = Image.new("RGB", img.size, (255, 255, 255))
@@ -97,11 +119,139 @@ OFFICE = {
     "doc": ("application/msword", b"\xd0\xcf\x11\xe0"),
     "xls": ("application/vnd.ms-excel", b"\xd0\xcf\x11\xe0"),
     "ppt": ("application/vnd.ms-powerpoint", b"\xd0\xcf\x11\xe0"),
+    "odp": ("application/vnd.oasis.opendocument.presentation", b"PK\x03\x04"),
     "rtf": ("application/rtf", b"{\\rtf"),
     "txt": ("text/plain", b""),
     "csv": ("text/csv", b""),
 }
-ALLOWED_TEXT = "Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT i CSV."
+ALLOWED_TEXT = (
+    "Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT, CSV i nagrania głosowe."
+)
+
+
+def _audio(name: str, raw: bytes) -> Prepared | None:
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    head = raw[:16]
+    sniff = (
+        "m4a"
+        if head[4:8] == b"ftyp"
+        else "mp3"
+        if head.startswith(b"ID3") or head[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
+        else "ogg"
+        if head.startswith(b"OggS")
+        else "wav"
+        if head.startswith(b"RIFF") and raw[8:12] == b"WAVE"
+        else "webm"
+        if head.startswith(b"\x1a\x45\xdf\xa3")
+        else "aac"
+        if head[:2] in (b"\xff\xf1", b"\xff\xf9")
+        else None
+    )
+    if ext not in AUDIO and not (sniff and ext in ("", "mp4", "caf")):
+        return None
+    if sniff is None:
+        raise FileError(f"Plik „{name}” nie wygląda na nagranie.")
+    if ext == "opus" and sniff == "ogg":
+        sniff = "opus"
+    if ext in ("mp4", "m4a", "") and sniff == "m4a":
+        sniff = "m4a"
+    return Prepared(name, sniff, AUDIO[sniff], raw)
+
+
+def text_of(raw: bytes) -> str:
+    data = raw[:TEXT_MAX]
+    for enc in ("utf-8-sig", "cp1250"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
+def table_of(thread_id: int, file_name: str) -> list[dict]:
+    """Arkusze jako tabele do podglądu: CSV wprost, XLSX przez openpyxl, XLS / ODS przez LibreOffice."""
+    import csv
+
+    ext = file_name.rsplit(".", 1)[-1]
+    raw = read(thread_id, file_name)
+    if ext == "csv":
+        text = text_of(raw)
+        try:
+            dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t|")
+        except csv.Error:
+            dialect = csv.excel
+        rows = [
+            r[:TABLE_COLS]
+            for _, r in zip(range(TABLE_ROWS), csv.reader(io.StringIO(text), dialect), strict=False)
+        ]
+        return [{"name": "CSV", "rows": rows, "more": len(text.splitlines()) > TABLE_ROWS}]
+    if ext != "xlsx":
+        d = thread_dir(thread_id)
+        cached = d / f"{file_name.split('.')[0]}_x.xlsx"
+        if cached.exists():
+            raw = storage.read(cached)
+        else:
+            raw = _convert(raw, ext, "xlsx")
+            storage.write(cached, raw)
+    import openpyxl
+
+    wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    out = []
+    for ws in wb.worksheets[:20]:
+        rows, more = [], False
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i >= TABLE_ROWS:
+                more = True
+                break
+            rows.append([_cell(v) for v in row[:TABLE_COLS]])
+        while rows and not any(rows[-1]):
+            rows.pop()
+        width = max(
+            (len(r) - next((k for k, v in enumerate(reversed(r)) if v), len(r)) for r in rows), default=0
+        )
+        out.append({"name": ws.title, "rows": [r[:width] for r in rows], "more": more})
+    wb.close()
+    return out
+
+
+def _cell(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, float):
+        return (f"{v:.10g}").replace(".", ",")
+    if hasattr(v, "strftime"):
+        return (
+            v.strftime("%d.%m.%Y %H:%M")
+            if getattr(v, "hour", 0) or getattr(v, "minute", 0)
+            else v.strftime("%d.%m.%Y")
+        )
+    return str(v)
+
+
+def _convert(raw: bytes, ext: str, to: str) -> bytes:
+    """Konwersja LibreOffice do innego formatu (np. XLS → XLSX)."""
+    import os
+    import subprocess
+    import tempfile
+
+    from app import templating
+
+    exe = templating.soffice_path()
+    if not exe:
+        raise templating.PdfUnavailable("Na serwerze nie ma LibreOffice.")
+    with templating._soffice_lock, tempfile.TemporaryDirectory(prefix="apt-conv-") as tmp:
+        src = Path(tmp) / f"plik.{ext}"
+        src.write_bytes(raw)
+        cmd = [exe, f"-env:UserInstallation=file://{Path(tmp) / 'profile'}", "--headless", "--norestore"]
+        cmd += ["--convert-to", to, "--outdir", tmp, str(src)]
+        try:
+            subprocess.run(cmd, check=True, timeout=90, capture_output=True, env={**os.environ, "HOME": tmp})
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise templating.PdfUnavailable("Konwersja pliku nie powiodła się.") from exc
+        out = Path(tmp) / f"plik.{to}"
+        if not out.exists():
+            raise templating.PdfUnavailable("Konwersja pliku nie powiodła się.")
+        return out.read_bytes()
 
 
 def _office(name: str, raw: bytes) -> Prepared | None:

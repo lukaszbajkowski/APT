@@ -45,7 +45,7 @@ class MsgFileOut(BaseModel):
     id: int
     name: str
     size: int
-    kind: Literal["image", "file"]
+    kind: Literal["image", "audio", "file"]
     ext: str = ""
     width: int | None = None
     height: int | None = None
@@ -202,7 +202,11 @@ def _out(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
                         id=f.id,
                         name=f.original_name,
                         size=f.size,
-                        kind="image" if f.content_type.startswith("image/") else "file",
+                        kind="image"
+                        if f.content_type.startswith("image/")
+                        else "audio"
+                        if f.content_type.startswith("audio/")
+                        else "file",
                         ext=f.file_name.rsplit(".", 1)[-1],
                         width=f.width,
                         height=f.height,
@@ -402,7 +406,9 @@ def _attach(db: DbSession, t: HrThread, m: HrMessage, prepared: list[message_fil
         f.file_name = message_files.write(t.id, f.id, p)
 
 
-def _file_response(db: DbSession, file_id: int, thumb: bool, can: Callable[[HrThread], bool]) -> Response:
+def _file_response(
+    db: DbSession, file_id: int, thumb: bool, can: Callable[[HrThread], bool], range_header: str | None = None
+) -> Response:
     f = db.get(HrMessageFile, file_id)
     if f is None or not can(f.message.thread):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie znaleziono pliku.")
@@ -410,18 +416,28 @@ def _file_response(db: DbSession, file_id: int, thumb: bool, can: Callable[[HrTh
     ctype = "image/jpeg" if thumb and f.content_type.startswith("image/") else f.content_type
     from urllib.parse import quote
 
-    viewable = f.content_type.startswith("image/") or f.content_type == "application/pdf"
+    viewable = f.content_type.startswith(("image/", "audio/")) or f.content_type == "application/pdf"
     disp = "inline" if viewable else "attachment"
-
-    return Response(
-        data,
-        media_type=ctype,
-        headers={
-            "Cache-Control": "private, max-age=3600",
-            "Content-Disposition": f"{disp}; filename*=UTF-8''{quote(f.original_name)}",
-            "X-Content-Type-Options": "nosniff",
-        },
-    )
+    headers = {
+        "Cache-Control": "private, max-age=3600",
+        "Content-Disposition": f"{disp}; filename*=UTF-8''{quote(f.original_name)}",
+        "X-Content-Type-Options": "nosniff",
+        "Accept-Ranges": "bytes",
+    }
+    # nagrania: przeglądarki (Safari) odtwarzają tylko przy obsłudze zakresów bajtów
+    if range_header and range_header.startswith("bytes="):
+        start_s, _, end_s = range_header[6:].split(",")[0].partition("-")
+        size = len(data)
+        try:
+            start = int(start_s) if start_s else max(0, size - int(end_s))
+            end = min(int(end_s), size - 1) if end_s and start_s else size - 1
+        except ValueError:
+            start, end = 0, size - 1
+        if start >= size or start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        return Response(data[start : end + 1], status_code=206, media_type=ctype, headers=headers)
+    return Response(data, media_type=ctype, headers=headers)
 
 
 class FilePagesOut(BaseModel):
@@ -466,6 +482,48 @@ def _preview_page(db: DbSession, file_id: int, page: int, can: Callable[[HrThrea
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Nie ma takiej strony.")
     png = preview.render_page(data, ext, page, "", mark=False)
     return Response(png, media_type="image/png", headers={"Cache-Control": "no-store, private"})
+
+
+class FileTextOut(BaseModel):
+    title: str
+    text: str
+    truncated: bool = False
+
+
+class SheetOut(BaseModel):
+    name: str
+    rows: list[list[str]]
+    more: bool = False
+
+
+class FileTableOut(BaseModel):
+    title: str
+    sheets: list[SheetOut]
+
+
+def _file_text(db: DbSession, file_id: int, can: Callable[[HrThread], bool]) -> FileTextOut:
+    f = _msg_file(db, file_id, can)
+    if not f.file_name.endswith((".txt", ".csv")):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="To nie jest plik tekstowy.")
+    raw = message_files.read(f.message.thread_id, f.file_name)
+    return FileTextOut(
+        title=f.original_name, text=message_files.text_of(raw), truncated=len(raw) > message_files.TEXT_MAX
+    )
+
+
+def _file_table(db: DbSession, file_id: int, can: Callable[[HrThread], bool]) -> FileTableOut:
+    from app import templating
+
+    f = _msg_file(db, file_id, can)
+    if not f.file_name.endswith((".csv", ".xlsx", ".xls", ".ods")):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="To nie jest arkusz.")
+    try:
+        sheets = message_files.table_of(f.message.thread_id, f.file_name)
+    except (templating.PdfUnavailable, Exception) as e:  # noqa: BLE001 – uszkodzony arkusz: zostaje pobranie
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Tego arkusza nie da się pokazać – pobierz go."
+        ) from e
+    return FileTableOut(title=f.original_name, sheets=[SheetOut(**x) for x in sheets])
 
 
 def _employee_id(ctx: Auth) -> int:
@@ -629,10 +687,20 @@ def my_file_page(file_id: int, page: int, ctx: Auth, db: DbSession) -> Response:
     return _preview_page(db, file_id, page, _my_can(_employee_id(ctx)))
 
 
+@me_router.get("/files/{file_id}/text")
+def my_file_text(file_id: int, ctx: Auth, db: DbSession) -> FileTextOut:
+    return _file_text(db, file_id, _my_can(_employee_id(ctx)))
+
+
+@me_router.get("/files/{file_id}/table")
+def my_file_table(file_id: int, ctx: Auth, db: DbSession) -> FileTableOut:
+    return _file_table(db, file_id, _my_can(_employee_id(ctx)))
+
+
 @me_router.get("/files/{file_id}")
-def my_file(file_id: int, ctx: Auth, db: DbSession, thumb: bool = False) -> Response:
+def my_file(file_id: int, request: Request, ctx: Auth, db: DbSession, thumb: bool = False) -> Response:
     eid = _employee_id(ctx)
-    return _file_response(db, file_id, thumb, lambda t: t.employee_id == eid or _member(t, eid) is not None)
+    return _file_response(db, file_id, thumb, _my_can(eid), request.headers.get("range"))
 
 
 @me_router.post("/{thread_id}/files", response_model=ThreadOut)
@@ -753,9 +821,21 @@ def staff_file_page(file_id: int, page: int, ctx: StaffAuth, db: DbSession) -> R
     return _preview_page(db, file_id, page, lambda t: True)
 
 
+@staff_router.get("/files/{file_id}/text")
+def staff_file_text(file_id: int, ctx: StaffAuth, db: DbSession) -> FileTextOut:
+    return _file_text(db, file_id, lambda t: True)
+
+
+@staff_router.get("/files/{file_id}/table")
+def staff_file_table(file_id: int, ctx: StaffAuth, db: DbSession) -> FileTableOut:
+    return _file_table(db, file_id, lambda t: True)
+
+
 @staff_router.get("/files/{file_id}")
-def staff_file(file_id: int, ctx: StaffAuth, db: DbSession, thumb: bool = False) -> Response:
-    return _file_response(db, file_id, thumb, lambda t: True)
+def staff_file(
+    file_id: int, request: Request, ctx: StaffAuth, db: DbSession, thumb: bool = False
+) -> Response:
+    return _file_response(db, file_id, thumb, lambda t: True, request.headers.get("range"))
 
 
 @staff_router.post("/{thread_id}/files", response_model=ThreadOut)

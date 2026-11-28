@@ -500,3 +500,51 @@ def test_message_office_preview(me, hr, emp):  # noqa: F811
         assert info["pages"] == 1 and info["title"] == "plan.txt"
         page = me.get(f"/api/me/messages/files/{f['id']}/preview/page/0")
         assert page.status_code == 200 and page.content.startswith(b"\x89PNG")
+
+
+def test_message_special_formats(me, hr, emp):  # noqa: F811
+    import openpyxl
+
+    tid = me.post("/api/me/messages", json={"subject": "Inne", "body": "Pliki"}).json()["id"]
+
+    def send(name, data):
+        r = me.post(
+            f"/api/me/messages/{tid}/files", files=[("files", (name, data, "application/octet-stream"))]
+        )
+        assert r.status_code == 200, r.text
+        return r.json()["messages"][-1]["files"][0]
+
+    # HEIC z iPhone'a → JPG
+    try:
+        from pillow_heif import register_heif_opener
+
+        register_heif_opener()
+        buf = io.BytesIO()
+        Image.new("RGB", (400, 300), (10, 120, 200)).save(buf, "HEIF")
+        f = send("IMG_0001.HEIC", buf.getvalue())
+        assert f["kind"] == "image" and f["name"] == "IMG_0001.jpg"
+    except ImportError:
+        pass
+    # nagranie głosowe – odtwarzanie z zakresem bajtów
+    a = send("notatka.m4a", b"\x00\x00\x00\x18ftypM4A " + b"\x00" * 200)
+    assert a["kind"] == "audio"
+    r = hr.get(f"/api/hr-messages/files/{a['id']}", headers={"Range": "bytes=0-9"})
+    assert r.status_code == 206 and len(r.content) == 10 and r.headers["content-range"] == "bytes 0-9/212"
+    # tekst w aplikacji
+    t = send("notatka.txt", "Zażółć gęślą jaźń".encode("cp1250"))
+    assert hr.get(f"/api/hr-messages/files/{t['id']}/text").json()["text"] == "Zażółć gęślą jaźń"
+    # CSV i XLSX jako tabela z arkuszami
+    c = send("lista.csv", b"Nazwisko;Zmiana\nKowalski;I\nNowak;II\n")
+    sheet = me.get(f"/api/me/messages/files/{c['id']}/table").json()["sheets"][0]
+    assert sheet["rows"][2] == ["Nowak", "II"]
+    wb = openpyxl.Workbook()
+    wb.active.title = "Grafik"
+    wb.active.append(["Dzień", "Godziny"])
+    wb.active.append(["Pon", 8.5])
+    wb.create_sheet("Urlopy").append(["Nowak", "1–5.12"])
+    xb = io.BytesIO()
+    wb.save(xb)
+    x = send("grafik.xlsx", xb.getvalue())
+    sheets = hr.get(f"/api/hr-messages/files/{x['id']}/table").json()["sheets"]
+    assert [s["name"] for s in sheets] == ["Grafik", "Urlopy"] and sheets[0]["rows"][1] == ["Pon", "8,5"]
+    assert hr.get(f"/api/hr-messages/files/{a['id']}/table").status_code == 400

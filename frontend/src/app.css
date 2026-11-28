@@ -2247,14 +2247,49 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-mf-thx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
 .ui-mf-err{flex-basis:100%;font-size:13px;line-height:18px;color:var(--mantine-color-error)}
 .ui-mf-attach{flex:none}
-/* Podgląd załącznika dopasowany do okna (wiadomości, komunikaty): cała strona widoczna, przybliżanie */
-.doc-viewer-fitc{display:flex;flex-direction:column;height:100dvh}
-.doc-viewer-fitb{flex:1;min-height:0}
-.doc-viewer-fitb > .doc-viewer{height:100%}
-.doc-fit{height:100%;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:var(--s-4);padding:var(--s-4);box-sizing:border-box;touch-action:pan-x pan-y;overscroll-behavior:contain}
-.doc-fit[data-zoomed]{align-items:flex-start}
-.doc-fit-page{flex:none;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);margin-inline:auto}
-.doc-fit-page img{display:block;width:100%;height:100%;pointer-events:none;user-select:none}
-.doc-viewer-zoomval{min-width:52px;padding:0 var(--s-1);text-align:center;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums;border-radius:var(--mantine-radius-sm)}
-.doc-viewer-zoomval:hover{background:var(--mantine-color-default-hover)}
-.doc-viewer-zoomval:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
+
+/* ---- Podgląd załącznika (Wiadomości, Komunikaty): pasek, dopasowanie do okna, tekst, tabela ---- */
+.ui-av{background:var(--apt-subtle) !important}
+.ui-av-body{display:flex;flex-direction:column;height:100dvh;padding:0 !important}
+.ui-av-bar{flex:none;display:flex;align-items:center;gap:var(--s-4);min-height:60px;padding:var(--s-2) var(--s-4) var(--s-2) var(--s-5);padding-top:calc(var(--s-2) + env(safe-area-inset-top,0px));background:var(--apt-surface,var(--mantine-color-body));border-bottom:1px solid var(--apt-line)}
+.ui-av-bar[data-phone]{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:var(--s-2);padding-inline:calc(var(--s-1) + env(safe-area-inset-left,0px)) calc(var(--s-1) + env(safe-area-inset-right,0px))}
+.ui-av-title{flex:1;min-width:0;display:flex;flex-direction:column}
+.ui-av-title[data-center]{align-items:center;text-align:center}
+.ui-av-name{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:15px;line-height:22px;font-weight:600}
+.ui-av-meta{font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);white-space:nowrap}
+.ui-av-zoom{flex:none;display:flex;align-items:center;border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);background:var(--mantine-color-body)}
+.ui-av-zoom > button{display:grid;place-items:center;height:32px;min-width:36px;color:var(--mantine-color-text)}
+.ui-av-zoom > button:disabled{color:var(--mantine-color-dimmed);opacity:.5}
+.ui-av-zoom > button:hover:not(:disabled){background:var(--mantine-color-default-hover)}
+.ui-av-zoom > button:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
+.ui-av-zoomval{min-width:56px !important;border-inline:1px solid var(--apt-line) !important;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed) !important;font-variant-numeric:tabular-nums}
+.ui-av-actions{flex:none;display:flex;align-items:center;gap:var(--s-2)}
+.ui-av-stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.ui-av-load{flex:1;display:grid;place-items:center}
+.ui-av-fit{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:var(--s-4);padding:var(--s-5);box-sizing:border-box;touch-action:pan-x pan-y;overscroll-behavior:contain}
+.ui-av-fit[data-zoomed]{align-items:flex-start;justify-content:flex-start}
+.ui-av-page{flex:none;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);margin-inline:auto}
+.ui-av-page img{display:block;width:100%;height:100%;pointer-events:none;user-select:none;-webkit-user-select:none}
+.ui-av-side{position:absolute;top:50%;transform:translateY(-50%);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.ui-av-side[data-side="l"]{left:var(--s-4)}
+.ui-av-side[data-side="r"]{right:var(--s-4)}
+.ui-av-dots{position:absolute;left:0;right:0;bottom:calc(var(--s-3) + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;gap:var(--s-2);pointer-events:none}
+.ui-av-dots i{width:8px;height:8px;border-radius:50%;background:var(--mantine-color-dimmed);opacity:.35}
+.ui-av-dots i[data-on]{opacity:1}
+.ui-av-chip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--s-3) + env(safe-area-inset-bottom,0px));padding:var(--s-1) var(--s-3);border-radius:999px;background:var(--mantine-color-body);border:1px solid var(--apt-line);box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:13px;line-height:18px}
+.ui-av-scroll{flex:1;min-height:0;overflow:auto;padding:var(--s-5) var(--s-4)}
+.ui-av-text{max-width:72ch;margin:0 auto;padding:var(--s-5);background:var(--mantine-color-body);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:22px;user-select:text;-webkit-user-select:text}
+.ui-av-tablewrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:var(--s-4);gap:var(--s-3)}
+.ui-av-tablescroll{flex:0 1 auto;align-self:flex-start;max-width:100%;min-height:0;overflow:auto;background:var(--mantine-color-body);border:1px solid var(--apt-line);border-radius:var(--mantine-radius-md)}
+.ui-av-table{border-collapse:collapse;font-size:14px;line-height:20px;user-select:text;-webkit-user-select:text}
+.ui-av-table td,.ui-av-table th{border:1px solid var(--apt-line);padding:var(--s-1) var(--s-2);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.ui-av-table td[data-num]{text-align:right;font-variant-numeric:tabular-nums}
+.ui-av-table th{position:sticky;left:0;background:var(--apt-subtle);color:var(--mantine-color-dimmed);font-weight:400;font-size:13px;text-align:right}
+.ui-av-table tr:first-child td{font-weight:600}
+/* Nagranie głosowe w dymku */
+.ui-mf-voice{display:flex;align-items:center;gap:var(--s-3);width:min(280px,100%);padding:var(--s-2) var(--s-3) var(--s-2) var(--s-2);border-radius:var(--mantine-radius-lg);background:var(--apt-subtle);border:1px solid var(--apt-line)}
+.ui-mf-seek{flex:1;min-width:0;height:4px;appearance:none;-webkit-appearance:none;border-radius:2px;background:linear-gradient(to right,var(--mantine-primary-color-filled) var(--p),var(--apt-line) var(--p));cursor:pointer}
+.ui-mf-seek::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--mantine-primary-color-filled)}
+.ui-mf-seek::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--mantine-primary-color-filled)}
+.ui-mf-seek:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:4px}
+.ui-mf-time{flex:none;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums}

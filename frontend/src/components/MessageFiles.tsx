@@ -10,21 +10,23 @@ import {
   IconFileTypeTxt,
   IconFileTypeXls,
   IconPaperclip,
+  IconPlayerPauseFilled,
+  IconPlayerPlayFilled,
   IconPlus,
   IconX,
 } from "@tabler/icons-react";
 
-import { DocumentViewer } from "./DocumentViewer";
+import { AttachmentViewer, type AttachmentMode } from "./AttachmentViewer";
 
+import { withAcct } from "../api";
 import { useT } from "../lib/i18n";
-import { useIsPhone } from "../lib/device";
 
 /** Plik w wiadomości (z serwera). */
 export interface MsgFile {
   id: number;
   name: string;
   size: number;
-  kind: "image" | "file";
+  kind: "image" | "audio" | "file";
   ext?: string;
   width?: number | null;
   height?: number | null;
@@ -32,8 +34,9 @@ export interface MsgFile {
 
 export const MAX_FILES = 10;
 const MAX_MB = 15;
-const OFFICE = ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "rtf", "txt", "csv"];
-const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf", ...OFFICE.map((e) => `.${e}`)].join(",");
+const OFFICE = ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "txt", "csv"];
+const AUDIO = ["m4a", "mp3", "ogg", "opus", "wav", "webm", "aac"];
+const ACCEPT = ["image/*", "application/pdf", "audio/*", ...OFFICE.map((e) => `.${e}`), ...AUDIO.map((e) => `.${e}`)].join(",");
 
 /** Ikona i nazwa typu pliku (kafelek w dymku i miniatura przed wysłaniem). */
 function fileType(name: string, ext?: string): { label: string; Icon: typeof IconFileText; tone: string } {
@@ -43,7 +46,7 @@ function fileType(name: string, ext?: string): { label: string; Icon: typeof Ico
   if (e === "doc" || e === "rtf" || e === "odt") return { label: e === "odt" ? "Dokument" : "Word", Icon: IconFileTypeDoc, tone: "blue" };
   if (e === "xls" || e === "xlsx" || e === "ods") return { label: "Excel", Icon: IconFileTypeXls, tone: "green" };
   if (e === "csv") return { label: "CSV", Icon: IconFileTypeCsv, tone: "green" };
-  if (e === "ppt" || e === "pptx") return { label: "PowerPoint", Icon: IconFileTypePpt, tone: "orange" };
+  if (e === "ppt" || e === "pptx" || e === "odp") return { label: e === "odp" ? "Prezentacja" : "PowerPoint", Icon: IconFileTypePpt, tone: "orange" };
   if (e === "txt") return { label: "Tekst", Icon: IconFileTypeTxt, tone: "gray" };
   return { label: e.toUpperCase(), Icon: IconFileText, tone: "gray" };
 }
@@ -55,13 +58,72 @@ export function fileSize(n: number): string {
 
 const url = (base: string, id: number, thumb = false) => `/api${base}/files/${id}${thumb ? "?thumb=1" : ""}`;
 
+/** Tryb podglądu wg typu: tekst w aplikacji, arkusz jako tabela, prezentacja slajd po slajdzie, reszta – strony. */
+function viewMode(base: string, f: MsgFile): AttachmentMode {
+  const e = (f.ext || f.name.split(".").pop() || "").toLowerCase();
+  if (e === "txt") return { kind: "text", url: `${base}/files/${f.id}/text` };
+  if (["csv", "xlsx", "xls", "ods"].includes(e)) return { kind: "table", url: `${base}/files/${f.id}/table` };
+  return {
+    kind: "pages",
+    infoUrl: `${base}/files/${f.id}/preview`,
+    pageUrl: (i) => `${base}/files/${f.id}/preview/page/${i}`,
+    slides: ["ppt", "pptx", "odp"].includes(e),
+  };
+}
+
+const fmt = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00");
+
+/** Nagranie głosowe w dymku jak notatka głosowa: odtwórz / pauza, pasek postępu (przewijanie), czas. */
+function VoiceNote({ src, name }: { src: string; name: string }) {
+  const T = useT();
+  const a = useRef<HTMLAudioElement>(null);
+  const [play, setPlay] = useState(false);
+  const [t, setT] = useState(0);
+  const [d, setD] = useState(0);
+  return (
+    <div className="ui-mf-voice">
+      <audio
+        ref={a}
+        src={withAcct(src)}
+        preload="metadata"
+        onLoadedMetadata={(e) => setD(e.currentTarget.duration)}
+        onDurationChange={(e) => setD(e.currentTarget.duration)}
+        onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+        onPlay={() => setPlay(true)}
+        onPause={() => setPlay(false)}
+        onEnded={() => {
+          setPlay(false);
+          setT(0);
+        }}
+      />
+      <ActionIcon variant="filled" radius="xl" size={36} onClick={() => (play ? a.current?.pause() : a.current?.play())} aria-label={play ? T("Pauza") : `${T("Odtwórz nagranie")}: ${name}`}>
+        {play ? <IconPlayerPauseFilled size={16} /> : <IconPlayerPlayFilled size={16} />}
+      </ActionIcon>
+      <input
+        type="range"
+        className="ui-mf-seek"
+        min={0}
+        max={d || 0}
+        step={0.1}
+        value={Math.min(t, d || 0)}
+        onChange={(e) => {
+          if (a.current) a.current.currentTime = Number(e.currentTarget.value);
+        }}
+        aria-label={T("Przewiń nagranie")}
+        style={{ "--p": d ? `${(t / d) * 100}%` : "0%" } as React.CSSProperties}
+      />
+      <span className="ui-mf-time">{fmt(play || t ? t : d)}</span>
+    </div>
+  );
+}
+
 /** Załączniki w dymku, jak w komunikatorze: zdjęcia jako obraz (kilka – siatka 2×2 z „+N”), PDF jako kafelek. */
 export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string }) {
   const T = useT();
-  const phone = useIsPhone();
   const [doc, setDoc] = useState<MsgFile | null>(null);
   const imgs = files.filter((f) => f.kind === "image");
-  const docs = files.filter((f) => f.kind !== "image");
+  const auds = files.filter((f) => f.kind === "audio");
+  const docs = files.filter((f) => f.kind === "file");
   if (!files.length) return null;
   const shown = imgs.length > 4 ? imgs.slice(0, 4) : imgs;
   return (
@@ -85,6 +147,9 @@ export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string
           ))}
         </div>
       ) : null}
+      {auds.map((f) => (
+        <VoiceNote key={f.id} src={url(base, f.id)} name={f.name} />
+      ))}
       {docs.map((f) => {
         const ft = fileType(f.name, f.ext);
         return (
@@ -102,24 +167,22 @@ export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string
         );
       })}
       {doc && (
-        <DocumentViewer
-          docId={String(doc.id)}
-          opened
+        <AttachmentViewer
+          title={doc.name}
+          meta={`${doc.kind === "image" ? T("Zdjęcie") : fileType(doc.name, doc.ext).label} · ${fileSize(doc.size)}`}
           onClose={() => setDoc(null)}
-          base={`${base}/files/${doc.id}/preview`}
           downloadUrl={`${base}/files/${doc.id}`}
           downloadLabel={doc.kind !== "image" && (doc.ext ?? "") === "pdf" ? T("Pobierz PDF") : T("Pobierz")}
-          overlay={phone}
+          mode={viewMode(base, doc)}
           nav={
             doc.kind === "image" && imgs.length > 1
               ? {
                   index: imgs.findIndex((x) => x.id === doc.id),
                   total: imgs.length,
-                  go: (d) => setDoc(imgs[(imgs.findIndex((x) => x.id === doc.id) + d + imgs.length) % imgs.length]),
+                  go: (d: number) => setDoc(imgs[(imgs.findIndex((x) => x.id === doc.id) + d + imgs.length) % imgs.length]),
                 }
               : undefined
           }
-          variant="attachment"
         />
       )}
     </div>
@@ -137,8 +200,8 @@ export function usePendingFiles() {
     let err: string | null = null;
     for (const f of Array.from(list)) {
       const ext = (f.name.split(".").pop() || "").toLowerCase();
-      const ok = f.type === "application/pdf" || f.type.startsWith("image/") || /^(pdf|jpe?g|png|webp|heic|heif)$/.test(ext) || OFFICE.includes(ext);
-      if (!ok) err = `Pliku „${f.name}” nie da się wysłać. Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT i CSV.`;
+      const ok = f.type === "application/pdf" || f.type.startsWith("image/") || /^(pdf|jpe?g|png|webp|heic|heif)$/.test(ext) || OFFICE.includes(ext) || AUDIO.includes(ext) || f.type.startsWith("audio/");
+      if (!ok) err = `Pliku „${f.name}” nie da się wysłać. Dozwolone są zdjęcia, PDF, Word, Excel, PowerPoint, OpenDocument, TXT, CSV i nagrania głosowe.`;
       else if (f.size > MAX_MB * 1024 * 1024) err = `Plik „${f.name}” jest za duży (max ${MAX_MB} MB).`;
       else if (next.length >= MAX_FILES) err = `Najwyżej ${MAX_FILES} plików w wiadomości.`;
       else next.push({ file: f, url: f.type.startsWith("image/") ? URL.createObjectURL(f) : null });

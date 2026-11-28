@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "cryptography>=43",
     "pillow>=11",
+    "pillow-heif>=0.18",
     "defusedxml>=0.7.1",
     "opencv-python-headless>=4.10,<5",
     "numpy>=1.26,<3",

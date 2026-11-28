@@ -2247,3 +2247,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-mf-thx:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}
 .ui-mf-err{flex-basis:100%;font-size:13px;line-height:18px;color:var(--mantine-color-error)}
 .ui-mf-attach{flex:none}
+/* Podgląd załącznika dopasowany do okna (wiadomości, komunikaty): cała strona widoczna, przybliżanie */
+.doc-viewer-fitc{display:flex;flex-direction:column;height:100dvh}
+.doc-viewer-fitb{flex:1;min-height:0}
+.doc-viewer-fitb > .doc-viewer{height:100%}
+.doc-fit{height:100%;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:var(--s-4);padding:var(--s-4);box-sizing:border-box;touch-action:pan-x pan-y;overscroll-behavior:contain}
+.doc-fit[data-zoomed]{align-items:flex-start}
+.doc-fit-page{flex:none;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);margin-inline:auto}
+.doc-fit-page img{display:block;width:100%;height:100%;pointer-events:none;user-select:none}
+.doc-viewer-zoomval{min-width:52px;padding:0 var(--s-1);text-align:center;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums;border-radius:var(--mantine-radius-sm)}
+.doc-viewer-zoomval:hover{background:var(--mantine-color-default-hover)}
+.doc-viewer-zoomval:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px}

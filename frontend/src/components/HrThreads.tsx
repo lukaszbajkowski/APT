@@ -22,6 +22,7 @@ import { useSearchParams } from "react-router-dom";
 import { ActionSheet, CompactEmpty, PageHead, RowMenu, Segments, SwipePager, SwipeRow, useMobileHeader, useNavHeightVar, type RowAction } from "./Mobile";
 import { IconCheck, IconChevronRight, IconDots, IconChevronLeft, IconArrowRight, IconCircleCheck, IconProgress, IconInbox, IconUser } from "@tabler/icons-react";
 import { useIsPhone } from "../lib/device";
+import { showMicHelp } from "../lib/micHelp";
 
 export interface ThreadRow {
   id: number;
@@ -92,14 +93,18 @@ const MAX_REC_S = 300;
  * przytrzymanie (gdy jest `onVoice`) – nagranie głosowe jak w komunikatorze: puść – wyślij, przesuń w lewo – anuluj.
  * Druga droga bez gestu dla nagrania: „+” / spinacz i plik z dyktafonu; klawiatura (Enter / Spacja) – dyktowanie.
  */
-function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value: string; onChange: (v: string) => void; onVoice?: (f: File) => void }) {
+export type RecUi = { secs: number; cancel: boolean; levels: number[] };
+
+function DictateButton({ lang, value, onChange, onVoice, onRecUi }: { lang: string; value: string; onChange: (v: string) => void; onVoice?: (f: File) => void; /** komputer / tablet: stan nagrywania do pokazania w wierszu pisania (zamiast paska na dole) */ onRecUi?: (s: RecUi | null) => void }) {
   const T = useT();
   const [on, setOn] = useState(false);
   const stop = useRef<(() => void) | null>(null);
   const base = useRef("");
   const hold = useRef<{ timer: number; x: number; recording: boolean } | null>(null);
   const rec = useRef<{ mr: MediaRecorder; chunks: Blob[]; stream: MediaStream; started: number; cancel: boolean } | null>(null);
-  const [recState, setRecState] = useState<{ secs: number; cancel: boolean } | null>(null);
+  const [recState, setRecState] = useState<RecUi | null>(null);
+  const meter = useRef<{ ctx: AudioContext; an: AnalyserNode } | null>(null);
+  useEffect(() => onRecUi?.(recState), [recState]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(
     () => () => {
       stop.current?.();
@@ -113,9 +118,19 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
       const r = rec.current;
       if (!r) return;
       const secs = Math.floor((Date.now() - r.started) / 1000);
-      setRecState((x) => (x ? { ...x, secs } : x));
+      // głośność do „fali” – widać, że mikrofon łapie dźwięk
+      let lvl = 0;
+      const m = meter.current;
+      if (m) {
+        const buf = new Uint8Array(m.an.fftSize);
+        m.an.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (const v of buf) sum += (v - 128) ** 2;
+        lvl = Math.min(1, Math.sqrt(sum / buf.length) / 40);
+      }
+      setRecState((x) => (x ? { ...x, secs, levels: [...x.levels, lvl].slice(-80) } : x));
       if (secs >= MAX_REC_S) finishRec(false);
-    }, 250);
+    }, 100);
     return () => window.clearInterval(id);
   }, [recState === null]); // eslint-disable-line react-hooks/exhaustive-deps
   const dictation = canDictate();
@@ -135,12 +150,7 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
         setOn(false);
         stop.current = null;
         if (err === "not-allowed" || err === "service-not-allowed") {
-          notifications.show({
-            color: "yellow",
-            title: T("Brak dostępu do mikrofonu"),
-            message: T("Mikrofon służy tylko do dyktowania treści wiadomości. Zezwól na niego w ustawieniach przeglądarki (ikona kłódki przy adresie strony) albo wpisz tekst ręcznie."),
-            autoClose: 10000,
-          });
+          showMicHelp(T);
         }
       },
     );
@@ -176,16 +186,20 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
       };
       mr.start(250);
       rec.current = r;
-      setRecState({ secs: 0, cancel: false });
+      try {
+        const ctx = new AudioContext();
+        const an = ctx.createAnalyser();
+        an.fftSize = 512;
+        ctx.createMediaStreamSource(stream).connect(an);
+        meter.current = { ctx, an };
+      } catch {
+        meter.current = null;
+      }
+      setRecState({ secs: 0, cancel: false, levels: [] });
       navigator.vibrate?.(15);
     } catch {
       hold.current = null;
-      notifications.show({
-        color: "yellow",
-        title: T("Brak dostępu do mikrofonu"),
-        message: T("Zezwól na mikrofon w ustawieniach przeglądarki, aby nagrywać wiadomości głosowe."),
-        autoClose: 10000,
-      });
+      showMicHelp(T);
     }
   }
   function finishRec(cancel: boolean) {
@@ -193,6 +207,8 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
     rec.current = null;
     hold.current = null;
     setRecState(null);
+    meter.current?.ctx.close().catch(() => undefined);
+    meter.current = null;
     if (!r) return;
     r.cancel = cancel;
     if (r.mr.state !== "inactive") r.mr.stop();
@@ -275,6 +291,7 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
         </button>
       </Tooltip>
       {recState &&
+        !onRecUi &&
         createPortal(
           <div className="ui-rec" data-cancel={recState.cancel || undefined} role="status" aria-live="polite">
             <span className="ui-rec-dot" aria-hidden />
@@ -286,6 +303,26 @@ function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value
           document.body,
         )}
     </>
+  );
+}
+
+/** Wiersz nagrywania w miejscu pola pisania (komputer / tablet): kropka, czas, fala głośności, podpowiedź. */
+function RecLine({ s }: { s: RecUi }) {
+  const T = useT();
+  const bars = [...Array(Math.max(0, 80 - s.levels.length)).fill(0), ...s.levels];
+  return (
+    <div className="ui-recline" data-cancel={s.cancel || undefined} role="status" aria-live="polite">
+      <span className="ui-rec-dot" aria-hidden />
+      <span className="ui-rec-time">
+        {Math.floor(s.secs / 60)}:{String(s.secs % 60).padStart(2, "0")}
+      </span>
+      <span className="ui-recline-wave" aria-hidden>
+        {bars.map((v, i) => (
+          <i key={i} style={{ height: `${Math.max(3, Math.round(v * 24))}px` }} />
+        ))}
+      </span>
+      <span className="ui-rec-hint">{s.cancel ? T("Puść, aby anulować") : T("‹ Przesuń w lewo, aby anulować")}</span>
+    </div>
   );
 }
 
@@ -373,6 +410,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
     qc.invalidateQueries({ queryKey: ["hr-count"] });
   };
   const pending = usePendingFiles();
+  const [recUi, setRecUi] = useState<RecUi | null>(null);
   const send = useMutation({
     mutationFn: () =>
       pending.files.length
@@ -624,10 +662,13 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
       <div style={{ borderTop: "1px solid var(--apt-line)" }}>
       <PendingFiles pending={pending} />
       <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12}>
-        <AttachButton pending={pending} />
-        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} onVoice={(f) => voice.mutate(f)} />
+        <span style={{ visibility: recUi ? "hidden" : undefined, display: "contents" }}>
+          <AttachButton pending={pending} />
+        </span>
+        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} onVoice={(f) => voice.mutate(f)} onRecUi={setRecUi} />
+        {recUi && <RecLine s={recUi} />}
         <Textarea
-          style={{ flex: 1 }}
+          style={{ flex: 1, display: recUi ? "none" : undefined }}
           onPaste={(e) => {
             const fs = Array.from(e.clipboardData.files);
             if (fs.length) {
@@ -650,9 +691,11 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
             }
           }}
         />
-        <Button loading={send.isPending} disabled={!canSend} onClick={submit}>
-          {T("Wyślij")}
-        </Button>
+        {!recUi && (
+          <Button loading={send.isPending} disabled={!canSend} onClick={submit}>
+            {T("Wyślij")}
+          </Button>
+        )}
       </Group>
       </div>
     </Stack>

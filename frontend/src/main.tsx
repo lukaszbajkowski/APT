@@ -82,7 +82,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <ThemeColor />
-      <Notifications position="bottom-center" autoClose={3000} />
+      <Notifications position="bottom-center" autoClose={3000} notificationMaxHeight={480} />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>

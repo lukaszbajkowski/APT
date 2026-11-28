@@ -2304,3 +2304,15 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-rec[data-cancel] .ui-rec-dot{animation:none;opacity:.4}
 @keyframes ui-rec-blink{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.ui-rec-dot{animation:none}.ui-mic[data-rec]{transform:none}}
+/* Nagrywanie na komputerze / tablecie: wiersz w miejscu pola pisania */
+.ui-recline{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s-3);min-height:36px}
+.ui-recline .ui-rec-hint{flex:none;white-space:nowrap}
+.ui-recline-wave{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:2px;height:24px;overflow:hidden}
+.ui-recline-wave i{flex:none;width:3px;border-radius:2px;background:var(--mantine-color-red-filled);opacity:.75}
+.ui-recline[data-cancel] .ui-recline-wave,.ui-recline[data-cancel] .ui-rec-time{opacity:.35}
+.ui-recline[data-cancel] .ui-rec-hint{color:var(--mantine-color-error);font-weight:600}
+.ui-recline[data-cancel] .ui-rec-dot{animation:none;opacity:.4}
+.ui-mic-steps{margin:4px 0 0;padding-left:var(--s-5);font-size:13px;line-height:18px}
+.ui-mic-steps li+li{margin-top:2px}
+.ui-link{font-size:13px;line-height:18px;font-weight:600;color:var(--mantine-primary-color-text)}
+.ui-link:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;border-radius:2px}

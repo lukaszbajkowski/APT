@@ -2329,3 +2329,12 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 @media (orientation:landscape){
   :where(:root[data-device="phone"]) .ui-mich-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);align-items:start;gap:var(--s-5)}
 }
+.ui-mf-voice{flex-wrap:wrap}
+.ui-mf-vname{flex-basis:100%;min-width:0;padding-left:var(--s-1);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-av-tablebar{display:flex;align-items:flex-end;gap:var(--s-3);flex-wrap:wrap}
+.ui-av-rowcopy{display:inline-flex;align-items:center;justify-content:flex-end;gap:var(--s-1);width:100%;color:inherit;font:inherit}
+.ui-av-rowcopy svg{opacity:0}
+.ui-av-rowcopy:hover svg,.ui-av-rowcopy:focus-visible svg{opacity:1}
+.ui-av-rowcopy:hover{color:var(--mantine-color-text)}
+.ui-av-rowcopy:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:1px;border-radius:2px}
+:where(:root[data-device="phone"]) .ui-av-rowcopy svg{opacity:.6}

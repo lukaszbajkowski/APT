@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ActionIcon, Button, Modal, Skeleton, Tabs, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight, IconDownload, IconX, IconZoomIn, IconZoomOut } from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight, IconCopy, IconDownload, IconX, IconZoomIn, IconZoomOut } from "@tabler/icons-react";
+
+import { notifications } from "@mantine/notifications";
 
 import { api, withAcct } from "../api";
 import { useT } from "../lib/i18n";
@@ -311,8 +313,17 @@ function TableBody({ url }: { url: string }) {
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const sheets = q.data!.sheets;
   const sheet = sheets[Number(tab ?? 0)] ?? sheets[0];
+  // kopiowanie jako tekst z tabulatorami – wkleja się do Excela / Arkuszy w te same komórki
+  const copy = (rows: string[][], what: string) => {
+    const tsv = rows.map((r) => r.map((c) => c.replace(/[\t\n]+/g, " ")).join("\t")).join("\n");
+    navigator.clipboard
+      .writeText(tsv)
+      .then(() => notifications.show({ color: "green", message: what }))
+      .catch(() => notifications.show({ color: "yellow", message: T("Nie udało się skopiować – zaznacz komórki i użyj Ctrl+C.") }));
+  };
   return (
     <div className="ui-av-tablewrap">
+      <div className="ui-av-tablebar">
       {sheets.length > 1 && (
         <Tabs value={tab} onChange={setTab} className="ui-av-tabs">
           <Tabs.List>
@@ -324,13 +335,24 @@ function TableBody({ url }: { url: string }) {
           </Tabs.List>
         </Tabs>
       )}
+      {sheet && sheet.rows.length > 0 && (
+        <Button variant="default" size="xs" ml="auto" leftSection={<IconCopy size={14} />} onClick={() => copy(sheet.rows, T("Skopiowano tabelę – wklej w Excelu"))}>
+          {T("Kopiuj tabelę")}
+        </Button>
+      )}
+      </div>
       <div className="ui-av-tablescroll">
         {sheet && sheet.rows.length ? (
           <table className="ui-av-table">
             <tbody>
               {sheet.rows.map((r, i) => (
                 <tr key={i}>
-                  <th scope="row">{i + 1}</th>
+                  <th scope="row">
+                    <UnstyledButton className="ui-av-rowcopy" onClick={() => copy([r], T("Skopiowano wiersz {n}", { n: i + 1 }))} title={T("Kopiuj wiersz")} aria-label={`${T("Kopiuj wiersz")} ${i + 1}`}>
+                      <span>{i + 1}</span>
+                      <IconCopy size={12} aria-hidden />
+                    </UnstyledButton>
+                  </th>
                   {r.map((c, j) => (
                     <td key={j} data-num={/^-?[\d\s]+(,\d+)?$/.test(c) || undefined}>
                       {c}

@@ -131,6 +131,9 @@ function VoiceNote({ src, name }: { src: string; name: string }) {
         style={{ "--p": d ? `${(t / d) * 100}%` : "0%" } as React.CSSProperties}
       />
       <span className="ui-mf-time">{fmt(play || t ? t : d)}</span>
+      <span className="ui-mf-vname" title={name}>
+        {name}
+      </span>
     </div>
   );
 }

@@ -641,7 +641,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
                 )}
                 <div className="ui-bub-meta">
                   <span style={{ display: "flex", gap: 12 }}>
-                    {cfg.data?.enabled && !cfg.data.exhausted && (
+                    {cfg.data?.enabled && !cfg.data.exhausted && !!m.body && (
                       trx === "loading" ? (
                         <span>{T("Tłumaczę…")}</span>
                       ) : trx ? (
@@ -846,7 +846,7 @@ function MobileChat(props: {
           const lastInRun = !nx || nx.kind !== "message" || nx.from_staff !== m.from_staff || nx.author_name !== m.author_name || dayLabel(nx.created_at, T) !== dl;
           const showMeta = lastInRun || !!trv || (listen?.speakingId === m.id);
           const meta = [mine && staff && m.author_name && m.author_name !== myName ? m.author_name : null, hm(m.created_at), m === lastMine && seen ? T("przeczytane") : null].filter(Boolean).join(" · ");
-          const canTr = tl && !tl.exhausted && !mine;
+          const canTr = tl && !tl.exhausted && !mine && !!m.body; // sam plik – nie ma czego tłumaczyć
           return [
             sep,
             <div key={m.id} className="ui-chat-msg" data-mine={mine || undefined} data-tight={!showMeta || undefined}>

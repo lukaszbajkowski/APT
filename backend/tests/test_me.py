@@ -528,6 +528,7 @@ def test_message_special_formats(me, hr, emp):  # noqa: F811
     # nagranie głosowe – odtwarzanie z zakresem bajtów
     a = send("notatka.m4a", b"\x00\x00\x00\x18ftypM4A " + b"\x00" * 200)
     assert a["kind"] == "audio"
+    assert hr.get("/api/hr-messages").json()[0]["preview"] == "Wiadomość głosowa"
     r = hr.get(f"/api/hr-messages/files/{a['id']}", headers={"Range": "bytes=0-9"})
     assert r.status_code == 206 and len(r.content) == 10 and r.headers["content-range"] == "bytes 0-9/212"
     # tekst w aplikacji

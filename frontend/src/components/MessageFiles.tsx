@@ -80,15 +80,33 @@ function VoiceNote({ src, name }: { src: string; name: string }) {
   const [play, setPlay] = useState(false);
   const [t, setT] = useState(0);
   const [d, setD] = useState(0);
+  const probing = useRef(false);
   return (
     <div className="ui-mf-voice">
       <audio
         ref={a}
         src={withAcct(src)}
         preload="metadata"
-        onLoadedMetadata={(e) => setD(e.currentTarget.duration)}
-        onDurationChange={(e) => setD(e.currentTarget.duration)}
-        onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => {
+          const el = e.currentTarget;
+          if (Number.isFinite(el.duration)) return setD(el.duration);
+          // nagranie z przeglądarki (WebM) nie ma zapisanej długości – przeskok na koniec ją odczytuje
+          probing.current = true;
+          el.currentTime = 1e7;
+        }}
+        onDurationChange={(e) => Number.isFinite(e.currentTarget.duration) && setD(e.currentTarget.duration)}
+        onTimeUpdate={(e) => {
+          const el = e.currentTarget;
+          if (probing.current) {
+            if (Number.isFinite(el.duration)) {
+              probing.current = false;
+              setD(el.duration);
+              el.currentTime = 0;
+            }
+            return;
+          }
+          setT(el.currentTime);
+        }}
         onPlay={() => setPlay(true)}
         onPause={() => setPlay(false)}
         onEnded={() => {

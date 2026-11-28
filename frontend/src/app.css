@@ -2293,3 +2293,14 @@ body:not(:has(.mantine-AppShell-root)) { padding-left: var(--apt-safe-left); pad
 .ui-mf-seek::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--mantine-primary-color-filled)}
 .ui-mf-seek:focus-visible{outline:2px solid var(--mantine-primary-color-filled);outline-offset:4px}
 .ui-mf-time{flex:none;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed);font-variant-numeric:tabular-nums}
+/* Nagrywanie wiadomości głosowej (przytrzymanie mikrofonu) */
+.ui-mic{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.ui-mic[data-rec]{background:var(--mantine-color-red-filled) !important;color:var(--mantine-color-white) !important;border-color:transparent !important;transform:scale(1.15)}
+.ui-rec{position:fixed;left:0;right:0;bottom:0;z-index:600;display:flex;align-items:center;gap:var(--s-3);padding:var(--s-4) max(var(--s-4),env(safe-area-inset-right,0px)) calc(var(--s-4) + env(safe-area-inset-bottom,0px)) max(var(--s-4),env(safe-area-inset-left,0px));background:var(--mantine-color-body);border-top:1px solid var(--apt-line);box-shadow:0 -4px 16px rgba(0,0,0,.08);pointer-events:none}
+.ui-rec-dot{width:12px;height:12px;flex:none;border-radius:50%;background:var(--mantine-color-red-filled);animation:ui-rec-blink 1s ease-in-out infinite}
+.ui-rec-time{font-size:15px;line-height:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.ui-rec-hint{flex:1;min-width:0;font-size:13px;line-height:18px;color:var(--mantine-color-dimmed)}
+.ui-rec[data-cancel] .ui-rec-hint{color:var(--mantine-color-error);font-weight:600}
+.ui-rec[data-cancel] .ui-rec-dot{animation:none;opacity:.4}
+@keyframes ui-rec-blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.ui-rec-dot{animation:none}.ui-mic[data-rec]{transform:none}}

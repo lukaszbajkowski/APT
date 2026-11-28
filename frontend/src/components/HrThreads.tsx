@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ActionIcon, Alert, Anchor, Box, Button, Group, ScrollArea, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
 import { Select } from "./AptSelect";
@@ -83,14 +84,44 @@ function initials(name: string): string {
 }
 
 /** Mikrofon: dyktowanie treści do pola (dopisuje do tego, co już wpisano). */
-function DictateButton({ lang, value, onChange }: { lang: string; value: string; onChange: (v: string) => void }) {
+const HOLD_MS = 350; // przytrzymanie dłuższe niż to – nagranie głosowe (krótkie stuknięcie – dyktowanie)
+const MAX_REC_S = 300;
+
+/**
+ * Mikrofon: stuknięcie – dyktowanie treści do pola (dopisuje do tego, co już wpisano);
+ * przytrzymanie (gdy jest `onVoice`) – nagranie głosowe jak w komunikatorze: puść – wyślij, przesuń w lewo – anuluj.
+ * Druga droga bez gestu dla nagrania: „+” / spinacz i plik z dyktafonu; klawiatura (Enter / Spacja) – dyktowanie.
+ */
+function DictateButton({ lang, value, onChange, onVoice }: { lang: string; value: string; onChange: (v: string) => void; onVoice?: (f: File) => void }) {
   const T = useT();
   const [on, setOn] = useState(false);
   const stop = useRef<(() => void) | null>(null);
   const base = useRef("");
-  useEffect(() => () => stop.current?.(), []);
-  if (!canDictate()) return null;
+  const hold = useRef<{ timer: number; x: number; recording: boolean } | null>(null);
+  const rec = useRef<{ mr: MediaRecorder; chunks: Blob[]; stream: MediaStream; started: number; cancel: boolean } | null>(null);
+  const [recState, setRecState] = useState<{ secs: number; cancel: boolean } | null>(null);
+  useEffect(
+    () => () => {
+      stop.current?.();
+      rec.current?.stream.getTracks().forEach((t) => t.stop());
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!recState) return;
+    const id = window.setInterval(() => {
+      const r = rec.current;
+      if (!r) return;
+      const secs = Math.floor((Date.now() - r.started) / 1000);
+      setRecState((x) => (x ? { ...x, secs } : x));
+      if (secs >= MAX_REC_S) finishRec(false);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [recState === null]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dictation = canDictate();
+  if (!dictation && !onVoice) return null;
   function toggle() {
+    if (!dictation) return;
     if (on) {
       stop.current?.();
       return;
@@ -114,22 +145,147 @@ function DictateButton({ lang, value, onChange }: { lang: string; value: string;
       },
     );
   }
+  async function startRec() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      notifications.show({ color: "yellow", message: T("Ta przeglądarka nie nagrywa dźwięku – wyślij nagranie z dyktafonu przez „+”.") });
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!hold.current?.recording) {
+        stream.getTracks().forEach((t) => t.stop()); // palec puszczony, zanim przeglądarka dała mikrofon
+        return;
+      }
+      const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"].find((m) => MediaRecorder.isTypeSupported?.(m));
+      const mr = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+      const r = { mr, chunks: [] as Blob[], stream, started: Date.now(), cancel: false };
+      mr.ondataavailable = (e) => e.data.size && r.chunks.push(e.data);
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const secs = (Date.now() - r.started) / 1000;
+        if (r.cancel) return;
+        if (secs < 1) {
+          notifications.show({ color: "gray", message: T("Za krótkie nagranie – przytrzymaj mikrofon dłużej.") });
+          return;
+        }
+        const mime = mr.mimeType || type || "audio/webm";
+        const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
+        const now = new Date();
+        const name = `Nagranie ${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}.${ext}`;
+        onVoice?.(new File(r.chunks, name, { type: mime.split(";")[0] }));
+      };
+      mr.start(250);
+      rec.current = r;
+      setRecState({ secs: 0, cancel: false });
+      navigator.vibrate?.(15);
+    } catch {
+      hold.current = null;
+      notifications.show({
+        color: "yellow",
+        title: T("Brak dostępu do mikrofonu"),
+        message: T("Zezwól na mikrofon w ustawieniach przeglądarki, aby nagrywać wiadomości głosowe."),
+        autoClose: 10000,
+      });
+    }
+  }
+  function finishRec(cancel: boolean) {
+    const r = rec.current;
+    rec.current = null;
+    hold.current = null;
+    setRecState(null);
+    if (!r) return;
+    r.cancel = cancel;
+    if (r.mr.state !== "inactive") r.mr.stop();
+  }
+  const pointer = onVoice
+    ? {
+        onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+          if (e.button !== 0 || on) return;
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          const h = { x: e.clientX, recording: false, timer: 0 };
+          h.timer = window.setTimeout(() => {
+            h.recording = true;
+            void startRec();
+          }, HOLD_MS);
+          hold.current = h;
+        },
+        onPointerMove: (e: React.PointerEvent) => {
+          const h = hold.current;
+          if (!h?.recording || !rec.current) return;
+          const cancel = e.clientX - h.x < -80;
+          if (cancel !== rec.current.cancel) {
+            rec.current.cancel = cancel;
+            setRecState((x) => (x ? { ...x, cancel } : x));
+          }
+        },
+        onPointerUp: () => {
+          const h = hold.current;
+          if (!h) return toggle();
+          window.clearTimeout(h.timer);
+          if (!h.recording) {
+            hold.current = null;
+            toggle();
+            return;
+          }
+          finishRec(!!rec.current?.cancel);
+        },
+        onPointerCancel: () => {
+          if (hold.current) window.clearTimeout(hold.current.timer);
+          finishRec(true);
+        },
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle();
+          }
+        },
+        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+      }
+    : { onClick: toggle };
+  const tip = on
+    ? T("Słucham… – kliknij, aby zakończyć")
+    : onVoice
+      ? dictation
+        ? T("Stuknij – dyktuj tekst; przytrzymaj – nagraj wiadomość głosową")
+        : T("Przytrzymaj, aby nagrać wiadomość głosową")
+      : T("Dyktuj głosem (dźwięk może być przetwarzany przez dostawcę przeglądarki: Google lub Apple)");
   // nasłuch: fale rozchodzą się od przycisku, słupki „grają” – widać, że aplikacja słucha (tekst wpada do pola)
   return (
-    <Tooltip label={on ? T("Słucham… – kliknij, aby zakończyć") : T("Dyktuj głosem (dźwięk może być przetwarzany przez dostawcę przeglądarki: Google lub Apple)")} multiline w={260}>
-      <button type="button" className="ui-mic" data-on={on || undefined} onClick={toggle} aria-pressed={on} aria-label={on ? T("Zakończ dyktowanie") : T("Dyktuj głosem")}>
-        {on ? (
-          <span className="ui-mic-eq" aria-hidden>
-            <i />
-            <i />
-            <i />
-            <i />
-          </span>
-        ) : (
-          <IconMicrophone size={18} aria-hidden />
+    <>
+      <Tooltip label={tip} multiline w={260} disabled={!!recState}>
+        <button
+          type="button"
+          className="ui-mic"
+          data-on={on || undefined}
+          data-rec={recState ? true : undefined}
+          aria-pressed={on}
+          aria-label={on ? T("Zakończ dyktowanie") : onVoice ? T("Mikrofon: stuknij – dyktuj, przytrzymaj – nagraj") : T("Dyktuj głosem")}
+          {...pointer}
+        >
+          {on ? (
+            <span className="ui-mic-eq" aria-hidden>
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          ) : (
+            <IconMicrophone size={18} aria-hidden />
+          )}
+        </button>
+      </Tooltip>
+      {recState &&
+        createPortal(
+          <div className="ui-rec" data-cancel={recState.cancel || undefined} role="status" aria-live="polite">
+            <span className="ui-rec-dot" aria-hidden />
+            <span className="ui-rec-time">
+              {Math.floor(recState.secs / 60)}:{String(recState.secs % 60).padStart(2, "0")}
+            </span>
+            <span className="ui-rec-hint">{recState.cancel ? T("Puść, aby anulować") : T("‹ Przesuń w lewo, aby anulować · puść, aby wysłać")}</span>
+          </div>,
+          document.body,
         )}
-      </button>
-    </Tooltip>
+    </>
   );
 }
 
@@ -244,6 +400,20 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
     onError: (e) => setError(errorText(e)),
   });
   const canSend = !!body.trim() || pending.files.length > 0;
+  // nagranie głosowe (przytrzymanie mikrofonu) – wysyłane od razu jako osobna wiadomość
+  const voice = useMutation({
+    mutationFn: (f: File) => {
+      const fd = new FormData();
+      fd.append("body", "");
+      fd.append("files", f, f.name);
+      return api<Thread>(`${base}/${id}/files`, { method: "POST", form: fd });
+    },
+    onSuccess: (nt) => {
+      setError(null);
+      refresh(nt);
+    },
+    onError: (e) => setError(errorText(e)),
+  });
   const submit = () => canSend && !send.isPending && send.mutate();
   if (mobile) {
     return (
@@ -257,6 +427,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
         sending={send.isPending}
         pending={pending}
         base={base}
+        onVoice={(f) => voice.mutate(f)}
         error={error}
         speechNote={speechNote}
         clearSpeechNote={() => setSpeechNote(null)}
@@ -454,7 +625,7 @@ function Conversation({ base, id, staff, onBack, showBack, mobile }: { base: str
       <PendingFiles pending={pending} />
       <Group px={20} py={12} align="flex-end" wrap="nowrap" gap={12}>
         <AttachButton pending={pending} />
-        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} />
+        <DictateButton lang={ownLang ?? "pl"} value={body} onChange={setBody} onVoice={(f) => voice.mutate(f)} />
         <Textarea
           style={{ flex: 1 }}
           onPaste={(e) => {
@@ -537,6 +708,7 @@ function MobileChat(props: {
   sending: boolean;
   pending: Pending;
   base: string;
+  onVoice: (f: File) => void;
   error: string | null;
   speechNote: string | null;
   clearSpeechNote: () => void;
@@ -678,7 +850,7 @@ function MobileChat(props: {
           value={props.body}
           onChange={(e) => props.setBody(e.currentTarget.value)}
         />
-        <DictateButton lang={props.lang} value={props.body} onChange={props.setBody} />
+        <DictateButton lang={props.lang} value={props.body} onChange={props.setBody} onVoice={props.onVoice} />
         <ActionIcon size={44} radius="xl" variant="filled" loading={props.sending} disabled={!props.body.trim() && !props.pending.files.length} onClick={props.submit} aria-label={T("Wyślij")}>
           <IconArrowRight size={20} stroke={2.2} />
         </ActionIcon>

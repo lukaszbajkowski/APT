@@ -366,12 +366,14 @@ def _row(t: HrThread, staff: bool, uid: int | None = None, eid: int | None = Non
 
 def _files_label(m: HrMessage) -> str:
     imgs = sum(1 for f in m.files if f.content_type.startswith("image/"))
-    other = len(m.files) - imgs
-    parts = []
+    voice = sum(1 for f in m.files if f.content_type.startswith("audio/"))
+    other = len(m.files) - imgs - voice
+    parts = ["Wiadomość głosowa" if voice == 1 else f"Wiadomości głosowe: {voice}"] if voice else []
     if imgs:
         parts.append("Zdjęcie" if imgs == 1 else f"Zdjęcia: {imgs}")
     if other:
-        parts.append(f"Plik: {m.files[-1].original_name}" if other == 1 else f"Pliki: {other}")
+        last = next(f for f in reversed(m.files) if not f.content_type.startswith(("image/", "audio/")))
+        parts.append(f"Plik: {last.original_name}" if other == 1 else f"Pliki: {other}")
     return ", ".join(parts) or "Załącznik"
 
 

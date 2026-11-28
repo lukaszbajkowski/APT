@@ -110,6 +110,15 @@ export function MsgAttachments({ files, base }: { files: MsgFile[]; base: string
           downloadUrl={`${base}/files/${doc.id}`}
           downloadLabel={doc.kind !== "image" && (doc.ext ?? "") === "pdf" ? T("Pobierz PDF") : T("Pobierz")}
           overlay={phone}
+          nav={
+            doc.kind === "image" && imgs.length > 1
+              ? {
+                  index: imgs.findIndex((x) => x.id === doc.id),
+                  total: imgs.length,
+                  go: (d) => setDoc(imgs[(imgs.findIndex((x) => x.id === doc.id) + d + imgs.length) % imgs.length]),
+                }
+              : undefined
+          }
           variant="attachment"
         />
       )}

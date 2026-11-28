@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
-import { IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
+import { ActionIcon, Box, Button, Center, Group, Skeleton, Modal, Portal, Stack, Text } from "@mantine/core";
+import { IconChevronLeft, IconChevronRight, IconDownload, IconEyeOff, IconShieldLock } from "@tabler/icons-react";
 
 import { PageSheet } from "./PageSheet";
 import { api, withAcct } from "../api";
@@ -46,6 +46,7 @@ export function DocumentViewer({
   downloadUrl,
   downloadLabel,
   overlay,
+  nav,
   variant = base ? "signed" : "document",
 }: {
   docId: string;
@@ -60,6 +61,8 @@ export function DocumentViewer({
   downloadLabel?: string;
   /** otwierany nad warstwą na cały ekran (rozmowa na telefonie) – okno pełnoekranowe zamiast ekranu z górnym paskiem */
   overlay?: boolean;
+  /** przechodzenie między kilkoma plikami (zdjęcia w wiadomości): strzałki w pasku, klawiatura ←/→, przesunięcie palcem */
+  nav?: { index: number; total: number; go: (delta: number) => void };
 }) {
   const T = useT();
   const infoUrl = base ?? `/documents/${docId}/preview`;
@@ -110,6 +113,30 @@ export function DocumentViewer({
   }, [opened, protect]);
 
   const title = q.data?.title ?? T("Podgląd dokumentu");
+  const multi = !!nav && nav.total > 1;
+  useEffect(() => {
+    if (!opened || !multi) return;
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") nav!.go(1);
+      if (e.key === "ArrowLeft") nav!.go(-1);
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [opened, multi, nav]);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const navCtl = multi ? (
+    <Group gap={4} wrap="nowrap" className="doc-viewer-nav">
+      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => nav!.go(-1)} aria-label={T("Poprzednie")}>
+        <IconChevronLeft size={20} />
+      </ActionIcon>
+      <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+        {nav!.index + 1} / {nav!.total}
+      </Text>
+      <ActionIcon variant="subtle" color="gray" size="lg" onClick={() => nav!.go(1)} aria-label={T("Następne")}>
+        <IconChevronRight size={20} />
+      </ActionIcon>
+    </Group>
+  ) : null;
   const content = (
       <Box
         className="doc-viewer"
@@ -117,6 +144,15 @@ export function DocumentViewer({
         onDragStart={(e) => e.preventDefault()}
         onClick={() => (hidden ? setHidden(false) : undefined)}
         style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", position: "relative" }}
+        onTouchStart={(e) => (touch.current = multi ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null)}
+        onTouchEnd={(e) => {
+          const s0 = touch.current;
+          touch.current = null;
+          if (!s0) return;
+          const dx = e.changedTouches[0].clientX - s0.x;
+          const dy = e.changedTouches[0].clientY - s0.y;
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) nav!.go(dx < 0 ? 1 : -1);
+        }}
       >
         {q.isLoading && (
           <Skeleton height="60dvh" radius="md" aria-busy="true" aria-label="Ładowanie dokumentu" />
@@ -178,6 +214,7 @@ export function DocumentViewer({
       >
         <div>
           <h2 className="ui-view-title">{breakableName(title)}</h2>
+          {navCtl}
           {q.data?.signed && (
             <StatusBadge tone="ok">
               {T("wersja podpisana")}
@@ -199,6 +236,7 @@ export function DocumentViewer({
       title={
         <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
           <Text fw={600} truncate style={{ minWidth: 0 }}>{q.data?.title ?? T("Podgląd dokumentu")}</Text>
+          {navCtl}
           {downloadUrl && (
             <Button component="a" size="xs" variant="light" href={withAcct(`/api${downloadUrl}`)} leftSection={<IconDownload size={14} />}>
               {downloadLabel ?? T("Pobierz PDF")}

@@ -79,7 +79,8 @@ export function DocumentViewer({
   });
   const [hidden, setHidden] = useState(false);
   const phone = useIsPhone();
-  const mobile = phone && !overlay;
+  // załączniki (komunikaty, wiadomości) zawsze w oknie na cały ekran – dopasowanie do okna i przybliżanie także na telefonie
+  const mobile = phone && !overlay && variant !== "attachment";
 
   const protect = variant !== "attachment";
   useEffect(() => {
@@ -206,6 +207,7 @@ export function DocumentViewer({
             zoom={zoom}
             setZoom={zoomTo}
             hidden={hidden}
+            onClose={onClose}
           />
         )}
         {q.data && !fit && (
@@ -316,7 +318,7 @@ export function DocumentViewer({
  * Strony załącznika dopasowane do okna (całe zdjęcie / strona / slajd widać od razu), z przybliżaniem:
  * przyciski w pasku, Ctrl + kółko myszy, dwa palce; przybliżoną stronę przesuwa się palcem albo paskami przewijania.
  */
-function FitPages({ pages, src, zoom, setZoom, hidden }: { pages: number; src: (i: number) => string; zoom: number; setZoom: (z: number) => void; hidden: boolean }) {
+function FitPages({ pages, src, zoom, setZoom, hidden, onClose }: { pages: number; src: (i: number) => string; zoom: number; setZoom: (z: number) => void; hidden: boolean; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [nat, setNat] = useState<Record<number, { w: number; h: number }>>({});
@@ -365,12 +367,13 @@ function FitPages({ pages, src, zoom, setZoom, hidden }: { pages: number; src: (
       onTouchEnd={(e) => {
         if (e.touches.length < 2) pinch.current = null;
       }}
-      onDoubleClick={() => setZoom(zoom > 1 ? 1 : 2)}
+      // kliknięcie w tło (poza stroną / zdjęciem) zamyka podgląd; dwuklik na stronie – przybliżenie
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       {Array.from({ length: pages }, (_, i) => {
         const d = dims(i);
         return (
-          <div key={i} className="doc-fit-page" role="img" aria-label={`Strona ${i + 1}`} style={d ?? { width: "60%", aspectRatio: "210 / 297", maxHeight: "100%" }}>
+          <div key={i} className="doc-fit-page" onDoubleClick={() => setZoom(zoom > 1 ? 1 : 2)} role="img" aria-label={`Strona ${i + 1}`} style={d ?? { width: "60%", aspectRatio: "210 / 297", maxHeight: "100%" }}>
             <img
               src={withAcct(src(i))}
               alt=""
